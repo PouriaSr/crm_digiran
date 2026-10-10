@@ -61,3 +61,4 @@ Thumbs.db
 # .venv/ بالا ignore شده
 # Windows metadata
 *:Zone.Identifier
+measure_queries.py
