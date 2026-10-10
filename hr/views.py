@@ -502,28 +502,52 @@ def attendance_report(request):
         except (ValueError, AttributeError):
             pass
 
-    employees = Employee.objects.filter(is_active=True)
+    employees = list(Employee.objects.filter(is_active=True))
+    employee_ids = [e.pk for e in employees]
+
+    # ═══════════════════════════════════════════════════════════
+    # بهینه‌سازی N+1: قبلاً ۶ کوئری به‌ازای هر کارمند
+    # الان: ۲ کوئری کل (مستقل از تعداد کارمندان)
+    # ═══════════════════════════════════════════════════════════
+
+    base_qs = Attendance.objects.filter(
+        date__gte=month_start,
+        date__lte=month_end,
+        employee_id__in=employee_ids,
+    )
+
+    # ═══ کوئری ۱: شمارش‌ها با GROUP BY در سطح دیتابیس ═══
+    counts_qs = base_qs.values('employee_id').annotate(
+        total_days=Count('id'),
+        present=Count('id', filter=Q(status='present')),
+        late=Count('id', filter=Q(status='late')),
+        absent=Count('id', filter=Q(status='absent')),
+        leave=Count('id', filter=Q(status='leave')),
+    )
+    counts_map = {row['employee_id']: row for row in counts_qs}
+
+    # ═══ کوئری ۲: فقط ستون‌های لازم برای محاسبه‌ی work_hours ═══
+    # چون work_hours در مدل یک property است (نه فیلد DB)،
+    # نمی‌توان از Sum در aggregate استفاده کرد. پس فقط
+    # check_in/check_out را می‌گیریم و در پایتون جمع می‌زنیم.
+    hours_map = {}
+    for rec in base_qs.only('employee_id', 'check_in', 'check_out'):
+        wh = rec.work_hours
+        if wh:
+            hours_map[rec.employee_id] = hours_map.get(rec.employee_id, 0) + wh
+
+    # ═══ ساخت گزارش نهایی ═══
     report = []
-
     for emp in employees:
-        records = Attendance.objects.filter(
-            employee=emp, date__gte=month_start, date__lte=month_end
-        )
-        total_days = records.count()
-        present = records.filter(status='present').count()
-        late = records.filter(status='late').count()
-        absent = records.filter(status='absent').count()
-        leave = records.filter(status='leave').count()
-        total_hours = sum(r.work_hours or 0 for r in records)
-
+        c = counts_map.get(emp.pk, {})
         report.append({
             'employee': emp,
-            'total_days': total_days,
-            'present': present,
-            'late': late,
-            'absent': absent,
-            'leave': leave,
-            'total_hours': round(total_hours, 1),
+            'total_days': c.get('total_days', 0),
+            'present': c.get('present', 0),
+            'late': c.get('late', 0),
+            'absent': c.get('absent', 0),
+            'leave': c.get('leave', 0),
+            'total_hours': round(hours_map.get(emp.pk, 0), 1),
         })
 
     context = {

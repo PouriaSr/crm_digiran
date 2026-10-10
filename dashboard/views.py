@@ -7,7 +7,10 @@ from decimal import Decimal
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User as AuthUser
-from django.db.models import Q, Sum, Count, F, Avg
+from django.db.models import (
+    Q, Sum, Count, F, Avg,
+    Case, When, Value, DecimalField,
+)
 from django.http import HttpResponse
 from django.utils import timezone
 
@@ -17,6 +20,11 @@ from calls.models import Call
 from products.models import Product
 from sales.models import Invoice, InvoiceItem
 from hr.models import Employee, Task, LeaveRequest
+
+
+# فیلد Decimal استاندارد برای Case/When روی Invoice.total
+DEC_FIELD = DecimalField(max_digits=15, decimal_places=0)
+ZERO = Decimal('0')
 
 
 # ═══════════════════════════════════════════
@@ -165,32 +173,41 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
     ).count()
 
     total_invoices = invoices_qs.count()
-    total_sales = invoices_qs.aggregate(s=Sum('total'))['s'] or 0
+    total_sales = invoices_qs.aggregate(s=Sum('total'))['s'] or ZERO
 
-    # ═══ فروش این ماه ═══
-    if from_date or to_date:
-        sales_this_month = total_sales
-    else:
-        month_start, month_end = _get_month_range(now_j.year, now_j.month)
-        sales_this_month = _filtered_invoices(owner).filter(
-            issue_date__gte=month_start,
-            issue_date__lte=month_end,
-        ).aggregate(s=Sum('total'))['s'] or 0
+    # ═══════════════════════════════════════════════════════════
+    # بهینه‌سازی N+1: فروش این ماه / ماه قبل / سال قبل
+    # قبلاً ۳ کوئری aggregate جدا → الان ۱ کوئری
+    # ═══════════════════════════════════════════════════════════
 
-    # ═══ فروش ماه/سال قبل ═══
+    month_start, month_end = _get_month_range(now_j.year, now_j.month)
     prev_year = now_j.year if now_j.month > 1 else now_j.year - 1
     prev_month = now_j.month - 1 if now_j.month > 1 else 12
     prev_start, prev_end = _get_month_range(prev_year, prev_month)
-    sales_last_month = _filtered_invoices(owner).filter(
-        issue_date__gte=prev_start,
-        issue_date__lte=prev_end,
-    ).aggregate(s=Sum('total'))['s'] or 0
-
     last_year_start, last_year_end = _get_month_range(now_j.year - 1, now_j.month)
-    sales_last_year = _filtered_invoices(owner).filter(
-        issue_date__gte=last_year_start,
-        issue_date__lte=last_year_end,
-    ).aggregate(s=Sum('total'))['s'] or 0
+
+    comp = _filtered_invoices(owner).aggregate(
+        this_m=Sum(Case(
+            When(issue_date__gte=month_start, issue_date__lte=month_end, then=F('total')),
+            default=Value(ZERO), output_field=DEC_FIELD,
+        )),
+        last_m=Sum(Case(
+            When(issue_date__gte=prev_start, issue_date__lte=prev_end, then=F('total')),
+            default=Value(ZERO), output_field=DEC_FIELD,
+        )),
+        last_y=Sum(Case(
+            When(issue_date__gte=last_year_start, issue_date__lte=last_year_end, then=F('total')),
+            default=Value(ZERO), output_field=DEC_FIELD,
+        )),
+    )
+
+    if from_date or to_date:
+        sales_this_month = total_sales
+    else:
+        sales_this_month = comp['this_m'] or ZERO
+
+    sales_last_month = comp['last_m'] or ZERO
+    sales_last_year = comp['last_y'] or ZERO
 
     # تغییرات
     if sales_last_month and sales_last_month > 0:
@@ -209,9 +226,13 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
     else:
         yearly_change = 100 if sales_this_month > 0 else 0
 
-    # ═══ نمودار فروش ۱۲ ماه اخیر ═══
-    sales_data = []
-    sales_labels = []
+    # ═══════════════════════════════════════════════════════════
+    # بهینه‌سازی N+1: نمودار فروش ۱۲ ماه اخیر
+    # قبلاً ۱۲ کوئری aggregate جدا → الان ۱ کوئری
+    # ═══════════════════════════════════════════════════════════
+
+    # ابتدا بازه‌ها را بدون کوئری می‌سازیم
+    month_ranges = []
     for i in range(11, -1, -1):
         m = now_j.month - i
         y = now_j.year
@@ -222,21 +243,23 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
         s_start, s_end = _get_month_range(y, m)
         if s_start is None:
             continue
-
         if from_date and s_end < from_date:
             continue
         if to_date and s_start > to_date:
             continue
+        month_ranges.append((y, m, s_start, s_end))
 
-        month_sales = _filtered_invoices(owner).filter(
-            issue_date__gte=s_start,
-            issue_date__lte=s_end,
-        ).aggregate(s=Sum('total'))['s'] or 0
-
-        sales_data.append(float(month_sales))
-        sales_labels.append(f"{y}/{m:02d}")
-
-    if not sales_data:
+    if month_ranges:
+        when_kwargs = {}
+        for idx, (_, _, s_start, s_end) in enumerate(month_ranges):
+            when_kwargs[f'm{idx}'] = Sum(Case(
+                When(issue_date__gte=s_start, issue_date__lte=s_end, then=F('total')),
+                default=Value(ZERO), output_field=DEC_FIELD,
+            ))
+        result = _filtered_invoices(owner).aggregate(**when_kwargs)
+        sales_data = [float(result[f'm{idx}'] or ZERO) for idx in range(len(month_ranges))]
+        sales_labels = [f"{y}/{m:02d}" for (y, m, _, _) in month_ranges]
+    else:
         sales_data = [0]
         sales_labels = ['بدون داده']
 
@@ -335,7 +358,10 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
     emp_chart_names = [e['name'] for e in employee_perf_list[:10]]
     emp_chart_values = [e['total_sales'] for e in employee_perf_list[:10]]
 
-    # ═══ قیف فروش ═══
+    # ═══════════════════════════════════════════════════════════
+    # بهینه‌سازی N+1: قیف فروش
+    # قبلاً ۲ کوئری جدا برای leads_with_invoice و paid_leads → الان ۱
+    # ═══════════════════════════════════════════════════════════
     leads_qs = customers_qs.filter(status='lead')
     leads_count = leads_qs.count()
 
@@ -343,13 +369,14 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
         customer__in=leads_qs
     ).values('customer').distinct().count()
 
-    leads_with_invoice = _filtered_invoices(owner).filter(
+    inv_funnel = _filtered_invoices(owner).filter(
         customer__in=leads_qs
-    ).values('customer').distinct().count()
-
-    paid_leads = _filtered_invoices(owner, statuses=['paid']).filter(
-        customer__in=leads_qs
-    ).values('customer').distinct().count()
+    ).aggregate(
+        with_invoice=Count('customer', distinct=True),
+        paid=Count('customer', distinct=True, filter=Q(status='paid')),
+    )
+    leads_with_invoice = inv_funnel['with_invoice'] or 0
+    paid_leads = inv_funnel['paid'] or 0
 
     funnel_data = {
         'labels': ['لید جدید', 'تماس گرفته', 'فاکتور صادر', 'پرداخت شده'],

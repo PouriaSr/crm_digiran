@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Q, Sum, F
+from django.db.models import Q, Sum, F, Count
 from accounts.permissions import require_permission, has_permission
 from .models import Product, StockMovement, Category
 from .forms import ProductForm, CategoryForm
@@ -48,15 +48,16 @@ def product_list(request):
     elif status_filter == 'out_of_stock':
         products = products.filter(stock=0)
 
-    all_active = Product.objects.all()
-    all_with_deleted = Product.all_objects.all()
-    stats = {
-        'total': all_active.count(),
-        'active': all_active.filter(is_active=True).count(),
-        'low_stock': all_active.filter(stock__lte=F('min_stock'), stock__gt=0).count(),
-        'out_of_stock': all_active.filter(stock=0).count(),
-        'deleted': all_with_deleted.filter(is_deleted=True).count(),
-    }
+    # ═══════════════════════════════════════════════════════════
+    # بهینه‌سازی N+1: قبلاً ۵ کوئری count جدا → الان ۱ + ۱
+    # ═══════════════════════════════════════════════════════════
+    stats = Product.objects.aggregate(
+        total=Count('id'),
+        active=Count('id', filter=Q(is_active=True)),
+        low_stock=Count('id', filter=Q(stock__lte=F('min_stock'), stock__gt=0)),
+        out_of_stock=Count('id', filter=Q(stock=0)),
+    )
+    stats['deleted'] = Product.all_objects.filter(is_deleted=True).count()
 
     paginator = Paginator(products, 20)
     page_obj = paginator.get_page(request.GET.get('page', 1))
@@ -68,7 +69,12 @@ def product_list(request):
         'current_category': category_slug,
         'current_status': status_filter,
         'show_deleted': show_deleted,
-        'categories': Category.objects.filter(is_active=True),
+        from django.db.models import Count, Q
+# (Count و Q قبلاً import شدن)
+
+'categories': Category.objects.filter(is_active=True).annotate(
+    products_count=Count('products'),
+),
     }
     return render(request, 'products/list.html', context)
 
@@ -79,34 +85,33 @@ def product_detail(request, pk):
     from sales.models import InvoiceItem
     product = get_object_or_404(Product.all_objects, pk=pk)
 
-    recent_items = InvoiceItem.objects.filter(
+    # ═══════════════════════════════════════════════════════════
+    # بهینه‌سازی N+1: قبلاً ۳ کوئری filter + محاسبه‌ی sum در Python
+    # الان: ۱ کوئری برای aggregate + ۱ کوئری برای recent_items
+    # ═══════════════════════════════════════════════════════════
+    base_qs = InvoiceItem.objects.filter(
         product=product,
-        invoice__status__in=['issued', 'paid']
-    ).select_related('invoice', 'invoice__customer').order_by('-invoice__created_at')[:10]
-
-    total_sold = sum(item.quantity for item in InvoiceItem.objects.filter(
-        product=product,
-        invoice__status__in=['issued', 'paid']
-    ))
-
-    total_revenue = sum(
-        item.total_price for item in InvoiceItem.objects.filter(
-            product=product,
-            invoice__status__in=['issued', 'paid']
-        )
+        invoice__status__in=['issued', 'paid'],
     )
 
-    invoices_count = recent_items.count() if recent_items else 0
+    recent_items = (
+        base_qs
+        .select_related('invoice', 'invoice__customer')
+        .order_by('-invoice__created_at')[:10]
+    )
+
+    totals = base_qs.aggregate(
+        total_sold=Sum('quantity'),
+        total_revenue=Sum('total_price'),
+        invoices_count=Count('invoice', distinct=True),
+    )
 
     context = {
         'product': product,
         'recent_items': recent_items,
-        'total_sold': total_sold,
-        'total_revenue': total_revenue,
-        'invoices_count': InvoiceItem.objects.filter(
-            product=product,
-            invoice__status__in=['issued', 'paid']
-        ).values('invoice').distinct().count(),
+        'total_sold': totals['total_sold'] or 0,
+        'total_revenue': totals['total_revenue'] or 0,
+        'invoices_count': totals['invoices_count'] or 0,
     }
     return render(request, 'products/detail.html', context)
 

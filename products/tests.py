@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from django.db import transaction
 
-from .models import Product, StockMovement
+from .models import Product, StockMovement, Category
 
 
 # ═══════════════════════════════════════════════════════════
@@ -16,9 +16,13 @@ class ChangeStockTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.user = User.objects.create_user('stock_user', password='t123456')
+        cls.category = Category.objects.create(
+            name='دسته تستی', slug='test-stock-cat',
+        )
         cls.product = Product.objects.create(
             name='کالای تستی',
             code='TEST-001',
+            category=cls.category,
             price=100000,
             cost_price=80000,
             stock=50,
@@ -139,9 +143,13 @@ class StockMovementModelTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
+        cls.category = Category.objects.create(
+            name='دسته تستی ۲', slug='test-sm-cat',
+        )
         cls.product = Product.objects.create(
             name='کالا',
             code='SM-001',
+            category=cls.category,
             price=50000,
             stock=100,
         )
@@ -185,30 +193,45 @@ class StockMovementModelTest(TestCase):
 # ═══════════════════════════════════════════════════════════
 class ProductPropertiesTest(TestCase):
 
+    @classmethod
+    def setUpTestData(cls):
+        cls.category = Category.objects.create(
+            name='دسته تستی ۳', slug='test-props-cat',
+        )
+
     def test_stock_status_out(self):
-        p = Product.objects.create(name='A', code='A1', stock=0, min_stock=5)
+        p = Product.objects.create(
+            name='A', code='A1', category=self.category,
+            stock=0, min_stock=5,
+        )
         self.assertEqual(p.stock_status, 'out')
 
     def test_stock_status_low(self):
-        p = Product.objects.create(name='B', code='B1', stock=3, min_stock=5)
+        p = Product.objects.create(
+            name='B', code='B1', category=self.category,
+            stock=3, min_stock=5,
+        )
         self.assertEqual(p.stock_status, 'low')
         self.assertTrue(p.is_low_stock)
 
     def test_stock_status_ok(self):
-        p = Product.objects.create(name='C', code='C1', stock=10, min_stock=5)
+        p = Product.objects.create(
+            name='C', code='C1', category=self.category,
+            stock=10, min_stock=5,
+        )
         self.assertEqual(p.stock_status, 'ok')
         self.assertFalse(p.is_low_stock)
 
     def test_profit_margin(self):
         p = Product.objects.create(
-            name='D', code='D1',
+            name='D', code='D1', category=self.category,
             price=100000, cost_price=80000,
         )
         self.assertEqual(p.profit_margin, 25.0)
 
     def test_profit_margin_zero_cost(self):
         p = Product.objects.create(
-            name='E', code='E1',
+            name='E', code='E1', category=self.category,
             price=100000, cost_price=0,
         )
         self.assertEqual(p.profit_margin, 0)

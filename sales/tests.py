@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 
 from customers.models import Customer
-from products.models import Product
+from products.models import Product, Category
 from .models import Invoice, InvoiceItem
 
 
@@ -64,11 +64,16 @@ class InvoiceTotalsSignalTest(TestCase):
         cls.customer = Customer.objects.create(
             name='مشتری', mobile='09120000002',
         )
+        cls.category = Category.objects.create(
+            name='دسته تستی', slug='test-signal-cat',
+        )
         cls.p1 = Product.objects.create(
-            name='کالای ۱', code='P1', price=100000, stock=100,
+            name='کالای ۱', code='P1', category=cls.category,
+            price=100000, stock=100,
         )
         cls.p2 = Product.objects.create(
-            name='کالای ۲', code='P2', price=200000, stock=100,
+            name='کالای ۲', code='P2', category=cls.category,
+            price=200000, stock=100,
         )
 
     def _make_invoice(self, tax_percent=9, discount=0):
@@ -174,8 +179,12 @@ class InvoiceItemSaveTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.customer = Customer.objects.create(name='م', mobile='09120000003')
+        cls.category = Category.objects.create(
+            name='دسته تستی ۲', slug='test-itemsave-cat',
+        )
         cls.product = Product.objects.create(
-            name='کالا', code='PX', price=75000, stock=100,
+            name='کالا', code='PX', category=cls.category,
+            price=75000, stock=100,
         )
 
     def test_total_price_computed(self):
@@ -206,8 +215,12 @@ class CalculateTotalsMethodTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.customer = Customer.objects.create(name='م', mobile='09120000004')
+        cls.category = Category.objects.create(
+            name='دسته تستی ۳', slug='test-calctotals-cat',
+        )
         cls.product = Product.objects.create(
-            name='کالا', code='PY', price=100000, stock=100,
+            name='کالا', code='PY', category=cls.category,
+            price=100000, stock=100,
         )
 
     def test_calculate_totals_returns_total(self):
@@ -232,6 +245,9 @@ class InvoicePropertiesTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.customer = Customer.objects.create(name='م', mobile='09120000005')
+        cls.category = Category.objects.create(
+            name='دسته تستی ۴', slug='test-invprops-cat',
+        )
 
     def test_status_color(self):
         inv = Invoice.objects.create(customer=self.customer, status='draft')
@@ -247,7 +263,10 @@ class InvoicePropertiesTest(TestCase):
         inv = Invoice.objects.create(customer=self.customer)
         self.assertEqual(inv.items_count, 0)
 
-        p = Product.objects.create(name='X', code='X1', price=1000, stock=10)
+        p = Product.objects.create(
+            name='X', code='X1', category=self.category,
+            price=1000, stock=10,
+        )
         InvoiceItem.objects.create(invoice=inv, product=p, quantity=1, unit_price=1000)
         InvoiceItem.objects.create(invoice=inv, product=p, quantity=1, unit_price=1000)
         self.assertEqual(inv.items_count, 2)
