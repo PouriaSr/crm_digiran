@@ -7,14 +7,34 @@
 <div class="flex justify-between items-center mb-6">
     <a href="{% url 'products:list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست</a>
     <div class="flex gap-2">
-        {% if 'products.edit' in user_permissions %}
+        {% if product.is_deleted and 'products.delete' in user_permissions %}
+        <a href="{% url 'products:restore' product.pk %}"
+           class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">♻️ بازگرداندن</a>
+        {% endif %}
+        {% if 'products.edit' in user_permissions and not product.is_deleted %}
         <a href="{% url 'products:edit' product.pk %}" class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm">✏️ ویرایش</a>
         {% endif %}
-        {% if 'products.delete' in user_permissions %}
+        {% if 'products.delete' in user_permissions and not product.is_deleted %}
         <a href="{% url 'products:delete' product.pk %}" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm">🗑 حذف</a>
         {% endif %}
     </div>
 </div>
+
+{% if product.is_deleted %}
+<div class="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl mb-6 flex items-start gap-3">
+    <span class="text-2xl flex-shrink-0">⚠️</span>
+    <div>
+        <div class="font-bold">این کالا حذف نرم شده است</div>
+        <div class="text-sm mt-1">
+            تاریخ حذف:
+            <strong>{{ product.deleted_at|date:"Y/m/d H:i" }}</strong>
+            {% if product.is_used %}
+            — این کالا در فاکتورها یا گردش انبار استفاده شده و به‌همین‌دلیل حذف کامل نشده.
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
     <div class="flex items-start gap-5">
@@ -25,7 +45,11 @@
             <h1 class="text-xl font-bold text-gray-800">{{ product.name }}</h1>
             <p class="text-gray-500 font-mono text-sm mt-1" dir="ltr">{{ product.code }}</p>
             <div class="flex gap-2 mt-3 flex-wrap">
-                <span class="px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-700">{{ product.get_category_display }}</span>
+                {% if product.category %}
+                <span class="px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
+                    {{ product.category.icon }} {{ product.category.name }}
+                </span>
+                {% endif %}
                 {% if not product.is_active %}
                     <span class="px-3 py-1 rounded-full text-xs bg-gray-200 text-gray-700">غیرفعال</span>
                 {% endif %}

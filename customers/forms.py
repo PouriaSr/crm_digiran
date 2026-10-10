@@ -1,6 +1,6 @@
 import jdatetime
 from django import forms
-from .models import Customer
+from .models import Customer, CustomerNote
 
 
 class CustomerForm(forms.ModelForm):
@@ -61,7 +61,6 @@ class CustomerForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # در حالت ویرایش، تاریخ میلادی رو به شمسی تبدیل کن برای نمایش
         if self.instance and self.instance.pk and self.instance.birth_date:
             g = self.instance.birth_date
             j = jdatetime.date.fromgregorian(date=g)
@@ -71,27 +70,19 @@ class CustomerForm(forms.ModelForm):
         value = self.cleaned_data.get('birth_date')
         if not value:
             return None
-
-        # اگه date بود مستقیم برگردون
         if hasattr(value, 'year'):
             return value
 
         value = str(value).strip()
-
-        # ⭐ تبدیل اعداد فارسی/عربی به انگلیسی
         persian_digits = '۰۱۲۳۴۵۶۷۸۹'
         arabic_digits = '٠١٢٣٤٥٦٧٨٩'
         for i, (p, a) in enumerate(zip(persian_digits, arabic_digits)):
             value = value.replace(p, str(i)).replace(a, str(i))
 
-        # ⭐ یکسان‌سازی جداکننده‌ها
         value = value.replace('-', '/').replace('.', '/')
-
-        # ⭐⭐ این خط کلیدی: اگه ساعت هم داشت، جدا کن و دور بریز
         if ' ' in value:
             value = value.split(' ', 1)[0]
 
-        # تجزیه: سال/ماه/روز
         parts = value.split('/')
         if len(parts) != 3:
             raise forms.ValidationError('فرمت تاریخ باید به‌صورت ۱۳۷۸/۱۲/۱۶ باشد')
@@ -101,3 +92,27 @@ class CustomerForm(forms.ModelForm):
             return jdatetime.date(year, month, day).togregorian()
         except (ValueError, TypeError):
             raise forms.ValidationError('تاریخ وارد شده معتبر نیست')
+
+
+class CustomerNoteForm(forms.ModelForm):
+    """فرم ثبت/ویرایش یادداشت مشتری"""
+
+    class Meta:
+        model = CustomerNote
+        fields = ['text', 'is_pinned']
+        widgets = {
+            'text': forms.Textarea(attrs={
+                'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
+                'rows': 3,
+                'placeholder': 'متن یادداشت...',
+            }),
+            'is_pinned': forms.CheckboxInput(attrs={
+                'class': 'w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500',
+            }),
+        }
+
+    def clean_text(self):
+        text = self.cleaned_data.get('text', '').strip()
+        if not text:
+            raise forms.ValidationError('متن یادداشت نمی‌تواند خالی باشد.')
+        return text

@@ -41,7 +41,8 @@ class Customer(models.Model):
     national_id = models.CharField('کد ملی', max_length=10, blank=True, null=True)
     birth_date = models.DateField('تاریخ تولد', blank=True, null=True)
     address = models.TextField('آدرس', blank=True, null=True)
-    notes = models.TextField('یادداشت', blank=True, null=True)
+    notes = models.TextField('یادداشت قدیمی', blank=True, null=True,
+                              help_text='فیلد قدیمی — تدریجاً به CustomerNote منتقل شود')
 
     first_contact_date = models.DateTimeField('تاریخ اولین تماس', default=timezone.now)
     created_at = models.DateTimeField('تاریخ ایجاد', auto_now_add=True)
@@ -62,3 +63,58 @@ class Customer(models.Model):
     @property
     def is_lead(self):
         return self.status == 'lead'
+
+    @property
+    def notes_count(self):
+        """تعداد یادداشت‌های جدید"""
+        return self.notes_new.count()
+
+    @property
+    def last_note(self):
+        """آخرین یادداشت"""
+        return self.notes_new.first()
+
+
+class CustomerNote(models.Model):
+    """یادداشت مشتری — هر یادداشت یک رکورد جدا با نویسنده و تاریخ"""
+
+    customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE,
+        related_name='notes_new', verbose_name='مشتری'
+    )
+    text = models.TextField('متن یادداشت')
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='customer_notes', verbose_name='نویسنده'
+    )
+    is_pinned = models.BooleanField('سنجاق‌شده', default=False,
+                                     help_text='یادداشت‌های سنجاق‌شده بالای لیست نمایش داده می‌شوند')
+    created_at = models.DateTimeField('تاریخ ثبت', auto_now_add=True)
+    updated_at = models.DateTimeField('آخرین ویرایش', auto_now=True)
+
+    class Meta:
+        verbose_name = 'یادداشت مشتری'
+        verbose_name_plural = 'یادداشت‌های مشتری'
+        ordering = ['-is_pinned', '-created_at']
+        indexes = [
+            models.Index(fields=['customer', '-created_at']),
+        ]
+
+    def __str__(self):
+        preview = self.text[:50] if self.text else ''
+        return f"{self.customer.name} — {preview}"
+
+    @property
+    def author_name(self):
+        if not self.created_by:
+            return 'حذف‌شده'
+        return self.created_by.get_full_name() or self.created_by.username
+
+    def can_edit(self, user):
+        """فقط نویسنده یا سوپریوزر می‌تواند ویرایش/حذف کند"""
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+        return self.created_by_id == user.id

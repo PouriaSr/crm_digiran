@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User as AuthUser
 from django.db.models import Q, Sum, Count, F, Avg
 from django.http import HttpResponse
 from django.utils import timezone
@@ -15,11 +16,67 @@ from customers.models import Customer
 from calls.models import Call
 from products.models import Product
 from sales.models import Invoice, InvoiceItem
-from hr.models import Employee, Task
+from hr.models import Employee, Task, LeaveRequest
 
 
 # ═══════════════════════════════════════════
-# توابع کمکی
+# توابع کمکی — سطح دسترسی و فیلتر کاربر
+# ═══════════════════════════════════════════
+
+def _is_manager(user):
+    """آیا این کاربر می‌تواند همه‌ی داده‌ها را ببیند؟"""
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    return user.groups.filter(name='مدیر فروش').exists()
+
+
+def _get_data_owner(user, filter_user_id=None):
+    """
+    تعیین «مالک داده» برای فیلتر:
+    - مدیر بدون فیلتر → None (همه‌ی داده‌ها)
+    - مدیر با فیلتر → کاربر انتخاب‌شده
+    - غیرمدیر → خود کاربر
+    """
+    if _is_manager(user):
+        if filter_user_id:
+            try:
+                return AuthUser.objects.get(pk=int(filter_user_id))
+            except (AuthUser.DoesNotExist, ValueError, TypeError):
+                return None
+        return None  # همه
+    return user
+
+
+def _filtered_customers(owner):
+    """مشتریان قابل مشاهده"""
+    qs = Customer.objects.all()
+    if owner is not None:
+        qs = qs.filter(Q(assigned_to=owner) | Q(created_by=owner))
+    return qs
+
+
+def _filtered_calls(owner):
+    """تماس‌های قابل مشاهده"""
+    qs = Call.objects.all()
+    if owner is not None:
+        qs = qs.filter(Q(called_by=owner) | Q(created_by=owner))
+    return qs
+
+
+def _filtered_invoices(owner, statuses=None):
+    """فاکتورهای قابل مشاهده"""
+    if statuses is None:
+        statuses = ['issued', 'paid']
+    qs = Invoice.objects.filter(status__in=statuses)
+    if owner is not None:
+        qs = qs.filter(created_by=owner)
+    return qs
+
+
+# ═══════════════════════════════════════════
+# توابع کمکی تاریخ
 # ═══════════════════════════════════════════
 
 def _to_jalali_month(g_date):
@@ -45,7 +102,6 @@ def _get_month_range(year, month):
 
 
 def _parse_jalali_date(value):
-    """تبدیل رشته تاریخ شمسی به date میلادی"""
     if not value:
         return None
     try:
@@ -62,16 +118,28 @@ def _parse_jalali_date(value):
         return None
 
 
-def _get_dashboard_data(from_date=None, to_date=None):
-    """جمع‌آوری تمام داده‌های داشبورد با فیلتر تاریخ"""
+# ═══════════════════════════════════════════
+# جمع‌آوری داده‌های داشبورد
+# ═══════════════════════════════════════════
+
+def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None):
+    """جمع‌آوری داده‌های داشبورد با فیلتر تاریخ، نقش و کاربر"""
     today = timezone.now().date()
     now_j = jdatetime.date.fromgregorian(date=today)
+    is_mgr = _is_manager(user)
 
-    # ═══ اعمال فیلتر تاریخ روی همه QuerySetها ═══
-    invoices_qs = Invoice.objects.filter(status__in=['issued', 'paid'])
-    calls_qs = Call.objects.all()
-    customers_qs = Customer.objects.all()
+    # ═══ تعیین مالک داده ═══
+    owner = _get_data_owner(user, filter_user_id)
+    filter_user_selected = None
+    if is_mgr and owner is not None:
+        filter_user_selected = owner
 
+    # ═══ QuerySetها ═══
+    invoices_qs = _filtered_invoices(owner)
+    calls_qs = _filtered_calls(owner)
+    customers_qs = _filtered_customers(owner)
+
+    # ═══ فیلتر تاریخ ═══
     if from_date:
         invoices_qs = invoices_qs.filter(issue_date__gte=from_date)
         calls_qs = calls_qs.filter(call_date__date__gte=from_date)
@@ -91,7 +159,7 @@ def _get_dashboard_data(from_date=None, to_date=None):
 
     # ماه جاری شمسی
     this_month_start, this_month_end = _get_month_range(now_j.year, now_j.month)
-    calls_this_month = Call.objects.filter(
+    calls_this_month = _filtered_calls(owner).filter(
         call_date__date__gte=this_month_start,
         call_date__date__lte=this_month_end,
     ).count()
@@ -99,35 +167,32 @@ def _get_dashboard_data(from_date=None, to_date=None):
     total_invoices = invoices_qs.count()
     total_sales = invoices_qs.aggregate(s=Sum('total'))['s'] or 0
 
-    # ═══ فروش در بازه انتخابی (اگه فیلتر باشه) یا این ماه (پیش‌فرض) ═══
+    # ═══ فروش این ماه ═══
     if from_date or to_date:
         sales_this_month = total_sales
     else:
         month_start, month_end = _get_month_range(now_j.year, now_j.month)
-        sales_this_month = Invoice.objects.filter(
-            status__in=['issued', 'paid'],
+        sales_this_month = _filtered_invoices(owner).filter(
             issue_date__gte=month_start,
             issue_date__lte=month_end,
         ).aggregate(s=Sum('total'))['s'] or 0
 
-    # ═══ فروش ماه قبل و سال قبل (برای مقایسه) ═══
+    # ═══ فروش ماه/سال قبل ═══
     prev_year = now_j.year if now_j.month > 1 else now_j.year - 1
     prev_month = now_j.month - 1 if now_j.month > 1 else 12
     prev_start, prev_end = _get_month_range(prev_year, prev_month)
-    sales_last_month = Invoice.objects.filter(
-        status__in=['issued', 'paid'],
+    sales_last_month = _filtered_invoices(owner).filter(
         issue_date__gte=prev_start,
         issue_date__lte=prev_end,
     ).aggregate(s=Sum('total'))['s'] or 0
 
     last_year_start, last_year_end = _get_month_range(now_j.year - 1, now_j.month)
-    sales_last_year = Invoice.objects.filter(
-        status__in=['issued', 'paid'],
+    sales_last_year = _filtered_invoices(owner).filter(
         issue_date__gte=last_year_start,
         issue_date__lte=last_year_end,
     ).aggregate(s=Sum('total'))['s'] or 0
 
-    # تغییر ماهانه
+    # تغییرات
     if sales_last_month and sales_last_month > 0:
         sales_change = round(
             (float(sales_this_month) - float(sales_last_month))
@@ -136,7 +201,6 @@ def _get_dashboard_data(from_date=None, to_date=None):
     else:
         sales_change = 100 if sales_this_month > 0 else 0
 
-    # تغییر سالانه
     if sales_last_year and sales_last_year > 0:
         yearly_change = round(
             (float(sales_this_month) - float(sales_last_year))
@@ -145,9 +209,7 @@ def _get_dashboard_data(from_date=None, to_date=None):
     else:
         yearly_change = 100 if sales_this_month > 0 else 0
 
-    # ═══════════════════════════════════════════════════════
-    # نمودار فروش ۱۲ ماه اخیر — با اعمال فیلتر
-    # ═══════════════════════════════════════════════════════
+    # ═══ نمودار فروش ۱۲ ماه اخیر ═══
     sales_data = []
     sales_labels = []
     for i in range(11, -1, -1):
@@ -166,8 +228,7 @@ def _get_dashboard_data(from_date=None, to_date=None):
         if to_date and s_start > to_date:
             continue
 
-        month_sales = Invoice.objects.filter(
-            status__in=['issued', 'paid'],
+        month_sales = _filtered_invoices(owner).filter(
             issue_date__gte=s_start,
             issue_date__lte=s_end,
         ).aggregate(s=Sum('total'))['s'] or 0
@@ -244,49 +305,50 @@ def _get_dashboard_data(from_date=None, to_date=None):
         for p in top_products
     ]
 
-    # ═══ عملکرد کارمندان ═══
-    employee_perf = invoices_qs.filter(
-        created_by__isnull=False
-    ).values(
-        username=F('created_by__username'),
-        first_name=F('created_by__first_name'),
-        last_name=F('created_by__last_name'),
-    ).annotate(
-        total_sales=Sum('total'),
-        invoice_count=Count('id')
-    ).order_by('-total_sales')
+    # ═══ عملکرد کارمندان (فقط برای مدیرها و بدون فیلتر کاربر) ═══
+    if is_mgr and filter_user_selected is None:
+        employee_perf = invoices_qs.filter(
+            created_by__isnull=False
+        ).values(
+            username=F('created_by__username'),
+            first_name=F('created_by__first_name'),
+            last_name=F('created_by__last_name'),
+        ).annotate(
+            total_sales=Sum('total'),
+            invoice_count=Count('id')
+        ).order_by('-total_sales')
 
-    employee_perf_list = []
-    for e in employee_perf:
-        name = f"{e['first_name'] or ''} {e['last_name'] or ''}".strip()
-        if not name:
-            name = e['username']
-        employee_perf_list.append({
-            'name': name,
-            'username': e['username'],
-            'total_sales': float(e['total_sales'] or 0),
-            'invoice_count': e['invoice_count'],
-        })
+        employee_perf_list = []
+        for e in employee_perf:
+            name = f"{e['first_name'] or ''} {e['last_name'] or ''}".strip()
+            if not name:
+                name = e['username']
+            employee_perf_list.append({
+                'name': name,
+                'username': e['username'],
+                'total_sales': float(e['total_sales'] or 0),
+                'invoice_count': e['invoice_count'],
+            })
+    else:
+        employee_perf_list = []
 
     emp_chart_names = [e['name'] for e in employee_perf_list[:10]]
     emp_chart_values = [e['total_sales'] for e in employee_perf_list[:10]]
 
-    # ═══════════════════════════════════════════════════════
-    # قیف فروش — با اعمال فیلتر
-    # ═══════════════════════════════════════════════════════
-    leads_count = customers_qs.filter(status='lead').count()
+    # ═══ قیف فروش ═══
+    leads_qs = customers_qs.filter(status='lead')
+    leads_count = leads_qs.count()
 
-    leads_with_calls = Call.objects.filter(
-        customer__in=customers_qs.filter(status='lead')
+    leads_with_calls = _filtered_calls(owner).filter(
+        customer__in=leads_qs
     ).values('customer').distinct().count()
 
-    leads_with_invoice = Invoice.objects.filter(
-        customer__in=customers_qs.filter(status='lead')
+    leads_with_invoice = _filtered_invoices(owner).filter(
+        customer__in=leads_qs
     ).values('customer').distinct().count()
 
-    paid_leads = Invoice.objects.filter(
-        customer__in=customers_qs.filter(status='lead'),
-        status='paid'
+    paid_leads = _filtered_invoices(owner, statuses=['paid']).filter(
+        customer__in=leads_qs
     ).values('customer').distinct().count()
 
     funnel_data = {
@@ -294,17 +356,14 @@ def _get_dashboard_data(from_date=None, to_date=None):
         'values': [leads_count, leads_with_calls, leads_with_invoice, paid_leads],
     }
 
-    # ═══════════════════════════════════════════════════════
-    # مقایسه فروش — با اعمال فیلتر
-    # ═══════════════════════════════════════════════════════
+    # ═══ مقایسه فروش ═══
     if from_date or to_date:
         if from_date and to_date:
             range_days = (to_date - from_date).days + 1
             prev_range_end = from_date - timedelta(days=1)
             prev_range_start = prev_range_end - timedelta(days=range_days - 1)
 
-            prev_sales = Invoice.objects.filter(
-                status__in=['issued', 'paid'],
+            prev_sales = _filtered_invoices(owner).filter(
                 issue_date__gte=prev_range_start,
                 issue_date__lte=prev_range_end,
             ).aggregate(s=Sum('total'))['s'] or 0
@@ -329,24 +388,44 @@ def _get_dashboard_data(from_date=None, to_date=None):
         }
 
     # ═══ وظایف و مرخصی ═══
-    open_tasks = Task.objects.filter(status__in=['pending', 'in_progress']).count()
-    overdue_tasks = Task.objects.filter(
-        due_date__lt=today
-    ).exclude(status__in=['done', 'cancelled']).count()
-
-    pending_leaves = 0
-    try:
-        from hr.models import LeaveRequest
+    if owner is not None:
+        open_tasks = Task.objects.filter(
+            status__in=['pending', 'in_progress'],
+            assigned_to__user=owner
+        ).count()
+        overdue_tasks = Task.objects.filter(
+            due_date__lt=today,
+            assigned_to__user=owner
+        ).exclude(status__in=['done', 'cancelled']).count()
+        pending_leaves = LeaveRequest.objects.filter(
+            status='pending',
+            employee__user=owner
+        ).count()
+    else:
+        open_tasks = Task.objects.filter(status__in=['pending', 'in_progress']).count()
+        overdue_tasks = Task.objects.filter(
+            due_date__lt=today
+        ).exclude(status__in=['done', 'cancelled']).count()
         pending_leaves = LeaveRequest.objects.filter(status='pending').count()
-    except Exception:
-        pass
 
-    # ═══ آماده‌سازی JSON امن برای چارت‌ها ═══
+    # ═══ لیست کاربران برای dropdown فیلتر (فقط مدیرها) ═══
+    filter_users_list = []
+    if is_mgr:
+        filter_users_list = AuthUser.objects.filter(
+            is_active=True,
+            is_superuser=False,
+            is_staff=True,
+        ).order_by('first_name', 'last_name', 'username')
+
+    # ═══ آماده‌سازی JSON ═══
     def _json(obj):
         return json.dumps(obj, ensure_ascii=False)
 
     return {
         'today': now_j.strftime('%Y/%m/%d'),
+        'is_manager_view': is_mgr,
+        'filter_user_selected': filter_user_selected,
+        'filter_users_list': filter_users_list,
 
         'kpis': {
             'total_customers': total_customers,
@@ -366,27 +445,25 @@ def _get_dashboard_data(from_date=None, to_date=None):
             'pending_leaves': pending_leaves,
         },
 
-        # ═══ داده‌های خام (برای Excel) ═══
+        # داده‌های خام (برای Excel)
         'sales_data': sales_data,
         'sales_labels': sales_labels,
         'source_data': source_data,
         'source_labels': source_labels,
 
-        # ═══ JSON امن برای چارت‌ها ═══
+        # JSON امن برای چارت‌ها
         'sales_data_json': _json(sales_data),
         'sales_labels_json': _json(sales_labels),
-
         'source_data_json': _json(source_data),
         'source_labels_json': _json(source_labels),
         'status_data_json': _json(status_data),
         'status_labels_json': _json(status_labels),
         'call_status_data_json': _json(call_status_data),
         'call_status_labels_json': _json(call_status_labels),
-
         'emp_chart_names_json': _json(emp_chart_names),
         'emp_chart_values_json': _json(emp_chart_values),
 
-        # ═══ داده‌های معمولی (برای json_script) ═══
+        # داده‌های معمولی
         'compare_data': compare_data,
         'funnel': funnel_data,
         'top_products': top_products_list,
@@ -401,39 +478,49 @@ def _get_dashboard_data(from_date=None, to_date=None):
 @login_required
 @require_permission('dashboard.view')
 def home(request):
-    """داشبورد اصلی با فیلتر تاریخ"""
+    """داشبورد اصلی با فیلتر تاریخ و کاربر"""
     from_date_str = request.GET.get('from_date', '').strip()
     to_date_str = request.GET.get('to_date', '').strip()
+    filter_user_id = request.GET.get('employee', '').strip()
 
     from_date = _parse_jalali_date(from_date_str) if from_date_str else None
     to_date = _parse_jalali_date(to_date_str) if to_date_str else None
 
-    context = _get_dashboard_data(from_date, to_date)
+    context = _get_dashboard_data(
+        request.user, from_date, to_date,
+        filter_user_id=filter_user_id or None,
+    )
     context['from_date_jalali'] = from_date_str
     context['to_date_jalali'] = to_date_str
+    context['filter_user_id'] = filter_user_id
 
     return render(request, 'dashboard/home.html', context)
 
 
 @login_required
 def global_search(request):
-    """جستجوی سراسری — برای همه‌ی کاربران لاگین‌شده"""
+    """جستجوی سراسری — فیلترشده بر اساس نقش"""
     query = request.GET.get('q', '').strip()
     results = {'customers': [], 'calls': [], 'products': [], 'total': 0}
 
+    owner = _get_data_owner(request.user)
+
     if query and len(query) >= 2:
-        results['customers'] = list(Customer.objects.filter(
+        results['customers'] = list(_filtered_customers(owner).filter(
             Q(name__icontains=query) | Q(mobile__icontains=query) |
             Q(email__icontains=query) | Q(national_id__icontains=query)
         )[:10])
-        results['calls'] = list(Call.objects.filter(
+
+        results['calls'] = list(_filtered_calls(owner).filter(
             Q(caller_name__icontains=query) | Q(call_number__icontains=query) |
             Q(notes__icontains=query)
         )[:10])
+
         results['products'] = list(Product.objects.filter(
             Q(name__icontains=query) | Q(code__icontains=query) |
             Q(description__icontains=query)
         )[:10])
+
         results['total'] = (len(results['customers']) + len(results['calls'])
                             + len(results['products']))
 
@@ -445,7 +532,7 @@ def global_search(request):
 @login_required
 @require_permission('dashboard.export')
 def export_excel(request):
-    """خروجی Excel از تمام گزارشات"""
+    """خروجی Excel — فیلترشده بر اساس نقش و کاربر"""
     try:
         from openpyxl import Workbook
         from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
@@ -457,15 +544,18 @@ def export_excel(request):
 
     from_date_str = request.GET.get('from_date', '').strip()
     to_date_str = request.GET.get('to_date', '').strip()
+    filter_user_id = request.GET.get('employee', '').strip()
 
     from_date = _parse_jalali_date(from_date_str) if from_date_str else None
     to_date = _parse_jalali_date(to_date_str) if to_date_str else None
 
-    data = _get_dashboard_data(from_date, to_date)
+    data = _get_dashboard_data(
+        request.user, from_date, to_date,
+        filter_user_id=filter_user_id or None,
+    )
 
     wb = Workbook()
 
-    # ═══ استایل‌ها ═══
     header_font = Font(bold=True, color='FFFFFF', size=12)
     header_fill = PatternFill('solid', fgColor='2E86AB')
     center = Alignment(horizontal='center', vertical='center', wrap_text=True)
@@ -474,7 +564,7 @@ def export_excel(request):
         top=Side(style='thin'), bottom=Side(style='thin'),
     )
 
-    # ═══ Sheet 1: خلاصه (KPI) ═══
+    # ═══ Sheet 1: خلاصه ═══
     ws = wb.active
     ws.title = 'خلاصه'
     ws.sheet_view.rightToLeft = True
@@ -487,6 +577,11 @@ def export_excel(request):
 
     ws.append([])
     ws.append([f"تاریخ گزارش: {data['today']}"])
+    if data.get('filter_user_selected'):
+        u = data['filter_user_selected']
+        ws.append([f"فیلتر کاربر: {u.get_full_name() or u.username}"])
+    elif not data.get('is_manager_view'):
+        ws.append(['⚠️ این گزارش فقط شامل داده‌های شماست'])
     ws.append([])
 
     ws.append(['شاخص', 'مقدار', 'واحد'])
@@ -545,26 +640,27 @@ def export_excel(request):
     ws2.column_dimensions['A'].width = 20
     ws2.column_dimensions['B'].width = 25
 
-    # ═══ Sheet 3: عملکرد کارمندان ═══
-    ws3 = wb.create_sheet('عملکرد کارمندان')
-    ws3.sheet_view.rightToLeft = True
+    # ═══ Sheet 3: عملکرد کارمندان (فقط اگه لیست خالی نباشه) ═══
+    if data.get('employee_perf'):
+        ws3 = wb.create_sheet('عملکرد کارمندان')
+        ws3.sheet_view.rightToLeft = True
 
-    ws3.append(['کارمند', 'تعداد فاکتور', 'مجموع فروش (تومان)'])
-    for cell in ws3[1]:
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = center
-        cell.border = border
-
-    for emp in data['employee_perf']:
-        ws3.append([emp['name'], emp['invoice_count'], int(emp['total_sales'])])
-        for cell in ws3[ws3.max_row]:
+        ws3.append(['کارمند', 'تعداد فاکتور', 'مجموع فروش (تومان)'])
+        for cell in ws3[1]:
+            cell.font = header_font
+            cell.fill = header_fill
             cell.alignment = center
             cell.border = border
 
-    ws3.column_dimensions['A'].width = 25
-    ws3.column_dimensions['B'].width = 15
-    ws3.column_dimensions['C'].width = 25
+        for emp in data['employee_perf']:
+            ws3.append([emp['name'], emp['invoice_count'], int(emp['total_sales'])])
+            for cell in ws3[ws3.max_row]:
+                cell.alignment = center
+                cell.border = border
+
+        ws3.column_dimensions['A'].width = 25
+        ws3.column_dimensions['B'].width = 15
+        ws3.column_dimensions['C'].width = 25
 
     # ═══ Sheet 4: پرفروش‌ترین کالاها ═══
     ws4 = wb.create_sheet('پرفروش‌ترین کالاها')
@@ -587,7 +683,7 @@ def export_excel(request):
     ws4.column_dimensions['B'].width = 15
     ws4.column_dimensions['C'].width = 25
 
-    # ═══ Sheet 5: توزیع منابع جذب ═══
+    # ═══ Sheet 5: منابع جذب ═══
     ws5 = wb.create_sheet('منابع جذب')
     ws5.sheet_view.rightToLeft = True
 
@@ -607,7 +703,6 @@ def export_excel(request):
     ws5.column_dimensions['A'].width = 25
     ws5.column_dimensions['B'].width = 15
 
-    # ═══ ارسال فایل ═══
     buffer = io.BytesIO()
     wb.save(buffer)
     buffer.seek(0)

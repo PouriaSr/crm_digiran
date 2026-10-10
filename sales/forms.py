@@ -119,24 +119,48 @@ class InvoiceForm(forms.ModelForm):
             raise forms.ValidationError('تاریخ معتبر نیست')
 
 
-# ═══ FormSet برای اقلام فاکتور ═══
+# ═══ فرم قلم فاکتور — پشتیبانی از محصولات soft-deleted ═══
+from django.db.models import Q
+
+
+class InvoiceItemForm(forms.ModelForm):
+    """فرم هر قلم فاکتور"""
+
+    class Meta:
+        model = InvoiceItem
+        fields = ['product', 'quantity', 'unit_price']
+        widgets = {
+            'product': forms.Select(attrs={
+                'class': 'item-product w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
+            }),
+            'quantity': forms.NumberInput(attrs={
+                'class': 'item-qty w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
+                'min': 1, 'placeholder': '1',
+            }),
+            'unit_price': forms.NumberInput(attrs={
+                'class': 'item-price w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
+                'min': 0, 'placeholder': '0', 'dir': 'ltr'
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # اگه این قلم قبلاً ذخیره شده و محصولش soft-deleted شده،
+        # محصول فعلی رو توی queryset نگه‌دار تا فرم معتبر بمونه
+        if self.instance and self.instance.pk and self.instance.product_id:
+            current_id = self.instance.product_id
+            self.fields['product'].queryset = Product.all_objects.filter(
+                Q(is_deleted=False) | Q(pk=current_id)
+            )
+        else:
+            self.fields['product'].queryset = Product.objects.all()
+
+
 InvoiceItemFormSet = inlineformset_factory(
     Invoice,
     InvoiceItem,
-    fields=['product', 'quantity', 'unit_price'],
+    form=InvoiceItemForm,
     extra=3,
     can_delete=True,
-    widgets={
-        'product': forms.Select(attrs={
-            'class': 'item-product w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
-        }),
-        'quantity': forms.NumberInput(attrs={
-            'class': 'item-qty w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
-            'min': 1, 'placeholder': '1',
-        }),
-        'unit_price': forms.NumberInput(attrs={
-            'class': 'item-price w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
-            'min': 0, 'placeholder': '0', 'dir': 'ltr'
-        }),
-    }
 )

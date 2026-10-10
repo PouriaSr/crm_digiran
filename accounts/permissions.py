@@ -32,7 +32,6 @@ ROLE_DISPLAY = {
     ROLE_OPERATOR: 'اپراتور',
 }
 
-# نام گروه در دیتابیس (مطابق ROLE_GROUP_MAP در accounts/forms.py)
 ROLE_TO_GROUP = {
     ROLE_SALES_MANAGER: 'مدیر فروش',
     ROLE_SALES: 'کارشناس فروش',
@@ -44,7 +43,6 @@ ROLE_TO_GROUP = {
 
 # ═══════════════════════════════════════════════════════════
 # تعریف دسترسی‌ها
-# هر دسترسی، لیست نقش‌هایی که اون رو دارن
 # ═══════════════════════════════════════════════════════════
 PERMISSIONS = {
     # ─── مشتریان ───
@@ -65,6 +63,10 @@ PERMISSIONS = {
     'products.add':     [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'products.edit':    [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'products.delete':  [ROLE_ADMIN],
+
+    # ─── دسته‌بندی‌ها ⭐ جدید ───
+    'categories.view':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR],
+    'categories.manage': [ROLE_ADMIN, ROLE_SALES_MANAGER],
 
     # ─── فاکتورها ───
     'invoices.view':    [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT],
@@ -116,7 +118,7 @@ def has_role(user, *roles):
     if not user or not user.is_authenticated:
         return False
     if user.is_superuser:
-        return True  # سوپریوزر همه‌ی نقش‌ها رو داره
+        return True
     return get_user_role(user) in roles
 
 
@@ -131,7 +133,7 @@ def has_permission(user, permission_name):
 
 
 def get_user_permissions(user):
-    """مجموعه‌ی همه‌ی دسترسی‌های کاربر — برای context processor"""
+    """مجموعه‌ی همه‌ی دسترسی‌های کاربر"""
     if not user or not user.is_authenticated:
         return set()
     if user.is_superuser:
@@ -147,14 +149,7 @@ def get_user_permissions(user):
 # Decoratorها
 # ═══════════════════════════════════════════════════════════
 def require_roles(*roles, redirect_to='dashboard:home'):
-    """
-    Decorator: کاربر باید یکی از این نقش‌ها رو داشته باشه.
-
-    استفاده:
-        @require_roles(ROLE_ADMIN, ROLE_SALES_MANAGER)
-        def my_view(request):
-            ...
-    """
+    """Decorator: کاربر باید یکی از این نقش‌ها رو داشته باشه."""
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
@@ -169,14 +164,7 @@ def require_roles(*roles, redirect_to='dashboard:home'):
 
 
 def require_permission(permission_name, redirect_to='dashboard:home'):
-    """
-    Decorator: کاربر باید این دسترسی خاص رو داشته باشه.
-
-    استفاده:
-        @require_permission('hr.manage_employees')
-        def my_view(request):
-            ...
-    """
+    """Decorator: کاربر باید این دسترسی خاص رو داشته باشه."""
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):

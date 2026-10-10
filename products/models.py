@@ -3,6 +3,50 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 
 
+class Category(models.Model):
+    """دسته‌بندی کالا — قابل مدیریت از پنل ادمین"""
+
+    name = models.CharField('نام دسته', max_length=100)
+    slug = models.SlugField(
+        'نام کوتاه (انگلیسی)', max_length=50, unique=True,
+        help_text='مثلاً: mobile, laptop — فقط حروف انگلیسی، اعداد، - و _'
+    )
+    icon = models.CharField(
+        'آیکون (ایموجی)', max_length=10, blank=True,
+        help_text='مثلاً: 📱 💻 🎧'
+    )
+    description = models.TextField('توضیحات', blank=True, null=True)
+    order = models.PositiveIntegerField(
+        'ترتیب نمایش', default=0,
+        help_text='عدد کمتر = بالاتر'
+    )
+    is_active = models.BooleanField('فعال', default=True)
+    created_at = models.DateTimeField('تاریخ ایجاد', auto_now_add=True)
+    updated_at = models.DateTimeField('آخرین ویرایش', auto_now=True)
+
+    class Meta:
+        verbose_name = 'دسته‌بندی'
+        verbose_name_plural = 'دسته‌بندی‌ها'
+        ordering = ['order', 'name']
+        indexes = [
+            models.Index(fields=['slug']),
+            models.Index(fields=['is_active', 'order']),
+        ]
+
+    def __str__(self):
+        return f'{self.icon} {self.name}'.strip()
+
+    @property
+    def products_count(self):
+        return self.products.count()
+
+
+class ProductManager(models.Manager):
+    """مدیر پیش‌فرض — فقط محصولات حذف‌نشده"""
+    def get_queryset(self):
+        return super().get_queryset().filter(is_deleted=False)
+
+
 class Product(models.Model):
     """مدل کالا — برای انبار و فاکتور"""
 
@@ -16,20 +60,15 @@ class Product(models.Model):
         ('جعبه', 'جعبه'),
     ]
 
-    CATEGORY_CHOICES = [
-        ('mobile', 'موبایل و تبلت'),
-        ('laptop', 'لپ‌تاپ و کامپیوتر'),
-        ('accessory', 'لوازم جانبی'),
-        ('parts', 'قطعات'),
-        ('service', 'خدمات'),
-        ('other', 'سایر'),
-    ]
-
     # ═══ اطلاعات اصلی ═══
     name = models.CharField('نام کالا', max_length=200, db_index=True)
     code = models.CharField('کد کالا (SKU)', max_length=50, unique=True, db_index=True)
-    category = models.CharField('دسته‌بندی', max_length=20,
-                                 choices=CATEGORY_CHOICES, default='other')
+
+    category = models.ForeignKey(
+        Category, on_delete=models.PROTECT,
+        related_name='products', verbose_name='دسته‌بندی',
+    )
+
     unit = models.CharField('واحد', max_length=20,
                              choices=UNIT_CHOICES, default='عدد')
 
@@ -47,17 +86,26 @@ class Product(models.Model):
     description = models.TextField('توضیحات', blank=True, null=True)
     is_active = models.BooleanField('فعال', default=True)
 
+    # ═══ Soft Delete ═══
+    is_deleted = models.BooleanField('حذف‌شده', default=False, db_index=True)
+    deleted_at = models.DateTimeField('تاریخ حذف', null=True, blank=True)
+
     # ═══ زمان‌ها ═══
     created_at = models.DateTimeField('تاریخ ایجاد', auto_now_add=True)
     updated_at = models.DateTimeField('آخرین ویرایش', auto_now=True)
+
+    # ═══ مدیرها ═══
+    objects = ProductManager()
+    all_objects = models.Manager()
 
     class Meta:
         verbose_name = 'کالا'
         verbose_name_plural = 'کالاها'
         ordering = ['-created_at']
+        base_manager_name = 'all_objects'
+        default_manager_name = 'objects'
         indexes = [
             models.Index(fields=['code']),
-            models.Index(fields=['category']),
         ]
 
     def __str__(self):
@@ -65,55 +113,49 @@ class Product(models.Model):
 
     @property
     def is_low_stock(self):
-        """آیا موجودی کمتر از حد هشدار است؟"""
         return self.stock <= self.min_stock
 
     @property
     def stock_status(self):
-        """وضعیت موجودی"""
         if self.stock == 0:
-            return 'out'  # تمام شده
+            return 'out'
         elif self.stock <= self.min_stock:
-            return 'low'  # کم
-        return 'ok'  # مناسب
+            return 'low'
+        return 'ok'
 
     @property
     def profit_margin(self):
-        """حاشیه سود"""
         if self.cost_price and self.cost_price > 0:
             return round((float(self.price) - float(self.cost_price)) / float(self.cost_price) * 100, 1)
         return 0
 
-    # ═══════════════════════════════════════════════════════════
-    # مدیریت اتمیک موجودی
-    # ═══════════════════════════════════════════════════════════
+    @property
+    def is_used(self):
+        return self.invoice_items.exists() or self.stock_movements.exists()
+
+    def delete(self, using=None, keep_parents=False):
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.is_active = False
+        self.save(update_fields=['is_deleted', 'deleted_at', 'is_active', 'updated_at'])
+
+    def hard_delete(self):
+        return super().delete()
+
+    def restore(self):
+        self.is_deleted = False
+        self.deleted_at = None
+        self.is_active = True
+        self.save(update_fields=['is_deleted', 'deleted_at', 'is_active', 'updated_at'])
+
     def change_stock(self, quantity, movement_type, user=None,
                      reference_type='manual', reference_id=None,
                      reference_note=None, note=None):
-        """
-        تغییر اتمیک موجودی + ثبت لاگ گردش.
-
-        Args:
-            quantity: عدد صحیح. مثبت = افزایش، منفی = کاهش
-            movement_type: یکی از StockMovement.MOVEMENT_TYPE_CHOICES
-            user: کاربری که تغییر را انجام می‌دهد
-            reference_type: 'invoice' / 'manual' / 'purchase' / 'return'
-            reference_id: ID مرجع (مثلاً invoice.pk)
-            reference_note: توضیح مرجع (مثلاً شماره فاکتور)
-            note: توضیح آزاد
-
-        Returns:
-            موجودی جدید (int)
-
-        Raises:
-            ValueError: اگر quantity صحیح نباشد یا موجودی کافی نباشد
-        """
         if not isinstance(quantity, int):
             raise ValueError('quantity باید عدد صحیح باشد')
 
         with transaction.atomic():
-            # قفل روی ردیف برای جلوگیری از race condition
-            locked = Product.objects.select_for_update().get(pk=self.pk)
+            locked = Product.all_objects.select_for_update().get(pk=self.pk)
             before = locked.stock
             after = before + quantity
 
@@ -139,19 +181,18 @@ class Product(models.Model):
                 created_by=user,
             )
 
-            # self رو هم هم‌گام کن تا توی همون request درست نمایش داده بشه
             self.stock = after
             return after
 
 
 class StockMovement(models.Model):
-    """لاگ گردش موجودی — هر تغییر موجودی یک رکورد می‌گیرد"""
+    """لاگ گردش موجودی"""
 
     MOVEMENT_TYPE_CHOICES = [
-        ('in', 'ورود'),           # خرید / برگشت از فروش
-        ('out', 'خروج'),          # فروش
-        ('adjust', 'تعدیل'),      # اصلاح دستی
-        ('cancel', 'برگشت از لغو'),  # لغو فاکتور
+        ('in', 'ورود'),
+        ('out', 'خروج'),
+        ('adjust', 'تعدیل'),
+        ('cancel', 'برگشت از لغو'),
     ]
 
     REFERENCE_TYPE_CHOICES = [
@@ -169,7 +210,7 @@ class StockMovement(models.Model):
         'نوع گردش', max_length=10,
         choices=MOVEMENT_TYPE_CHOICES, db_index=True
     )
-    quantity = models.IntegerField('مقدار')  # مثبت = افزایش، منفی = کاهش
+    quantity = models.IntegerField('مقدار')
     stock_before = models.IntegerField('موجودی قبل')
     stock_after = models.IntegerField('موجودی بعد')
 
@@ -203,10 +244,8 @@ class StockMovement(models.Model):
 
     @property
     def is_increase(self):
-        """آیا این گردش باعث افزایش موجودی شده؟"""
         return self.quantity > 0
 
     @property
     def quantity_display(self):
-        """نمایش مقدار با علامت"""
         return f'{self.quantity:+d}'

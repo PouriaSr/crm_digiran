@@ -4,23 +4,59 @@
 
 {% block content %}
 
+<!-- ═══ سربرگ ═══ -->
 <div class="flex justify-between items-center mb-6">
     <div>
-        <h1 class="text-2xl font-bold text-gray-800">کالاها و موجودی</h1>
-        <p class="text-sm text-gray-500 mt-1">مدیریت محصولات و کنترل انبار</p>
+        <h1 class="text-2xl font-bold text-gray-800">
+            {% if show_deleted %}
+                کالاهای حذف‌شده
+            {% else %}
+                کالاها و موجودی
+            {% endif %}
+        </h1>
+        <p class="text-sm text-gray-500 mt-1">
+            {% if show_deleted %}
+                کالاهایی که حذف نرم شده‌اند — قابل بازگرداندن
+            {% else %}
+                مدیریت محصولات و کنترل انبار
+            {% endif %}
+        </p>
     </div>
-    {% if 'products.add' in user_permissions %}
-    <a href="{% url 'products:create' %}"
-       class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-        </svg>
-        کالای جدید
-    </a>
-    {% endif %}
+    <div class="flex gap-2 flex-wrap">
+        {% if 'categories.view' in user_permissions %}
+        <a href="{% url 'products:category_list' %}"
+           class="px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 text-sm">
+            📂 دسته‌بندی‌ها
+        </a>
+        {% endif %}
+
+        {% if stats.deleted > 0 and 'products.delete' in user_permissions %}
+            {% if show_deleted %}
+                <a href="{% url 'products:list' %}"
+                   class="px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2 text-sm">
+                    ← بازگشت به کالاهای فعال
+                </a>
+            {% else %}
+                <a href="{% url 'products:list' %}?show=deleted"
+                   class="px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 text-sm">
+                    🗑 کالاهای حذف‌شده ({{ stats.deleted }})
+                </a>
+            {% endif %}
+        {% endif %}
+
+        {% if 'products.add' in user_permissions and not show_deleted %}
+        <a href="{% url 'products:create' %}"
+           class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            کالای جدید
+        </a>
+        {% endif %}
+    </div>
 </div>
 
-<!-- کارت‌های آمار -->
+<!-- ═══ کارت‌های آمار ═══ -->
 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
     <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-blue-500">
         <div class="text-gray-500 text-sm">کل کالاها</div>
@@ -40,9 +76,13 @@
     </div>
 </div>
 
-<!-- فیلترها -->
+<!-- ═══ فیلترها ═══ -->
 <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
     <form method="get" class="flex flex-wrap gap-3 items-center">
+        {% if show_deleted %}
+            <input type="hidden" name="show" value="deleted">
+        {% endif %}
+
         <div class="flex-1 min-w-[200px]">
             <input type="text" name="q" value="{{ search }}"
                    placeholder="جستجو نام، کد یا توضیحات..."
@@ -51,8 +91,10 @@
 
         <select name="category" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">همه دسته‌ها</option>
-            {% for value, label in category_choices %}
-                <option value="{{ value }}" {% if current_category == value %}selected{% endif %}>{{ label }}</option>
+            {% for cat in categories %}
+                <option value="{{ cat.slug }}" {% if current_category == cat.slug %}selected{% endif %}>
+                    {{ cat.icon }} {{ cat.name }}
+                </option>
             {% endfor %}
         </select>
 
@@ -69,12 +111,13 @@
         </button>
 
         {% if search or current_category or current_status %}
-        <a href="{% url 'products:list' %}" class="text-sm text-gray-500 hover:text-gray-700">پاک کردن</a>
+        <a href="{% url 'products:list' %}{% if show_deleted %}?show=deleted{% endif %}"
+           class="text-sm text-gray-500 hover:text-gray-700">پاک کردن</a>
         {% endif %}
     </form>
 </div>
 
-<!-- جدول -->
+<!-- ═══ جدول ═══ -->
 <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
@@ -90,14 +133,27 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for product in page_obj %}
-            <tr class="hover:bg-gray-50 transition">
+            <tr class="hover:bg-gray-50 transition {% if product.is_deleted %}opacity-75{% endif %}">
                 <td class="px-4 py-3 text-right">
-                    <div class="font-medium text-gray-800">{{ product.name }}</div>
+                    <div class="font-medium {% if product.is_deleted %}line-through text-gray-400{% else %}text-gray-800{% endif %}">
+                        {{ product.name }}
+                    </div>
+                    {% if product.is_deleted %}
+                    <div class="text-xs text-red-600 mt-0.5">
+                        حذف‌شده — {{ product.deleted_at|date:"Y/m/d" }}
+                    </div>
+                    {% endif %}
                 </td>
                 <td class="px-4 py-3 text-right text-gray-600 font-mono text-xs">
                     <span dir="ltr">{{ product.code }}</span>
                 </td>
-                <td class="px-4 py-3 text-right text-gray-600 text-xs">{{ product.get_category_display }}</td>
+                <td class="px-4 py-3 text-right text-gray-600 text-xs">
+                    {% if product.category %}
+                        {{ product.category.icon }} {{ product.category.name }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
                 <td class="px-4 py-3 text-right text-gray-800 font-medium">
                     <span dir="ltr">{{ product.price|floatformat:0 }}</span>
                 </td>
@@ -108,41 +164,74 @@
                     <span class="text-xs text-gray-400">{{ product.unit }}</span>
                 </td>
                 <td class="px-4 py-3 text-right whitespace-nowrap">
-                    {% if product.stock_status == 'out' %}
+                    {% if product.is_deleted %}
+                        <span class="inline-block px-2.5 py-1 rounded-full text-xs bg-red-100 text-red-700">حذف‌شده</span>
+                    {% elif product.stock_status == 'out' %}
                         <span class="inline-block px-2.5 py-1 rounded-full text-xs bg-red-100 text-red-700">ناموجود</span>
                     {% elif product.stock_status == 'low' %}
                         <span class="inline-block px-2.5 py-1 rounded-full text-xs bg-yellow-100 text-yellow-700">موجودی کم</span>
+                    {% elif not product.is_active %}
+                        <span class="inline-block px-2.5 py-1 rounded-full text-xs bg-gray-200 text-gray-700">غیرفعال</span>
                     {% else %}
                         <span class="inline-block px-2.5 py-1 rounded-full text-xs bg-green-100 text-green-700">موجود</span>
                     {% endif %}
                 </td>
                 <td class="px-4 py-3 text-right whitespace-nowrap">
                     <div class="flex items-center gap-1">
-                        <a href="{% url 'products:detail' product.pk %}" class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50">جزئیات</a>
-                        {% if 'products.edit' in user_permissions %}
-                        <a href="{% url 'products:edit' product.pk %}" class="text-yellow-600 hover:text-yellow-800 text-xs px-2 py-1 rounded hover:bg-yellow-50">ویرایش</a>
+                        <a href="{% url 'products:detail' product.pk %}"
+                           class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50">
+                            جزئیات
+                        </a>
+                        {% if product.is_deleted %}
+                            {% if 'products.delete' in user_permissions %}
+                            <a href="{% url 'products:restore' product.pk %}"
+                               class="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">
+                                ♻️ بازگردان
+                            </a>
+                            {% endif %}
+                        {% else %}
+                            {% if 'products.edit' in user_permissions %}
+                            <a href="{% url 'products:edit' product.pk %}"
+                               class="text-yellow-600 hover:text-yellow-800 text-xs px-2 py-1 rounded hover:bg-yellow-50">
+                                ویرایش
+                            </a>
+                            {% endif %}
                         {% endif %}
                     </div>
                 </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="7" class="text-center py-12 text-gray-400">کالایی یافت نشد</td>
+                <td colspan="7" class="text-center py-12 text-gray-400">
+                    {% if show_deleted %}
+                        کالای حذف‌شده‌ای وجود ندارد
+                    {% else %}
+                        کالایی یافت نشد
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
 
-<!-- صفحه‌بندی -->
+<!-- ═══ صفحه‌بندی ═══ -->
 {% if page_obj.has_other_pages %}
 <div class="flex justify-center mt-6 gap-2">
     {% if page_obj.has_previous %}
-        <a href="?page={{ page_obj.previous_page_number }}" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">قبلی</a>
+        <a href="?page={{ page_obj.previous_page_number }}{% if show_deleted %}&show=deleted{% endif %}{% if search %}&q={{ search }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}"
+           class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">
+            قبلی
+        </a>
     {% endif %}
-    <span class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span>
+    <span class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">
+        صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}
+    </span>
     {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">بعدی</a>
+        <a href="?page={{ page_obj.next_page_number }}{% if show_deleted %}&show=deleted{% endif %}{% if search %}&q={{ search }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}"
+           class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">
+            بعدی
+        </a>
     {% endif %}
 </div>
 {% endif %}

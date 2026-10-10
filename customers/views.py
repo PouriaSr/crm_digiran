@@ -4,9 +4,10 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum
 from django.contrib.auth.models import User
+from django.http import JsonResponse
 from accounts.permissions import require_permission
-from .models import Customer
-from .forms import CustomerForm
+from .models import Customer, CustomerNote
+from .forms import CustomerForm, CustomerNoteForm
 
 
 @login_required
@@ -76,11 +77,13 @@ def customer_detail(request, pk):
     ).aggregate(s=Sum('total'))['s'] or 0
 
     calls_count = customer.calls.count()
+    notes = customer.notes_new.select_related('created_by').all()
 
     context = {
         'customer': customer,
         'calls': calls,
         'invoices': invoices,
+        'notes': notes,
         'calls_count': calls_count,
         'invoices_count': paid_count + issued_count,
         'paid_count': paid_count,
@@ -129,4 +132,122 @@ def customer_edit(request, pk):
         'title': f'ویرایش مشتری: {customer.name}',
         'submit_label': 'ذخیره تغییرات',
         'customer': customer,
+    })
+
+
+# ═══════════════════════════════════════════════════════════════
+# یادداشت‌های مشتری
+# ═══════════════════════════════════════════════════════════════
+
+@login_required
+@require_permission('customers.edit')
+def note_create(request, pk):
+    """ثبت یادداشت جدید — پشتیبانی از AJAX"""
+    customer = get_object_or_404(Customer, pk=pk)
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    if request.method == 'POST':
+        form = CustomerNoteForm(request.POST)
+        if form.is_valid():
+            note = form.save(commit=False)
+            note.customer = customer
+            note.created_by = request.user
+            note.save()
+
+            if is_ajax:
+                return JsonResponse({
+                    'success': True,
+                    'note_id': note.pk,
+                    'text': note.text,
+                    'author': note.author_name,
+                    'created_at': note.created_at.strftime('%Y/%m/%d %H:%M'),
+                    'is_pinned': note.is_pinned,
+                    'message': 'یادداشت ثبت شد.',
+                })
+
+            messages.success(request, 'یادداشت ثبت شد.')
+            return redirect('customers:detail', pk=customer.pk)
+
+        if is_ajax:
+            return JsonResponse({
+                'success': False,
+                'error': 'متن یادداشت نمی‌تواند خالی باشد.',
+            }, status=400)
+
+    return redirect('customers:detail', pk=customer.pk)
+
+
+@login_required
+@require_permission('customers.edit')
+def note_edit(request, pk, note_pk):
+    """ویرایش یادداشت — فقط نویسنده یا سوپریوزر"""
+    customer = get_object_or_404(Customer, pk=pk)
+    note = get_object_or_404(CustomerNote, pk=note_pk, customer=customer)
+
+    if not note.can_edit(request.user):
+        messages.error(request, 'شما اجازه‌ی ویرایش این یادداشت را ندارید.')
+        return redirect('customers:detail', pk=customer.pk)
+
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    if request.method == 'POST':
+        form = CustomerNoteForm(request.POST, instance=note)
+        if form.is_valid():
+            form.save()
+
+            if is_ajax:
+                return JsonResponse({
+                    'success': True,
+                    'text': note.text,
+                    'is_pinned': note.is_pinned,
+                    'message': 'یادداشت ویرایش شد.',
+                })
+
+            messages.success(request, 'یادداشت ویرایش شد.')
+            return redirect('customers:detail', pk=customer.pk)
+
+    return redirect('customers:detail', pk=customer.pk)
+
+
+@login_required
+@require_permission('customers.edit')
+def note_delete(request, pk, note_pk):
+    """حذف یادداشت — فقط نویسنده یا سوپریوزر"""
+    customer = get_object_or_404(Customer, pk=pk)
+    note = get_object_or_404(CustomerNote, pk=note_pk, customer=customer)
+
+    if not note.can_edit(request.user):
+        messages.error(request, 'شما اجازه‌ی حذف این یادداشت را ندارید.')
+        return redirect('customers:detail', pk=customer.pk)
+
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    if request.method == 'POST':
+        note.delete()
+
+        if is_ajax:
+            return JsonResponse({'success': True, 'message': 'یادداشت حذف شد.'})
+
+        messages.success(request, 'یادداشت حذف شد.')
+        return redirect('customers:detail', pk=customer.pk)
+
+    return redirect('customers:detail', pk=customer.pk)
+
+
+@login_required
+@require_permission('customers.edit')
+def note_toggle_pin(request, pk, note_pk):
+    """سنجاق/لغو سنجاق یادداشت"""
+    customer = get_object_or_404(Customer, pk=pk)
+    note = get_object_or_404(CustomerNote, pk=note_pk, customer=customer)
+
+    if not note.can_edit(request.user):
+        return JsonResponse({'success': False, 'error': 'دسترسی ندارید.'}, status=403)
+
+    note.is_pinned = not note.is_pinned
+    note.save(update_fields=['is_pinned', 'updated_at'])
+
+    return JsonResponse({
+        'success': True,
+        'is_pinned': note.is_pinned,
     })

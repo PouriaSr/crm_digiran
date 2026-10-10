@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block title %}دسته‌بندی‌ها{% endblock %}
+
+{% block content %}
+
+<!-- ═══ سربرگ ═══ -->
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">دسته‌بندی کالاها</h1>
+        <p class="text-sm text-gray-500 mt-1">مدیریت دسته‌بندی‌های محصولات</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'products:list' %}"
+           class="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm">
+            ← کالاها
+        </a>
+        {% if 'categories.manage' in user_permissions %}
+        <a href="{% url 'products:category_create' %}"
+           class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            دسته‌بندی جدید
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ═══ کارت‌های آمار ═══ -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-blue-500">
+        <div class="text-gray-500 text-sm">کل دسته‌ها</div>
+        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.total }}</div>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-green-500">
+        <div class="text-gray-500 text-sm">فعال</div>
+        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.active }}</div>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-gray-400">
+        <div class="text-gray-500 text-sm">غیرفعال</div>
+        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.inactive }}</div>
+    </div>
+</div>
+
+<!-- ═══ فیلتر ═══ -->
+<div class="bg-white rounded-xl p-4 shadow-sm mb-6">
+    <form method="get" class="flex flex-wrap gap-3 items-center">
+        <div class="flex-1 min-w-[200px]">
+            <input type="text" name="q" value="{{ search }}"
+                   placeholder="جستجو نام یا slug..."
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+        </div>
+        <select name="status" class="px-4 py-2 border border-gray-300 rounded-lg text-sm">
+            <option value="">همه وضعیت‌ها</option>
+            <option value="active" {% if current_status == 'active' %}selected{% endif %}>فعال</option>
+            <option value="inactive" {% if current_status == 'inactive' %}selected{% endif %}>غیرفعال</option>
+        </select>
+        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">اعمال</button>
+        {% if search or current_status %}
+        <a href="{% url 'products:category_list' %}" class="text-sm text-gray-500 hover:text-gray-700">پاک کردن</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- ═══ جدول ═══ -->
+<div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+    <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b border-gray-200">
+            <tr class="text-gray-600">
+                <th class="text-right px-4 py-3 font-medium">دسته</th>
+                <th class="text-right px-4 py-3 font-medium">نام کوتاه (slug)</th>
+                <th class="text-right px-4 py-3 font-medium">ترتیب</th>
+                <th class="text-right px-4 py-3 font-medium">تعداد کالا</th>
+                <th class="text-right px-4 py-3 font-medium">وضعیت</th>
+                <th class="text-right px-4 py-3 font-medium">عملیات</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for cat in categories %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 text-right">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">{{ cat.icon }}</span>
+                        <div>
+                            <div class="font-medium text-gray-800">{{ cat.name }}</div>
+                            {% if cat.description %}
+                            <div class="text-xs text-gray-400">{{ cat.description|truncatechars:40 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-right text-gray-600 font-mono text-xs" dir="ltr">{{ cat.slug }}</td>
+                <td class="px-4 py-3 text-right text-gray-600">{{ cat.order }}</td>
+                <td class="px-4 py-3 text-right">
+                    {% if cat.products_count > 0 %}
+                        <a href="{% url 'products:list' %}?category={{ cat.slug }}"
+                           class="text-blue-600 hover:underline text-xs">
+                            {{ cat.products_count }} کالا
+                        </a>
+                    {% else %}
+                        <span class="text-xs text-gray-300">—</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-right">
+                    {% if cat.is_active %}
+                        <span class="px-2.5 py-1 rounded-full text-xs bg-green-100 text-green-700">فعال</span>
+                    {% else %}
+                        <span class="px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-700">غیرفعال</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-right whitespace-nowrap">
+                    {% if 'categories.manage' in user_permissions %}
+                    <div class="flex items-center gap-1">
+                        <a href="{% url 'products:category_edit' cat.pk %}"
+                           class="text-yellow-600 hover:text-yellow-800 text-xs px-2 py-1 rounded hover:bg-yellow-50">
+                            ویرایش
+                        </a>
+                        {% if cat.products_count == 0 %}
+                        <a href="{% url 'products:category_delete' cat.pk %}"
+                           class="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">
+                            حذف
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <span class="text-xs text-gray-400">—</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center py-12 text-gray-400">دسته‌بندی‌ای یافت نشد</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

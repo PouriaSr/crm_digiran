@@ -1,5 +1,12 @@
 from django.contrib import admin
-from .models import Customer
+from .models import Customer, CustomerNote
+
+
+class CustomerNoteInline(admin.TabularInline):
+    model = CustomerNote
+    extra = 0
+    fields = ('text', 'is_pinned', 'created_by', 'created_at')
+    readonly_fields = ('created_by', 'created_at')
 
 
 @admin.register(Customer)
@@ -10,6 +17,7 @@ class CustomerAdmin(admin.ModelAdmin):
     search_fields = ('name', 'mobile', 'email', 'national_id')
     date_hierarchy = 'created_at'
     ordering = ('-created_at',)
+    inlines = [CustomerNoteInline]
 
     fieldsets = (
         ('اطلاعات اصلی', {
@@ -28,6 +36,31 @@ class CustomerAdmin(admin.ModelAdmin):
     )
 
     readonly_fields = ('created_at', 'updated_at')
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(CustomerNote)
+class CustomerNoteAdmin(admin.ModelAdmin):
+    list_display = ('customer', 'author_display', 'text_preview',
+                    'is_pinned', 'created_at')
+    list_filter = ('is_pinned', 'created_at')
+    search_fields = ('customer__name', 'text')
+    date_hierarchy = 'created_at'
+    ordering = ('-is_pinned', '-created_at')
+    autocomplete_fields = ['customer']
+    readonly_fields = ('created_at', 'updated_at', 'created_by')
+
+    def author_display(self, obj):
+        return obj.author_name
+    author_display.short_description = 'نویسنده'
+
+    def text_preview(self, obj):
+        return obj.text[:60] + ('...' if len(obj.text) > 60 else '')
+    text_preview.short_description = 'متن'
 
     def save_model(self, request, obj, form, change):
         if not change:
