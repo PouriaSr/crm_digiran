@@ -147,7 +147,11 @@
                     {% endif %}
                 </td>
                 <td class="px-4 py-3 text-right text-gray-600">
-                    {{ customer.assigned_to.get_full_name|default:customer.assigned_to.username|default:"—" }}
+                    {% if customer.assigned_to %}
+                        {{ customer.assigned_to.get_full_name|default:customer.assigned_to.username }}
+                    {% else %}
+                        —
+                    {% endif %}
                 </td>
                 <td class="px-4 py-3 text-right text-gray-500 text-xs whitespace-nowrap">
                     <div>{{ customer.created_at|date:"Y/m/d" }}</div>

@@ -10,6 +10,40 @@ from .models import Customer, CustomerNote
 from .forms import CustomerForm, CustomerNoteForm
 
 
+# ═══════════════════════════════════════════════════════════════
+# کمکی — نمایش هشدار تکراری‌ها (۷.۵)
+# ═══════════════════════════════════════════════════════════════
+
+def _add_duplicate_warnings(request, form):
+    """
+    بعد از ذخیره‌ی موفق، هشدار مشتری‌های تکراری رو نشون بده.
+    (نه بلاک سخت — فقط اطلاع‌رسانی به کاربر)
+    """
+    warnings = getattr(form, 'duplicate_warnings', [])
+    if not warnings:
+        return
+
+    seen = set()  # جلوگیری از پیام تکراری اگه هم موبایل هم کد ملی یکی باشه
+    for warn in warnings:
+        dup = warn['customer']
+        key = (warn['field'], dup.pk)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        label = 'شماره تماس' if warn['field'] == 'mobile' else 'کد ملی'
+        messages.warning(
+            request,
+            f'⚠️ هشدار: مشتری دیگری با همین {label} وجود دارد — '
+            f'«{dup.name}» (شناسه {dup.pk}). '
+            f'در صورت نیاز، رکورد تکراری را بررسی و ادغام کنید.'
+        )
+
+
+# ═══════════════════════════════════════════════════════════════
+# مشتریان
+# ═══════════════════════════════════════════════════════════════
+
 @login_required
 @require_permission('customers.view')
 def customer_list(request):
@@ -103,6 +137,10 @@ def customer_create(request):
             customer.created_by = request.user
             customer.save()
             messages.success(request, f'مشتری «{customer.name}» با موفقیت اضافه شد.')
+
+            # ⭐ ۷.۵ — هشدار تکراری (نه بلاک)
+            _add_duplicate_warnings(request, form)
+
             return redirect('customers:detail', pk=customer.pk)
     else:
         form = CustomerForm()
@@ -123,6 +161,10 @@ def customer_edit(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, 'اطلاعات مشتری به‌روزرسانی شد.')
+
+            # ⭐ ۷.۵ — هشدار تکراری (نه بلاک)
+            _add_duplicate_warnings(request, form)
+
             return redirect('customers:detail', pk=customer.pk)
     else:
         form = CustomerForm(instance=customer)

@@ -59,12 +59,38 @@ class CustomerForm(forms.ModelForm):
             }),
         }
 
+    # ═══════════════════════════════════════════════════════════
+    # نرمال‌سازی اعداد فارسی/عربی
+    # ═══════════════════════════════════════════════════════════
+    @staticmethod
+    def _normalize_digits(value):
+        """تبدیل اعداد فارسی/عربی به انگلیسی + حذف فاصله/خط تیره"""
+        if not value:
+            return ''
+        value = str(value).strip()
+        persian = '۰۱۲۳۴۵۶۷۸۹'
+        arabic = '٠١٢٣٤٥٦٧٨٩'
+        for i, (p, a) in enumerate(zip(persian, arabic)):
+            value = value.replace(p, str(i)).replace(a, str(i))
+        return value.replace(' ', '').replace('-', '')
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # ⭐ init در __init__ تا حتی قبل از is_valid() هم قابل دسترسی باشه
+        self.duplicate_warnings = []
+
         if self.instance and self.instance.pk and self.instance.birth_date:
             g = self.instance.birth_date
             j = jdatetime.date.fromgregorian(date=g)
             self.initial['birth_date'] = j.strftime('%Y/%m/%d')
+
+    def clean_mobile(self):
+        """نرمال‌سازی شماره تماس"""
+        return self._normalize_digits(self.cleaned_data.get('mobile'))
+
+    def clean_national_id(self):
+        """نرمال‌سازی کد ملی"""
+        return self._normalize_digits(self.cleaned_data.get('national_id'))
 
     def clean_birth_date(self):
         value = self.cleaned_data.get('birth_date')
@@ -92,6 +118,51 @@ class CustomerForm(forms.ModelForm):
             return jdatetime.date(year, month, day).togregorian()
         except (ValueError, TypeError):
             raise forms.ValidationError('تاریخ وارد شده معتبر نیست')
+
+    # ═══════════════════════════════════════════════════════════
+    # ۷.۵ — چک تکراری (هشدار، نه بلاک)
+    # ═══════════════════════════════════════════════════════════
+    def _find_duplicates(self, field_name, value, exclude_pk=None):
+        """پیدا کردن مشتری‌های تکراری بر اساس یک فیلد"""
+        if not value:
+            return []
+        qs = Customer.objects.filter(**{field_name: value})
+        if exclude_pk:
+            qs = qs.exclude(pk=exclude_pk)
+        return list(qs.only('id', 'name', 'mobile', 'national_id'))
+
+    def clean(self):
+        """
+        چک تکراری بودن موبایل و کد ملی.
+        نتیجه در self.duplicate_warnings ذخیره می‌شه (لیست dict)
+        — خطای validation پرتاب نمی‌شه.
+        """
+        cleaned = super().clean()
+
+        # ریست
+        self.duplicate_warnings = []
+
+        exclude_pk = self.instance.pk if self.instance and self.instance.pk else None
+
+        # ── موبایل ──
+        mobile = cleaned.get('mobile')
+        if mobile:
+            for c in self._find_duplicates('mobile', mobile, exclude_pk):
+                self.duplicate_warnings.append({
+                    'field': 'mobile',
+                    'customer': c,
+                })
+
+        # ── کد ملی ──
+        national_id = cleaned.get('national_id')
+        if national_id:
+            for c in self._find_duplicates('national_id', national_id, exclude_pk):
+                self.duplicate_warnings.append({
+                    'field': 'national_id',
+                    'customer': c,
+                })
+
+        return cleaned
 
 
 class CustomerNoteForm(forms.ModelForm):

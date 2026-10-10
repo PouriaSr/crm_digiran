@@ -135,7 +135,13 @@
         <dl class="space-y-3 text-sm">
             <div class="flex justify-between">
                 <dt class="text-gray-500">کارمند مسئول:</dt>
-                <dd class="text-gray-800">{{ customer.assigned_to.get_full_name|default:customer.assigned_to.username|default:"—" }}</dd>
+                <dd class="text-gray-800">
+                    {% if customer.assigned_to %}
+                        {{ customer.assigned_to.get_full_name|default:customer.assigned_to.username }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </dd>
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">تاریخ ثبت:</dt>
@@ -192,7 +198,13 @@
                         <span class="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700">{{ call.get_status_display }}</span>
                     {% endif %}
                 </td>
-                <td class="px-6 py-3 text-right text-xs text-gray-600">{{ call.called_by.get_full_name|default:call.called_by.username|default:"—" }}</td>
+                <td class="px-6 py-3 text-right text-xs text-gray-600">
+                    {% if call.called_by %}
+                        {{ call.called_by.get_full_name|default:call.called_by.username }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
                 <td class="px-6 py-3 text-left">
                     <a href="{% url 'calls:detail' call.pk %}" class="text-xs text-blue-600 hover:underline">جزئیات</a>
                 </td>
