@@ -38,6 +38,9 @@ class Category(models.Model):
 
     @property
     def products_count(self):
+        # اگه از annotate اومده باشه، ازش بخون؛ وگرنه fallback
+        if hasattr(self, '_products_count'):
+            return self._products_count
         return self.products.count()
 
 

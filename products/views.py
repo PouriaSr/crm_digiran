@@ -22,9 +22,9 @@ def product_list(request):
         show_deleted = False
 
     if show_deleted:
-        products = Product.all_objects.filter(is_deleted=True)
+        products = Product.all_objects.filter(is_deleted=True).select_related('category')
     else:
-        products = Product.objects.all()
+        products = Product.objects.select_related('category').all()
 
     search = request.GET.get('q', '').strip()
     if search:
@@ -69,12 +69,10 @@ def product_list(request):
         'current_category': category_slug,
         'current_status': status_filter,
         'show_deleted': show_deleted,
-        from django.db.models import Count, Q
-# (Count و Q قبلاً import شدن)
-
-'categories': Category.objects.filter(is_active=True).annotate(
-    products_count=Count('products'),
-),
+        # ═══ بهینه‌سازی N+1: جلوگیری از کوئری per-category در template ═══
+        'categories': Category.objects.filter(is_active=True).annotate(
+            _products_count=Count('products'),
+        ),
     }
     return render(request, 'products/list.html', context)
 
@@ -217,6 +215,12 @@ def category_list(request):
         categories = categories.filter(is_active=True)
     elif status == 'inactive':
         categories = categories.filter(is_active=False)
+
+    # ═══════════════════════════════════════════════════════════
+    # بهینه‌سازی N+1: یک annotation برای همه‌ی products_count
+    # (بدون این خط، هر ردیف یک کوئری COUNT جدا می‌زنه)
+    # ═══════════════════════════════════════════════════════════
+    categories = categories.annotate(_products_count=Count('products'))
 
     stats = {
         'total': Category.objects.count(),
