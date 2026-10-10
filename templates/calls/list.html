@@ -1,0 +1,396 @@
+{% extends 'base.html' %}
+
+{% block title %}تماس‌ها{% endblock %}
+
+{% block content %}
+
+<!-- ═══ سربرگ ═══ -->
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">تماس‌ها</h1>
+        <p class="text-sm text-gray-500 mt-1">مدیریت و پیگیری تماس‌های ورودی و خروجی</p>
+    </div>
+    {% if 'calls.add' in user_permissions %}
+    <a href="{% url 'calls:create' %}"
+       class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        تماس جدید
+    </a>
+    {% endif %}
+</div>
+
+<!-- ═══ کارت‌های آمار ═══ -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-blue-500">
+        <div class="text-gray-500 text-sm">کل تماس‌ها</div>
+        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.total }}</div>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-green-500">
+        <div class="text-gray-500 text-sm">امروز</div>
+        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.today }}</div>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-yellow-500">
+        <div class="text-gray-500 text-sm">۷ روز اخیر</div>
+        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.week }}</div>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-red-500">
+        <div class="text-gray-500 text-sm">نیاز به پیگیری</div>
+        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.followup }}</div>
+    </div>
+</div>
+
+<!-- ═══ فیلترها ═══ -->
+<div class="bg-white rounded-xl p-4 shadow-sm mb-6">
+    <form method="get" class="flex flex-wrap gap-3 items-center">
+        <div class="flex-1 min-w-[200px]">
+            <input type="text" name="q" value="{{ search }}"
+                   placeholder="جستجو نام، شماره یا یادداشت..."
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+        </div>
+
+        <select name="status" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">همه وضعیت‌ها</option>
+            {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+
+        <select name="call_type" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">همه انواع</option>
+            {% for value, label in type_choices %}
+                <option value="{{ value }}" {% if current_call_type == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+
+        <select name="purpose" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">همه اهداف</option>
+            {% for value, label in purpose_choices %}
+                <option value="{{ value }}" {% if current_purpose == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+
+        <select name="followup" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">همه پیگیری‌ها</option>
+            <option value="pending" {% if current_followup == 'pending' %}selected{% endif %}>⏳ در انتظار پیگیری</option>
+            <option value="done" {% if current_followup == 'done' %}selected{% endif %}>✅ پیگیری شده</option>
+            <option value="has_date" {% if current_followup == 'has_date' %}selected{% endif %}>📅 دارای تاریخ پیگیری</option>
+        </select>
+
+        <select name="employee" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">همه کارمندان</option>
+            {% for emp in employees %}
+                <option value="{{ emp.id }}" {% if current_employee == emp.id|stringformat:"s" %}selected{% endif %}>
+                    {{ emp.get_full_name|default:emp.username }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+            اعمال فیلتر
+        </button>
+
+        {% if search or current_status or current_call_type or current_purpose or current_employee or current_followup %}
+        <a href="{% url 'calls:list' %}" class="text-sm text-gray-500 hover:text-gray-700">پاک کردن فیلترها</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- ═══ جدول ═══ -->
+<div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+    <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b border-gray-200">
+            <tr class="text-gray-600">
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">تماس‌گیرنده</th>
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">شماره</th>
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">نوع</th>
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">وضعیت</th>
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">هدف</th>
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">پیگیری</th>
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">کارمند</th>
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">تاریخ</th>
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">عملیات</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for call in page_obj %}
+            <tr class="hover:bg-gray-50 transition">
+                <td class="px-3 py-3 text-right">
+                    <div class="font-medium text-gray-800">{{ call.caller_name }}</div>
+                    {% if call.customer %}
+                    <div class="text-xs text-gray-400">مشتری: {{ call.customer.name }}</div>
+                    {% endif %}
+                </td>
+                <td class="px-3 py-3 text-right text-gray-600 font-mono">
+                    <span dir="ltr">{{ call.call_number }}</span>
+                </td>
+                <td class="px-3 py-3 text-right whitespace-nowrap">
+                    {% if call.call_type == 'incoming' %}
+                        <span class="inline-flex items-center gap-1 text-xs text-green-700">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                            </svg>
+                            ورودی
+                        </span>
+                    {% else %}
+                        <span class="inline-flex items-center gap-1 text-xs text-blue-700">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+                            </svg>
+                            خروجی
+                        </span>
+                    {% endif %}
+                </td>
+                <td class="px-3 py-3 text-right whitespace-nowrap">
+                    {% if call.status == 'answered' %}
+                        <span class="inline-block px-2.5 py-1 rounded-full text-xs bg-green-100 text-green-700">{{ call.get_status_display }}</span>
+                    {% elif call.status == 'missed' %}
+                        <span class="inline-block px-2.5 py-1 rounded-full text-xs bg-red-100 text-red-700">{{ call.get_status_display }}</span>
+                    {% elif call.status == 'followup' %}
+                        <span class="inline-block px-2.5 py-1 rounded-full text-xs bg-yellow-100 text-yellow-700">{{ call.get_status_display }}</span>
+                    {% else %}
+                        <span class="inline-block px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-700">{{ call.get_status_display }}</span>
+                    {% endif %}
+                </td>
+                <td class="px-3 py-3 text-right text-gray-600 whitespace-nowrap">{{ call.get_purpose_display }}</td>
+
+                <td class="px-3 py-3 text-right whitespace-nowrap">
+                    {% if call.status == 'followup' and not call.is_followed_up %}
+                        <span class="inline-flex items-center gap-1 text-xs text-yellow-700 bg-yellow-50 px-2.5 py-1 rounded-full">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            در انتظار
+                        </span>
+                    {% elif call.is_followed_up %}
+                        <span class="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2.5 py-1 rounded-full">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            انجام شده
+                        </span>
+                    {% else %}
+                        <span class="text-xs text-gray-300">—</span>
+                    {% endif %}
+                </td>
+
+                <td class="px-3 py-3 text-right text-gray-600 whitespace-nowrap">
+                    {{ call.called_by.get_full_name|default:call.called_by.username|default:"—" }}
+                </td>
+                <td class="px-3 py-3 text-right text-gray-500 text-xs whitespace-nowrap">
+                    <div>{{ call.call_date|date:"Y/m/d" }}</div>
+                    <div class="text-gray-400 font-mono mt-0.5" dir="ltr">{{ call.call_date|date:"H:i" }}</div>
+                </td>
+                <td class="px-3 py-3 text-right whitespace-nowrap">
+                    <div class="flex items-center gap-1">
+                        <a href="{% url 'calls:detail' call.pk %}"
+                           class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50"
+                           title="جزئیات">
+                            جزئیات
+                        </a>
+                        {% if 'calls.reassign' in user_permissions %}
+                        <button type="button"
+                                onclick="openReassign({{ call.pk }}, '{{ call.caller_name|escapejs }}')"
+                                class="text-yellow-600 hover:text-yellow-800 text-xs px-2 py-1 rounded hover:bg-yellow-50 flex items-center gap-1"
+                                title="ارجاع به کارمند دیگر">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                            </svg>
+                            ارجاع
+                        </button>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9" class="text-center py-12 text-gray-400">تماسی یافت نشد</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- ═══ صفحه‌بندی ═══ -->
+{% if page_obj.has_other_pages %}
+<div class="flex justify-center mt-6 gap-2">
+    {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}"
+           class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">قبلی</a>
+    {% endif %}
+    <span class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">
+        صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}
+    </span>
+    {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}"
+           class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">بعدی</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- ═══ مودال ارجاع (فقط اگه دسترسی داره) ═══ -->
+{% if 'calls.reassign' in user_permissions %}
+<div id="reassign-modal"
+     class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 items-center justify-center p-4"
+     style="display: none;">
+
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+
+        <div class="flex items-center justify-between p-5 border-b border-gray-100">
+            <div class="flex items-center gap-2">
+                <div class="w-9 h-9 bg-yellow-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                    </svg>
+                </div>
+                <h3 class="font-bold text-gray-800">ارجاع تماس</h3>
+            </div>
+            <button onclick="closeReassignModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <form id="reassign-form" onsubmit="submitReassign(event)" class="p-5">
+            {% csrf_token %}
+            <input type="hidden" id="reassign-call-id" name="call_id">
+
+            <div class="mb-4">
+                <p class="text-sm text-gray-600 mb-4">
+                    تماس با <strong id="reassign-caller-name" class="text-gray-800"></strong>
+                    به کدام کارمند ارجاع شود؟
+                </p>
+
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    کارمند جدید <span class="text-red-500">*</span>
+                </label>
+                <select name="called_by" id="reassign-select" required
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    <option value="">— انتخاب کنید —</option>
+                    {% for emp in employees %}
+                        <option value="{{ emp.id }}">
+                            {{ emp.get_full_name|default:emp.username }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div id="reassign-message" class="hidden mb-4 text-sm p-3 rounded-lg"></div>
+
+            <div class="flex gap-2">
+                <button type="submit" id="reassign-submit-btn"
+                        class="flex-1 px-4 py-2.5 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm font-medium flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                    </svg>
+                    ارجاع کن
+                </button>
+                <button type="button" onclick="closeReassignModal()"
+                        class="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+                    انصراف
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openReassign(callId, callerName) {
+        document.getElementById('reassign-call-id').value = callId;
+        document.getElementById('reassign-caller-name').textContent = callerName;
+        document.getElementById('reassign-select').value = '';
+
+        const msgEl = document.getElementById('reassign-message');
+        if (msgEl) msgEl.classList.add('hidden');
+
+        const modal = document.getElementById('reassign-modal');
+        modal.style.display = 'flex';
+        modal.classList.remove('hidden');
+    }
+
+    function closeReassignModal() {
+        const modal = document.getElementById('reassign-modal');
+        if (!modal) return;
+        modal.style.display = 'none';
+        modal.classList.add('hidden');
+    }
+
+    async function submitReassign(event) {
+        event.preventDefault();
+
+        const callId = document.getElementById('reassign-call-id').value;
+        const newUserId = document.getElementById('reassign-select').value;
+        const messageEl = document.getElementById('reassign-message');
+        const submitBtn = document.getElementById('reassign-submit-btn');
+
+        if (!newUserId) {
+            messageEl.className = 'mb-4 text-sm p-3 rounded-lg bg-red-50 text-red-700';
+            messageEl.textContent = 'لطفاً یک کارمند انتخاب کنید';
+            messageEl.classList.remove('hidden');
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'در حال ارجاع...';
+
+        try {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            const response = await fetch(`/calls/${callId}/reassign/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `called_by=${encodeURIComponent(newUserId)}`
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                messageEl.className = 'mb-4 text-sm p-3 rounded-lg bg-green-50 text-green-700';
+                messageEl.textContent = '✅ ' + data.message;
+                messageEl.classList.remove('hidden');
+
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                messageEl.className = 'mb-4 text-sm p-3 rounded-lg bg-red-50 text-red-700';
+                messageEl.textContent = '❌ ' + (data.error || 'خطا در ارجاع');
+                messageEl.classList.remove('hidden');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'تلاش مجدد';
+            }
+        } catch (error) {
+            messageEl.className = 'mb-4 text-sm p-3 rounded-lg bg-red-50 text-red-700';
+            messageEl.textContent = '❌ خطای شبکه: ' + error.message;
+            messageEl.classList.remove('hidden');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'تلاش مجدد';
+        }
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeReassignModal();
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('reassign-modal');
+        if (modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) closeReassignModal();
+            });
+        }
+    });
+</script>
+{% endif %}
+
+{% endblock %}

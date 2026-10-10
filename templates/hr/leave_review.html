@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}بررسی درخواست{% endblock %}
+
+{% block content %}
+
+<div class="max-w-2xl mx-auto">
+    <div class="mb-6">
+        <a href="{% url 'hr:leave_list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست</a>
+    </div>
+
+    <h1 class="text-2xl font-bold text-gray-800 mb-6">بررسی درخواست مرخصی</h1>
+
+    <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <div class="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
+            <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl font-bold">
+                {{ leave.employee.first_name|first|upper }}
+            </div>
+            <div>
+                <div class="font-bold text-gray-800">{{ leave.employee.full_name }}</div>
+                <div class="text-sm text-gray-500">{{ leave.employee.get_position_display }}</div>
+            </div>
+        </div>
+
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between">
+                <dt class="text-gray-500">نوع مرخصی:</dt>
+                <dd class="text-gray-800">{{ leave.get_leave_type_display }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">از تاریخ:</dt>
+                <dd class="text-gray-800" dir="ltr">{{ leave.start_date|date:"Y/m/d" }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">تا تاریخ:</dt>
+                <dd class="text-gray-800" dir="ltr">{{ leave.end_date|date:"Y/m/d" }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">تعداد روز:</dt>
+                <dd class="text-gray-800 font-bold">{{ leave.days_count }} روز</dd>
+            </div>
+            {% if leave.reason %}
+            <div>
+                <dt class="text-gray-500 mb-1">علت:</dt>
+                <dd class="text-gray-700">{{ leave.reason }}</dd>
+            </div>
+            {% endif %}
+        </dl>
+    </div>
+
+    <form method="post" class="bg-white rounded-xl shadow-sm p-6">
+        {% csrf_token %}
+
+        <div class="mb-5">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">یادداشت بررسی (اختیاری)</label>
+            <textarea name="review_note" rows="3"
+                      class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      placeholder="توضیحاتی درباره تایید یا رد..."></textarea>
+        </div>
+
+        <div class="flex gap-3">
+            <button type="submit" name="action" value="approve"
+                    class="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium flex items-center gap-2">
+                ✅ تایید درخواست
+            </button>
+            <button type="submit" name="action" value="reject"
+                    class="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium flex items-center gap-2">
+                ❌ رد درخواست
+            </button>
+            <a href="{% url 'hr:leave_list' %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">انصراف</a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

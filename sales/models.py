@@ -1,0 +1,138 @@
+import jdatetime
+from django.db import models, transaction
+from django.contrib.auth.models import User
+from django.utils import timezone
+from customers.models import Customer
+from products.models import Product
+
+
+class Invoice(models.Model):
+    """مدل فاکتور — سربرگ فاکتور"""
+
+    STATUS_CHOICES = [
+        ('draft', 'پیش‌نویس'),
+        ('issued', 'صادر شده'),
+        ('paid', 'پرداخت شده'),
+        ('cancelled', 'لغو شده'),
+    ]
+
+    PAYMENT_TYPE_CHOICES = [
+        ('cash', 'نقدی'),
+        ('installment', 'اقساطی'),
+        ('cheque', 'چکی'),
+        ('card', 'کارت به کارت'),
+        ('other', 'سایر'),
+    ]
+
+    # ═══ شماره و مشتری ═══
+    number = models.CharField('شماره فاکتور', max_length=30, unique=True, db_index=True)
+    customer = models.ForeignKey(
+        Customer, on_delete=models.PROTECT,
+        related_name='invoices', verbose_name='مشتری'
+    )
+
+    # ═══ وضعیت ═══
+    status = models.CharField('وضعیت', max_length=20,
+                              choices=STATUS_CHOICES, default='draft', db_index=True)
+    payment_type = models.CharField('نوع پرداخت', max_length=20,
+                                     choices=PAYMENT_TYPE_CHOICES, default='cash')
+
+    # ═══ تاریخ‌ها ═══
+    issue_date = models.DateField('تاریخ صدور', default=timezone.now)
+    due_date = models.DateField('مهلت پرداخت', null=True, blank=True)
+
+    # ═══ مالیات و تخفیف ═══
+    discount = models.DecimalField('تخفیف (تومان)', max_digits=15, decimal_places=0, default=0)
+    tax_percent = models.DecimalField('درصد مالیات', max_digits=5, decimal_places=2, default=9)
+    tax_amount = models.DecimalField('مبلغ مالیات', max_digits=15, decimal_places=0, default=0)
+    subtotal = models.DecimalField('جمع اقلام', max_digits=15, decimal_places=0, default=0)
+    total = models.DecimalField('مبلغ نهایی', max_digits=15, decimal_places=0, default=0)
+
+    # ═══ توضیحات ═══
+    notes = models.TextField('توضیحات', blank=True, null=True)
+
+    # ═══ مسئول ═══
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='created_invoices', verbose_name='ایجادکننده'
+    )
+
+    # ═══ زمان‌ها ═══
+    created_at = models.DateTimeField('تاریخ ایجاد', auto_now_add=True)
+    updated_at = models.DateTimeField('آخرین ویرایش', auto_now=True)
+
+    class Meta:
+        verbose_name = 'فاکتور'
+        verbose_name_plural = 'فاکتورها'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.number} - {self.customer.name}"
+
+    def calculate_totals(self):
+        """محاسبه جمع کل از روی اقلام"""
+        items = self.items.all()
+        subtotal = sum(item.total_price for item in items)
+
+        self.subtotal = subtotal
+        after_discount = subtotal - self.discount
+        self.tax_amount = int(after_discount * self.tax_percent / 100)
+        self.total = after_discount + self.tax_amount
+        return self.total
+
+    def save(self, *args, **kwargs):
+        # تولید شماره فاکتور خودکار — با تاریخ شمسی و ضد race condition
+        if not self.number:
+            with transaction.atomic():
+                last = Invoice.objects.select_for_update().order_by('-id').first()
+                new_id = (last.id + 1) if last else 1
+                now_j = jdatetime.datetime.now()
+                self.number = f"INV-{now_j.year}{now_j.month:02d}-{new_id:04d}"
+
+        super().save(*args, **kwargs)
+
+    @property
+    def status_color(self):
+        return {
+            'draft': 'gray',
+            'issued': 'blue',
+            'paid': 'green',
+            'cancelled': 'red',
+        }.get(self.status, 'gray')
+
+    @property
+    def items_count(self):
+        return self.items.count()
+
+
+class InvoiceItem(models.Model):
+    """قلم فاکتور — هر خط از فاکتور"""
+
+    invoice = models.ForeignKey(
+        Invoice, on_delete=models.CASCADE,
+        related_name='items', verbose_name='فاکتور'
+    )
+    product = models.ForeignKey(
+        Product, on_delete=models.PROTECT,
+        related_name='invoice_items', verbose_name='کالا'
+    )
+
+    quantity = models.PositiveIntegerField('تعداد', default=1)
+    unit_price = models.DecimalField('قیمت واحد', max_digits=15, decimal_places=0, default=0)
+    total_price = models.DecimalField('جمع خط', max_digits=15, decimal_places=0, default=0)
+
+    class Meta:
+        verbose_name = 'قلم فاکتور'
+        verbose_name_plural = 'اقلام فاکتور'
+
+    def __str__(self):
+        return f"{self.product.name} × {self.quantity}"
+
+    def save(self, *args, **kwargs):
+        # اگه قیمت واحد خالی بود، از قیمت کالا بگیر
+        if not self.unit_price:
+            self.unit_price = self.product.price
+
+        self.total_price = self.quantity * self.unit_price
+        super().save(*args, **kwargs)

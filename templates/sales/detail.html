@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ invoice.number }}{% endblock %}
+
+{% block content %}
+
+<div class="flex justify-between items-center mb-6">
+    <a href="{% url 'sales:list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست</a>
+    <div class="flex gap-2">
+        {% if 'invoices.print' in user_permissions %}
+        <a href="{% url 'sales:print' invoice.pk %}" target="_blank" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">🖨 چاپ</a>
+        {% endif %}
+        {% if 'invoices.edit' in user_permissions %}
+        <a href="{% url 'sales:edit' invoice.pk %}" class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm">✏️ ویرایش</a>
+        {% endif %}
+        {% if 'invoices.delete' in user_permissions %}
+        <a href="{% url 'sales:delete' invoice.pk %}" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm">🗑 حذف</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- هدر فاکتور -->
+<div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+    <div class="flex justify-between items-start">
+        <div>
+            <div class="text-sm text-gray-500 mb-1">شماره فاکتور</div>
+            <div class="text-2xl font-bold text-gray-800 font-mono" dir="ltr">{{ invoice.number }}</div>
+
+            <div class="mt-3 flex items-center gap-2">
+                {% if invoice.status == 'draft' %}
+                    <span class="px-3 py-1 rounded-full text-xs bg-gray-100 text-gray-700">{{ invoice.get_status_display }}</span>
+                {% elif invoice.status == 'issued' %}
+                    <span class="px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-700">{{ invoice.get_status_display }}</span>
+                {% elif invoice.status == 'paid' %}
+                    <span class="px-3 py-1 rounded-full text-xs bg-green-100 text-green-700">{{ invoice.get_status_display }}</span>
+                {% else %}
+                    <span class="px-3 py-1 rounded-full text-xs bg-red-100 text-red-700">{{ invoice.get_status_display }}</span>
+                {% endif %}
+                <span class="px-3 py-1 rounded-full text-xs bg-purple-100 text-purple-700">{{ invoice.get_payment_type_display }}</span>
+            </div>
+        </div>
+
+        <div class="text-left">
+            <div class="text-sm text-gray-500 mb-1">مبلغ نهایی</div>
+            <div class="text-2xl font-bold text-blue-700" dir="ltr">{{ invoice.total|floatformat:0 }}</div>
+            <div class="text-xs text-gray-400 text-left">تومان</div>
+        </div>
+    </div>
+</div>
+
+<!-- مشتری -->
+<div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+    <div class="flex justify-between items-start">
+        <h2 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+            <span class="w-7 h-7 bg-green-100 text-green-600 rounded-lg flex items-center justify-center text-sm">👤</span>
+            مشتری
+        </h2>
+        {% if 'calls.add' in user_permissions %}
+        <a href="{% url 'calls:create' %}?customer={{ invoice.customer.pk }}"
+           class="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-1">
+            📞 ثبت تماس
+        </a>
+        {% endif %}
+    </div>
+    <a href="{% url 'customers:detail' invoice.customer.pk %}" class="flex items-center gap-3 p-3 -m-3 rounded-lg hover:bg-blue-50 transition">
+        <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xl">
+            {{ invoice.customer.name|first|upper }}
+        </div>
+        <div class="flex-1">
+            <div class="font-bold text-gray-800">{{ invoice.customer.name }}</div>
+            <div class="text-sm text-gray-500 font-mono" dir="ltr">{{ invoice.customer.mobile }}</div>
+            {% if invoice.customer.email %}
+            <div class="text-xs text-gray-400" dir="ltr">{{ invoice.customer.email }}</div>
+            {% endif %}
+        </div>
+        <span class="text-xs text-blue-600 font-medium">مشاهده پروفایل ←</span>
+    </a>
+</div>
+
+<!-- اقلام فاکتور -->
+<div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b border-gray-100">
+        <h2 class="font-bold text-gray-700 flex items-center gap-2">
+            <span class="w-7 h-7 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center text-sm">📦</span>
+            اقلام فاکتور
+        </h2>
+    </div>
+    <table class="w-full text-sm">
+        <thead class="bg-gray-50">
+            <tr class="text-gray-600">
+                <th class="text-right px-4 py-3 font-medium">#</th>
+                <th class="text-right px-4 py-3 font-medium">کالا</th>
+                <th class="text-right px-4 py-3 font-medium">تعداد</th>
+                <th class="text-right px-4 py-3 font-medium">قیمت واحد</th>
+                <th class="text-right px-4 py-3 font-medium">جمع</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for item in items %}
+            <tr>
+                <td class="px-4 py-3 text-gray-500 text-xs text-right">{{ forloop.counter }}</td>
+                <td class="px-4 py-3 text-right">
+                    <div class="font-medium text-gray-800">{{ item.product.name }}</div>
+                    <div class="text-xs text-gray-400 font-mono" dir="ltr">{{ item.product.code }}</div>
+                </td>
+                <td class="px-4 py-3 text-right text-gray-700">{{ item.quantity }} {{ item.product.unit }}</td>
+                <td class="px-4 py-3 text-right text-gray-700" dir="ltr">{{ item.unit_price|floatformat:0 }}</td>
+                <td class="px-4 py-3 text-right font-bold text-gray-800" dir="ltr">{{ item.total_price|floatformat:0 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- مبالغ -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="font-bold text-gray-700 mb-4">اطلاعات فاکتور</h2>
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between">
+                <dt class="text-gray-500">تاریخ صدور:</dt>
+                <dd class="text-gray-800" dir="ltr">{{ invoice.issue_date|date:"Y/m/d" }}</dd>
+            </div>
+            {% if invoice.due_date %}
+            <div class="flex justify-between">
+                <dt class="text-gray-500">مهلت پرداخت:</dt>
+                <dd class="text-gray-800" dir="ltr">{{ invoice.due_date|date:"Y/m/d" }}</dd>
+            </div>
+            {% endif %}
+            <div class="flex justify-between">
+                <dt class="text-gray-500">ایجادکننده:</dt>
+                <dd class="text-gray-800">{{ invoice.created_by.get_full_name|default:invoice.created_by.username|default:"—" }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">تاریخ ایجاد:</dt>
+                <dd class="text-gray-800 text-xs">{{ invoice.created_at|date:"Y/m/d H:i" }}</dd>
+            </div>
+        </dl>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="font-bold text-gray-700 mb-4">خلاصه مالی</h2>
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between">
+                <dt class="text-gray-500">جمع اقلام:</dt>
+                <dd class="text-gray-800" dir="ltr">{{ invoice.subtotal|floatformat:0 }} تومان</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">تخفیف:</dt>
+                <dd class="text-red-600" dir="ltr">{{ invoice.discount|floatformat:0 }} تومان</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">مالیات ({{ invoice.tax_percent }}%):</dt>
+                <dd class="text-yellow-600" dir="ltr">{{ invoice.tax_amount|floatformat:0 }} تومان</dd>
+            </div>
+            <div class="flex justify-between pt-3 border-t border-gray-100">
+                <dt class="font-bold text-gray-700">مبلغ نهایی:</dt>
+                <dd class="font-bold text-blue-700 text-lg" dir="ltr">{{ invoice.total|floatformat:0 }} تومان</dd>
+            </div>
+        </dl>
+    </div>
+</div>
+
+{% if invoice.notes %}
+<div class="bg-white rounded-xl shadow-sm p-6 mt-6">
+    <h2 class="font-bold text-gray-700 mb-3">توضیحات</h2>
+    <p class="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{{ invoice.notes }}</p>
+</div>
+{% endif %}
+
+{% endblock %}

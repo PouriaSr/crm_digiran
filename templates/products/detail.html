@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ product.name }}{% endblock %}
+
+{% block content %}
+
+<div class="flex justify-between items-center mb-6">
+    <a href="{% url 'products:list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست</a>
+    <div class="flex gap-2">
+        {% if 'products.edit' in user_permissions %}
+        <a href="{% url 'products:edit' product.pk %}" class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm">✏️ ویرایش</a>
+        {% endif %}
+        {% if 'products.delete' in user_permissions %}
+        <a href="{% url 'products:delete' product.pk %}" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm">🗑 حذف</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+    <div class="flex items-start gap-5">
+        <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl">
+            📦
+        </div>
+        <div class="flex-1">
+            <h1 class="text-xl font-bold text-gray-800">{{ product.name }}</h1>
+            <p class="text-gray-500 font-mono text-sm mt-1" dir="ltr">{{ product.code }}</p>
+            <div class="flex gap-2 mt-3 flex-wrap">
+                <span class="px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-700">{{ product.get_category_display }}</span>
+                {% if not product.is_active %}
+                    <span class="px-3 py-1 rounded-full text-xs bg-gray-200 text-gray-700">غیرفعال</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="text-gray-500 text-sm mb-1">قیمت فروش</div>
+        <div class="text-2xl font-bold text-gray-800" dir="ltr">{{ product.price|floatformat:0 }} <span class="text-sm font-normal text-gray-500">تومان</span></div>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="text-gray-500 text-sm mb-1">قیمت خرید</div>
+        <div class="text-2xl font-bold text-gray-800" dir="ltr">{{ product.cost_price|floatformat:0 }} <span class="text-sm font-normal text-gray-500">تومان</span></div>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="text-gray-500 text-sm mb-1">حاشیه سود</div>
+        <div class="text-2xl font-bold {% if product.profit_margin > 0 %}text-green-600{% else %}text-red-600{% endif %}">
+            {{ product.profit_margin }}%
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="font-bold text-gray-700 mb-4">موجودی</h2>
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between">
+                <dt class="text-gray-500">موجودی فعلی:</dt>
+                <dd class="font-bold {% if product.stock_status == 'out' %}text-red-600{% elif product.stock_status == 'low' %}text-yellow-600{% else %}text-green-600{% endif %}">
+                    {{ product.stock }} {{ product.unit }}
+                </dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">حداقل موجودی:</dt>
+                <dd class="text-gray-800">{{ product.min_stock }} {{ product.unit }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">وضعیت:</dt>
+                <dd>
+                    {% if product.stock_status == 'out' %}
+                        <span class="text-red-600">❌ ناموجود</span>
+                    {% elif product.stock_status == 'low' %}
+                        <span class="text-yellow-600">⚠️ موجودی کم</span>
+                    {% else %}
+                        <span class="text-green-600">✅ موجود</span>
+                    {% endif %}
+                </dd>
+            </div>
+        </dl>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="font-bold text-gray-700 mb-4">اطلاعات</h2>
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between">
+                <dt class="text-gray-500">واحد:</dt>
+                <dd class="text-gray-800">{{ product.unit }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">تاریخ ایجاد:</dt>
+                <dd class="text-gray-800">{{ product.created_at|date:"Y/m/d H:i" }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">آخرین ویرایش:</dt>
+                <dd class="text-gray-800">{{ product.updated_at|date:"Y/m/d H:i" }}</dd>
+            </div>
+        </dl>
+    </div>
+</div>
+
+<!-- کارت‌های آمار فروش -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 mt-6">
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-blue-500">
+        <div class="flex items-center gap-3">
+            <div class="w-11 h-11 bg-blue-100 rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+            </div>
+            <div>
+                <div class="text-gray-500 text-sm">تعداد فاکتورها</div>
+                <div class="text-2xl font-bold text-gray-800">{{ invoices_count }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-green-500">
+        <div class="flex items-center gap-3">
+            <div class="w-11 h-11 bg-green-100 rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                </svg>
+            </div>
+            <div>
+                <div class="text-gray-500 text-sm">تعداد فروش رفته</div>
+                <div class="text-2xl font-bold text-gray-800">{{ total_sold }} <span class="text-sm font-normal text-gray-500">{{ product.unit }}</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-purple-500">
+        <div class="flex items-center gap-3">
+            <div class="w-11 h-11 bg-purple-100 rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <div>
+                <div class="text-gray-500 text-sm">مجموع فروش</div>
+                <div class="text-lg font-bold text-gray-800" dir="ltr">{{ total_revenue|floatformat:0 }}</div>
+                <div class="text-xs text-gray-400">تومان</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- آخرین فاکتورهای مرتبط -->
+<div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b border-gray-100">
+        <h2 class="font-bold text-gray-700 flex items-center gap-2">
+            <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-sm">📄</span>
+            آخرین فاکتورها
+        </h2>
+    </div>
+
+    {% if recent_items %}
+    <table class="w-full text-sm">
+        <thead class="bg-gray-50">
+            <tr class="text-gray-600">
+                <th class="text-right px-6 py-2.5 font-medium">فاکتور</th>
+                <th class="text-right px-6 py-2.5 font-medium">مشتری</th>
+                <th class="text-right px-6 py-2.5 font-medium">تعداد</th>
+                <th class="text-right px-6 py-2.5 font-medium">مبلغ</th>
+                <th class="text-right px-6 py-2.5 font-medium">تاریخ</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for item in recent_items %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-3 text-right">
+                    <a href="{% url 'sales:detail' item.invoice.pk %}" class="text-blue-600 font-mono text-xs hover:underline" dir="ltr">{{ item.invoice.number }}</a>
+                </td>
+                <td class="px-6 py-3 text-right text-xs">
+                    <a href="{% url 'customers:detail' item.invoice.customer.pk %}" class="text-gray-700 hover:text-blue-600">{{ item.invoice.customer.name }}</a>
+                </td>
+                <td class="px-6 py-3 text-right text-xs">{{ item.quantity }} {{ product.unit }}</td>
+                <td class="px-6 py-3 text-right text-xs font-bold" dir="ltr">{{ item.total_price|floatformat:0 }}</td>
+                <td class="px-6 py-3 text-right text-xs text-gray-500" dir="ltr">{{ item.invoice.issue_date|date:"Y/m/d" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="text-center py-8 text-gray-400 text-sm">
+        این کالا هنوز در هیچ فاکتوری ثبت نشده
+    </div>
+    {% endif %}
+</div>
+
+{% if product.description %}
+<div class="bg-white rounded-xl shadow-sm p-6 mt-6">
+    <h2 class="font-bold text-gray-700 mb-4">توضیحات</h2>
+    <p class="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{{ product.description }}</p>
+</div>
+{% endif %}
+
+{% endblock %}

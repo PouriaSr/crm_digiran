@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+
+<div class="mb-6">
+    <a href="{% url 'sales:list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست</a>
+</div>
+
+<h1 class="text-2xl font-bold text-gray-800 mb-6">{{ title }}</h1>
+
+{{ products_prices|json_script:"products-prices" }}
+
+<form method="post" class="space-y-6">
+    {% csrf_token %}
+
+    {% if form.errors or formset.errors %}
+    <div class="bg-red-50 text-red-700 p-4 rounded-lg text-sm">
+        <strong>لطفاً خطاهای زیر را برطرف کنید:</strong>
+        <ul class="mt-2 list-disc list-inside">
+            {% for field, errors in form.errors.items %}
+                {% for error in errors %}<li>{{ field }}: {{ error }}</li>{% endfor %}
+            {% endfor %}
+            {% for f_errs in formset.errors %}
+                {% for field, errors in f_errs.items %}
+                    {% for error in errors %}<li>قلم فاکتور {{ field }}: {{ error }}</li>{% endfor %}
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- ═══ سربرگ فاکتور ═══ -->
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-sm">📄</span>
+            اطلاعات سربرگ
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">مشتری <span class="text-red-500">*</span></label>
+                {{ form.customer }}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">وضعیت</label>
+                {{ form.status }}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">تاریخ صدور</label>
+                {{ form.issue_date }}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">مهلت پرداخت</label>
+                {{ form.due_date }}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">نوع پرداخت</label>
+                {{ form.payment_type }}
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ اقلام فاکتور ═══ -->
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span class="w-7 h-7 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center text-sm">📦</span>
+            اقلام فاکتور
+        </h2>
+
+        {{ formset.management_form }}
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-gray-600 border-b border-gray-200">
+                        <th class="text-right py-3 px-2 font-medium">کالا</th>
+                        <th class="text-right py-3 px-2 font-medium w-24">تعداد</th>
+                        <th class="text-right py-3 px-2 font-medium w-40">قیمت واحد</th>
+                        <th class="text-right py-3 px-2 font-medium w-40">جمع</th>
+                        <th class="w-12"></th>
+                    </tr>
+                </thead>
+                <tbody id="items-container">
+                    {% for item_form in formset %}
+                    <tr class="item-row border-b border-gray-100">
+                        <td class="py-3 px-2">
+                            {{ item_form.id }}
+                            {{ item_form.product }}
+                        </td>
+                        <td class="py-3 px-2">{{ item_form.quantity }}</td>
+                        <td class="py-3 px-2">{{ item_form.unit_price }}</td>
+                        <td class="py-3 px-2 text-right font-bold text-gray-700 row-total" dir="ltr">0</td>
+                        <td class="py-3 px-2 text-center">
+                            {% if item_form.instance.pk %}
+                                <label class="text-red-500 cursor-pointer text-xs">
+                                    {{ item_form.DELETE }} حذف
+                                </label>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ═══ مبالغ ═══ -->
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span class="w-7 h-7 bg-green-100 text-green-600 rounded-lg flex items-center justify-center text-sm">💰</span>
+            مبالغ و مالیات
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">تخفیف (تومان)</label>
+                {{ form.discount }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">درصد مالیات (%)</label>
+                {{ form.tax_percent }}
+            </div>
+        </div>
+
+        <!-- خلاصه -->
+        <div class="mt-6 pt-6 border-t border-gray-100 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-gray-50 rounded-lg p-4 text-center">
+                <div class="text-xs text-gray-500 mb-1">جمع اقلام</div>
+                <div class="text-lg font-bold text-gray-800" dir="ltr" id="sum-subtotal">0</div>
+            </div>
+            <div class="bg-red-50 rounded-lg p-4 text-center">
+                <div class="text-xs text-gray-500 mb-1">تخفیف</div>
+                <div class="text-lg font-bold text-red-600" dir="ltr" id="sum-discount">0</div>
+            </div>
+            <div class="bg-yellow-50 rounded-lg p-4 text-center">
+                <div class="text-xs text-gray-500 mb-1">مالیات</div>
+                <div class="text-lg font-bold text-yellow-600" dir="ltr" id="sum-tax">0</div>
+            </div>
+            <div class="bg-blue-50 rounded-lg p-4 text-center">
+                <div class="text-xs text-gray-500 mb-1">مبلغ نهایی</div>
+                <div class="text-xl font-bold text-blue-700" dir="ltr" id="sum-total">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- توضیحات -->
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">توضیحات</label>
+        {{ form.notes }}
+    </div>
+
+    <!-- دکمه‌ها -->
+    <div class="flex gap-3">
+        <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+            {{ submit_label }}
+        </button>
+        <a href="{% url 'sales:list' %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+            انصراف
+        </a>
+    </div>
+</form>
+
+<!-- ═══ JS محاسبه خودکار + autofill قیمت ═══ -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // ═══ دیکشنری قیمت کالاها ═══
+    const productPrices = JSON.parse(document.getElementById('products-prices').textContent);
+
+    const container = document.getElementById('items-container');
+    const discountInput = document.querySelector('[name=discount]');
+    const taxInput = document.querySelector('[name=tax_percent]');
+
+    // ─── محاسبه هر ردیف ───
+    function calcRow(row) {
+        const qty = parseFloat(row.querySelector('.item-qty')?.value) || 0;
+        const price = parseFloat(row.querySelector('.item-price')?.value) || 0;
+        const total = qty * price;
+        const totalCell = row.querySelector('.row-total');
+        if (totalCell) totalCell.textContent = total.toLocaleString('en-US');
+        return total;
+    }
+
+    // ─── محاسبه کل ───
+    function calcAll() {
+        let subtotal = 0;
+        container.querySelectorAll('.item-row').forEach(function(row) {
+            subtotal += calcRow(row);
+        });
+
+        const discount = parseFloat(discountInput?.value) || 0;
+        const taxPct = parseFloat(taxInput?.value) || 0;
+
+        const afterDiscount = Math.max(subtotal - discount, 0);
+        const taxAmount = Math.round(afterDiscount * taxPct / 100);
+        const total = afterDiscount + taxAmount;
+
+        document.getElementById('sum-subtotal').textContent = subtotal.toLocaleString('en-US');
+        document.getElementById('sum-discount').textContent = discount.toLocaleString('en-US');
+        document.getElementById('sum-tax').textContent = taxAmount.toLocaleString('en-US');
+        document.getElementById('sum-total').textContent = total.toLocaleString('en-US');
+    }
+
+    // ─── پر کردن خودکار قیمت وقتی کالا انتخاب شد ───
+    function fillPrice(row) {
+        const productSelect = row.querySelector('.item-product');
+        const priceInput = row.querySelector('.item-price');
+        if (!productSelect || !priceInput) return;
+
+        const productId = productSelect.value;
+        if (!productId) return;
+
+        const price = productPrices[productId];
+        if (price !== undefined) {
+            priceInput.value = price;
+            calcRow(row);
+            calcAll();
+        }
+    }
+
+    // ─── Event Listeners ───
+
+    // تغییر کالا → autofill قیمت
+    container.addEventListener('change', function(e) {
+        if (e.target.classList.contains('item-product')) {
+            const row = e.target.closest('.item-row');
+            if (row) fillPrice(row);
+        }
+    });
+
+    // تغییر تعداد یا قیمت → محاسبه
+    container.addEventListener('input', function(e) {
+        if (e.target.classList.contains('item-qty') || e.target.classList.contains('item-price')) {
+            calcAll();
+        }
+    });
+
+    if (discountInput) discountInput.addEventListener('input', calcAll);
+    if (taxInput) taxInput.addEventListener('input', calcAll);
+
+    // اجرای اولیه
+    calcAll();
+});
+</script>
+
+{% endblock %}

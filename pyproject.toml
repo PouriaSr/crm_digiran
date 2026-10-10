@@ -1,0 +1,21 @@
+[project]
+name = "crm-digiran"
+version = "0.1.0"
+description = "CRM Digiran — سیستم مدیریت ارتباط با مشتریان و عملیات داخلی"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "django>=6.1.2,<6.2",
+    "django-unfold>=0.108.0",
+    "django-htmx>=1.29.0",
+    "django-widget-tweaks>=1.5.1",
+    "jdatetime>=6.1.0",
+    "jalali-core>=1.0.0",
+    "openpyxl>=3.1.5",
+    "pillow>=12.3.0",
+    "psycopg2-binary>=2.9.13",
+    "python-dotenv>=1.2.4",
+]
+
+[tool.uv]
+package = false

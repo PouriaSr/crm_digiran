@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+
+<div class="mb-6">
+    <a href="{% url 'accounts:user_list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست کاربران</a>
+</div>
+
+<h1 class="text-2xl font-bold text-gray-800 mb-6">{{ title }}</h1>
+
+{% if is_self %}
+<div class="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl mb-6 text-sm">
+    <strong>ℹ️ توجه:</strong>
+    شما در حال ویرایش حساب کاربری خودتان هستید. امکان غیرفعال کردن یا تغییر نقش از «مدیر کل» وجود ندارد.
+</div>
+{% endif %}
+
+<form method="post" class="bg-white rounded-xl shadow-sm p-6">
+    {% csrf_token %}
+
+    {% if form.errors %}
+    <div class="bg-red-50 text-red-700 p-4 rounded-lg mb-6 text-sm">
+        <strong>لطفاً خطاهای زیر را برطرف کنید:</strong>
+        <ul class="mt-2 list-disc list-inside">
+            {% for field, errors in form.errors.items %}
+                {% for error in errors %}
+                    <li>{{ field }}: {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- نام کاربری -->
+        <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                نام کاربری <span class="text-red-500">*</span>
+            </label>
+            {{ form.username }}
+            <p class="text-xs text-gray-400 mt-1">با این نام وارد سیستم می‌شود (فقط حروف انگلیسی، اعداد و _ )</p>
+        </div>
+
+        <!-- نام -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">نام</label>
+            {{ form.first_name }}
+        </div>
+
+        <!-- نام خانوادگی -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">نام خانوادگی</label>
+            {{ form.last_name }}
+        </div>
+
+        <!-- ایمیل -->
+        <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">ایمیل</label>
+            {{ form.email }}
+        </div>
+
+        <!-- رمز عبور (فقط در حالت ایجاد) -->
+        {% if is_create %}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                رمز عبور <span class="text-red-500">*</span>
+            </label>
+            {{ form.password1 }}
+            <p class="text-xs text-gray-400 mt-1">حداقل ۶ کاراکتر</p>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                تکرار رمز عبور <span class="text-red-500">*</span>
+            </label>
+            {{ form.password2 }}
+        </div>
+        {% endif %}
+
+        <!-- نقش -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                نقش در سیستم <span class="text-red-500">*</span>
+            </label>
+            {{ form.role }}
+            <p class="text-xs text-gray-400 mt-1" id="role-help">
+                {% if is_self %}
+                    نمی‌توانید نقش خودتان را تغییر دهید
+                {% else %}
+                    تعیین می‌کند کاربر چه دسترسی‌هایی دارد
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- وضعیت فعال -->
+        <div class="flex items-end pb-3">
+            <label class="flex items-center gap-2 text-sm cursor-pointer
+                          {% if is_self %}opacity-50{% endif %}">
+                {{ form.is_active }}
+                <span>حساب کاربری فعال باشد</span>
+            </label>
+        </div>
+    </div>
+
+    <!-- دکمه‌ها -->
+    <div class="flex gap-3 mt-8 pt-6 border-t border-gray-100">
+        <button type="submit"
+                class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+            {{ submit_label }}
+        </button>
+        <a href="{% url 'accounts:user_list' %}"
+           class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+            انصراف
+        </a>
+    </div>
+</form>
+
+<!-- راهنمای نقش‌ها -->
+<div class="bg-white rounded-xl shadow-sm p-6 mt-6">
+    <h2 class="font-bold text-gray-700 mb-4 text-sm">📋 راهنمای نقش‌ها</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+        <div class="flex items-start gap-2 p-3 bg-purple-50 rounded-lg">
+            <span class="text-purple-600 font-bold">👑 مدیر کل</span>
+            <span class="text-gray-600">دسترسی کامل به همه بخش‌ها + مدیریت کاربران</span>
+        </div>
+        <div class="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
+            <span class="text-blue-600 font-bold">📊 مدیر فروش</span>
+            <span class="text-gray-600">دسترسی به مشتریان، فاکتورها، تماس‌ها و گزارشات</span>
+        </div>
+        <div class="flex items-start gap-2 p-3 bg-green-50 rounded-lg">
+            <span class="text-green-600 font-bold">💼 کارشناس فروش</span>
+            <span class="text-gray-600">ثبت مشتری، تماس و فاکتور فروش</span>
+        </div>
+        <div class="flex items-start gap-2 p-3 bg-yellow-50 rounded-lg">
+            <span class="text-yellow-600 font-bold">🎧 پشتیبان</span>
+            <span class="text-gray-600">پاسخگویی به مشتریان و ثبت تماس‌های پشتیبانی</span>
+        </div>
+        <div class="flex items-start gap-2 p-3 bg-indigo-50 rounded-lg">
+            <span class="text-indigo-600 font-bold">🧮 حسابدار</span>
+            <span class="text-gray-600">مدیریت فاکتورها و گزارشات مالی</span>
+        </div>
+        <div class="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
+            <span class="text-gray-600 font-bold">👤 اپراتور</span>
+            <span class="text-gray-600">ثبت اطلاعات اولیه</span>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ task.title }}{% endblock %}
+
+{% block content %}
+
+<div class="flex justify-between items-center mb-6">
+    <a href="{% url 'hr:task_list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به وظایف</a>
+    <div class="flex gap-2 flex-wrap">
+        {% if 'hr.manage_tasks' in user_permissions %}
+        <a href="{% url 'hr:task_edit' task.pk %}"
+           class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm">✏️ ویرایش</a>
+        <a href="{% url 'hr:task_delete' task.pk %}"
+           class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm">🗑 حذف</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ═══ هدر وظیفه ═══ -->
+<div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+    <div class="flex items-start gap-5">
+        <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-bold flex-shrink-0
+                    {% if task.status == 'done' %}bg-green-500
+                    {% elif task.status == 'in_progress' %}bg-yellow-500
+                    {% elif task.status == 'cancelled' %}bg-gray-400
+                    {% else %}bg-blue-500{% endif %}">
+            {% if task.status == 'done' %}✓{% elif task.status == 'cancelled' %}✕{% else %}📋{% endif %}
+        </div>
+        <div class="flex-1">
+            <h1 class="text-xl font-bold text-gray-800 {% if task.status == 'done' %}line-through text-gray-400{% endif %}">{{ task.title }}</h1>
+
+            <div class="flex gap-2 mt-3 flex-wrap">
+                {% if task.status == 'pending' %}
+                    <span class="px-3 py-1 rounded-full text-xs bg-gray-100 text-gray-700">در انتظار</span>
+                {% elif task.status == 'in_progress' %}
+                    <span class="px-3 py-1 rounded-full text-xs bg-yellow-100 text-yellow-700">در حال انجام</span>
+                {% elif task.status == 'done' %}
+                    <span class="px-3 py-1 rounded-full text-xs bg-green-100 text-green-700">انجام شده</span>
+                {% else %}
+                    <span class="px-3 py-1 rounded-full text-xs bg-gray-100 text-gray-700">لغو شده</span>
+                {% endif %}
+
+                {% if task.priority == 'urgent' %}
+                    <span class="px-3 py-1 rounded-full text-xs bg-red-100 text-red-700">🔥 فوری</span>
+                {% elif task.priority == 'high' %}
+                    <span class="px-3 py-1 rounded-full text-xs bg-orange-100 text-orange-700">اولویت زیاد</span>
+                {% elif task.priority == 'medium' %}
+                    <span class="px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-700">اولویت متوسط</span>
+                {% else %}
+                    <span class="px-3 py-1 rounded-full text-xs bg-gray-100 text-gray-700">اولویت کم</span>
+                {% endif %}
+
+                {% if task.is_overdue %}
+                    <span class="px-3 py-1 rounded-full text-xs bg-red-100 text-red-700">⚠️ عقب‌افتاده</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ تغییر سریع وضعیت (فقط برای دسترسی‌دارها) ═══ -->
+{% if 'hr.manage_tasks' in user_permissions %}
+<div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+    <h2 class="font-bold text-gray-700 mb-3 text-sm">تغییر سریع وضعیت</h2>
+    <form method="post" action="{% url 'hr:task_toggle' task.pk %}" class="flex flex-wrap gap-2">
+        {% csrf_token %}
+        <button type="submit" name="status" value="pending"
+                class="px-4 py-2 rounded-lg text-sm {% if task.status == 'pending' %}bg-gray-500 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+            در انتظار
+        </button>
+        <button type="submit" name="status" value="in_progress"
+                class="px-4 py-2 rounded-lg text-sm {% if task.status == 'in_progress' %}bg-yellow-500 text-white{% else %}bg-yellow-50 text-yellow-700 hover:bg-yellow-100{% endif %}">
+            در حال انجام
+        </button>
+        <button type="submit" name="status" value="done"
+                class="px-4 py-2 rounded-lg text-sm {% if task.status == 'done' %}bg-green-500 text-white{% else %}bg-green-50 text-green-700 hover:bg-green-100{% endif %}">
+            ✅ انجام شده
+        </button>
+        <button type="submit" name="status" value="cancelled"
+                class="px-4 py-2 rounded-lg text-sm {% if task.status == 'cancelled' %}bg-gray-400 text-white{% else %}bg-gray-50 text-gray-600 hover:bg-gray-100{% endif %}">
+            لغو شده
+        </button>
+    </form>
+</div>
+{% endif %}
+
+<!-- ═══ اطلاعات ═══ -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="font-bold text-gray-700 mb-4">اطلاعات وظیفه</h2>
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between">
+                <dt class="text-gray-500">مسئول:</dt>
+                <dd>
+                    <a href="{% url 'hr:employee_detail' task.assigned_to.pk %}" class="text-blue-600 hover:underline font-medium">
+                        {{ task.assigned_to.full_name }}
+                    </a>
+                </dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">مهلت انجام:</dt>
+                <dd class="{% if task.is_overdue %}text-red-600 font-bold{% else %}text-gray-800{% endif %}" dir="ltr">
+                    {{ task.due_date|date:"Y/m/d"|default:"—" }}
+                </dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">ایجادکننده:</dt>
+                <dd class="text-gray-800">{{ task.created_by.get_full_name|default:task.created_by.username|default:"—" }}</dd>
+            </div>
+        </dl>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="font-bold text-gray-700 mb-4">زمان‌ها</h2>
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between">
+                <dt class="text-gray-500">تاریخ ایجاد:</dt>
+                <dd class="text-gray-800 text-xs">{{ task.created_at|date:"Y/m/d H:i" }}</dd>
+            </div>
+            {% if task.completed_at %}
+            <div class="flex justify-between">
+                <dt class="text-gray-500">تاریخ اتمام:</dt>
+                <dd class="text-green-600 text-xs">{{ task.completed_at|date:"Y/m/d H:i" }}</dd>
+            </div>
+            {% endif %}
+            <div class="flex justify-between">
+                <dt class="text-gray-500">آخرین ویرایش:</dt>
+                <dd class="text-gray-800 text-xs">{{ task.updated_at|date:"Y/m/d H:i" }}</dd>
+            </div>
+        </dl>
+    </div>
+</div>
+
+{% if task.description %}
+<div class="bg-white rounded-xl shadow-sm p-6">
+    <h2 class="font-bold text-gray-700 mb-4">توضیحات</h2>
+    <p class="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{{ task.description }}</p>
+</div>
+{% endif %}
+
+{% endblock %}

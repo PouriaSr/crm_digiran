@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}پرسنل{% endblock %}
+
+{% block content %}
+
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">پرسنل</h1>
+        <p class="text-sm text-gray-500 mt-1">مدیریت کارمندان و تیم</p>
+    </div>
+    {% if 'hr.manage_employees' in user_permissions %}
+    <a href="{% url 'hr:employee_create' %}"
+       class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        کارمند جدید
+    </a>
+    {% endif %}
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-blue-500">
+        <div class="text-gray-500 text-sm">کل کارمندان</div>
+        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.total }}</div>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-green-500">
+        <div class="text-gray-500 text-sm">فعال</div>
+        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.active }}</div>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-gray-400">
+        <div class="text-gray-500 text-sm">غیرفعال</div>
+        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.inactive }}</div>
+    </div>
+</div>
+
+<div class="bg-white rounded-xl p-4 shadow-sm mb-6">
+    <form method="get" class="flex flex-wrap gap-3 items-center">
+        <div class="flex-1 min-w-[200px]">
+            <input type="text" name="q" value="{{ search }}"
+                   placeholder="جستجو نام، موبایل یا کد ملی..."
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+        </div>
+        <select name="position" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">همه سمت‌ها</option>
+            {% for value, label in position_choices %}
+                <option value="{{ value }}" {% if current_position == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select name="status" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">همه</option>
+            <option value="active" {% if current_status == 'active' %}selected{% endif %}>فعال</option>
+            <option value="inactive" {% if current_status == 'inactive' %}selected{% endif %}>غیرفعال</option>
+        </select>
+        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">اعمال</button>
+        {% if search or current_position or current_status %}
+        <a href="{% url 'hr:employee_list' %}" class="text-sm text-gray-500 hover:text-gray-700">پاک کردن</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+    <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b border-gray-200">
+            <tr class="text-gray-600">
+                <th class="text-right px-4 py-3 font-medium">کارمند</th>
+                <th class="text-right px-4 py-3 font-medium">سمت</th>
+                <th class="text-right px-4 py-3 font-medium">موبایل</th>
+                <th class="text-right px-4 py-3 font-medium">وظایف باز</th>
+                <th class="text-right px-4 py-3 font-medium">تاریخ استخدام</th>
+                <th class="text-right px-4 py-3 font-medium">وضعیت</th>
+                <th class="text-right px-4 py-3 font-medium">عملیات</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for emp in page_obj %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 text-right">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">
+                            {{ emp.first_name|first|upper }}
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-800">{{ emp.full_name }}</div>
+                            {% if emp.email %}<div class="text-xs text-gray-400" dir="ltr">{{ emp.email }}</div>{% endif %}
+                        </div>
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-right text-gray-600 text-xs">{{ emp.get_position_display }}</td>
+                <td class="px-4 py-3 text-right text-gray-600 font-mono text-xs"><span dir="ltr">{{ emp.mobile|default:"—" }}</span></td>
+                <td class="px-4 py-3 text-right">
+                    {% if emp.open_tasks_count > 0 %}
+                        <span class="px-2.5 py-1 rounded-full text-xs bg-blue-100 text-blue-700">{{ emp.open_tasks_count }} وظیفه</span>
+                    {% else %}
+                        <span class="text-xs text-gray-300">—</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-right text-gray-500 text-xs" dir="ltr">{{ emp.hire_date|date:"Y/m/d" }}</td>
+                <td class="px-4 py-3 text-right">
+                    {% if emp.is_active %}
+                        <span class="px-2.5 py-1 rounded-full text-xs bg-green-100 text-green-700">فعال</span>
+                    {% else %}
+                        <span class="px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-700">غیرفعال</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-right whitespace-nowrap">
+                    <a href="{% url 'hr:employee_detail' emp.pk %}" class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50">جزئیات</a>
+                    {% if 'hr.manage_employees' in user_permissions %}
+                    <a href="{% url 'hr:employee_edit' emp.pk %}" class="text-yellow-600 hover:text-yellow-800 text-xs px-2 py-1 rounded hover:bg-yellow-50">ویرایش</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center py-12 text-gray-400">کارمندی یافت نشد</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if page_obj.has_other_pages %}
+<div class="flex justify-center mt-6 gap-2">
+    {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">قبلی</a>{% endif %}
+    <span class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">بعدی</a>{% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

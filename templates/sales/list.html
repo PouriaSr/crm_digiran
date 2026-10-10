@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}فاکتورها{% endblock %}
+
+{% block content %}
+
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">فاکتورها</h1>
+        <p class="text-sm text-gray-500 mt-1">مدیریت فاکتورهای فروش</p>
+    </div>
+    {% if 'invoices.add' in user_permissions %}
+    <a href="{% url 'sales:create' %}"
+       class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        فاکتور جدید
+    </a>
+    {% endif %}
+</div>
+
+<!-- کارت‌های آمار -->
+<div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-gray-500">
+        <div class="text-gray-500 text-sm">کل فاکتورها</div>
+        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.total }}</div>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-gray-400">
+        <div class="text-gray-500 text-sm">پیش‌نویس</div>
+        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.draft }}</div>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-blue-500">
+        <div class="text-gray-500 text-sm">صادر شده</div>
+        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.issued }}</div>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-green-500">
+        <div class="text-gray-500 text-sm">پرداخت شده</div>
+        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.paid }}</div>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-purple-500">
+        <div class="text-gray-500 text-sm">مجموع فروش</div>
+        <div class="text-lg font-bold text-gray-800 mt-1" dir="ltr">{{ stats.total_amount|floatformat:0 }}</div>
+        <div class="text-xs text-gray-400">تومان</div>
+    </div>
+</div>
+
+<!-- فیلترها -->
+<div class="bg-white rounded-xl p-4 shadow-sm mb-6">
+    <form method="get" class="flex flex-wrap gap-3 items-center">
+        <div class="flex-1 min-w-[200px]">
+            <input type="text" name="q" value="{{ search }}"
+                   placeholder="جستجو شماره فاکتور یا نام مشتری..."
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+        </div>
+
+        <select name="status" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">همه وضعیت‌ها</option>
+            {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+
+        <select name="payment_type" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">همه پرداخت‌ها</option>
+            {% for value, label in payment_choices %}
+                <option value="{{ value }}" {% if current_payment == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+
+        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+            اعمال فیلتر
+        </button>
+
+        {% if search or current_status or current_payment %}
+        <a href="{% url 'sales:list' %}" class="text-sm text-gray-500 hover:text-gray-700">پاک کردن</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- جدول -->
+<div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+    <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b border-gray-200">
+            <tr class="text-gray-600">
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">شماره</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">مشتری</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">اقلام</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">مبلغ نهایی</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">وضعیت</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">پرداخت</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">تاریخ صدور</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">عملیات</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for invoice in page_obj %}
+            <tr class="hover:bg-gray-50 transition">
+                <td class="px-4 py-3 text-right font-mono text-xs">
+                    <a href="{% url 'sales:detail' invoice.pk %}" class="text-blue-600 hover:underline" dir="ltr">{{ invoice.number }}</a>
+                </td>
+                <td class="px-4 py-3 text-right">
+                    <div class="font-medium text-gray-800">{{ invoice.customer.name }}</div>
+                    <div class="text-xs text-gray-400 font-mono" dir="ltr">{{ invoice.customer.mobile }}</div>
+                </td>
+                <td class="px-4 py-3 text-right text-gray-600 text-xs">{{ invoice.items_count }} قلم</td>
+                <td class="px-4 py-3 text-right font-bold text-gray-800" dir="ltr">{{ invoice.total|floatformat:0 }}</td>
+                <td class="px-4 py-3 text-right whitespace-nowrap">
+                    {% if invoice.status == 'draft' %}
+                        <span class="inline-block px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-700">{{ invoice.get_status_display }}</span>
+                    {% elif invoice.status == 'issued' %}
+                        <span class="inline-block px-2.5 py-1 rounded-full text-xs bg-blue-100 text-blue-700">{{ invoice.get_status_display }}</span>
+                    {% elif invoice.status == 'paid' %}
+                        <span class="inline-block px-2.5 py-1 rounded-full text-xs bg-green-100 text-green-700">{{ invoice.get_status_display }}</span>
+                    {% else %}
+                        <span class="inline-block px-2.5 py-1 rounded-full text-xs bg-red-100 text-red-700">{{ invoice.get_status_display }}</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-right text-gray-600 text-xs">{{ invoice.get_payment_type_display }}</td>
+                <td class="px-4 py-3 text-right text-gray-500 text-xs" dir="ltr">{{ invoice.issue_date|date:"Y/m/d" }}</td>
+                <td class="px-4 py-3 text-right whitespace-nowrap">
+                    <div class="flex items-center gap-1">
+                        <a href="{% url 'sales:detail' invoice.pk %}" class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50">جزئیات</a>
+                        {% if 'invoices.print' in user_permissions %}
+                        <a href="{% url 'sales:print' invoice.pk %}" target="_blank" class="text-gray-600 hover:text-gray-800 text-xs px-2 py-1 rounded hover:bg-gray-50">🖨</a>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="text-center py-12 text-gray-400">فاکتوری یافت نشد</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- صفحه‌بندی -->
+{% if page_obj.has_other_pages %}
+<div class="flex justify-center mt-6 gap-2">
+    {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">قبلی</a>
+    {% endif %}
+    <span class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">بعدی</a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

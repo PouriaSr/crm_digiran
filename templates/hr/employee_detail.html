@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ employee.full_name }}{% endblock %}
+
+{% block content %}
+
+<div class="flex justify-between items-center mb-6">
+    <a href="{% url 'hr:employee_list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست</a>
+    <div class="flex gap-2 flex-wrap">
+        {% if 'hr.manage_tasks' in user_permissions %}
+        <a href="{% url 'hr:task_create' %}"
+           class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center gap-1.5">
+            ✅ وظیفه جدید
+        </a>
+        {% endif %}
+        {% if 'hr.manage_employees' in user_permissions %}
+        <a href="{% url 'hr:employee_edit' employee.pk %}"
+           class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm">✏️ ویرایش</a>
+        <a href="{% url 'hr:employee_delete' employee.pk %}"
+           class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm">🗑 حذف</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ═══ هدر کارمند ═══ -->
+<div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+    <div class="flex items-start gap-5">
+        <div class="w-20 h-20 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-3xl font-bold flex-shrink-0">
+            {{ employee.first_name|first|upper }}
+        </div>
+        <div class="flex-1">
+            <h1 class="text-2xl font-bold text-gray-800">{{ employee.full_name }}</h1>
+            <p class="text-gray-500 text-sm mt-1">{{ employee.get_position_display }}</p>
+
+            <div class="flex gap-2 mt-3 flex-wrap">
+                {% if employee.is_active %}
+                    <span class="px-3 py-1 rounded-full text-xs bg-green-100 text-green-700">✅ فعال</span>
+                {% else %}
+                    <span class="px-3 py-1 rounded-full text-xs bg-gray-100 text-gray-700">غیرفعال</span>
+                {% endif %}
+                <span class="px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-700">{{ employee.get_contract_type_display }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ کارت‌های آمار ═══ -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-yellow-500">
+        <div class="flex items-center gap-3">
+            <div class="w-11 h-11 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <div>
+                <div class="text-gray-500 text-sm">وظایف باز</div>
+                <div class="text-2xl font-bold text-gray-800">{{ open_tasks_count }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-green-500">
+        <div class="flex items-center gap-3">
+            <div class="w-11 h-11 bg-green-100 rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+            </div>
+            <div>
+                <div class="text-gray-500 text-sm">وظایف انجام شده</div>
+                <div class="text-2xl font-bold text-gray-800">{{ done_tasks_count }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-purple-500">
+        <div class="flex items-center gap-3">
+            <div class="w-11 h-11 bg-purple-100 rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+            </div>
+            <div>
+                <div class="text-gray-500 text-sm">تاریخ استخدام</div>
+                <div class="text-sm font-bold text-gray-800" dir="ltr">{{ employee.hire_date|date:"Y/m/d" }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ اطلاعات شخصی و شغلی ═══ -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="font-bold text-gray-700 mb-4">اطلاعات شخصی</h2>
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between">
+                <dt class="text-gray-500">کد ملی:</dt>
+                <dd class="text-gray-800" dir="ltr">{{ employee.national_id|default:"—" }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">موبایل:</dt>
+                <dd class="text-gray-800 font-mono" dir="ltr">{{ employee.mobile|default:"—" }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">ایمیل:</dt>
+                <dd class="text-gray-800" dir="ltr">{{ employee.email|default:"—" }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">تاریخ تولد:</dt>
+                <dd class="text-gray-800" dir="ltr">{{ employee.birth_date|date:"Y/m/d"|default:"—" }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500 mb-1">آدرس:</dt>
+                <dd class="text-gray-800">{{ employee.address|default:"—" }}</dd>
+            </div>
+        </dl>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="font-bold text-gray-700 mb-4">اطلاعات شغلی</h2>
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between">
+                <dt class="text-gray-500">سمت:</dt>
+                <dd class="text-gray-800">{{ employee.get_position_display }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">نوع قرارداد:</dt>
+                <dd class="text-gray-800">{{ employee.get_contract_type_display }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">حقوق پایه:</dt>
+                <dd class="text-gray-800" dir="ltr">{{ employee.salary|floatformat:0|default:"—" }} تومان</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-500">حساب کاربری:</dt>
+                <dd class="text-gray-800">{{ employee.user.username|default:"—" }}</dd>
+            </div>
+        </dl>
+    </div>
+</div>
+
+<!-- ═══ وظایف باز ═══ -->
+<div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+        <h2 class="font-bold text-gray-700 flex items-center gap-2">
+            <span class="w-7 h-7 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center text-sm">✅</span>
+            وظایف باز
+            {% if open_tasks_count > 0 %}<span class="text-xs text-gray-400 font-normal">({{ open_tasks_count }})</span>{% endif %}
+        </h2>
+        {% if 'hr.manage_tasks' in user_permissions %}
+        <a href="{% url 'hr:task_create' %}" class="text-xs text-blue-600 hover:underline">+ وظیفه جدید</a>
+        {% endif %}
+    </div>
+
+    {% if open_tasks %}
+    <table class="w-full text-sm">
+        <thead class="bg-gray-50">
+            <tr class="text-gray-600">
+                <th class="text-right px-6 py-2.5 font-medium">عنوان</th>
+                <th class="text-right px-6 py-2.5 font-medium">اولویت</th>
+                <th class="text-right px-6 py-2.5 font-medium">وضعیت</th>
+                <th class="text-right px-6 py-2.5 font-medium">مهلت</th>
+                <th class="px-6 py-2.5"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for task in open_tasks %}
+            <tr class="hover:bg-gray-50 {% if task.is_overdue %}bg-red-50{% endif %}">
+                <td class="px-6 py-3 text-right">
+                    <a href="{% url 'hr:task_detail' task.pk %}" class="text-gray-800 hover:text-blue-600 font-medium">{{ task.title }}</a>
+                </td>
+                <td class="px-6 py-3 text-right">
+                    {% if task.priority == 'urgent' %}<span class="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">فوری</span>
+                    {% elif task.priority == 'high' %}<span class="px-2 py-0.5 rounded-full text-xs bg-orange-100 text-orange-700">زیاد</span>
+                    {% elif task.priority == 'medium' %}<span class="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700">متوسط</span>
+                    {% else %}<span class="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700">کم</span>{% endif %}
+                </td>
+                <td class="px-6 py-3 text-right text-xs">{{ task.get_status_display }}</td>
+                <td class="px-6 py-3 text-right text-xs {% if task.is_overdue %}text-red-600 font-bold{% else %}text-gray-500{% endif %}" dir="ltr">
+                    {{ task.due_date|date:"Y/m/d"|default:"—" }}
+                </td>
+                <td class="px-6 py-3 text-left">
+                    <a href="{% url 'hr:task_detail' task.pk %}" class="text-xs text-blue-600 hover:underline">مشاهده</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="text-center py-8 text-gray-400 text-sm">
+        وظیفه بازی برای این کارمند نیست
+    </div>
+    {% endif %}
+</div>
+
+{% if employee.notes %}
+<div class="bg-white rounded-xl shadow-sm p-6">
+    <h2 class="font-bold text-gray-700 mb-4">یادداشت</h2>
+    <p class="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{{ employee.notes }}</p>
+</div>
+{% endif %}
+
+{% endblock %}

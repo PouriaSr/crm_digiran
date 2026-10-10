@@ -1,0 +1,654 @@
+{% load static %}
+{% load fa_numbers %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فاکتور {{ invoice.number }}</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            background: #f0f2f5;
+            padding: 30px 15px;
+            color: #2c3e50;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .invoice-container {
+            max-width: 850px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        .invoice-header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2E86AB 100%);
+            color: white;
+            padding: 30px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .invoice-header::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -10%;
+            width: 300px; height: 300px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+        }
+
+        .invoice-header::after {
+            content: '';
+            position: absolute;
+            bottom: -100px; right: -50px;
+            width: 250px; height: 250px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .logo-box {
+            width: 80px; height: 80px;
+            background: white;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .logo-box img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .logo-placeholder {
+            font-size: 36px;
+            font-weight: bold;
+            color: #2E86AB;
+        }
+
+        .company-info h1 {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .company-info p { font-size: 11px; opacity: 0.9; }
+
+        .header-right {
+            text-align: left;
+            position: relative;
+            z-index: 2;
+        }
+
+        .invoice-title {
+            font-size: 30px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .invoice-number {
+            font-family: monospace;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 6px 14px;
+            border-radius: 8px;
+            display: inline-block;
+            direction: ltr;
+        }
+
+        .invoice-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .meta-section { padding: 20px 30px; }
+        .meta-section:first-child { border-left: 1px solid #e9ecef; }
+
+        .meta-section h3 {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: normal;
+        }
+
+        .meta-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .meta-item .label { color: #95a5a6; }
+        .meta-item .value { color: #2c3e50; font-weight: 500; }
+
+        .items-section { padding: 0; }
+
+        .items-table { width: 100%; border-collapse: collapse; }
+        .items-table thead { background: #f8f9fa; }
+
+        .items-table th {
+            padding: 14px 15px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #495057;
+            border-bottom: 2px solid #dee2e6;
+            text-align: right;
+        }
+
+        .items-table th:first-child { text-align: center; width: 50px; }
+        .items-table th:nth-child(3),
+        .items-table th:nth-child(4),
+        .items-table th:nth-child(5) { text-align: center; }
+
+        .items-table td {
+            padding: 14px 15px;
+            border-bottom: 1px solid #f1f3f5;
+            font-size: 13px;
+        }
+
+        .items-table td:first-child {
+            text-align: center;
+            color: #95a5a6;
+            font-weight: bold;
+        }
+
+        .items-table td:nth-child(3),
+        .items-table td:nth-child(4),
+        .items-table td:nth-child(5) { text-align: center; }
+
+        .items-table tbody tr:hover { background: #f8f9fa; }
+
+        .product-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 2px;
+        }
+
+        .product-code {
+            font-size: 10px;
+            color: #95a5a6;
+            font-family: monospace;
+            direction: ltr;
+        }
+
+        .price-cell {
+            font-family: monospace;
+            direction: rtl;
+        }
+
+        .total-cell {
+            font-weight: bold;
+            color: #2E86AB;
+        }
+
+        .summary-section {
+            padding: 25px 30px;
+            background: #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 30px;
+        }
+
+        .notes-box {
+            flex: 1;
+            background: white;
+            border-radius: 10px;
+            padding: 15px 20px;
+            border-right: 3px solid #2E86AB;
+        }
+
+        .notes-box h4 {
+            font-size: 12px;
+            color: #2E86AB;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .notes-box p { font-size: 12px; color: #666; line-height: 1.8; }
+
+        .totals-box {
+            width: 320px;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            font-size: 13px;
+        }
+
+        .total-row .label { color: #7f8c8d; }
+        .total-row .value {
+            font-family: monospace;
+            direction: rtl;
+            font-weight: 500;
+        }
+
+        .total-row.discount .value { color: #e74c3c; }
+        .total-row.tax .value { color: #f39c12; }
+
+        .total-row.final {
+            border-top: 2px dashed #dee2e6;
+            margin-top: 8px;
+            padding-top: 15px;
+            font-size: 16px;
+        }
+
+        .total-row.final .label { color: #2c3e50; font-weight: bold; }
+        .total-row.final .value {
+            color: #2E86AB;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .bank-section {
+            padding: 20px 30px;
+            background: #fff9e6;
+            border-top: 2px dashed #f39c12;
+            border-bottom: 2px dashed #f39c12;
+        }
+
+        .bank-section h4 {
+            font-size: 12px;
+            color: #b8860b;
+            margin-bottom: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .bank-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px 30px;
+        }
+
+        .bank-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+        }
+
+        .bank-item .label { color: #999; }
+        .bank-item .value {
+            color: #2c3e50;
+            font-weight: 500;
+            font-family: monospace;
+            direction: ltr;
+        }
+
+        .signature-section {
+            padding: 30px 40px;
+            display: flex;
+            justify-content: space-between;
+            gap: 40px;
+        }
+
+        .signature-box { flex: 1; text-align: center; }
+        .signature-box .title {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 60px;
+        }
+
+        .signature-line {
+            border-top: 2px dashed #dee2e6;
+            padding-top: 8px;
+            font-size: 11px;
+            color: #95a5a6;
+        }
+
+        .invoice-footer {
+            padding: 20px 40px;
+            background: #2c3e50;
+            color: #bdc3c7;
+            text-align: center;
+            font-size: 11px;
+        }
+
+        .invoice-footer .thanks {
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .invoice-footer .company-footer-info {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .invoice-footer .company-footer-info span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .print-actions {
+            position: fixed;
+            bottom: 25px; left: 25px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            transition: all 0.2s;
+        }
+
+        .btn-primary { background: #2E86AB; color: white; }
+        .btn-primary:hover { background: #1e3a5f; transform: translateY(-2px); }
+        .btn-secondary { background: white; color: #2c3e50; }
+        .btn-secondary:hover { background: #f8f9fa; transform: translateY(-2px); }
+
+        @media print {
+            body { background: white; padding: 0; font-size: 11px; }
+            .invoice-container { box-shadow: none; border-radius: 0; max-width: 100%; }
+            .print-actions { display: none !important; }
+            .items-table tbody tr:hover { background: transparent; }
+            @page { size: A4; margin: 10mm; }
+        }
+
+        @media (max-width: 768px) {
+            .invoice-header { flex-direction: column; text-align: center; gap: 20px; }
+            .invoice-meta { grid-template-columns: 1fr; }
+            .meta-section:first-child { border-left: none; border-bottom: 1px solid #e9ecef; }
+            .summary-section { flex-direction: column; }
+            .totals-box { width: 100%; }
+            .bank-grid { grid-template-columns: 1fr; }
+            .signature-section { flex-direction: column; gap: 20px; }
+            .print-actions { bottom: 15px; left: 15px; right: 15px; }
+            .btn { flex: 1; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="invoice-container">
+
+    <!-- ═══ هدر ═══ -->
+    <div class="invoice-header">
+        <div class="header-left">
+            <div class="logo-box">
+                {% if company.logo_path %}
+                    <img src="{% static company.logo_path %}" alt="{{ company.name }}"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <span class="logo-placeholder" style="display: none;">D</span>
+                {% else %}
+                    <span class="logo-placeholder">D</span>
+                {% endif %}
+            </div>
+            <div class="company-info">
+                <h1>{{ company.name }}</h1>
+                <p>{{ company.slogan }}</p>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <div class="invoice-title">فاکتور فروش</div>
+            <div class="invoice-number">{{ invoice.number }}</div>
+        </div>
+    </div>
+
+    <!-- ═══ اطلاعات مشتری و فاکتور ═══ -->
+    <div class="invoice-meta">
+        <div class="meta-section">
+            <h3>مشخصات خریدار</h3>
+            <div class="meta-item">
+                <span class="label">نام:</span>
+                <span class="value">{{ invoice.customer.name }}</span>
+            </div>
+            {% if invoice.customer.national_id %}
+            <div class="meta-item">
+                <span class="label">کد ملی:</span>
+                <span class="value" style="font-family: monospace; direction: ltr;">{{ invoice.customer.national_id|fa_digits }}</span>
+            </div>
+            {% endif %}
+            <div class="meta-item">
+                <span class="label">شماره تماس:</span>
+                <span class="value" style="font-family: monospace; direction: ltr;">{{ invoice.customer.mobile|fa_digits }}</span>
+            </div>
+            {% if invoice.customer.email %}
+            <div class="meta-item">
+                <span class="label">ایمیل:</span>
+                <span class="value" style="font-family: monospace; direction: ltr;">{{ invoice.customer.email }}</span>
+            </div>
+            {% endif %}
+            {% if invoice.customer.address %}
+            <div class="meta-item">
+                <span class="label">آدرس:</span>
+                <span class="value" style="max-width: 200px; text-align: left; font-size: 11px;">{{ invoice.customer.address }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="meta-section">
+            <h3>مشخصات فاکتور</h3>
+            <div class="meta-item">
+                <span class="label">تاریخ صدور:</span>
+                <span class="value" style="direction: rtl;">{{ invoice.issue_date|date:"Y/m/d"|fa_digits }}</span>
+            </div>
+            {% if invoice.due_date %}
+            <div class="meta-item">
+                <span class="label">مهلت پرداخت:</span>
+                <span class="value" style="direction: rtl;">{{ invoice.due_date|date:"Y/m/d"|fa_digits }}</span>
+            </div>
+            {% endif %}
+            <div class="meta-item">
+                <span class="label">نوع پرداخت:</span>
+                <span class="value">{{ invoice.get_payment_type_display }}</span>
+            </div>
+            <div class="meta-item">
+                <span class="label">وضعیت:</span>
+                <span class="value">{{ invoice.get_status_display }}</span>
+            </div>
+            <div class="meta-item">
+                <span class="label">تعداد اقلام:</span>
+                <span class="value">{{ items|length|fa_num }} قلم</span>
+            </div>
+            {% if invoice.created_by %}
+            <div class="meta-item">
+                <span class="label">صادرکننده:</span>
+                <span class="value">{{ invoice.created_by.get_full_name|default:invoice.created_by.username }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ═══ جدول اقلام ═══ -->
+    <div class="items-section">
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>شرح کالا / خدمات</th>
+                    <th>تعداد</th>
+                    <th>قیمت واحد</th>
+                    <th>جمع کل</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ forloop.counter|fa_num }}</td>
+                    <td>
+                        <div class="product-name">{{ item.product.name }}</div>
+                        {% if item.product.code %}
+                        <div class="product-code">{{ item.product.code }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ item.quantity|fa_num }}
+                        {% if item.product.unit %}<span style="font-size: 11px; color: #95a5a6;">{{ item.product.unit }}</span>{% endif %}
+                    </td>
+                    <td class="price-cell">{{ item.unit_price|fa_num }}</td>
+                    <td class="price-cell total-cell">{{ item.total_price|fa_num }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ═══ جمع کل ═══ -->
+    <div class="summary-section">
+        <div class="notes-box">
+            <h4>📝 توضیحات</h4>
+            {% if invoice.notes %}
+                <p>{{ invoice.notes }}</p>
+            {% else %}
+                <p>شرایط پرداخت: طبق توافق طرفین</p>
+            {% endif %}
+        </div>
+
+        <div class="totals-box">
+            <div class="total-row">
+                <span class="label">جمع اقلام:</span>
+                <span class="value">{{ invoice.subtotal|fa_num }} تومان</span>
+            </div>
+
+            {% if invoice.discount %}
+            <div class="total-row discount">
+                <span class="label">تخفیف:</span>
+                <span class="value">- {{ invoice.discount|fa_num }} تومان</span>
+            </div>
+            {% endif %}
+
+            {% if invoice.tax_amount %}
+            <div class="total-row tax">
+                <span class="label">مالیات ({{ invoice.tax_percent|floatformat:0|fa_digits }}٪):</span>
+                <span class="value">+ {{ invoice.tax_amount|fa_num }} تومان</span>
+            </div>
+            {% endif %}
+
+            <div class="total-row final">
+                <span class="label">مبلغ قابل پرداخت:</span>
+                <span class="value">{{ invoice.total|fa_num }} تومان</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ اطلاعات بانکی ═══ -->
+    {% if company.bank_info %}
+    <div class="bank-section">
+        <h4>🏦 اطلاعات حساب بانکی</h4>
+        <div class="bank-grid">
+            <div class="bank-item">
+                <span class="label">بانک:</span>
+                <span class="value">{{ company.bank_info.bank_name }}</span>
+            </div>
+            <div class="bank-item">
+                <span class="label">صاحب حساب:</span>
+                <span class="value">{{ company.bank_info.account_holder }}</span>
+            </div>
+            <div class="bank-item">
+                <span class="label">شماره حساب:</span>
+                <span class="value">{{ company.bank_info.account_number }}</span>
+            </div>
+            <div class="bank-item">
+                <span class="label">شماره کارت:</span>
+                <span class="value">{{ company.bank_info.card_number }}</span>
+            </div>
+            <div class="bank-item" style="grid-column: 1 / -1;">
+                <span class="label">شماره شبا:</span>
+                <span class="value">{{ company.bank_info.iban }}</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ═══ امضا ═══ -->
+    <div class="signature-section">
+        <div class="signature-box">
+            <div class="title">مهر و امضای فروشنده</div>
+            <div class="signature-line">{{ company.name }}</div>
+        </div>
+        <div class="signature-box">
+            <div class="title">مهر و امضای خریدار</div>
+            <div class="signature-line">{{ invoice.customer.name }}</div>
+        </div>
+    </div>
+
+    <!-- ═══ فوتر ═══ -->
+    <div class="invoice-footer">
+        <div class="thanks">از خرید شما سپاسگزاریم 🌹</div>
+        <div class="company-footer-info">
+            <span>📍 {{ company.address }}</span>
+            <span>📞 {{ company.phone }}</span>
+            <span>✉️ {{ company.email }}</span>
+            <span>🌐 {{ company.website }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ دکمه‌های عملیات ═══ -->
+<div class="print-actions">
+    <button class="btn btn-primary" onclick="window.print()">
+        🖨 چاپ / ذخیره PDF
+    </button>
+    <a href="{% url 'sales:detail' invoice.pk %}" class="btn btn-secondary">
+        ← بازگشت
+    </a>
+</div>
+
+<!-- ═══ کیبورد شورتکات ═══ -->
+<script>
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+            e.preventDefault();
+            window.print();
+        }
+        if (e.key === 'Escape') {
+            window.history.back();
+        }
+    });
+</script>
+
+</body>
+</html>

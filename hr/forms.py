@@ -1,0 +1,298 @@
+import jdatetime
+from datetime import datetime
+from django import forms
+from django.db import models
+from django.utils import timezone
+from .models import Employee, Task, LeaveRequest, Attendance
+
+
+class EmployeeForm(forms.ModelForm):
+    birth_date = forms.CharField(
+        required=False, label='تاریخ تولد',
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
+            'data-jdp': '', 'data-jdp-time': 'false',
+            'placeholder': '۱۳۷۰/۰۱/۱۵', 'autocomplete': 'off',
+        })
+    )
+    hire_date = forms.CharField(
+        required=False, label='تاریخ استخدام',
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
+            'data-jdp': '', 'data-jdp-time': 'false',
+            'placeholder': '۱۴۰۵/۰۱/۱۵', 'autocomplete': 'off',
+        })
+    )
+
+    class Meta:
+        model = Employee
+        fields = ['user', 'first_name', 'last_name', 'national_id', 'mobile',
+                  'email', 'address', 'birth_date', 'position', 'contract_type',
+                  'hire_date', 'salary', 'is_active', 'notes']
+        widgets = {
+            'user': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
+            'first_name': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': 'نام'}),
+            'last_name': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': 'نام خانوادگی'}),
+            'national_id': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': '1234567890', 'dir': 'ltr'}),
+            'mobile': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': '09121234567', 'dir': 'ltr'}),
+            'email': forms.EmailInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'dir': 'ltr'}),
+            'address': forms.Textarea(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'rows': 2}),
+            'position': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
+            'contract_type': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
+            'salary': forms.NumberInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': '0', 'dir': 'ltr', 'min': 0}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500'}),
+            'notes': forms.Textarea(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from django.contrib.auth.models import User
+        if self.instance and self.instance.pk:
+            self.fields['user'].queryset = User.objects.filter(
+                models.Q(employee_profile__isnull=True) |
+                models.Q(employee_profile=self.instance)
+            )
+        else:
+            self.fields['user'].queryset = User.objects.filter(employee_profile__isnull=True)
+
+        if self.instance and self.instance.pk:
+            if self.instance.birth_date:
+                j = jdatetime.date.fromgregorian(date=self.instance.birth_date)
+                self.initial['birth_date'] = j.strftime('%Y/%m/%d')
+            if self.instance.hire_date:
+                j = jdatetime.date.fromgregorian(date=self.instance.hire_date)
+                self.initial['hire_date'] = j.strftime('%Y/%m/%d')
+        else:
+            j = jdatetime.date.fromgregorian(date=timezone.now().date())
+            self.initial['hire_date'] = j.strftime('%Y/%m/%d')
+
+    def _to_en(self, value):
+        persian = '۰۱۲۳۴۵۶۷۸۹'
+        arabic = '٠١٢٣٤٥٦٧٨٩'
+        for i, (p, a) in enumerate(zip(persian, arabic)):
+            value = value.replace(p, str(i)).replace(a, str(i))
+        return value
+
+    def _parse_jalali(self, value):
+        if not value:
+            return None
+        if hasattr(value, 'year'):
+            return value
+        value = self._to_en(str(value).strip()).replace('-', '/').replace('.', '/')
+        if ' ' in value:
+            value = value.split(' ', 1)[0]
+        try:
+            y, m, d = map(int, value.split('/'))
+            return jdatetime.date(y, m, d).togregorian()
+        except (ValueError, AttributeError):
+            raise forms.ValidationError('تاریخ معتبر نیست')
+
+    def clean_birth_date(self):
+        return self._parse_jalali(self.cleaned_data.get('birth_date'))
+
+    def clean_hire_date(self):
+        result = self._parse_jalali(self.cleaned_data.get('hire_date'))
+        return result or timezone.now().date()
+
+
+class TaskForm(forms.ModelForm):
+    due_date = forms.CharField(
+        required=False, label='مهلت انجام',
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
+            'data-jdp': '', 'data-jdp-time': 'false',
+            'placeholder': '۱۴۰۵/۰۱/۱۵', 'autocomplete': 'off',
+        })
+    )
+
+    class Meta:
+        model = Task
+        fields = ['title', 'description', 'assigned_to', 'priority',
+                  'status', 'due_date']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': 'عنوان وظیفه'}),
+            'description': forms.Textarea(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'rows': 4, 'placeholder': 'توضیحات وظیفه'}),
+            'assigned_to': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
+            'priority': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
+            'status': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['assigned_to'].queryset = Employee.objects.filter(is_active=True)
+
+        if self.instance and self.instance.pk and self.instance.due_date:
+            j = jdatetime.date.fromgregorian(date=self.instance.due_date)
+            self.initial['due_date'] = j.strftime('%Y/%m/%d')
+
+    def _to_en(self, value):
+        persian = '۰۱۲۳۴۵۶۷۸۹'
+        arabic = '٠١٢٣٤٥٦٧٨٩'
+        for i, (p, a) in enumerate(zip(persian, arabic)):
+            value = value.replace(p, str(i)).replace(a, str(i))
+        return value
+
+    def clean_due_date(self):
+        value = self.cleaned_data.get('due_date')
+        if not value:
+            return None
+        if hasattr(value, 'year'):
+            return value
+        value = self._to_en(str(value).strip()).replace('-', '/').replace('.', '/')
+        if ' ' in value:
+            value = value.split(' ', 1)[0]
+        try:
+            y, m, d = map(int, value.split('/'))
+            return jdatetime.date(y, m, d).togregorian()
+        except (ValueError, AttributeError):
+            raise forms.ValidationError('تاریخ معتبر نیست')
+
+
+class LeaveRequestForm(forms.ModelForm):
+    start_date = forms.CharField(
+        label='از تاریخ',
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
+            'data-jdp': '', 'data-jdp-time': 'false',
+            'placeholder': '۱۴۰۵/۰۱/۱۵', 'autocomplete': 'off',
+        })
+    )
+    end_date = forms.CharField(
+        label='تا تاریخ',
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
+            'data-jdp': '', 'data-jdp-time': 'false',
+            'placeholder': '۱۴۰۵/۰۱/۱۵', 'autocomplete': 'off',
+        })
+    )
+
+    class Meta:
+        model = LeaveRequest
+        fields = ['employee', 'leave_type', 'start_date', 'end_date', 'reason']
+        widgets = {
+            'employee': forms.Select(attrs={
+                'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'
+            }),
+            'leave_type': forms.Select(attrs={
+                'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'
+            }),
+            'reason': forms.Textarea(attrs={
+                'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
+                'rows': 3, 'placeholder': 'علت مرخصی'
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['employee'].queryset = Employee.objects.filter(is_active=True)
+
+        if self.instance and self.instance.pk:
+            if self.instance.start_date:
+                j = jdatetime.date.fromgregorian(date=self.instance.start_date)
+                self.initial['start_date'] = j.strftime('%Y/%m/%d')
+            if self.instance.end_date:
+                j = jdatetime.date.fromgregorian(date=self.instance.end_date)
+                self.initial['end_date'] = j.strftime('%Y/%m/%d')
+
+    def _to_en(self, value):
+        persian = '۰۱۲۳۴۵۶۷۸۹'
+        arabic = '٠١٢٣٤٥٦٧٨٩'
+        for i, (p, a) in enumerate(zip(persian, arabic)):
+            value = value.replace(p, str(i)).replace(a, str(i))
+        return value
+
+    def _parse_jalali(self, value):
+        if not value:
+            return None
+        if hasattr(value, 'year'):
+            return value
+        value = self._to_en(str(value).strip()).replace('-', '/').replace('.', '/')
+        if ' ' in value:
+            value = value.split(' ', 1)[0]
+        try:
+            y, m, d = map(int, value.split('/'))
+            return jdatetime.date(y, m, d).togregorian()
+        except (ValueError, AttributeError):
+            raise forms.ValidationError('تاریخ معتبر نیست')
+
+    def clean_start_date(self):
+        return self._parse_jalali(self.cleaned_data.get('start_date'))
+
+    def clean_end_date(self):
+        return self._parse_jalali(self.cleaned_data.get('end_date'))
+
+    def clean(self):
+        cleaned = super().clean()
+        start = cleaned.get('start_date')
+        end = cleaned.get('end_date')
+        if start and end and end < start:
+            raise forms.ValidationError('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد')
+        return cleaned
+
+
+class AttendanceForm(forms.ModelForm):
+    date = forms.CharField(
+        label='تاریخ',
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
+            'data-jdp': '', 'data-jdp-time': 'false',
+            'placeholder': '۱۴۰۵/۰۱/۱۵', 'autocomplete': 'off',
+        })
+    )
+
+    class Meta:
+        model = Attendance
+        fields = ['employee', 'date', 'check_in', 'check_out', 'status', 'notes']
+        widgets = {
+            'employee': forms.Select(attrs={
+                'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'
+            }),
+            'check_in': forms.TimeInput(attrs={
+                'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
+                'type': 'time'
+            }),
+            'check_out': forms.TimeInput(attrs={
+                'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
+                'type': 'time'
+            }),
+            'status': forms.Select(attrs={
+                'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
+                'rows': 2
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['employee'].queryset = Employee.objects.filter(is_active=True)
+
+        if self.instance and self.instance.pk and self.instance.date:
+            j = jdatetime.date.fromgregorian(date=self.instance.date)
+            self.initial['date'] = j.strftime('%Y/%m/%d')
+        else:
+            j = jdatetime.date.fromgregorian(date=timezone.now().date())
+            self.initial['date'] = j.strftime('%Y/%m/%d')
+
+    def _to_en(self, value):
+        persian = '۰۱۲۳۴۵۶۷۸۹'
+        arabic = '٠١٢٣٤٥٦٧٨٩'
+        for i, (p, a) in enumerate(zip(persian, arabic)):
+            value = value.replace(p, str(i)).replace(a, str(i))
+        return value
+
+    def clean_date(self):
+        value = self.cleaned_data.get('date')
+        if not value:
+            return timezone.now().date()
+        if hasattr(value, 'year'):
+            return value
+        value = self._to_en(str(value).strip()).replace('-', '/').replace('.', '/')
+        if ' ' in value:
+            value = value.split(' ', 1)[0]
+        try:
+            y, m, d = map(int, value.split('/'))
+            return jdatetime.date(y, m, d).togregorian()
+        except (ValueError, AttributeError):
+            raise forms.ValidationError('تاریخ معتبر نیست')

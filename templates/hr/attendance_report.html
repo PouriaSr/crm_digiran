@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}گزارش ماهانه حضور{% endblock %}
+
+{% block content %}
+
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">گزارش ماهانه حضور</h1>
+        <p class="text-sm text-gray-500 mt-1" dir="ltr">
+            {{ month_start|date:"Y/m/d" }} — {{ month_end|date:"Y/m/d" }}
+        </p>
+    </div>
+    <a href="{% url 'hr:attendance_list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت</a>
+</div>
+
+<div class="bg-white rounded-xl p-4 shadow-sm mb-6">
+    <form method="get" class="flex flex-wrap gap-3 items-center">
+        <label class="text-sm font-medium text-gray-700">انتخاب ماه:</label>
+        <input type="text" name="month" value="{{ selected_month }}"
+               placeholder="۱۴۰۵/۰۷"
+               class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+               style="width: 140px;">
+        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">نمایش</button>
+        <span class="text-xs text-gray-400">فرمت: سال/ماه (مثلاً ۱۴۰۵/۰۷)</span>
+    </form>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+    <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b border-gray-200">
+            <tr class="text-gray-600">
+                <th class="text-right px-4 py-3 font-medium">کارمند</th>
+                <th class="text-right px-4 py-3 font-medium">سمت</th>
+                <th class="text-right px-4 py-3 font-medium">روزهای ثبت‌شده</th>
+                <th class="text-right px-4 py-3 font-medium">حاضر</th>
+                <th class="text-right px-4 py-3 font-medium">تاخیر</th>
+                <th class="text-right px-4 py-3 font-medium">غایب</th>
+                <th class="text-right px-4 py-3 font-medium">مرخصی</th>
+                <th class="text-right px-4 py-3 font-medium">جمع ساعت</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for row in report %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 text-right">
+                    <a href="{% url 'hr:employee_detail' row.employee.pk %}" class="font-medium text-gray-800 hover:text-blue-600">
+                        {{ row.employee.full_name }}
+                    </a>
+                </td>
+                <td class="px-4 py-3 text-right text-xs text-gray-600">{{ row.employee.get_position_display }}</td>
+                <td class="px-4 py-3 text-right font-bold">{{ row.total_days }}</td>
+                <td class="px-4 py-3 text-right text-green-600 font-bold">{{ row.present }}</td>
+                <td class="px-4 py-3 text-right text-yellow-600">{{ row.late }}</td>
+                <td class="px-4 py-3 text-right text-red-600">{{ row.absent }}</td>
+                <td class="px-4 py-3 text-right text-blue-600">{{ row.leave }}</td>
+                <td class="px-4 py-3 text-right font-mono text-xs">{{ row.total_hours }} ساعت</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="text-center py-12 text-gray-400">کارمندی یافت نشد</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

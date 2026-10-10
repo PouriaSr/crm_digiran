@@ -1,0 +1,518 @@
+{% extends 'base.html' %}
+{% load fa_numbers %}
+
+{% block title %}داشبورد{% endblock %}
+
+{% block content %}
+
+<!-- ═══ خوش‌آمد + دکمه Excel ═══ -->
+<div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">
+            سلام {{ request.user.get_full_name|default:request.user.username }}، روز کاری خوبی داشته باشی 👋
+        </h1>
+        <p class="text-sm text-gray-500 mt-1">{{ today|fa_date }} — خلاصه عملکرد سازمان شما</p>
+    </div>
+
+        {% if 'dashboard.export' in user_permissions %}
+    <a href="{% url 'dashboard:export_excel' %}?from_date={{ from_date_jalali }}&to_date={{ to_date_jalali }}"
+       class="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 text-sm font-medium shadow-sm">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        دانلود Excel
+    </a>
+    {% endif %}
+</div>
+
+<!-- ═══ فیلتر تاریخ ═══ -->
+<div class="bg-white rounded-xl p-4 shadow-sm mb-6">
+    <form method="get" class="flex flex-wrap gap-3 items-center">
+        <div class="flex items-center gap-2">
+            <label class="text-sm font-medium text-gray-700 whitespace-nowrap">از تاریخ:</label>
+            <input type="text" name="from_date" value="{{ from_date_jalali }}"
+                   data-jdp data-jdp-time="false"
+                   placeholder="۱۴۰۴/۰۱/۰۱"
+                   class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                   style="width: 140px;">
+        </div>
+
+        <div class="flex items-center gap-2">
+            <label class="text-sm font-medium text-gray-700 whitespace-nowrap">تا تاریخ:</label>
+            <input type="text" name="to_date" value="{{ to_date_jalali }}"
+                   data-jdp data-jdp-time="false"
+                   placeholder="۱۴۰۵/۱۲/۲۹"
+                   class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                   style="width: 140px;">
+        </div>
+
+        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+            </svg>
+            اعمال فیلتر
+        </button>
+
+        {% if from_date_jalali or to_date_jalali %}
+        <a href="{% url 'dashboard:home' %}" class="text-xs text-red-600 hover:underline">پاک کردن فیلتر</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- ═══ KPIهای اصلی ═══ -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+    <!-- فروش این ماه -->
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-blue-500">
+        <div class="flex justify-between items-start">
+            <div class="flex-1">
+                <div class="text-gray-500 text-sm text-right">فروش این ماه</div>
+                <div class="text-2xl font-bold text-gray-800 mt-2 text-right">
+                    {{ kpis.sales_this_month|fa_num }}
+                </div>
+                <div class="text-xs text-gray-400 mt-1 text-right">تومان</div>
+
+                {% if kpis.sales_change > 0 %}
+                    <div class="text-xs text-green-600 mt-2 text-right">↑ {{ kpis.sales_change|fa_digits }}٪ ماهانه</div>
+                {% elif kpis.sales_change < 0 %}
+                    <div class="text-xs text-red-600 mt-2 text-right">↓ {{ kpis.sales_change|fa_digits }}٪ ماهانه</div>
+                {% else %}
+                    <div class="text-xs text-gray-400 mt-2 text-right">— بدون تغییر</div>
+                {% endif %}
+
+                {% if kpis.yearly_change > 0 %}
+                    <div class="text-xs text-green-600 mt-1 text-right">↑ {{ kpis.yearly_change|fa_digits }}٪ سالانه</div>
+                {% elif kpis.yearly_change < 0 %}
+                    <div class="text-xs text-red-600 mt-1 text-right">↓ {{ kpis.yearly_change|fa_digits }}٪ سالانه</div>
+                {% endif %}
+            </div>
+            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- مشتریان -->
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-green-500">
+        <div class="flex justify-between items-start">
+            <div class="flex-1">
+                <div class="text-gray-500 text-sm text-right">مشتریان</div>
+                <div class="text-2xl font-bold text-gray-800 mt-2 text-right">{{ kpis.total_customers|fa_num }}</div>
+                <div class="text-xs text-gray-400 mt-2 text-right">
+                    {{ kpis.active_customers|fa_num }} فعال | {{ kpis.lead_customers|fa_num }} لید
+                </div>
+            </div>
+            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- تماس‌ها -->
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-yellow-500">
+        <div class="flex justify-between items-start">
+            <div class="flex-1">
+                <div class="text-gray-500 text-sm text-right">تماس‌ها</div>
+                <div class="text-2xl font-bold text-gray-800 mt-2 text-right">{{ kpis.total_calls|fa_num }}</div>
+                <div class="text-xs text-gray-400 mt-2 text-right">{{ kpis.calls_this_month|fa_num }} تماس این ماه شمسی</div>
+            </div>
+            <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- فاکتورها -->
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-purple-500">
+        <div class="flex justify-between items-start">
+            <div class="flex-1">
+                <div class="text-gray-500 text-sm text-right">فاکتورها</div>
+                <div class="text-2xl font-bold text-gray-800 mt-2 text-right">{{ kpis.total_invoices|fa_num }}</div>
+                <div class="text-xs text-gray-400 mt-2 text-right">مجموع فروش: {{ kpis.total_sales|fa_num }}</div>
+            </div>
+            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ هشدارها ═══ -->
+{% if kpis.overdue_tasks > 0 or kpis.pending_leaves > 0 %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    {% if kpis.overdue_tasks > 0 %}
+    <div class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+        <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <span class="text-red-600 text-xl">⚠️</span>
+        </div>
+        <div class="flex-1">
+            <div class="font-bold text-red-800 text-sm text-right">وظایف عقب‌افتاده</div>
+            <div class="text-xs text-red-600 text-right">{{ kpis.overdue_tasks|fa_num }} وظیفه از مهلت گذشته</div>
+        </div>
+        <a href="{% url 'hr:task_list' %}" class="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700">مشاهده</a>
+    </div>
+    {% endif %}
+
+    {% if kpis.pending_leaves > 0 %}
+    <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-center gap-3">
+        <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <span class="text-yellow-600 text-xl">🏖</span>
+        </div>
+        <div class="flex-1">
+            <div class="font-bold text-yellow-800 text-sm text-right">درخواست‌های مرخصی</div>
+            <div class="text-xs text-yellow-600 text-right">{{ kpis.pending_leaves|fa_num }} درخواست در انتظار تایید</div>
+        </div>
+        <a href="{% url 'hr:leave_list' %}" class="text-xs px-3 py-1.5 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">بررسی</a>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- ═══ ردیف: روند فروش + مقایسه ═══ -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+    <div class="lg:col-span-2 bg-white rounded-xl p-5 shadow-sm">
+        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-sm">📈</span>
+            روند فروش بازه اخیر
+        </h3>
+        <div id="salesChart"></div>
+    </div>
+
+    <div class="bg-white rounded-xl p-5 shadow-sm">
+        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span class="w-7 h-7 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm">📅</span>
+            مقایسه فروش
+        </h3>
+        <div id="compareChart"></div>
+    </div>
+</div>
+
+<!-- ═══ ردیف: منابع + قیف + وضعیت تماس‌ها ═══ -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-xl p-5 shadow-sm">
+        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span class="w-7 h-7 bg-green-100 text-green-600 rounded-lg flex items-center justify-center text-sm">🎯</span>
+            منابع جذب مشتری
+        </h3>
+        <div id="sourceChart"></div>
+    </div>
+
+    <div class="bg-white rounded-xl p-5 shadow-sm">
+        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span class="w-7 h-7 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center text-sm">🔻</span>
+            قیف فروش
+        </h3>
+        <div id="funnelChart"></div>
+    </div>
+
+    <div class="bg-white rounded-xl p-5 shadow-sm">
+        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span class="w-7 h-7 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center text-sm">📞</span>
+            وضعیت تماس‌ها
+        </h3>
+        <div id="callStatusChart"></div>
+    </div>
+</div>
+
+<!-- ═══ ردیف: عملکرد کارمندان ═══ -->
+{% if employee_perf %}
+<div class="bg-white rounded-xl p-5 shadow-sm mb-6">
+    <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+        <span class="w-7 h-7 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm">⭐</span>
+        عملکرد کارمندان فروش
+    </h3>
+    <div id="employeeChart"></div>
+</div>
+{% endif %}
+
+<!-- ═══ ردیف: پرفروش‌ترین کالاها + برترین کارمندان ═══ -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+    <div class="bg-white rounded-xl p-5 shadow-sm">
+        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span class="w-7 h-7 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center text-sm">🏆</span>
+            پرفروش‌ترین کالاها
+        </h3>
+
+        {% if top_products %}
+        <div class="space-y-3">
+            {% for p in top_products %}
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0
+                            {% if forloop.counter == 1 %}bg-yellow-100 text-yellow-700
+                            {% elif forloop.counter == 2 %}bg-gray-200 text-gray-700
+                            {% elif forloop.counter == 3 %}bg-orange-100 text-orange-700
+                            {% else %}bg-gray-50 text-gray-500{% endif %}">
+                    {{ forloop.counter|fa_num }}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-gray-800 truncate text-right">{{ p.name }}</div>
+                    <div class="text-xs text-gray-400 text-right">
+                        {{ p.qty|fa_num }} فروش | {{ p.revenue|fa_num }} تومان
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-8 text-gray-400 text-sm">هنوز فروشی ثبت نشده</div>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-xl p-5 shadow-sm">
+        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-sm">👥</span>
+            برترین کارمندان فروش
+        </h3>
+
+        {% if employee_perf %}
+        <div class="space-y-3">
+            {% for e in employee_perf|slice:":5" %}
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0
+                            {% if forloop.counter == 1 %}bg-purple-100 text-purple-600
+                            {% else %}bg-blue-100 text-blue-600{% endif %}">
+                    {{ e.name|first|upper }}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-gray-800 text-right">{{ e.name }}</div>
+                    <div class="text-xs text-gray-400 text-right">{{ e.invoice_count|fa_num }} فاکتور صادر شده</div>
+                </div>
+                <div class="text-sm font-bold text-blue-600 whitespace-nowrap">
+                    {{ e.total_sales|fa_num }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-8 text-gray-400 text-sm">هنوز فروشی توسط کارمندان ثبت نشده</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ═══ داده‌های JSON امن برای چارت‌ها ═══ -->
+{{ compare_data|json_script:"compare-data" }}
+{{ funnel|json_script:"funnel-data" }}
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+// ═══════════════════════════════════════════
+// توابع کمکی اعداد فارسی
+// ═══════════════════════════════════════════
+function toFaNum(val) {
+    if (val === null || val === undefined) return '۰';
+    return val.toString()
+        .replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+        .replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+}
+
+function toFaSimple(val) {
+    if (val === null || val === undefined) return '۰';
+    return val.toString().replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+}
+
+// ═══ خواندن داده‌های JSON امن ═══
+const compareData = JSON.parse(document.getElementById('compare-data').textContent);
+const funnelData = JSON.parse(document.getElementById('funnel-data').textContent);
+
+// ═══ تنظیمات مشترک محور Y برای نمودارهای فروش ═══
+var yaxisMillion = {
+    title: {
+        text: 'میلیون تومان',
+        style: { fontFamily: 'Vazirmatn', fontSize: '12px', color: '#666' }
+    },
+    labels: {
+        formatter: function (val) {
+            if (val === 0) return '۰';
+            return toFaNum((val / 1000000).toFixed(0));
+        },
+        style: { fontFamily: 'Vazirmatn' }
+    }
+};
+
+
+// ═══════════════════════════════════════════
+// روند فروش ۱۲ ماه
+// ═══════════════════════════════════════════
+new ApexCharts(document.querySelector("#salesChart"), {
+    chart: { type: 'area', height: 300, fontFamily: 'Vazirmatn', toolbar: { show: false } },
+    series: [{ name: 'فروش', data: {{ sales_data_json|safe }} }],
+    xaxis: {
+        categories: {{ sales_labels_json|safe }},
+        labels: {
+            style: { fontFamily: 'Vazirmatn', fontSize: '11px' },
+            formatter: function (val) { return toFaSimple(val); }
+        }
+    },
+    yaxis: yaxisMillion,
+    colors: ['#2E86AB'],
+    stroke: { curve: 'smooth', width: 3 },
+    fill: { type: 'gradient', gradient: { opacityFrom: 0.5, opacityTo: 0.05 } },
+    dataLabels: { enabled: false },
+    tooltip: {
+        y: { formatter: function (val) { return toFaNum(val) + ' تومان'; } }
+    }
+}).render();
+
+
+// ═══════════════════════════════════════════
+// مقایسه فروش
+// ═══════════════════════════════════════════
+new ApexCharts(document.querySelector("#compareChart"), {
+    chart: { type: 'bar', height: 300, fontFamily: 'Vazirmatn', toolbar: { show: false } },
+    series: [{ name: 'فروش', data: compareData.values }],
+    xaxis: {
+        categories: compareData.labels,
+        labels: {
+            style: { fontFamily: 'Vazirmatn', fontSize: '11px' },
+            formatter: function (val) { return toFaSimple(val); }
+        }
+    },
+    yaxis: yaxisMillion,
+    colors: ['#8b5cf6'],
+    plotOptions: {
+        bar: { columnWidth: '50%', borderRadius: 6, distributed: true }
+    },
+    dataLabels: {
+        enabled: true,
+        offsetY: -25,
+        formatter: function (val) {
+            if (val === 0) return '۰';
+            return toFaNum((val / 1000000).toFixed(1));
+        },
+        style: { fontFamily: 'Vazirmatn', fontSize: '13px', fontWeight: 'bold', colors: ['#333'] }
+    },
+    legend: { show: false },
+    tooltip: {
+        y: { formatter: function (val) { return toFaNum(val) + ' تومان'; } }
+    }
+}).render();
+
+
+// ═══════════════════════════════════════════
+// منابع جذب مشتری
+// ═══════════════════════════════════════════
+new ApexCharts(document.querySelector("#sourceChart"), {
+    chart: { type: 'donut', height: 280, fontFamily: 'Vazirmatn' },
+    series: {{ source_data_json|safe }},
+    labels: {{ source_labels_json|safe }},
+    colors: ['#3b82f6', '#f59e0b', '#10b981', '#6b7280', '#ef4444', '#8b5cf6'],
+    legend: { position: 'bottom', fontFamily: 'Vazirmatn', fontSize: '12px' },
+    dataLabels: {
+        enabled: true,
+        formatter: function (val, opts) {
+            return toFaNum(opts.w.globals.series[opts.seriesIndex]);
+        },
+        style: { fontFamily: 'Vazirmatn' }
+    },
+    plotOptions: { pie: { donut: { size: '60%' } } }
+}).render();
+
+
+// ═══════════════════════════════════════════
+// قیف فروش
+// ═══════════════════════════════════════════
+new ApexCharts(document.querySelector("#funnelChart"), {
+    chart: { type: 'bar', height: 280, fontFamily: 'Vazirmatn', toolbar: { show: false } },
+    series: [{ name: 'تعداد', data: funnelData.values }],
+    xaxis: {
+        categories: funnelData.labels,
+        labels: { style: { fontFamily: 'Vazirmatn', fontSize: '10px' } }
+    },
+    yaxis: {
+        title: {
+            text: 'تعداد',
+            style: { fontFamily: 'Vazirmatn', fontSize: '12px', color: '#666' }
+        },
+        labels: {
+            formatter: function (val) { return val === 0 ? '۰' : toFaNum(val); },
+            style: { fontFamily: 'Vazirmatn' }
+        }
+    },
+    colors: ['#8b5cf6'],
+    plotOptions: { bar: { distributed: true, columnWidth: '60%', borderRadius: 6 } },
+    dataLabels: {
+        enabled: true,
+        formatter: function (val) { return toFaNum(val); },
+        style: { fontFamily: 'Vazirmatn' }
+    },
+    legend: { show: false }
+}).render();
+
+
+// ═══════════════════════════════════════════
+// وضعیت تماس‌ها
+// ═══════════════════════════════════════════
+new ApexCharts(document.querySelector("#callStatusChart"), {
+    chart: { type: 'pie', height: 280, fontFamily: 'Vazirmatn' },
+    series: {{ call_status_data_json|safe }},
+    labels: {{ call_status_labels_json|safe }},
+    colors: ['#10b981', '#ef4444', '#f59e0b', '#3b82f6', '#6b7280'],
+    legend: { position: 'bottom', fontFamily: 'Vazirmatn', fontSize: '12px' },
+    dataLabels: {
+        enabled: true,
+        formatter: function (val, opts) {
+            return toFaNum(opts.w.globals.series[opts.seriesIndex]);
+        },
+        style: { fontFamily: 'Vazirmatn' }
+    }
+}).render();
+
+
+// ═══════════════════════════════════════════
+// عملکرد کارمندان فروش
+// ═══════════════════════════════════════════
+{% if employee_perf %}
+new ApexCharts(document.querySelector("#employeeChart"), {
+    chart: { type: 'bar', height: 350, fontFamily: 'Vazirmatn', toolbar: { show: false } },
+    series: [{ name: 'فروش', data: {{ emp_chart_values_json|safe }} }],
+    xaxis: {
+        categories: {{ emp_chart_names_json|safe }},
+        labels: {
+            style: { fontFamily: 'Vazirmatn', fontSize: '12px' },
+            formatter: function (val) { return toFaSimple(val); }
+        }
+    },
+    yaxis: yaxisMillion,
+    colors: ['#2E86AB'],
+    plotOptions: {
+        bar: {
+            horizontal: false,
+            columnWidth: '50%',
+            borderRadius: 6,
+            dataLabels: { position: 'top' }
+        }
+    },
+    dataLabels: {
+        enabled: true,
+        offsetY: -25,
+        formatter: function (val) {
+            if (val === 0) return '۰';
+            return toFaNum((val / 1000000).toFixed(1));
+        },
+        style: { fontFamily: 'Vazirmatn', fontSize: '13px', fontWeight: 'bold', colors: ['#2E86AB'] }
+    },
+    tooltip: {
+        y: { formatter: function (val) { return toFaNum(val) + ' تومان'; } }
+    }
+}).render();
+{% endif %}
+</script>
+{% endblock %}
