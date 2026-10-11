@@ -191,6 +191,7 @@ def save_valid_customers(rows, user):
 # قالب
 # ═══════════════════════════════════════════════════
 def build_customer_template():
+    """قالب Excel مشتریان — با شیت راهنمای مقادیر مجاز"""
     headers = list(CUSTOMER_HEADER_MAP.keys())
     sample = [
         'علی رضایی', '09121234567', 'ali@example.com', '1234567890',
@@ -198,12 +199,49 @@ def build_customer_template():
         'تهران، خیابان ولیعصر', 'مشتری نمونه',
     ]
     notes = [
-        '📌 راهنمای تکمیل:',
+        'راهنمای تکمیل:',
         '• ستون‌های «نام» و «شماره تماس» الزامی هستند.',
-        '• وضعیت: بالقوه (لید) / بالفعل (مشتری) / غیرفعال / از دست رفته',
-        '• منبع: وبسایت / معرفی مشتریان / شبکه‌های اجتماعی / تماس مستقیم / تبلیغات / سایر',
-        '• تاریخ تولد به شمسی، مثل: ۱۳۷۸/۱۲/۱۶',
+        '• تاریخ تولد به شمسی، مثل: ۱۳۷۸/۱۲/۱۶ (یا خالی بگذارید)',
         '• کارمند مسئول: نام کاربری یا نام کامل (اختیاری)',
         '• شماره تماس یا کد ملی تکراری در سیستم رد می‌شود.',
+        '• برای دیدن مقادیر مجاز دقیق، به شیت «راهنما» بروید.',
     ]
-    return build_xlsx(headers, sample_row=sample, notes=notes)
+
+    # ─── لیست کارمندان فعال ───
+    from django.contrib.auth.models import User
+    staff_users = (
+        User.objects
+        .filter(is_active=True, is_staff=True)
+        .order_by('first_name', 'last_name', 'username')
+    )
+    staff_items = []
+    for u in staff_users:
+        full_name = f"{u.first_name} {u.last_name}".strip() or u.username
+        staff_items.append((u.username, f"{full_name} — {u.email or '—'}"))
+    if not staff_items:
+        staff_items.append(('—', 'هیچ کارمند فعالی تعریف نشده'))
+
+    choices_sections = [
+        {
+            'title': 'وضعیت مشتری (ستون: وضعیت)',
+            'column': 'وضعیت',
+            'items': list(Customer.STATUS_CHOICES),
+        },
+        {
+            'title': 'منبع جذب (ستون: منبع)',
+            'column': 'منبع',
+            'items': list(Customer.SOURCE_CHOICES),
+        },
+        {
+            'title': 'کارمندان فعال (ستون: کارمند مسئول)',
+            'column': 'کارمند مسئول',
+            'items': staff_items,
+        },
+    ]
+
+    return build_xlsx(
+        headers,
+        sample_row=sample,
+        notes=notes,
+        choices_sections=choices_sections,
+    )

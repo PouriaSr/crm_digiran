@@ -174,18 +174,45 @@ def save_valid_products(rows, user):
 
 
 def build_product_template():
+    """قالب Excel کالاها — با شیت راهنمای مقادیر مجاز"""
     headers = list(PRODUCT_HEADER_MAP.keys())
     sample = [
         'گوشی موبایل', 'MOB-001', 'mobile', 'عدد',
         '10000000', '8000000', '10', '2', 'توضیحات نمونه',
     ]
     notes = [
-        '📌 راهنمای تکمیل:',
+        'راهنمای تکمیل:',
         '• ستون‌های «نام کالا»، «کد کالا» و «دسته‌بندی» الزامی هستند.',
-        '• دسته‌بندی: نام دقیق یا slug دسته (مثلاً mobile یا موبایل).',
-        '• واحد: عدد / کیلوگرم / گرم / متر / لیتر / بسته / جعبه',
+        '• دسته‌بندی: نام یا slug دسته — به شیت «راهنما» مراجعه کنید.',
         '• اعداد می‌توانند با کاما یا فارسی باشند.',
         '• موجودی اولیه به‌عنوان یک StockMovement «ورود» ثبت می‌شود.',
         '• کد کالا باید یکتا باشد و در سیستم ثبت نشده باشد.',
     ]
-    return build_xlsx(headers, sample_row=sample, notes=notes)
+
+    # ─── لیست دسته‌بندی‌های فعال ───
+    categories = Category.objects.filter(is_active=True).order_by('order', 'name')
+    cat_items = []
+    for c in categories:
+        cat_items.append((c.slug, f"{c.icon} {c.name}"))
+    if not cat_items:
+        cat_items.append(('—', 'هیچ دسته‌بندی فعالی تعریف نشده'))
+
+    choices_sections = [
+        {
+            'title': 'دسته‌بندی (ستون: دسته‌بندی)',
+            'column': 'دسته‌بندی',
+            'items': cat_items,
+        },
+        {
+            'title': 'واحد کالا (ستون: واحد)',
+            'column': 'واحد',
+            'items': list(Product.UNIT_CHOICES),
+        },
+    ]
+
+    return build_xlsx(
+        headers,
+        sample_row=sample,
+        notes=notes,
+        choices_sections=choices_sections,
+    )

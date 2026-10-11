@@ -6,7 +6,7 @@ from datetime import date, datetime
 
 import jdatetime
 from openpyxl import Workbook, load_workbook
-from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 
 # ═══════════════════════════════════════════════════
@@ -101,8 +101,6 @@ def read_xlsx(file_obj, header_map, max_rows=5000):
     max_rows: سقف تعداد ردیف داده
 
     Returns: (data_rows, missing_headers)
-        - data_rows: [{'row_num', '<field>': value, ...}, ...]
-        - missing_headers: [str, ...]
     """
     try:
         wb = load_workbook(file_obj, data_only=True, read_only=True)
@@ -136,7 +134,6 @@ def read_xlsx(file_obj, header_map, max_rows=5000):
     for row_num, row in enumerate(all_rows[1:], start=2):
         if len(data_rows) >= max_rows:
             break
-        # رد کردن ردیف‌های کاملاً خالی
         if all(c is None or str(c).strip() == '' for c in row):
             continue
         record = {'_row_num': row_num}
@@ -148,81 +145,193 @@ def read_xlsx(file_obj, header_map, max_rows=5000):
 
 
 # ═══════════════════════════════════════════════════
-# ساخت فایل Excel (template)
+# ساخت فایل Excel (template) — نسخه‌ی ۲
 # ═══════════════════════════════════════════════════
+# استایل‌های مشترک (توی ماژول)
+_HEADER_FONT = Font(bold=True, color='FFFFFF', size=12)
+_HEADER_FILL = PatternFill('solid', fgColor='2E86AB')
+_CENTER = Alignment(horizontal='center', vertical='center', wrap_text=True)
+_RIGHT = Alignment(horizontal='right', vertical='center', wrap_text=True)
+_THIN = Side(style='thin', color='D0E3F1')
+_BORDER = Border(left=_THIN, right=_THIN, top=_THIN, bottom=_THIN)
 
-def build_xlsx(headers, sample_row=None, notes=None):
+
+def _style_header(ws, row_num, n_cols):
+    """اعمال استایل روی ردیف هدر"""
+    for col_idx in range(1, n_cols + 1):
+        cell = ws.cell(row=row_num, column=col_idx)
+        cell.font = _HEADER_FONT
+        cell.fill = _HEADER_FILL
+        cell.alignment = _CENTER
+    ws.row_dimensions[row_num].height = 28
+
+
+def _write_guide_section(ws, title, lines):
+    """نوشتن یک بخش راهنما با عنوان"""
+    # ردیف خالی جداکننده
+    ws.append([])
+
+    # عنوان بخش
+    ws.append([title])
+    title_row = ws.max_row
+    title_cell = ws.cell(row=title_row, column=1)
+    title_cell.font = Font(bold=True, color='FFFFFF', size=12)
+    title_cell.fill = PatternFill('solid', fgColor='4A90C2')
+    title_cell.alignment = _CENTER
+    title_cell.border = _BORDER
+    ws.row_dimensions[title_row].height = 26
+
+    # خطوط راهنما
+    for line in lines:
+        ws.append([line])
+        row = ws.max_row
+        cell = ws.cell(row=row, column=1)
+        cell.alignment = _RIGHT
+        cell.font = Font(size=11, color='1F3A5F')
+        cell.fill = PatternFill('solid', fgColor='F0F7FF')
+        cell.border = _BORDER
+        # ارتفاع بر اساس طول متن
+        ws.row_dimensions[row].height = 22
+
+
+def build_xlsx(headers, sample_row=None, notes=None, choices_sections=None):
     """
-    ساخت فایل xlsx برای دانلود قالب.
+    ساخت فایل xlsx برای دانلود قالب — نسخه‌ی ۲ با شیت راهنما.
 
-    headers: [str, ...]
-    sample_row: [value, ...] (اختیاری)
-    notes: [str, ...] (اختیاری) — راهنما در پایین فایل
+    headers:         [str, ...]  — ستون‌های شیت اصلی
+    sample_row:      [value, ...] — ردیف نمونه (اختیاری)
+    notes:           [str, ...]  — راهنمای کوتاه در پایین شیت اصلی
+    choices_sections: [           — بخش‌های راهنمای دقیق در شیت «راهنما»
+        {
+            'title': 'وضعیت مشتری',
+            'column': 'وضعیت',
+            'items': [
+                ('بالقوه (لید)', 'مشتری علاقه‌مند که هنوز خرید نکرده'),
+                ...
+            ]
+        },
+        ...
+    ]
     Returns: bytes
     """
-    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-
     wb = Workbook()
+
+    # ═══════════════════════════════════════════════════════
+    # شیت اصلی: قالب
+    # ═══════════════════════════════════════════════════════
     ws = wb.active
     ws.title = 'قالب'
     ws.sheet_view.rightToLeft = True
 
-    header_font = Font(bold=True, color='FFFFFF', size=12)
-    header_fill = PatternFill('solid', fgColor='2E86AB')
-    center = Alignment(horizontal='center', vertical='center', wrap_text=True)
-
-    # ─── ردیف هدرها ───
     ws.append(headers)
-    for cell in ws[1]:
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = center
-    ws.row_dimensions[1].height = 28
+    _style_header(ws, 1, len(headers))
 
-    # ─── ردیف نمونه ───
     if sample_row:
         ws.append(sample_row)
         for cell in ws[2]:
-            cell.alignment = Alignment(
-                horizontal='right', vertical='center', wrap_text=False,
-            )
+            cell.alignment = Alignment(horizontal='right', vertical='center')
             cell.font = Font(color='666666', italic=True, size=11)
 
-    # ─── راهنماها (راست‌چین) ───
     if notes:
-        ws.append([])  # ردیف خالی جداکننده
-
-        # عنوان راهنما
-        guide_header_row = ws.max_row + 1
-        ws.append(['راهنمای تکمیل قالب'])
-        header_cell = ws.cell(row=guide_header_row, column=1)
-        header_cell.font = Font(bold=True, color='2E86AB', size=12)
-        header_cell.alignment = Alignment(horizontal='right', vertical='center')
-
-        # محتوای راهنما — هر خط راست‌چین با wrap
-        guide_fill = PatternFill('solid', fgColor='F0F7FF')
-        thin = Side(style='thin', color='D0E3F1')
-        guide_border = Border(left=thin, right=thin, top=thin, bottom=thin)
-
+        ws.append([])
         for note in notes:
             ws.append([note])
             row = ws.max_row
             cell = ws.cell(row=row, column=1)
-            cell.alignment = Alignment(
-                horizontal='right',
-                vertical='center',
-                wrap_text=True,
-                indent=0,
-            )
+            cell.alignment = _RIGHT
             cell.font = Font(size=11, color='1F3A5F')
-            cell.fill = guide_fill
-            cell.border = guide_border
+            cell.fill = PatternFill('solid', fgColor='F0F7FF')
+            cell.border = _BORDER
             ws.row_dimensions[row].height = 22
 
-    # ─── عرض ستون‌ها ───
     for col_idx in range(1, len(headers) + 1):
         letter = ws.cell(row=1, column=col_idx).column_letter
         ws.column_dimensions[letter].width = 22
+
+    # ═══════════════════════════════════════════════════════
+    # شیت راهنما (اگه choices_sections داده شده)
+    # ═══════════════════════════════════════════════════════
+    if choices_sections:
+        wg = wb.create_sheet('راهنما')
+        wg.sheet_view.rightToLeft = True
+
+        # عنوان بزرگ
+        wg.append(['راهنمای مقادیر مجاز'])
+        row = wg.max_row
+        cell = wg.cell(row=row, column=1)
+        cell.font = Font(bold=True, size=16, color='FFFFFF')
+        cell.fill = PatternFill('solid', fgColor='2E86AB')
+        cell.alignment = _CENTER
+        wg.merge_cells(start_row=row, start_column=1, end_row=row, end_column=3)
+        wg.row_dimensions[row].height = 36
+
+        # زیرنویس
+        wg.append(['این فایل شامل مقادیر مجاز برای پر کردن دقیق قالب است.'])
+        row = wg.max_row
+        wg.merge_cells(start_row=row, start_column=1, end_row=row, end_column=3)
+        cell = wg.cell(row=row, column=1)
+        cell.font = Font(size=11, italic=True, color='666666')
+        cell.alignment = _CENTER
+        wg.row_dimensions[row].height = 20
+
+        wg.append([])
+
+        # هر بخش
+        for section in choices_sections:
+            title = section.get('title', '')
+            column = section.get('column', '')
+            items = section.get('items', [])
+
+            # عنوان بخش
+            wg.append([f'■ {title}'])
+            row = wg.max_row
+            wg.merge_cells(start_row=row, start_column=1, end_row=row, end_column=3)
+            cell = wg.cell(row=row, column=1)
+            cell.font = Font(bold=True, color='FFFFFF', size=12)
+            cell.fill = PatternFill('solid', fgColor='4A90C2')
+            cell.alignment = _RIGHT
+            cell.border = _BORDER
+            wg.row_dimensions[row].height = 26
+
+            # هدر جدول
+            wg.append(['مقدار (کپی کنید)', 'توضیح', 'ستون مربوطه'])
+            row = wg.max_row
+            for col_idx in (1, 2, 3):
+                c = wg.cell(row=row, column=col_idx)
+                c.font = Font(bold=True, color='2E86AB', size=11)
+                c.fill = PatternFill('solid', fgColor='E6F2FA')
+                c.alignment = _CENTER
+                c.border = _BORDER
+            wg.row_dimensions[row].height = 22
+
+            # اقلام
+            for value, desc in items:
+                wg.append([value, desc, column])
+                row = wg.max_row
+                # ستون مقدار (کپی‌کردنی — با فونت monospace)
+                c1 = wg.cell(row=row, column=1)
+                c1.font = Font(size=11, bold=True, color='1F3A5F')
+                c1.alignment = _RIGHT
+                c1.fill = PatternFill('solid', fgColor='FFF9E6')
+                c1.border = _BORDER
+                # توضیح
+                c2 = wg.cell(row=row, column=2)
+                c2.font = Font(size=11, color='333333')
+                c2.alignment = _RIGHT
+                c2.border = _BORDER
+                # ستون
+                c3 = wg.cell(row=row, column=3)
+                c3.font = Font(size=11, color='666666')
+                c3.alignment = _CENTER
+                c3.border = _BORDER
+                wg.row_dimensions[row].height = 22
+
+            wg.append([])
+
+        # تنظیم عرض ستون‌ها
+        wg.column_dimensions['A'].width = 30
+        wg.column_dimensions['B'].width = 55
+        wg.column_dimensions['C'].width = 18
 
     buf = io.BytesIO()
     wb.save(buf)
