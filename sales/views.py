@@ -115,7 +115,12 @@ def invoice_list(request):
 @login_required
 @require_permission('invoices.view')
 def invoice_detail(request, pk):
-    invoice = get_object_or_404(Invoice.objects.select_related('customer'), pk=pk)
+    invoice = get_object_or_404(
+        Invoice.objects
+        .select_related('customer', 'created_by')
+        .prefetch_related('logs__user'),
+        pk=pk,
+    )
     items = invoice.items.select_related('product')
     return render(request, 'sales/detail.html', {
         'invoice': invoice,

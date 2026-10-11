@@ -136,3 +136,72 @@ class InvoiceItem(models.Model):
 
         self.total_price = self.quantity * self.unit_price
         super().save(*args, **kwargs)
+
+
+class InvoiceLog(models.Model):
+    """لاگ تغییرات فاکتور — Audit Trail (۷.۹)"""
+
+    ACTION_CREATED = 'created'
+    ACTION_STATUS = 'status'
+    ACTION_UPDATED = 'updated'
+    ACTION_ITEM_ADDED = 'item_added'
+    ACTION_ITEM_CHANGED = 'item_changed'
+    ACTION_ITEM_REMOVED = 'item_removed'
+
+    ACTION_CHOICES = [
+        (ACTION_CREATED, 'صدور فاکتور'),
+        (ACTION_STATUS, 'تغییر وضعیت'),
+        (ACTION_UPDATED, 'ویرایش اطلاعات'),
+        (ACTION_ITEM_ADDED, 'افزودن قلم'),
+        (ACTION_ITEM_CHANGED, 'ویرایش قلم'),
+        (ACTION_ITEM_REMOVED, 'حذف قلم'),
+    ]
+
+    ACTION_ICONS = {
+        ACTION_CREATED: '📄',
+        ACTION_STATUS: '🔄',
+        ACTION_UPDATED: '✏️',
+        ACTION_ITEM_ADDED: '➕',
+        ACTION_ITEM_CHANGED: '📝',
+        ACTION_ITEM_REMOVED: '➖',
+    }
+
+    invoice = models.ForeignKey(
+        Invoice, on_delete=models.CASCADE,
+        related_name='logs', verbose_name='فاکتور'
+    )
+    user = models.ForeignKey(
+        User, on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='invoice_logs', verbose_name='کاربر'
+    )
+    action = models.CharField(
+        'رویداد', max_length=20,
+        choices=ACTION_CHOICES, db_index=True,
+    )
+    field_name = models.CharField('نام فیلد', max_length=50, blank=True)
+    old_value = models.TextField('مقدار قبلی', blank=True)
+    new_value = models.TextField('مقدار جدید', blank=True)
+    description = models.TextField('توضیحات')
+    created_at = models.DateTimeField('تاریخ ثبت', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'لاگ فاکتور'
+        verbose_name_plural = 'لاگ‌های فاکتور'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['invoice', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.invoice.number} — {self.get_action_display()}'
+
+    @property
+    def user_display(self):
+        if not self.user:
+            return 'سیستم'
+        return self.user.get_full_name() or self.user.username
+
+    @property
+    def icon(self):
+        return self.ACTION_ICONS.get(self.action, '•')

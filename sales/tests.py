@@ -1,5 +1,5 @@
 """
-تست‌های sales — Signal، شماره فاکتور شمسی، calculate_totals
+تست‌های sales — Signal، شماره فاکتور شمسی، calculate_totals، و ۷.۹ Audit Trail
 """
 import jdatetime
 from django.test import TestCase
@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 
 from customers.models import Customer
 from products.models import Product, Category
-from .models import Invoice, InvoiceItem
+from .models import Invoice, InvoiceItem, InvoiceLog
 
 
 # ═══════════════════════════════════════════════════════════
@@ -101,7 +101,6 @@ class InvoiceTotalsSignalTest(TestCase):
         InvoiceItem.objects.create(invoice=inv, product=self.p1, quantity=2, unit_price=100000)
         InvoiceItem.objects.create(invoice=inv, product=self.p2, quantity=1, unit_price=200000)
         inv.refresh_from_db()
-        # ۲×۱۰۰k + ۱×۲۰۰k = ۴۰۰k
         self.assertEqual(inv.subtotal, 400000)
         self.assertEqual(inv.tax_amount, 36000)
         self.assertEqual(inv.total, 436000)
@@ -111,7 +110,6 @@ class InvoiceTotalsSignalTest(TestCase):
         inv = self._make_invoice(discount=50000)
         InvoiceItem.objects.create(invoice=inv, product=self.p1, quantity=2, unit_price=100000)
         inv.refresh_from_db()
-        # ۲۰۰k - ۵۰k = ۱۵۰k → مالیات ۱۳.۵k → کل ۱۶۳.۵k
         self.assertEqual(inv.subtotal, 200000)
         self.assertEqual(inv.tax_amount, 13500)
         self.assertEqual(inv.total, 163500)
@@ -125,7 +123,6 @@ class InvoiceTotalsSignalTest(TestCase):
         inv.refresh_from_db()
         self.assertEqual(inv.subtotal, 200000)
 
-        # تغییر تعداد
         item.quantity = 5
         item.save()
         inv.refresh_from_db()
@@ -139,7 +136,6 @@ class InvoiceTotalsSignalTest(TestCase):
         inv.refresh_from_db()
         self.assertEqual(inv.subtotal, 400000)
 
-        # حذف قلم دوم
         item2.delete()
         inv.refresh_from_db()
         self.assertEqual(inv.subtotal, 200000)
@@ -165,7 +161,6 @@ class InvoiceTotalsSignalTest(TestCase):
     def test_tax_rounding(self):
         """رند کردن مالیات — int() استفاده می‌شه نه round()"""
         inv = self._make_invoice()
-        # ۹٪ از ۱۰۰,۰۰۱ = ۹,۰۰۰.۰۹ → int = ۹,۰۰۰
         InvoiceItem.objects.create(invoice=inv, product=self.p1, quantity=1, unit_price=100001)
         inv.refresh_from_db()
         self.assertEqual(inv.tax_amount, 9000)
@@ -228,7 +223,7 @@ class CalculateTotalsMethodTest(TestCase):
         inv = Invoice.objects.create(customer=self.customer)
         InvoiceItem.objects.create(invoice=inv, product=self.product, quantity=1, unit_price=100000)
         result = inv.calculate_totals()
-        self.assertEqual(result, 109000)  # ۱۰۰k + ۹٪
+        self.assertEqual(result, 109000)
 
     def test_calculate_totals_handles_empty(self):
         """فاکتور خالی → صفر"""
@@ -270,3 +265,174 @@ class InvoicePropertiesTest(TestCase):
         InvoiceItem.objects.create(invoice=inv, product=p, quantity=1, unit_price=1000)
         InvoiceItem.objects.create(invoice=inv, product=p, quantity=1, unit_price=1000)
         self.assertEqual(inv.items_count, 2)
+
+
+# ═══════════════════════════════════════════════════════════
+# ۷.۹ — تست Audit Trail
+# ═══════════════════════════════════════════════════════════
+from crm.middleware import _thread_locals
+
+
+class InvoiceLogTest(TestCase):
+    """تست‌های Audit Trail — فاز ۷.۹"""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user('logger', password='t123456')
+        cls.customer = Customer.objects.create(name='م', mobile='09120000100')
+        cls.category = Category.objects.create(name='د', slug='log-cat')
+        cls.product = Product.objects.create(
+            name='کالای لاگ', code='LOG-1', category=cls.category,
+            price=100000, stock=100,
+        )
+
+    def test_created_log(self):
+        """ایجاد فاکتور → یک لاگ created"""
+        invoice = Invoice.objects.create(customer=self.customer)
+        logs = InvoiceLog.objects.filter(invoice=invoice)
+        self.assertEqual(logs.count(), 1)
+        log = logs.first()
+        self.assertEqual(log.action, InvoiceLog.ACTION_CREATED)
+        self.assertIn(invoice.number, log.description)
+
+    def test_status_change_log(self):
+        """تغییر وضعیت → لاگ status"""
+        invoice = Invoice.objects.create(customer=self.customer, status='draft')
+        InvoiceLog.objects.all().delete()
+
+        invoice.status = 'issued'
+        invoice.save()
+
+        log = InvoiceLog.objects.filter(
+            invoice=invoice, action=InvoiceLog.ACTION_STATUS
+        ).first()
+        self.assertIsNotNone(log)
+        self.assertEqual(log.field_name, 'status')
+        self.assertIn('پیش‌نویس', log.description)
+        self.assertIn('صادر شده', log.description)
+
+    def test_discount_change_log(self):
+        """تغییر تخفیف → لاگ updated"""
+        invoice = Invoice.objects.create(customer=self.customer)
+        InvoiceLog.objects.all().delete()
+
+        invoice.discount = 50000
+        invoice.save()
+
+        log = InvoiceLog.objects.filter(
+            invoice=invoice, field_name='discount'
+        ).first()
+        self.assertIsNotNone(log)
+        self.assertEqual(log.action, InvoiceLog.ACTION_UPDATED)
+
+    def test_payment_type_change_log(self):
+        """تغییر نوع پرداخت → لاگ با display"""
+        invoice = Invoice.objects.create(customer=self.customer, payment_type='cash')
+        InvoiceLog.objects.all().delete()
+
+        invoice.payment_type = 'cheque'
+        invoice.save()
+
+        log = InvoiceLog.objects.filter(
+            invoice=invoice, field_name='payment_type'
+        ).first()
+        self.assertIsNotNone(log)
+        self.assertIn('نقدی', log.description)
+        self.assertIn('چکی', log.description)
+
+    def test_item_added_log(self):
+        """افزودن قلم → لاگ item_added"""
+        invoice = Invoice.objects.create(customer=self.customer)
+        InvoiceLog.objects.all().delete()
+
+        InvoiceItem.objects.create(
+            invoice=invoice, product=self.product,
+            quantity=3, unit_price=100000,
+        )
+
+        log = InvoiceLog.objects.filter(
+            invoice=invoice, action=InvoiceLog.ACTION_ITEM_ADDED
+        ).first()
+        self.assertIsNotNone(log)
+        self.assertIn('کالای لاگ', log.description)
+        self.assertIn('3', log.description)
+
+    def test_item_changed_log(self):
+        """ویرایش قلم → لاگ item_changed"""
+        invoice = Invoice.objects.create(customer=self.customer)
+        item = InvoiceItem.objects.create(
+            invoice=invoice, product=self.product,
+            quantity=2, unit_price=100000,
+        )
+        InvoiceLog.objects.all().delete()
+
+        item.quantity = 5
+        item.save()
+
+        log = InvoiceLog.objects.filter(
+            invoice=invoice, action=InvoiceLog.ACTION_ITEM_CHANGED
+        ).first()
+        self.assertIsNotNone(log)
+        self.assertIn('2', log.description)
+        self.assertIn('5', log.description)
+
+    def test_item_removed_log(self):
+        """حذف قلم → لاگ item_removed"""
+        invoice = Invoice.objects.create(customer=self.customer)
+        item = InvoiceItem.objects.create(
+            invoice=invoice, product=self.product,
+            quantity=3, unit_price=100000,
+        )
+        InvoiceLog.objects.all().delete()
+
+        item.delete()
+
+        log = InvoiceLog.objects.filter(
+            invoice=invoice, action=InvoiceLog.ACTION_ITEM_REMOVED
+        ).first()
+        self.assertIsNotNone(log)
+        self.assertIn('حذف', log.description)
+
+    def test_internal_recalc_no_log(self):
+        """save داخلی (update_fields=internal) لاگ نمی‌سازه"""
+        invoice = Invoice.objects.create(customer=self.customer)
+        InvoiceItem.objects.create(
+            invoice=invoice, product=self.product,
+            quantity=1, unit_price=100000,
+        )
+        InvoiceLog.objects.all().delete()
+
+        invoice.save(update_fields=['subtotal', 'tax_amount', 'total', 'updated_at'])
+
+        self.assertEqual(InvoiceLog.objects.count(), 0)
+
+    def test_no_log_when_no_changes(self):
+        """save بدون تغییر → لاگ نمی‌سازه"""
+        invoice = Invoice.objects.create(customer=self.customer, status='draft')
+        InvoiceLog.objects.all().delete()
+
+        invoice.save()
+
+        self.assertEqual(InvoiceLog.objects.filter(invoice=invoice).count(), 0)
+
+    def test_user_captured_via_thread_local(self):
+        """کاربر از thread-local گرفته می‌شه"""
+        _thread_locals.user = self.user
+        try:
+            invoice = Invoice.objects.create(customer=self.customer)
+            log = InvoiceLog.objects.filter(invoice=invoice).first()
+            self.assertEqual(log.user, self.user)
+        finally:
+            _thread_locals.user = None
+
+    def test_no_user_when_outside_request(self):
+        """خارج از request، user=None"""
+        invoice = Invoice.objects.create(customer=self.customer)
+        log = InvoiceLog.objects.filter(invoice=invoice).first()
+        self.assertIsNone(log.user)
+
+    def test_user_display_fallback(self):
+        """user_display وقتی None باشه → 'سیستم'"""
+        invoice = Invoice.objects.create(customer=self.customer)
+        log = InvoiceLog.objects.filter(invoice=invoice).first()
+        self.assertEqual(log.user_display, 'سیستم')

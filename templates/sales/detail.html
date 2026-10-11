@@ -129,7 +129,13 @@
             {% endif %}
             <div class="flex justify-between">
                 <dt class="text-gray-500">ایجادکننده:</dt>
-                <dd class="text-gray-800">{{ invoice.created_by.get_full_name|default:invoice.created_by.username|default:"—" }}</dd>
+                <dd class="text-gray-800">
+                    {% if invoice.created_by %}
+                        {{ invoice.created_by.get_full_name|default:invoice.created_by.username }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </dd>
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">تاریخ ایجاد:</dt>
@@ -160,6 +166,52 @@
         </dl>
     </div>
 </div>
+
+<!-- ═══ تاریخچه تغییرات (۷.۹) ═══ -->
+{% if invoice.logs.exists %}
+<div class="bg-white rounded-xl shadow-sm overflow-hidden mt-6">
+    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+        <h2 class="font-bold text-gray-700 flex items-center gap-2">
+            <span class="w-7 h-7 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm">📋</span>
+            تاریخچه تغییرات
+            <span class="text-xs text-gray-400 font-normal">({{ invoice.logs.count }} رویداد)</span>
+        </h2>
+    </div>
+    <ul class="divide-y divide-gray-100">
+        {% for log in invoice.logs.all %}
+        <li class="px-6 py-3 hover:bg-gray-50 border-r-4
+            {% if log.action == 'created' %}border-green-500
+            {% elif log.action == 'status' %}border-blue-500
+            {% elif log.action == 'updated' %}border-yellow-500
+            {% elif log.action == 'item_added' %}border-purple-500
+            {% elif log.action == 'item_changed' %}border-indigo-500
+            {% elif log.action == 'item_removed' %}border-red-500
+            {% else %}border-gray-300{% endif %}">
+            <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0
+                    {% if log.action == 'created' %}bg-green-100 text-green-600
+                    {% elif log.action == 'status' %}bg-blue-100 text-blue-600
+                    {% elif log.action == 'updated' %}bg-yellow-100 text-yellow-600
+                    {% elif log.action == 'item_added' %}bg-purple-100 text-purple-600
+                    {% elif log.action == 'item_changed' %}bg-indigo-100 text-indigo-600
+                    {% elif log.action == 'item_removed' %}bg-red-100 text-red-600
+                    {% else %}bg-gray-100 text-gray-600{% endif %}">
+                    {{ log.icon }}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap mb-1">
+                        <span class="font-medium text-gray-800 text-sm">{{ log.get_action_display }}</span>
+                        <span class="text-xs text-gray-400">{{ log.created_at|date:"Y/m/d H:i" }}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{{ log.user_display }}</span>
+                    </div>
+                    <p class="text-gray-700 text-sm">{{ log.description }}</p>
+                </div>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
 
 {% if invoice.notes %}
 <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
