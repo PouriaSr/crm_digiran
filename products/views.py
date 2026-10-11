@@ -306,3 +306,123 @@ def category_delete(request, pk):
         'category': category,
         'products_count': products_count,
     })
+
+
+# ═══════════════════════════════════════════════════════════
+# ورود از Excel — فاز ۷.۸
+# ═══════════════════════════════════════════════════════════
+import uuid
+from django.core.cache import cache
+from django.http import HttpResponse
+
+from crm.excel_utils import ExcelImportError
+from .excel_import import (
+    build_product_template,
+    parse_product_excel,
+    save_valid_products,
+)
+
+
+_CACHE_PREFIX = 'product_excel_import'
+_CACHE_TIMEOUT = 30 * 60
+_MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 MB
+
+
+@login_required
+@require_permission('products.add')
+def product_excel_import(request):
+    """آپلود فایل Excel کالاها"""
+    if request.method == 'POST':
+        file = request.FILES.get('excel_file')
+        if not file:
+            messages.error(request, 'فایلی انتخاب نشده است.')
+            return redirect('products:excel_import')
+
+        if not file.name.lower().endswith(('.xlsx', '.xlsm')):
+            messages.error(request, 'فقط فایل‌های Excel (xlsx) پشتیبانی می‌شوند.')
+            return redirect('products:excel_import')
+
+        if file.size > _MAX_UPLOAD_SIZE:
+            messages.error(request, 'حجم فایل نباید بیش از ۵ مگابایت باشد.')
+            return redirect('products:excel_import')
+
+        try:
+            result = parse_product_excel(file)
+        except ExcelImportError as e:
+            messages.error(request, str(e))
+            return redirect('products:excel_import')
+
+        if result['header_errors']:
+            messages.error(
+                request,
+                'ستون‌های الزامی زیر در فایل یافت نشد: '
+                + '، '.join(result['header_errors']),
+            )
+            return redirect('products:excel_import')
+
+        if not result['rows']:
+            messages.warning(request, 'فایل خالی است یا سطری برای پردازش ندارد.')
+            return redirect('products:excel_import')
+
+        token = str(uuid.uuid4())
+        cache.set(f'{_CACHE_PREFIX}:{token}', result, _CACHE_TIMEOUT)
+        return redirect('products:excel_preview', token=token)
+
+    return render(request, 'products/excel_import.html')
+
+
+@login_required
+@require_permission('products.add')
+def product_excel_preview(request, token):
+    """پیش‌نمایش و تأیید نهایی"""
+    result = cache.get(f'{_CACHE_PREFIX}:{token}')
+    if not result:
+        messages.error(request, 'نشست منقضی شده. لطفاً فایل را دوباره بارگذاری کنید.')
+        return redirect('products:excel_import')
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'cancel':
+            cache.delete(f'{_CACHE_PREFIX}:{token}')
+            messages.info(request, 'ورود داده لغو شد.')
+            return redirect('products:list')
+
+        if action == 'confirm':
+            save_result = save_valid_products(result['rows'], request.user)
+            cache.delete(f'{_CACHE_PREFIX}:{token}')
+
+            if save_result['created']:
+                messages.success(
+                    request,
+                    f"{save_result['created']} کالا با موفقیت اضافه شد.",
+                )
+            if save_result['skipped']:
+                messages.warning(
+                    request,
+                    f"{save_result['skipped']} ردیف نامعتبر یا خطادار نادیده گرفته شد.",
+                )
+            for err in save_result['errors'][:5]:
+                messages.error(request, err)
+
+            return redirect('products:list')
+
+    return render(request, 'products/excel_preview.html', {
+        'result': result,
+        'token': token,
+    })
+
+
+@login_required
+@require_permission('products.add')
+def product_excel_template(request):
+    """دانلود قالب Excel"""
+    content = build_product_template()
+    response = HttpResponse(
+        content,
+        content_type=(
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        ),
+    )
+    response['Content-Disposition'] = 'attachment; filename="products-template.xlsx"'
+    return response

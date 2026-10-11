@@ -17,4 +17,9 @@ urlpatterns = [
     path('categories/new/', views.category_create, name='category_create'),
     path('categories/<int:pk>/edit/', views.category_edit, name='category_edit'),
     path('categories/<int:pk>/delete/', views.category_delete, name='category_delete'),
+
+    # ورود از Excel (۷.۸)
+    path('excel/', views.product_excel_import, name='excel_import'),
+    path('excel/template/', views.product_excel_template, name='excel_template'),
+    path('excel/<uuid:token>/', views.product_excel_preview, name='excel_preview'),
 ]

@@ -14,4 +14,9 @@ urlpatterns = [
     path('<int:pk>/notes/<int:note_pk>/edit/', views.note_edit, name='note_edit'),
     path('<int:pk>/notes/<int:note_pk>/delete/', views.note_delete, name='note_delete'),
     path('<int:pk>/notes/<int:note_pk>/pin/', views.note_toggle_pin, name='note_toggle_pin'),
+
+    # ورود از Excel (۷.۸)
+    path('excel/', views.customer_excel_import, name='excel_import'),
+    path('excel/template/', views.customer_excel_template, name='excel_template'),
+    path('excel/<uuid:token>/', views.customer_excel_preview, name='excel_preview'),
 ]
