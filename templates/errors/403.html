@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}دسترسی غیرمجاز{% endblock %}
+
+{% block content %}
+
+<div class="flex items-center justify-center min-h-[60vh]">
+    <div class="max-w-lg w-full bg-white rounded-2xl shadow-sm p-8 text-center">
+
+        <!-- آیکون -->
+        <div class="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg class="w-12 h-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+        </div>
+
+        <!-- کد خطا -->
+        <div class="text-6xl font-bold text-red-600 mb-2" dir="ltr">403</div>
+
+        <!-- عنوان -->
+        <h1 class="text-2xl font-bold text-gray-800 mb-3">
+            دسترسی غیرمجاز
+        </h1>
+
+        <!-- پیام -->
+        <p class="text-gray-600 text-sm leading-relaxed mb-6">
+            {% if message %}
+                {{ message }}
+            {% else %}
+                شما مجوز دسترسی به این بخش را ندارید.
+                در صورت نیاز به دسترسی، با مدیر سیستم تماس بگیرید.
+            {% endif %}
+        </p>
+
+        <!-- اطلاعات کاربر (فقط برای شفافیت) -->
+        {% if user.is_authenticated %}
+        <div class="bg-gray-50 rounded-lg p-3 mb-6 text-xs text-gray-600 flex items-center justify-center gap-2">
+            <span>👤</span>
+            <span>کاربر: <span class="font-medium text-gray-800">{{ user.get_full_name|default:user.username }}</span></span>
+            {% if user_role_display %}
+            <span class="text-gray-400">|</span>
+            <span>نقش: <span class="font-medium text-gray-800">{{ user_role_display }}</span></span>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- دکمه‌ها -->
+        <div class="flex gap-3 justify-center flex-wrap">
+            <a href="{% url 'dashboard:home' %}"
+               class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+                بازگشت به داشبورد
+            </a>
+            <button onclick="history.back()"
+                    class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+                ← بازگشت به صفحه قبل
+            </button>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

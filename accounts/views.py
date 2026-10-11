@@ -1,22 +1,19 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
+from accounts.permissions import require_permission
 from .forms import UserCreateForm, UserEditForm, UserPasswordForm, get_user_role, ensure_groups
 
 
-def is_admin(user):
-    return user.is_authenticated and user.is_superuser
-
-
-def is_staff_user(user):
-    return user.is_authenticated and (user.is_staff or user.is_superuser)
-
+# ═══════════════════════════════════════════════════════════
+# مدیریت کاربران — همه با require_permission (۸.۱)
+# ═══════════════════════════════════════════════════════════
 
 @login_required
-@user_passes_test(is_admin, login_url='dashboard:home')
+@require_permission('accounts.manage_users')
 def user_list(request):
     # اطمینان از وجود گروه‌ها
     ensure_groups()
@@ -100,7 +97,7 @@ def user_list(request):
 
 
 @login_required
-@user_passes_test(is_admin, login_url='dashboard:home')
+@require_permission('accounts.manage_users')
 def user_create(request):
     if request.method == 'POST':
         form = UserCreateForm(request.POST)
@@ -120,7 +117,7 @@ def user_create(request):
 
 
 @login_required
-@user_passes_test(is_admin, login_url='dashboard:home')
+@require_permission('accounts.manage_users')
 def user_edit(request, pk):
     user = get_object_or_404(User, pk=pk)
 
@@ -154,7 +151,7 @@ def user_edit(request, pk):
 
 
 @login_required
-@user_passes_test(is_admin, login_url='dashboard:home')
+@require_permission('accounts.manage_users')
 def user_password(request, pk):
     user = get_object_or_404(User, pk=pk)
 
@@ -175,7 +172,7 @@ def user_password(request, pk):
 
 
 @login_required
-@user_passes_test(is_admin, login_url='dashboard:home')
+@require_permission('accounts.manage_users')
 def user_delete(request, pk):
     user = get_object_or_404(User, pk=pk)
 
@@ -228,11 +225,11 @@ def user_delete(request, pk):
         messages.success(request, f'کاربر «{username}» حذف شد.')
         return redirect('accounts:user_list')
 
-    return render(request, 'accounts/user_confirm_delete.html', {'user_obj': user})
+    return render(request, 'accounts/confirm_delete.html', {'user_obj': user})
 
 
 @login_required
-@user_passes_test(is_admin, login_url='dashboard:home')
+@require_permission('accounts.manage_users')
 def user_toggle_active(request, pk):
     user = get_object_or_404(User, pk=pk)
 
@@ -245,5 +242,4 @@ def user_toggle_active(request, pk):
         user.save()
         status = 'فعال' if user.is_active else 'غیرفعال'
         messages.success(request, f'کاربر «{user.username}» {status} شد.')
-
     return redirect('accounts:user_list')

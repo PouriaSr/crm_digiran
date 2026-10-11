@@ -7,10 +7,15 @@
 - نگاشت نقش به دسترسی
 - توابع کمکی برای Viewها و تمپلیت‌ها
 """
+import logging
 from functools import wraps
 
 from django.contrib import messages
-from django.shortcuts import redirect
+from django.http import JsonResponse
+from django.shortcuts import redirect, render
+
+
+logger = logging.getLogger('crm.security')
 
 
 # ═══════════════════════════════════════════════════════════
@@ -64,7 +69,7 @@ PERMISSIONS = {
     'products.edit':    [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'products.delete':  [ROLE_ADMIN],
 
-    # ─── دسته‌بندی‌ها ⭐ جدید ───
+    # ─── دسته‌بندی‌ها ───
     'categories.view':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR],
     'categories.manage': [ROLE_ADMIN, ROLE_SALES_MANAGER],
 
@@ -146,33 +151,137 @@ def get_user_permissions(user):
 
 
 # ═══════════════════════════════════════════════════════════
+# توابع داخلی — handling denial (۸.۱)
+# ═══════════════════════════════════════════════════════════
+def _is_ajax(request):
+    """آیا درخواست AJAX/HTMX هست؟"""
+    return (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or request.headers.get('HX-Request') == 'true'
+    )
+
+
+def _log_denied(request, permission_name):
+    """ثبت تلاش غیرمجاز در لاگ امنیتی"""
+    user = getattr(request, 'user', None)
+    username = (
+        user.username if user and user.is_authenticated else 'anonymous'
+    )
+    logger.warning(
+        'Access denied — user=%s permission=%s path=%s method=%s',
+        username,
+        permission_name,
+        request.path,
+        request.method,
+    )
+
+
+def _render_403(request, message=None):
+    """
+    رندر صفحه‌ی 403 با context کامل.
+    مستقیماً response برمی‌گردونه (نه raise) تا در unit test هم کار کنه.
+    """
+    user = getattr(request, 'user', None)
+    user_role_display = (
+        get_user_role_display(user)
+        if user and user.is_authenticated else None
+    )
+    return render(request, 'errors/403.html', {
+        'message': message or 'شما دسترسی به این بخش را ندارید.',
+        'user_role_display': user_role_display,
+    }, status=403)
+
+
+def _handle_denied(request, permission_name, on_denied, redirect_to):
+    """
+    رفتار در صورت رد دسترسی.
+
+    on_denied:
+      - '403'      → صفحه 403 (پیش‌فرض جدید)
+      - 'redirect' → پیام + ریدایرکت به داشبورد (رفتار قدیم)
+    """
+    _log_denied(request, permission_name)
+
+    # AJAX → همیشه JSON
+    if _is_ajax(request):
+        return JsonResponse({
+            'success': False,
+            'error': 'شما دسترسی به این عملیات را ندارید.',
+        }, status=403)
+
+    # redirect (legacy)
+    if on_denied == 'redirect':
+        messages.error(request, 'شما دسترسی به این بخش را ندارید.')
+        return redirect(redirect_to)
+
+    # default → 403
+    return _render_403(request)
+
+
+# ═══════════════════════════════════════════════════════════
 # Decoratorها
 # ═══════════════════════════════════════════════════════════
-def require_roles(*roles, redirect_to='dashboard:home'):
-    """Decorator: کاربر باید یکی از این نقش‌ها رو داشته باشه."""
+def require_roles(*roles, on_denied='403', redirect_to='dashboard:home'):
+    """
+    Decorator: کاربر باید یکی از این نقش‌ها رو داشته باشه.
+
+    پارامترها:
+      - roles: نقش‌های مجاز
+      - on_denied: '403' (پیش‌فرض) یا 'redirect'
+      - redirect_to: URL name در حالت redirect
+    """
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
             if not request.user.is_authenticated:
+                if _is_ajax(request):
+                    return JsonResponse(
+                        {'success': False, 'error': 'لطفاً وارد شوید.'},
+                        status=401,
+                    )
                 return redirect('accounts:login')
+
             if has_role(request.user, *roles):
                 return view_func(request, *args, **kwargs)
-            messages.error(request, 'شما دسترسی به این بخش را ندارید.')
-            return redirect(redirect_to)
+
+            return _handle_denied(
+                request,
+                permission_name=f'roles={roles}',
+                on_denied=on_denied,
+                redirect_to=redirect_to,
+            )
         return wrapper
     return decorator
 
 
-def require_permission(permission_name, redirect_to='dashboard:home'):
-    """Decorator: کاربر باید این دسترسی خاص رو داشته باشه."""
+def require_permission(permission_name, on_denied='403', redirect_to='dashboard:home'):
+    """
+    Decorator: کاربر باید این دسترسی خاص رو داشته باشه.
+
+    پارامترها:
+      - permission_name: نام دسترسی (مثلاً 'customers.view')
+      - on_denied: '403' (پیش‌فرض جدید) یا 'redirect' (رفتار قدیم)
+      - redirect_to: URL name در حالت redirect
+    """
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
             if not request.user.is_authenticated:
+                if _is_ajax(request):
+                    return JsonResponse(
+                        {'success': False, 'error': 'لطفاً وارد شوید.'},
+                        status=401,
+                    )
                 return redirect('accounts:login')
+
             if has_permission(request.user, permission_name):
                 return view_func(request, *args, **kwargs)
-            messages.error(request, 'شما دسترسی به این بخش را ندارید.')
-            return redirect(redirect_to)
+
+            return _handle_denied(
+                request,
+                permission_name=permission_name,
+                on_denied=on_denied,
+                redirect_to=redirect_to,
+            )
         return wrapper
     return decorator

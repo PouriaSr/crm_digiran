@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('dashboard.urls')),
@@ -11,3 +12,9 @@ urlpatterns = [
     path('invoices/', include('sales.urls')),
     path('hr/', include('hr.urls')),
 ]
+
+
+# ═══════════════════════════════════════════════════════════
+# Error handlers — ۸.۱
+# ═══════════════════════════════════════════════════════════
+handler403 = 'crm.views.custom_403_view'

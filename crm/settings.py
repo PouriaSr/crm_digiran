@@ -69,14 +69,16 @@ INSTALLED_APPS = [
 # ═══════════════════════════════════════════════════════════
 # Middleware
 # ═══════════════════════════════════════════════════════════
+# ⚠️ نکته حیاتی: CurrentUserMiddleware باید بعد از AuthenticationMiddleware باشه،
+# وگرنه request.user هنوز ست نشده و thread-local همیشه None می‌مونه.
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'crm.middleware.CurrentUserMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'crm.middleware.CurrentUserMiddleware',          # ← بعد از Auth (fix 8.1)
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
@@ -114,12 +116,9 @@ TEMPLATES = [
 # ═══════════════════════════════════════════════════════════
 # دیتابیس
 # ═══════════════════════════════════════════════════════════
-# در صورت وجود DATABASE_URL از PostgreSQL استفاده می‌کنه،
-# وگرنه به SQLite برمی‌گرده (محیط توسعه)
 DATABASE_URL = os.getenv('DATABASE_URL', '').strip()
 
 if DATABASE_URL and DATABASE_URL.startswith('postgres'):
-    # فرمت: postgres://USER:PASSWORD@HOST:PORT/NAME
     import urllib.parse
     url = urllib.parse.urlparse(DATABASE_URL)
     DATABASES = {
@@ -217,30 +216,24 @@ COMPANY_INFO = {
 # تنظیمات امنیتی Production (فقط وقتی DEBUG=False)
 # ═══════════════════════════════════════════════════════════
 if not DEBUG:
-    # ─── اجباری: SECRET_KEY نباید پیش‌فرض باشه ───
     if SECRET_KEY == 'django-insecure-change-me-in-production':
         raise ValueError(
             'در حالت production، SECRET_KEY باید در .env تنظیم شود. '
             'یک کلید تصادفی بساز: python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"'
         )
 
-    # ─── HTTPS ───
     SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True').lower() == 'true'
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
-    # ─── HSTS ───
-    SECURE_HSTS_SECONDS = 31536000  # 1 سال
+    SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 
-    # ─── سایر ───
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_BROWSER_XSS_FILTER = True
     X_FRAME_OPTIONS = 'DENY'
 
-    # ─── پروکسی ───
-    # اگه پشت Nginx هستی، این‌ها لازمه
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     USE_X_FORWARDED_HOST = True
 
@@ -272,7 +265,7 @@ LOGGING = {
         'file': {
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': LOG_DIR / 'crm.log',
-            'maxBytes': 10 * 1024 * 1024,  # 10 MB
+            'maxBytes': 10 * 1024 * 1024,
             'backupCount': 5,
             'formatter': 'verbose',
         },
@@ -293,6 +286,11 @@ LOGGING = {
             'propagate': False,
         },
         'django.security': {
+            'handlers': ['console', 'file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'crm.security': {
             'handlers': ['console', 'file'],
             'level': 'WARNING',
             'propagate': False,

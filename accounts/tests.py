@@ -115,7 +115,7 @@ class PermissionsHelpersTest(TestCase):
 
 
 # ═══════════════════════════════════════════════════════════
-# تست decoratorها
+# تست decoratorها — ۸.۱: پیش‌فرض جدید = 403
 # ═══════════════════════════════════════════════════════════
 class RequirePermissionDecoratorTest(TestCase):
 
@@ -147,16 +147,28 @@ class RequirePermissionDecoratorTest(TestCase):
         response = my_view(request)
         self.assertEqual(response.status_code, 200)
 
-    def test_blocks_unauthorized_user(self):
+    def test_blocks_unauthorized_user_with_403(self):
+        """پیش‌فرض جدید: 403 (نه redirect)"""
         @require_permission('customers.delete')
         def my_view(request):
             return HttpResponse('ok')
 
         request = self._make_request(self.sales)
         response = my_view(request)
-        self.assertEqual(response.status_code, 302)  # redirect
+        self.assertEqual(response.status_code, 403)
 
-    def test_blocks_anonymous_user(self):
+    def test_blocks_unauthorized_user_with_redirect_option(self):
+        """حالت قدیم هنوز کار می‌کنه (با on_denied='redirect')"""
+        @require_permission('customers.delete', on_denied='redirect')
+        def my_view(request):
+            return HttpResponse('ok')
+
+        request = self._make_request(self.sales)
+        response = my_view(request)
+        self.assertEqual(response.status_code, 302)
+
+    def test_blocks_anonymous_user_redirects_to_login(self):
+        """کاربر ناشناس هنوز به login می‌ره (302)"""
         @require_permission('customers.view')
         def my_view(request):
             return HttpResponse('ok')
@@ -164,6 +176,38 @@ class RequirePermissionDecoratorTest(TestCase):
         request = self._make_request(AnonymousUser())
         response = my_view(request)
         self.assertEqual(response.status_code, 302)
+
+    def test_ajax_unauthorized_returns_401_json(self):
+        """AJAX کاربر ناشناس → 401 JSON"""
+        @require_permission('customers.view')
+        def my_view(request):
+            return HttpResponse('ok')
+
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        request = self.factory.get('/', HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        request.user = AnonymousUser()
+        request.session = {}
+        request._messages = FallbackStorage(request)
+
+        response = my_view(request)
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response['Content-Type'], 'application/json')
+
+    def test_ajax_forbidden_returns_403_json(self):
+        """AJAX کاربر بدون دسترسی → 403 JSON"""
+        @require_permission('customers.delete')
+        def my_view(request):
+            return HttpResponse('ok')
+
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        request = self.factory.get('/', HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        request.user = self.sales
+        request.session = {}
+        request._messages = FallbackStorage(request)
+
+        response = my_view(request)
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response['Content-Type'], 'application/json')
 
     def test_superuser_always_allowed(self):
         @require_permission('accounts.manage_users')
@@ -205,14 +249,15 @@ class RequireRolesDecoratorTest(TestCase):
         response = my_view(request)
         self.assertEqual(response.status_code, 200)
 
-    def test_blocks_non_matching_role(self):
+    def test_blocks_non_matching_role_with_403(self):
+        """پیش‌فرض جدید: 403"""
         @require_roles(ROLE_ADMIN)
         def my_view(request):
             return HttpResponse('ok')
 
         request = self._make_request(self.sales)
         response = my_view(request)
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 403)
 
     def test_superuser_always_allowed(self):
         @require_roles(ROLE_SALES)
@@ -246,7 +291,6 @@ class RolesMatrixTest(TestCase):
 
         cls.all_non_admins = [cls.sm, cls.sales, cls.support, cls.acc, cls.op]
 
-    # ─── محصولات ───
     def test_only_admin_can_delete_products(self):
         self.assertTrue(has_permission(self.admin, 'products.delete'))
         for u in self.all_non_admins:
@@ -259,13 +303,11 @@ class RolesMatrixTest(TestCase):
     def test_sales_cannot_add_product(self):
         self.assertFalse(has_permission(self.sales, 'products.add'))
 
-    # ─── کاربران ───
     def test_only_admin_can_manage_users(self):
         self.assertTrue(has_permission(self.admin, 'accounts.manage_users'))
         for u in self.all_non_admins:
             self.assertFalse(has_permission(u, 'accounts.manage_users'))
 
-    # ─── فاکتورها ───
     def test_operator_cannot_view_invoices(self):
         self.assertFalse(has_permission(self.op, 'invoices.view'))
 
@@ -281,7 +323,6 @@ class RolesMatrixTest(TestCase):
     def test_support_cannot_create_invoices(self):
         self.assertFalse(has_permission(self.support, 'invoices.add'))
 
-    # ─── HR ───
     def test_only_admin_can_manage_employees(self):
         self.assertTrue(has_permission(self.admin, 'hr.manage_employees'))
         self.assertFalse(has_permission(self.sm, 'hr.manage_employees'))
@@ -295,7 +336,6 @@ class RolesMatrixTest(TestCase):
     def test_sales_can_view_tasks(self):
         self.assertTrue(has_permission(self.sales, 'hr.view_tasks'))
 
-    # ─── Excel ───
     def test_export_excel_allowed_roles(self):
         self.assertTrue(has_permission(self.admin, 'dashboard.export'))
         self.assertTrue(has_permission(self.sm, 'dashboard.export'))
@@ -306,7 +346,6 @@ class RolesMatrixTest(TestCase):
         self.assertFalse(has_permission(self.support, 'dashboard.export'))
         self.assertFalse(has_permission(self.op, 'dashboard.export'))
 
-    # ─── داشبورد ───
     def test_all_roles_can_view_dashboard(self):
         for u in [self.admin, self.sm, self.sales, self.support, self.acc, self.op]:
             self.assertTrue(
@@ -319,7 +358,7 @@ class RolesMatrixTest(TestCase):
 # تست RBAC روی Viewها — Integration با Client
 # ═══════════════════════════════════════════════════════════
 class RBACOnViewsTest(TestCase):
-    """تست دسترسی واقعی روی URLها با Client"""
+    """تست دسترسی واقعی روی URLها با Client — ۸.۱: انتظار 403"""
 
     @classmethod
     def setUpTestData(cls):
@@ -333,11 +372,11 @@ class RBACOnViewsTest(TestCase):
             u.groups.add(Group.objects.get(name=ROLE_TO_GROUP[role]))
             cls.users[role] = u
 
-    def _check_url(self, url_name, allowed_roles):
+    def _check_url(self, url_name, allowed_roles, expected_deny_status=403):
         """
         برای هر نقش، URL رو باز کن:
         - اگه توی allowed_roles باشه → باید 200 بگیره
-        - اگه نباشه → باید 302 بگیره (redirect به داشبورد)
+        - اگه نباشه → باید expected_deny_status بگیره (پیش‌فرض 403)
         """
         url = reverse(url_name)
         for role, user in self.users.items():
@@ -353,7 +392,7 @@ class RBACOnViewsTest(TestCase):
                     )
                 else:
                     self.assertEqual(
-                        response.status_code, 302,
+                        response.status_code, expected_deny_status,
                         f'{role} نباید به {url_name} دسترسی داشته باشد، '
                         f'ولی status={response.status_code} گرفت'
                     )
@@ -444,9 +483,8 @@ class RBACOnViewsTest(TestCase):
 
     # ─── مدیریت کاربران ───
     def test_accounts_user_list_access(self):
-        self._check_url('accounts:user_list', [
-            ROLE_ADMIN,
-        ])
+        """همه‌ی viewهای accounts حالا با require_permission → 403"""
+        self._check_url('accounts:user_list', [ROLE_ADMIN])
 
     # ─── کاربر ناشناس ───
     def test_anonymous_redirects_to_login(self):
@@ -458,21 +496,33 @@ class RBACOnViewsTest(TestCase):
 
     # ─── تست دسترسی مستقیم به URL ممنوع ───
     def test_operator_cannot_access_invoice_create_directly(self):
-        """اپراتور با URL مستقیم هم نمی‌تونه فاکتور بسازه"""
+        """اپراتور با URL مستقیم هم نمی‌تونه فاکتور بسازه → 403"""
         self.client.force_login(self.users[ROLE_OPERATOR])
         response = self.client.get(reverse('sales:create'))
-        self.assertEqual(response.status_code, 302)
-        # باید به dashboard برگرده
-        self.assertEqual(response.url, reverse('dashboard:home'))
+        self.assertEqual(response.status_code, 403)
 
     def test_support_cannot_access_product_create_directly(self):
-        """پشتیبان نمی‌تونه کالا اضافه کنه"""
+        """پشتیبان نمی‌تونه کالا اضافه کنه → 403"""
         self.client.force_login(self.users[ROLE_SUPPORT])
         response = self.client.get(reverse('products:create'))
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 403)
 
     def test_sales_cannot_access_hr_employees_directly(self):
-        """کارشناس فروش نمی‌تونه پرسنل رو ببینه"""
+        """کارشناس فروش نمی‌تونه پرسنل رو ببینه → 403"""
         self.client.force_login(self.users[ROLE_SALES])
         response = self.client.get(reverse('hr:employee_list'))
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 403)
+
+    # ─── تست محتوای صفحه‌ی 403 ───
+    def test_403_page_contains_key_elements(self):
+        """صفحه‌ی 403 باید عنوان، دکمه بازگشت، و نقش کاربر رو داشته باشه"""
+        self.client.force_login(self.users[ROLE_OPERATOR])
+        response = self.client.get(reverse('sales:create'))
+
+        self.assertEqual(response.status_code, 403)
+        content = response.content.decode('utf-8')
+        self.assertIn('403', content)
+        self.assertIn('دسترسی غیرمجاز', content)
+        self.assertIn('بازگشت به داشبورد', content)
+        # نقش کاربر
+        self.assertIn('اپراتور', content)
