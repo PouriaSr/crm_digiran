@@ -54,6 +54,9 @@ INSTALLED_APPS = [
     # Third-party
     'django_htmx',
     'widget_tweaks',
+    'django_otp',
+    'django_otp.plugins.otp_totp',
+    'django_otp.plugins.otp_static',
 
     # Local apps
     'accounts',
@@ -79,7 +82,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'crm.middleware.CurrentUserMiddleware',          # ← بعد از Auth (fix 8.1)
+    'crm.middleware.CurrentUserMiddleware',
+    'accounts.twofa_middleware.TwoFactorEnforcementMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
@@ -336,3 +340,13 @@ LOGGING = {
         },
     },
 }
+# ═══════════════════════════════════════════════════════════
+# 2FA — فاز ۸.۳
+# ═══════════════════════════════════════════════════════════
+# اگه True باشه، superuserها اجباراً باید 2FA رو فعال کنن.
+TWO_FACTOR_REQUIRED_FOR_SUPERUSER = os.getenv(
+    'TWO_FACTOR_REQUIRED_FOR_SUPERUSER', 'False'
+).lower() in ('true', '1', 'yes')
+
+# تعداد کدهای بازیابی
+TWO_FACTOR_RECOVERY_CODES_COUNT = int(os.getenv('TWO_FACTOR_RECOVERY_CODES_COUNT', '10'))

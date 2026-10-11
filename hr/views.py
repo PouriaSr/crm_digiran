@@ -586,6 +586,9 @@ def attendance_report(request):
 
 @login_required
 def my_profile(request):
+    from django_otp.plugins.otp_totp.models import TOTPDevice
+    from django_otp.plugins.otp_static.models import StaticDevice
+
     try:
         employee = request.user.employee_profile
     except Employee.DoesNotExist:
@@ -604,6 +607,16 @@ def my_profile(request):
         status='done'
     ).order_by('-completed_at')[:5]
 
+    # ═══ 2FA status ═══
+    totp_device = TOTPDevice.objects.filter(user=request.user, confirmed=True).first()
+    has_2fa = totp_device is not None
+
+    recovery_codes_count = 0
+    if has_2fa:
+        static_device = StaticDevice.objects.filter(user=request.user).first()
+        if static_device:
+            recovery_codes_count = static_device.token_set.count()
+
     context = {
         'employee': employee,
         'open_tasks': open_tasks,
@@ -611,5 +624,8 @@ def my_profile(request):
         'calls_count': calls_count,
         'invoices_count': invoices_count,
         'created_customers_count': created_customers_count,
+        # 2FA
+        'has_2fa': has_2fa,
+        'recovery_codes_count': recovery_codes_count,
     }
     return render(request, 'hr/my_profile.html', context)

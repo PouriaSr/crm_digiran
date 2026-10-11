@@ -1,9 +1,11 @@
 """
-Views احراز هویت سفارشی — ۸.۲
+Views احراز هویت سفارشی — ۸.۲ + ۸.۳
 """
 from django.contrib import messages
 from django.contrib.auth.views import LoginView
 from django.shortcuts import redirect
+
+from django_otp.plugins.otp_totp.models import TOTPDevice
 
 from .ratelimit import (
     get_client_ip,
@@ -16,11 +18,7 @@ from .ratelimit import (
 
 class RateLimitedLoginView(LoginView):
     """
-    LoginView با محافظت brute-force.
-
-    - پس از N تلاش ناموفق → قفل موقت
-    - لاگین موفق → پاک کردن شمارنده‌ها
-    - پیام فارسی با زمان باقی‌مانده
+    LoginView با محافظت brute-force + پشتیبانی 2FA.
     """
     template_name = 'accounts/login.html'
     redirect_authenticated_user = True
@@ -29,10 +27,10 @@ class RateLimitedLoginView(LoginView):
         username = request.POST.get('username', '').strip()
         ip = get_client_ip(request)
 
-        # ─── ۱. آیا کاربر/IP قفل هست؟ ───
+        # ─── ۱. قفل بودن؟ ───
         if is_locked(username, ip):
             remaining = get_lock_remaining(username, ip)
-            minutes = max(1, (remaining + 59) // 60)  # round up
+            minutes = max(1, (remaining + 59) // 60)
             messages.error(
                 request,
                 f'به دلیل تلاش‌های ناموفق مکرر، ورود موقتاً مسدود شده است. '
@@ -40,17 +38,15 @@ class RateLimitedLoginView(LoginView):
             )
             return redirect('accounts:login')
 
-        # ─── ۲. اجرای مسیر استاندارد LoginView ───
+        # ─── ۲. اجرای LoginView ───
         response = super().post(request, *args, **kwargs)
 
         # ─── ۳. تحلیل نتیجه ───
-        # موفق: HttpResponseRedirect (302)
-        # ناموفق: TemplateResponse (200 با form.errors)
+        # موفق: 302 — ولی ممکنه 2FA verify باشه
+        # ناموفق: 200 با form.errors
         if response.status_code == 302:
-            # لاگین موفق → پاک کردن شمارنده‌ها
             clear_failures(username, ip)
         else:
-            # لاگین ناموفق → ثبت
             locked_layer = register_failure(username, ip)
             if locked_layer:
                 messages.error(
@@ -59,3 +55,17 @@ class RateLimitedLoginView(LoginView):
                 )
 
         return response
+
+    def form_valid(self, form):
+        """اگه 2FA فعاله، کاربر رو به verify redirect کن"""
+        user = form.get_user()
+        device = TOTPDevice.objects.filter(user=user, confirmed=True).first()
+
+        if device:
+            # ذخیره در session برای verify
+            self.request.session['2fa_user_id'] = user.pk
+            self.request.session['2fa_next'] = self.get_success_url()
+            return redirect('accounts:twofa_verify')
+
+        # بدون 2FA → مسیر عادی
+        return super().form_valid(form)

@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}فعال‌سازی 2FA{% endblock %}
+
+{% block content %}
+
+<div class="mb-6">
+    <a href="{% url 'hr:my_profile' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به پروفایل</a>
+</div>
+
+<h1 class="text-2xl font-bold text-gray-800 mb-6">فعال‌سازی ورود دو مرحله‌ای</h1>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- ستون راست: QR -->
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span class="w-7 h-7 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm">۱</span>
+            اسکن QR با اپلیکیشن Authenticator
+        </h2>
+
+        <p class="text-sm text-gray-600 mb-4 leading-relaxed">
+            یکی از اپلیکیشن‌های <strong>Google Authenticator</strong>،
+            <strong>Microsoft Authenticator</strong> یا <strong>Authy</strong> رو باز کنید
+            و QR زیر رو اسکن کنید:
+        </p>
+
+        <div class="flex justify-center mb-4">
+            <div id="qrcode" class="p-4 bg-white border-2 border-gray-200 rounded-xl"></div>
+        </div>
+
+        <details class="text-xs">
+            <summary class="cursor-pointer text-blue-600 hover:underline">نمی‌تونید QR رو اسکن کنید؟ (کد دستی)</summary>
+            <div class="mt-2 p-3 bg-gray-50 rounded-lg">
+                <div class="text-gray-500 mb-1">کد مخفی (روی اپلیکیشن بزنید «Enter setup key»):</div>
+                <code class="block font-mono text-sm text-gray-800 break-all bg-white p-2 rounded border" dir="ltr">{{ secret_key }}</code>
+            </div>
+        </details>
+    </div>
+
+    <!-- ستون چپ: تایید -->
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span class="w-7 h-7 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm">۲</span>
+            تایید کد ۶ رقمی
+        </h2>
+
+        <p class="text-sm text-gray-600 mb-4 leading-relaxed">
+            کد ۶ رقمی که اپلیکیشن نشون می‌ده رو وارد کنید تا فعال‌سازی تکمیل بشه.
+        </p>
+
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">کد ۶ رقمی</label>
+                <input type="text" name="code" inputmode="numeric" pattern="[0-9\s]*"
+                       maxlength="7" autocomplete="off" autofocus required
+                       class="w-full px-4 py-3 text-center text-2xl tracking-widest border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                       placeholder="000000" dir="ltr">
+            </div>
+
+            <button type="submit"
+                    class="w-full px-5 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">
+                فعال‌سازی
+            </button>
+        </form>
+
+        <form method="post" class="mt-3">
+            {% csrf_token %}
+            <button type="submit" name="regenerate" value="1"
+                    class="w-full text-center text-xs text-gray-500 hover:text-gray-700">
+                QR جدید بساز (اگه اسکن نشد)
+            </button>
+        </form>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        new QRCode(document.getElementById("qrcode"), {
+            text: "{{ config_url|escapejs }}",
+            width: 220,
+            height: 220,
+            colorDark: "#1e3a5f",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.M,
+        });
+    });
+</script>
+
+{% endblock %}
