@@ -41,24 +41,18 @@ def _is_manager(user):
 
 
 def _get_data_owner(user, filter_user_id=None):
-    """
-    تعیین «مالک داده» برای فیلتر:
-    - مدیر بدون فیلتر → None (همه‌ی داده‌ها)
-    - مدیر با فیلتر → کاربر انتخاب‌شده
-    - غیرمدیر → خود کاربر
-    """
+    """تعیین «مالک داده» برای فیلتر"""
     if _is_manager(user):
         if filter_user_id:
             try:
                 return AuthUser.objects.get(pk=int(filter_user_id))
             except (AuthUser.DoesNotExist, ValueError, TypeError):
                 return None
-        return None  # همه
+        return None
     return user
 
 
 def _filtered_customers(owner):
-    """مشتریان قابل مشاهده"""
     qs = Customer.objects.all()
     if owner is not None:
         qs = qs.filter(Q(assigned_to=owner) | Q(created_by=owner))
@@ -66,7 +60,6 @@ def _filtered_customers(owner):
 
 
 def _filtered_calls(owner):
-    """تماس‌های قابل مشاهده"""
     qs = Call.objects.all()
     if owner is not None:
         qs = qs.filter(Q(called_by=owner) | Q(created_by=owner))
@@ -74,7 +67,6 @@ def _filtered_calls(owner):
 
 
 def _filtered_invoices(owner, statuses=None):
-    """فاکتورهای قابل مشاهده"""
     if statuses is None:
         statuses = ['issued', 'paid']
     qs = Invoice.objects.filter(status__in=statuses)
@@ -127,15 +119,13 @@ def _parse_jalali_date(value):
 
 
 def _get_employee_choices():
-    """کاربران فعال برای dropdown فیلتر"""
     return AuthUser.objects.filter(
-        is_active=True,
-        is_staff=True,
+        is_active=True, is_staff=True,
     ).order_by('first_name', 'last_name', 'username')
 
 
 # ═══════════════════════════════════════════════════════════
-# جمع‌آوری داده‌های داشبورد اصلی
+# داشبورد اصلی
 # ═══════════════════════════════════════════════════════════
 
 def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None):
@@ -144,18 +134,15 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
     now_j = jdatetime.date.fromgregorian(date=today)
     is_mgr = _is_manager(user)
 
-    # ═══ تعیین مالک داده ═══
     owner = _get_data_owner(user, filter_user_id)
     filter_user_selected = None
     if is_mgr and owner is not None:
         filter_user_selected = owner
 
-    # ═══ QuerySetها ═══
     invoices_qs = _filtered_invoices(owner)
     calls_qs = _filtered_calls(owner)
     customers_qs = _filtered_customers(owner)
 
-    # ═══ فیلتر تاریخ ═══
     if from_date:
         invoices_qs = invoices_qs.filter(issue_date__gte=from_date)
         calls_qs = calls_qs.filter(call_date__date__gte=from_date)
@@ -166,14 +153,11 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
         calls_qs = calls_qs.filter(call_date__date__lte=to_date)
         customers_qs = customers_qs.filter(created_at__date__lte=to_date)
 
-    # ═══ KPI ها ═══
     total_customers = customers_qs.count()
     active_customers = customers_qs.filter(status='active').count()
     lead_customers = customers_qs.filter(status='lead').count()
-
     total_calls = calls_qs.count()
 
-    # ماه جاری شمسی
     this_month_start, this_month_end = _get_month_range(now_j.year, now_j.month)
     calls_this_month = _filtered_calls(owner).filter(
         call_date__date__gte=this_month_start,
@@ -183,7 +167,6 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
     total_invoices = invoices_qs.count()
     total_sales = invoices_qs.aggregate(s=Sum('total'))['s'] or ZERO
 
-    # ═══ بهینه‌سازی: فروش این ماه / ماه قبل / سال قبل (۱ کوئری) ═══
     month_start, month_end = _get_month_range(now_j.year, now_j.month)
     prev_year = now_j.year if now_j.month > 1 else now_j.year - 1
     prev_month = now_j.month - 1 if now_j.month > 1 else 12
@@ -213,7 +196,6 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
     sales_last_month = comp['last_m'] or ZERO
     sales_last_year = comp['last_y'] or ZERO
 
-    # تغییرات
     if sales_last_month and sales_last_month > 0:
         sales_change = round(
             (float(sales_this_month) - float(sales_last_month))
@@ -230,7 +212,6 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
     else:
         yearly_change = 100 if sales_this_month > 0 else 0
 
-    # ═══ بهینه‌سازی: نمودار فروش ۱۲ ماه (۱ کوئری) ═══
     month_ranges = []
     for i in range(11, -1, -1):
         m = now_j.month - i
@@ -238,7 +219,6 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
         while m <= 0:
             m += 12
             y -= 1
-
         s_start, s_end = _get_month_range(y, m)
         if s_start is None:
             continue
@@ -262,55 +242,36 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
         sales_data = [0]
         sales_labels = ['بدون داده']
 
-    # ═══ توزیع منابع جذب مشتری ═══
-    sources_qs = customers_qs.values('source').annotate(
-        count=Count('id')
-    ).order_by('-count')
-
+    sources_qs = customers_qs.values('source').annotate(count=Count('id')).order_by('-count')
     source_labels_map = dict(Customer.SOURCE_CHOICES)
-    source_data = []
-    source_labels = []
+    source_data, source_labels = [], []
     for item in sources_qs:
         source_labels.append(source_labels_map.get(item['source'], 'سایر'))
         source_data.append(item['count'])
-
     if not source_data:
         source_data = [0]
         source_labels = ['بدون داده']
 
-    # ═══ توزیع وضعیت مشتریان ═══
-    status_qs = customers_qs.values('status').annotate(
-        count=Count('id')
-    ).order_by('-count')
-
+    status_qs = customers_qs.values('status').annotate(count=Count('id')).order_by('-count')
     status_labels_map = dict(Customer.STATUS_CHOICES)
-    status_data = []
-    status_labels = []
+    status_data, status_labels = [], []
     for item in status_qs:
         status_labels.append(status_labels_map.get(item['status'], 'سایر'))
         status_data.append(item['count'])
-
     if not status_data:
         status_data = [0]
         status_labels = ['بدون داده']
 
-    # ═══ توزیع وضعیت تماس‌ها ═══
-    call_status_qs = calls_qs.values('status').annotate(
-        count=Count('id')
-    ).order_by('-count')
-
+    call_status_qs = calls_qs.values('status').annotate(count=Count('id')).order_by('-count')
     call_status_map = dict(Call.CALL_STATUS_CHOICES)
-    call_status_data = []
-    call_status_labels = []
+    call_status_data, call_status_labels = [], []
     for item in call_status_qs:
         call_status_labels.append(call_status_map.get(item['status'], 'سایر'))
         call_status_data.append(item['count'])
-
     if not call_status_data:
         call_status_data = [0]
         call_status_labels = ['بدون داده']
 
-    # ═══ پرفروش‌ترین کالاها ═══
     top_products = InvoiceItem.objects.filter(
         invoice__in=invoices_qs
     ).values(name=F('product__name')).annotate(
@@ -319,19 +280,12 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
     ).order_by('-total_qty')[:5]
 
     top_products_list = [
-        {
-            'name': p['name'],
-            'qty': p['total_qty'],
-            'revenue': float(p['total_revenue'] or 0),
-        }
+        {'name': p['name'], 'qty': p['total_qty'], 'revenue': float(p['total_revenue'] or 0)}
         for p in top_products
     ]
 
-    # ═══ عملکرد کارمندان (فقط مدیرها، بدون فیلتر) ═══
     if is_mgr and filter_user_selected is None:
-        employee_perf = invoices_qs.filter(
-            created_by__isnull=False
-        ).values(
+        employee_perf = invoices_qs.filter(created_by__isnull=False).values(
             username=F('created_by__username'),
             first_name=F('created_by__first_name'),
             last_name=F('created_by__last_name'),
@@ -342,9 +296,7 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
 
         employee_perf_list = []
         for e in employee_perf:
-            name = f"{e['first_name'] or ''} {e['last_name'] or ''}".strip()
-            if not name:
-                name = e['username']
+            name = f"{e['first_name'] or ''} {e['last_name'] or ''}".strip() or e['username']
             employee_perf_list.append({
                 'name': name,
                 'username': e['username'],
@@ -357,7 +309,6 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
     emp_chart_names = [e['name'] for e in employee_perf_list[:10]]
     emp_chart_values = [e['total_sales'] for e in employee_perf_list[:10]]
 
-    # ═══ قیف فروش ═══
     leads_qs = customers_qs.filter(status='lead')
     leads_count = leads_qs.count()
 
@@ -365,9 +316,7 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
         customer__in=leads_qs
     ).values('customer').distinct().count()
 
-    inv_funnel = _filtered_invoices(owner).filter(
-        customer__in=leads_qs
-    ).aggregate(
+    inv_funnel = _filtered_invoices(owner).filter(customer__in=leads_qs).aggregate(
         with_invoice=Count('customer', distinct=True),
         paid=Count('customer', distinct=True, filter=Q(status='paid')),
     )
@@ -379,64 +328,46 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
         'values': [leads_count, leads_with_calls, leads_with_invoice, paid_leads],
     }
 
-    # ═══ مقایسه فروش ═══
     if from_date or to_date:
         if from_date and to_date:
             range_days = (to_date - from_date).days + 1
             prev_range_end = from_date - timedelta(days=1)
             prev_range_start = prev_range_end - timedelta(days=range_days - 1)
-
             prev_sales = _filtered_invoices(owner).filter(
                 issue_date__gte=prev_range_start,
                 issue_date__lte=prev_range_end,
             ).aggregate(s=Sum('total'))['s'] or 0
-
             compare_data = {
                 'labels': ['بازه قبل', 'بازه انتخابی'],
                 'values': [float(prev_sales), float(total_sales)],
             }
         else:
-            compare_data = {
-                'labels': ['بازه انتخابی'],
-                'values': [float(total_sales)],
-            }
+            compare_data = {'labels': ['بازه انتخابی'], 'values': [float(total_sales)]}
     else:
         compare_data = {
             'labels': ['ماه قبل', 'این ماه', 'سال قبل (همین ماه)'],
-            'values': [
-                float(sales_last_month),
-                float(sales_this_month),
-                float(sales_last_year),
-            ],
+            'values': [float(sales_last_month), float(sales_this_month), float(sales_last_year)],
         }
 
-    # ═══ وظایف و مرخصی ═══
     if owner is not None:
         open_tasks = Task.objects.filter(
-            status__in=['pending', 'in_progress'],
-            assigned_to__user=owner
+            status__in=['pending', 'in_progress'], assigned_to__user=owner
         ).count()
         overdue_tasks = Task.objects.filter(
-            due_date__lt=today,
-            assigned_to__user=owner
+            due_date__lt=today, assigned_to__user=owner
         ).exclude(status__in=['done', 'cancelled']).count()
         pending_leaves = LeaveRequest.objects.filter(
-            status='pending',
-            employee__user=owner
+            status='pending', employee__user=owner
         ).count()
     else:
         open_tasks = Task.objects.filter(status__in=['pending', 'in_progress']).count()
-        overdue_tasks = Task.objects.filter(
-            due_date__lt=today
-        ).exclude(status__in=['done', 'cancelled']).count()
+        overdue_tasks = Task.objects.filter(due_date__lt=today).exclude(
+            status__in=['done', 'cancelled']
+        ).count()
         pending_leaves = LeaveRequest.objects.filter(status='pending').count()
 
-    # ═══ لیست کاربران برای dropdown فیلتر (فقط مدیرها) ═══
-    filter_users_list = []
-    if is_mgr:
-        filter_users_list = _get_employee_choices()
+    filter_users_list = _get_employee_choices() if is_mgr else []
 
-    # ═══ آماده‌سازی JSON ═══
     def _json(obj):
         return json.dumps(obj, ensure_ascii=False)
 
@@ -488,7 +419,7 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
 
 
 # ═══════════════════════════════════════════════════════════
-# Views
+# Views — Dashboard Home
 # ═══════════════════════════════════════════════════════════
 
 @login_required
@@ -515,7 +446,7 @@ def home(request):
 
 @login_required
 def global_search(request):
-    """جستجوی سراسری — فیلترشده بر اساس نقش"""
+    """جستجوی سراسری"""
     query = request.GET.get('q', '').strip()
     results = {'customers': [], 'calls': [], 'products': [], 'total': 0}
 
@@ -526,17 +457,14 @@ def global_search(request):
             Q(name__icontains=query) | Q(mobile__icontains=query) |
             Q(email__icontains=query) | Q(national_id__icontains=query)
         )[:10])
-
         results['calls'] = list(_filtered_calls(owner).filter(
             Q(caller_name__icontains=query) | Q(call_number__icontains=query) |
             Q(notes__icontains=query)
         )[:10])
-
         results['products'] = list(Product.objects.filter(
             Q(name__icontains=query) | Q(code__icontains=query) |
             Q(description__icontains=query)
         )[:10])
-
         results['total'] = (len(results['customers']) + len(results['calls'])
                             + len(results['products']))
 
@@ -548,15 +476,12 @@ def global_search(request):
 @login_required
 @require_permission('dashboard.export')
 def export_excel(request):
-    """خروجی Excel — فیلترشده بر اساس نقش و کاربر"""
+    """خروجی Excel — داشبورد اصلی"""
     try:
         from openpyxl import Workbook
         from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
     except ImportError:
-        return HttpResponse(
-            'openpyxl نصب نیست. لطفاً pip install openpyxl را اجرا کنید.',
-            status=500
-        )
+        return HttpResponse('openpyxl نصب نیست.', status=500)
 
     from_date_str = request.GET.get('from_date', '').strip()
     to_date_str = request.GET.get('to_date', '').strip()
@@ -571,7 +496,6 @@ def export_excel(request):
     )
 
     wb = Workbook()
-
     header_font = Font(bold=True, color='FFFFFF', size=12)
     header_fill = PatternFill('solid', fgColor='2E86AB')
     center = Alignment(horizontal='center', vertical='center', wrap_text=True)
@@ -580,26 +504,20 @@ def export_excel(request):
         top=Side(style='thin'), bottom=Side(style='thin'),
     )
 
-    # ═══ Sheet 1: خلاصه ═══
     ws = wb.active
     ws.title = 'خلاصه'
     ws.sheet_view.rightToLeft = True
-
     ws.append(['گزارش CRM دیجیران'])
     ws.merge_cells('A1:C1')
     ws['A1'].font = Font(bold=True, size=16, color='2E86AB')
     ws['A1'].alignment = center
     ws.row_dimensions[1].height = 30
-
     ws.append([])
     ws.append([f"تاریخ گزارش: {data['today']}"])
     if data.get('filter_user_selected'):
         u = data['filter_user_selected']
         ws.append([f"فیلتر کاربر: {u.get_full_name() or u.username}"])
-    elif not data.get('is_manager_view'):
-        ws.append(['⚠️ این گزارش فقط شامل داده‌های شماست'])
     ws.append([])
-
     ws.append(['شاخص', 'مقدار', 'واحد'])
     for cell in ws[ws.max_row]:
         cell.font = header_font
@@ -608,7 +526,7 @@ def export_excel(request):
         cell.border = border
 
     kpis = data['kpis']
-    kpi_rows = [
+    for row in [
         ('کل مشتریان', kpis['total_customers'], 'نفر'),
         ('مشتریان فعال', kpis['active_customers'], 'نفر'),
         ('مشتریان بالقوه (لید)', kpis['lead_customers'], 'نفر'),
@@ -624,9 +542,7 @@ def export_excel(request):
         ('وظایف باز', kpis['open_tasks'], 'وظیفه'),
         ('وظایف عقب‌افتاده', kpis['overdue_tasks'], 'وظیفه'),
         ('مرخصی‌های در انتظار', kpis['pending_leaves'], 'درخواست'),
-    ]
-
-    for row in kpi_rows:
+    ]:
         ws.append(row)
         for cell in ws[ws.max_row]:
             cell.alignment = center
@@ -636,86 +552,70 @@ def export_excel(request):
     ws.column_dimensions['B'].width = 20
     ws.column_dimensions['C'].width = 15
 
-    # ═══ Sheet 2: فروش ماهانه ═══
     ws2 = wb.create_sheet('فروش ماهانه')
     ws2.sheet_view.rightToLeft = True
-
     ws2.append(['ماه', 'فروش (تومان)'])
     for cell in ws2[1]:
         cell.font = header_font
         cell.fill = header_fill
         cell.alignment = center
         cell.border = border
-
     for label, value in zip(data['sales_labels'], data['sales_data']):
         ws2.append([label, int(value)])
         for cell in ws2[ws2.max_row]:
             cell.alignment = center
             cell.border = border
-
     ws2.column_dimensions['A'].width = 20
     ws2.column_dimensions['B'].width = 25
 
-    # ═══ Sheet 3: عملکرد کارمندان ═══
     if data.get('employee_perf'):
         ws3 = wb.create_sheet('عملکرد کارمندان')
         ws3.sheet_view.rightToLeft = True
-
         ws3.append(['کارمند', 'تعداد فاکتور', 'مجموع فروش (تومان)'])
         for cell in ws3[1]:
             cell.font = header_font
             cell.fill = header_fill
             cell.alignment = center
             cell.border = border
-
         for emp in data['employee_perf']:
             ws3.append([emp['name'], emp['invoice_count'], int(emp['total_sales'])])
             for cell in ws3[ws3.max_row]:
                 cell.alignment = center
                 cell.border = border
-
         ws3.column_dimensions['A'].width = 25
         ws3.column_dimensions['B'].width = 15
         ws3.column_dimensions['C'].width = 25
 
-    # ═══ Sheet 4: پرفروش‌ترین کالاها ═══
     ws4 = wb.create_sheet('پرفروش‌ترین کالاها')
     ws4.sheet_view.rightToLeft = True
-
     ws4.append(['کالا', 'تعداد فروش', 'درآمد (تومان)'])
     for cell in ws4[1]:
         cell.font = header_font
         cell.fill = header_fill
         cell.alignment = center
         cell.border = border
-
     for p in data['top_products']:
         ws4.append([p['name'], p['qty'], int(p['revenue'])])
         for cell in ws4[ws4.max_row]:
             cell.alignment = center
             cell.border = border
-
     ws4.column_dimensions['A'].width = 30
     ws4.column_dimensions['B'].width = 15
     ws4.column_dimensions['C'].width = 25
 
-    # ═══ Sheet 5: منابع جذب ═══
     ws5 = wb.create_sheet('منابع جذب')
     ws5.sheet_view.rightToLeft = True
-
     ws5.append(['منبع', 'تعداد مشتری'])
     for cell in ws5[1]:
         cell.font = header_font
         cell.fill = header_fill
         cell.alignment = center
         cell.border = border
-
     for label, value in zip(data['source_labels'], data['source_data']):
         ws5.append([label, value])
         for cell in ws5[ws5.max_row]:
             cell.alignment = center
             cell.border = border
-
     ws5.column_dimensions['A'].width = 25
     ws5.column_dimensions['B'].width = 15
 
@@ -737,12 +637,7 @@ def export_excel(request):
 # ═══════════════════════════════════════════════════════════
 
 def _bi_heatmap_data(calls_qs):
-    """
-    Heatmap ساعت‌های طلایی تماس‌ها.
-    Returns: (matrix[7][24], day_labels, hour_labels)
-    """
-    # ترتیب روزهای هفته در ایران: شنبه ... جمعه
-    # weekday() پایتون: 0=Monday, 5=Saturday, 6=Sunday
+    """Heatmap ساعت‌های طلایی — matrix[7][24]"""
     day_order = [5, 6, 0, 1, 2, 3, 4]
     day_labels = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه']
 
@@ -750,9 +645,8 @@ def _bi_heatmap_data(calls_qs):
     for call_date, _status in calls_qs.values_list('call_date', 'status'):
         if call_date is None:
             continue
-        py_dow = call_date.weekday()
         try:
-            row = day_order.index(py_dow)
+            row = day_order.index(call_date.weekday())
         except ValueError:
             continue
         matrix[row][call_date.hour] += 1
@@ -761,17 +655,16 @@ def _bi_heatmap_data(calls_qs):
     return matrix, day_labels, hour_labels
 
 
-@login_required
-@require_permission('dashboard.view')
-def bi_dashboard(request):
-    """صفحه‌ی BI — گزارش‌های عمیق با نمودارهای تعاملی"""
+def _get_bi_data(user, filter_user_id=None):
+    """
+    جمع‌آوری همه‌ی داده‌های BI — مشترک بین نمایش و export.
+    Returns: dict
+    """
     today = timezone.now().date()
     now_j = jdatetime.date.fromgregorian(date=today)
-    is_mgr = _is_manager(request.user)
+    is_mgr = _is_manager(user)
 
-    # ─── فیلتر کاربر ───
-    filter_user_id = request.GET.get('employee', '').strip() or None
-    owner = _get_data_owner(request.user, filter_user_id)
+    owner = _get_data_owner(user, filter_user_id)
     filter_user_selected = None
     if is_mgr and owner is not None:
         filter_user_selected = owner
@@ -780,9 +673,7 @@ def bi_dashboard(request):
     calls_qs = _filtered_calls(owner)
     customers_qs = _filtered_customers(owner)
 
-    # ═══════════════════════════════════════════
-    # KPI ها
-    # ═══════════════════════════════════════════
+    # ═══ KPI ها ═══
     total_customers = customers_qs.count()
     active_customers = customers_qs.filter(status='active').count()
     lead_customers = customers_qs.filter(status='lead').count()
@@ -817,12 +708,8 @@ def bi_dashboard(request):
                 count_days += 1
     avg_conversion_days = round(total_days / count_days, 1) if count_days else 0
 
-    # ═══════════════════════════════════════════
-    # Trend فروش ۱۲ ماه
-    # ═══════════════════════════════════════════
-    trend_labels = []
-    trend_current = []
-    trend_previous = []
+    # ═══ Trend ۱۲ ماه ═══
+    trend_labels, trend_current, trend_previous = [], [], []
     for i in range(11, -1, -1):
         m = now_j.month - i
         y = now_j.year
@@ -848,9 +735,7 @@ def bi_dashboard(request):
         else:
             trend_previous.append(0)
 
-    # ═══════════════════════════════════════════
-    # Heatmap ساعت‌های طلایی
-    # ═══════════════════════════════════════════
+    # ═══ Heatmap ═══
     heatmap_matrix, heatmap_days, heatmap_hours = _bi_heatmap_data(calls_qs)
     heatmap_series = []
     for i, day in enumerate(heatmap_days):
@@ -862,9 +747,7 @@ def bi_dashboard(request):
             ],
         })
 
-    # ═══════════════════════════════════════════
-    # نرخ تبدیل هر منبع جذب
-    # ═══════════════════════════════════════════
+    # ═══ منابع جذب ═══
     source_map = dict(Customer.SOURCE_CHOICES)
     sources_qs = customers_qs.values('source').annotate(
         total=Count('id'),
@@ -884,9 +767,7 @@ def bi_dashboard(request):
             'rate': rate,
         })
 
-    # ═══════════════════════════════════════════
-    # Top 10 مشتریان
-    # ═══════════════════════════════════════════
+    # ═══ Top 10 مشتریان ═══
     top_customers = (
         customers_qs
         .annotate(
@@ -903,9 +784,7 @@ def bi_dashboard(request):
         .order_by('-total_purchase')[:10]
     )
 
-    # ═══════════════════════════════════════════
-    # Top 10 کالاها
-    # ═══════════════════════════════════════════
+    # ═══ Top 10 کالاها ═══
     top_products = (
         InvoiceItem.objects
         .filter(invoice__in=invoices_qs)
@@ -917,9 +796,7 @@ def bi_dashboard(request):
         .order_by('-total_revenue')[:10]
     )
 
-    # ═══════════════════════════════════════════
-    # Top 10 کارمندان
-    # ═══════════════════════════════════════════
+    # ═══ Top 10 کارمندان ═══
     top_employees = []
     if owner is None:
         emp_qs = (
@@ -937,9 +814,7 @@ def bi_dashboard(request):
             .order_by('-total_sales')[:10]
         )
         for e in emp_qs:
-            name = f"{e['created_by__first_name'] or ''} {e['created_by__last_name'] or ''}".strip()
-            if not name:
-                name = e['created_by__username']
+            name = f"{e['created_by__first_name'] or ''} {e['created_by__last_name'] or ''}".strip() or e['created_by__username']
             top_employees.append({
                 'name': name,
                 'username': e['created_by__username'],
@@ -947,11 +822,8 @@ def bi_dashboard(request):
                 'invoice_count': e['invoice_count'],
             })
 
-    # ═══════════════════════════════════════════
-    # مشتریان غیرفعال (بدون خرید ۹۰+ روز)
-    # ═══════════════════════════════════════════
+    # ═══ مشتریان غیرفعال ═══
     cutoff = today - timedelta(days=90)
-
     inactive_customers = (
         customers_qs
         .annotate(
@@ -967,25 +839,17 @@ def bi_dashboard(request):
         .order_by('last_invoice')[:10]
     )
 
-    # ═══════════════════════════════════════════
-    # لیست کاربران برای فیلتر
-    # ═══════════════════════════════════════════
-    filter_users_list = []
-    if is_mgr:
-        filter_users_list = _get_employee_choices()
+    # ═══ لیست کاربران فیلتر ═══
+    filter_users_list = _get_employee_choices() if is_mgr else []
 
-    # ═══════════════════════════════════════════
-    # آماده‌سازی JSON
-    # ═══════════════════════════════════════════
     def _json(obj):
         return json.dumps(obj, ensure_ascii=False)
 
-    context = {
+    return {
         'today': now_j.strftime('%Y/%m/%d'),
         'is_manager_view': is_mgr,
         'filter_user_selected': filter_user_selected,
         'filter_users_list': filter_users_list,
-        'filter_user_id': filter_user_id or '',
 
         'kpis': {
             'total_customers': total_customers,
@@ -1017,4 +881,189 @@ def bi_dashboard(request):
         'heatmap_hours_json': _json(heatmap_hours),
         'source_data_json': _json(source_data),
     }
+
+
+@login_required
+@require_permission('dashboard.bi')
+def bi_dashboard(request):
+    """صفحه‌ی BI — گزارش‌های عمیق"""
+    filter_user_id = request.GET.get('employee', '').strip() or None
+    context = _get_bi_data(request.user, filter_user_id)
+    context['filter_user_id'] = filter_user_id or ''
     return render(request, 'dashboard/bi.html', context)
+
+
+@login_required
+@require_permission('dashboard.bi')
+def bi_export_excel(request):
+    """خروجی Excel — BI (۵ sheet، با احترام به فیلتر کاربر)"""
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    except ImportError:
+        return HttpResponse('openpyxl نصب نیست.', status=500)
+
+    filter_user_id = request.GET.get('employee', '').strip() or None
+    data = _get_bi_data(request.user, filter_user_id)
+
+    wb = Workbook()
+    header_font = Font(bold=True, color='FFFFFF', size=12)
+    header_fill = PatternFill('solid', fgColor='2E86AB')
+    title_font = Font(bold=True, size=14, color='2E86AB')
+    center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    right = Alignment(horizontal='right', vertical='center', wrap_text=False)
+    border = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin'),
+    )
+
+    def _style_header(ws, row_idx, n_cols):
+        for col in range(1, n_cols + 1):
+            cell = ws.cell(row=row_idx, column=col)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = center
+            cell.border = border
+
+    def _style_row(ws, row_idx, n_cols, align=right):
+        for col in range(1, n_cols + 1):
+            cell = ws.cell(row=row_idx, column=col)
+            cell.alignment = align
+            cell.border = border
+
+    # ═══════════════════════════════════════════════════════
+    # Sheet 1 — خلاصه‌ی KPI
+    # ═══════════════════════════════════════════════════════
+    ws1 = wb.active
+    ws1.title = 'خلاصه'
+    ws1.sheet_view.rightToLeft = True
+
+    ws1.append(['گزارش تحلیلی BI — CRM دیجیران'])
+    ws1.merge_cells('A1:B1')
+    ws1['A1'].font = Font(bold=True, size=16, color='2E86AB')
+    ws1['A1'].alignment = center
+    ws1.row_dimensions[1].height = 30
+
+    ws1.append([])
+    ws1.append([f"تاریخ گزارش: {data['today']}"])
+    if data.get('filter_user_selected'):
+        u = data['filter_user_selected']
+        ws1.append([f"فیلتر کاربر: {u.get_full_name() or u.username}"])
+    ws1.append([])
+
+    ws1.append(['شاخص تحلیلی', 'مقدار'])
+    _style_header(ws1, ws1.max_row, 2)
+
+    kpis = data['kpis']
+    kpi_rows = [
+        ('کل مشتریان', kpis['total_customers']),
+        ('مشتریان فعال', kpis['active_customers']),
+        ('مشتریان بالقوه (لید)', kpis['lead_customers']),
+        ('نرخ تبدیل لید به مشتری (٪)', kpis['conversion_rate']),
+        ('میانگین مبلغ فاکتور (تومان)', int(kpis['avg_invoice'])),
+        ('میانگین زمان تبدیل (روز)', kpis['avg_conversion_days']),
+    ]
+    for row in kpi_rows:
+        ws1.append(row)
+        _style_row(ws1, ws1.max_row, 2, center)
+
+    ws1.column_dimensions['A'].width = 35
+    ws1.column_dimensions['B'].width = 25
+
+    # ═══════════════════════════════════════════════════════
+    # Sheet 2 — روند فروش ۱۲ ماه
+    # ═══════════════════════════════════════════════════════
+    ws2 = wb.create_sheet('روند فروش')
+    ws2.sheet_view.rightToLeft = True
+
+    ws2.append(['ماه', 'سال جاری (تومان)', 'سال قبل (تومان)'])
+    _style_header(ws2, 1, 3)
+
+    for i, label in enumerate(data['trend_labels']):
+        cur = int(data['trend_current'][i]) if i < len(data['trend_current']) else 0
+        prev = int(data['trend_previous'][i]) if i < len(data['trend_previous']) else 0
+        ws2.append([label, cur, prev])
+        _style_row(ws2, ws2.max_row, 3, center)
+
+    ws2.column_dimensions['A'].width = 15
+    ws2.column_dimensions['B'].width = 22
+    ws2.column_dimensions['C'].width = 22
+
+    # ═══════════════════════════════════════════════════════
+    # Sheet 3 — برترین مشتریان
+    # ═══════════════════════════════════════════════════════
+    ws3 = wb.create_sheet('برترین مشتریان')
+    ws3.sheet_view.rightToLeft = True
+
+    ws3.append(['رتبه', 'نام مشتری', 'موبایل', 'تعداد فاکتور', 'مجموع خرید (تومان)'])
+    _style_header(ws3, 1, 5)
+
+    for i, c in enumerate(data['top_customers'], 1):
+        ws3.append([i, c.name, c.mobile, c.invoice_count, int(c.total_purchase or 0)])
+        _style_row(ws3, ws3.max_row, 5)
+
+    ws3.column_dimensions['A'].width = 8
+    ws3.column_dimensions['B'].width = 28
+    ws3.column_dimensions['C'].width = 16
+    ws3.column_dimensions['D'].width = 15
+    ws3.column_dimensions['E'].width = 25
+
+    # ═══════════════════════════════════════════════════════
+    # Sheet 4 — پرفروش‌ترین کالاها
+    # ═══════════════════════════════════════════════════════
+    ws4 = wb.create_sheet('پرفروش‌ترین کالاها')
+    ws4.sheet_view.rightToLeft = True
+
+    ws4.append(['رتبه', 'نام کالا', 'کد کالا', 'تعداد فروش', 'درآمد کل (تومان)'])
+    _style_header(ws4, 1, 5)
+
+    for i, p in enumerate(data['top_products'], 1):
+        ws4.append([
+            i,
+            p.get('product__name', ''),
+            p.get('product__code', ''),
+            p.get('total_qty', 0),
+            int(p.get('total_revenue', 0) or 0),
+        ])
+        _style_row(ws4, ws4.max_row, 5)
+
+    ws4.column_dimensions['A'].width = 8
+    ws4.column_dimensions['B'].width = 30
+    ws4.column_dimensions['C'].width = 18
+    ws4.column_dimensions['D'].width = 15
+    ws4.column_dimensions['E'].width = 25
+
+    # ═══════════════════════════════════════════════════════
+    # Sheet 5 — مشتریان غیرفعال (نیازمند پیگیری)
+    # ═══════════════════════════════════════════════════════
+    ws5 = wb.create_sheet('مشتریان غیرفعال')
+    ws5.sheet_view.rightToLeft = True
+
+    ws5.append(['نام مشتری', 'موبایل', 'آخرین خرید', 'کارمند مسئول', 'وضعیت'])
+    _style_header(ws5, 1, 5)
+
+    for c in data['inactive_customers']:
+        last = c.last_invoice.strftime('%Y/%m/%d') if c.last_invoice else 'هیچ‌وقت'
+        assigned = '—'
+        if c.assigned_to:
+            assigned = c.assigned_to.get_full_name() or c.assigned_to.username
+        ws5.append([c.name, c.mobile, last, assigned, c.get_status_display()])
+        _style_row(ws5, ws5.max_row, 5)
+
+    ws5.column_dimensions['A'].width = 28
+    ws5.column_dimensions['B'].width = 16
+    ws5.column_dimensions['C'].width = 16
+    ws5.column_dimensions['D'].width = 22
+    ws5.column_dimensions['E'].width = 15
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    filename = f'bi-report-{datetime.now().strftime("%Y%m%d-%H%M")}.xlsx'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response

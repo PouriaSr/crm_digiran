@@ -91,6 +91,7 @@ PERMISSIONS = {
     # ─── داشبورد و گزارش ───
     'dashboard.view':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR],
     'dashboard.export': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_ACCOUNTANT],
+    'dashboard.bi':     [ROLE_ADMIN, ROLE_SALES_MANAGER],
 
     # ─── مدیریت کاربران ───
     'accounts.manage_users': [ROLE_ADMIN],
