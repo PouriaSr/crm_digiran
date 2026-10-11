@@ -10,9 +10,45 @@
 
 <h1 class="text-2xl font-bold text-gray-800 mb-6">{{ title }}</h1>
 
-{{ products_prices|json_script:"products-prices" }}
+{# JSON امن کالاها برای autocomplete (۷.۱۰) #}
+{{ products_data|json_script:"products-data" }}
 
-<form method="post" class="space-y-6">
+{# Template مخفی برای افزودن سطر جدید #}
+<template id="empty-row-template">
+    <tr class="item-row border-b border-gray-100 hover:bg-gray-50">
+        <td class="py-3 px-2">
+            {{ formset.empty_form.id }}
+            <div class="product-autocomplete" data-row>
+                <div class="hidden">{{ formset.empty_form.product }}</div>
+                <div class="relative">
+                    <input type="text"
+                           class="product-search w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                           placeholder="جستجو نام یا کد کالا..."
+                           autocomplete="off">
+                    <svg class="absolute right-2 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <div class="product-suggestions absolute z-20 right-0 left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto hidden"></div>
+                </div>
+            </div>
+        </td>
+        <td class="py-3 px-2">{{ formset.empty_form.quantity }}</td>
+        <td class="py-3 px-2">{{ formset.empty_form.unit_price }}</td>
+        <td class="py-3 px-2 text-right font-bold text-gray-700 row-total" dir="ltr">0</td>
+        <td class="py-3 px-2 text-center">
+            <button type="button"
+                    class="remove-row text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded transition"
+                    title="حذف این سطر">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+            </button>
+        </td>
+    </tr>
+</template>
+
+<form method="post" class="space-y-6" id="invoice-form">
     {% csrf_token %}
 
     {% if form.errors or formset.errors %}
@@ -27,6 +63,9 @@
                     {% for error in errors %}<li>قلم فاکتور {{ field }}: {{ error }}</li>{% endfor %}
                 {% endfor %}
             {% endfor %}
+            {% if formset.non_form_errors %}
+                {% for error in formset.non_form_errors %}<li>{{ error }}</li>{% endfor %}
+            {% endif %}
         </ul>
     </div>
     {% endif %}
@@ -68,10 +107,19 @@
 
     <!-- ═══ اقلام فاکتور ═══ -->
     <div class="bg-white rounded-xl shadow-sm p-6">
-        <h2 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
-            <span class="w-7 h-7 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center text-sm">📦</span>
-            اقلام فاکتور
-        </h2>
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="font-bold text-gray-700 flex items-center gap-2">
+                <span class="w-7 h-7 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center text-sm">📦</span>
+                اقلام فاکتور
+            </h2>
+            <button type="button" id="add-row-btn"
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                افزودن سطر
+            </button>
+        </div>
 
         {{ formset.management_form }}
 
@@ -88,26 +136,49 @@
                 </thead>
                 <tbody id="items-container">
                     {% for item_form in formset %}
-                    <tr class="item-row border-b border-gray-100">
+                    <tr class="item-row border-b border-gray-100 hover:bg-gray-50">
                         <td class="py-3 px-2">
                             {{ item_form.id }}
-                            {{ item_form.product }}
+                            <div class="product-autocomplete" data-row>
+                                <div class="hidden">{{ item_form.product }}</div>
+                                <div class="relative">
+                                    <input type="text"
+                                           class="product-search w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                           placeholder="جستجو نام یا کد کالا..."
+                                           autocomplete="off"
+                                           value="{{ item_form.instance.product.name|default:'' }}">
+                                    <svg class="absolute right-2 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                    <div class="product-suggestions absolute z-20 right-0 left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto hidden"></div>
+                                </div>
+                            </div>
                         </td>
                         <td class="py-3 px-2">{{ item_form.quantity }}</td>
                         <td class="py-3 px-2">{{ item_form.unit_price }}</td>
                         <td class="py-3 px-2 text-right font-bold text-gray-700 row-total" dir="ltr">0</td>
                         <td class="py-3 px-2 text-center">
                             {% if item_form.instance.pk %}
-                                <label class="text-red-500 cursor-pointer text-xs">
-                                    {{ item_form.DELETE }} حذف
-                                </label>
+                                <div class="hidden">{{ item_form.DELETE }}</div>
                             {% endif %}
+                            <button type="button"
+                                    class="remove-row text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded transition"
+                                    title="حذف این سطر">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                            </button>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+
+        <p class="text-xs text-gray-400 mt-3">
+            💡 برای هر سطر، نام یا کد کالا را تایپ کنید — از لیست پیشنهادها انتخاب کنید. قیمت خودکار پر می‌شود.
+        </p>
     </div>
 
     <!-- ═══ مبالغ ═══ -->
@@ -166,86 +237,280 @@
     </div>
 </form>
 
-<!-- ═══ JS محاسبه خودکار + autofill قیمت ═══ -->
+<!-- ═══════════════════════════════════════════════════════
+     JS — autocomplete + add row + live totals (۷.۱۰)
+     ═══════════════════════════════════════════════════════ -->
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    // ═══ دیکشنری قیمت کالاها ═══
-    const productPrices = JSON.parse(document.getElementById('products-prices').textContent);
+(function () {
+    'use strict';
 
+    // ═══ دیکشنری کالاها ═══
+    const productsData = JSON.parse(document.getElementById('products-data').textContent);
+
+    // ═══ رفرنس‌ها ═══
     const container = document.getElementById('items-container');
+    const emptyTpl = document.getElementById('empty-row-template');
+    const totalFormsInput = document.querySelector('[name=items-TOTAL_FORMS]');
+    const addRowBtn = document.getElementById('add-row-btn');
     const discountInput = document.querySelector('[name=discount]');
     const taxInput = document.querySelector('[name=tax_percent]');
 
-    // ─── محاسبه هر ردیف ───
+    // ═══ ابزار: فرمت عدد ═══
+    const fmt = (n) => Number(n || 0).toLocaleString('en-US');
+
+    // ═══ محاسبه‌ی یک ردیف ═══
     function calcRow(row) {
         const qty = parseFloat(row.querySelector('.item-qty')?.value) || 0;
         const price = parseFloat(row.querySelector('.item-price')?.value) || 0;
         const total = qty * price;
-        const totalCell = row.querySelector('.row-total');
-        if (totalCell) totalCell.textContent = total.toLocaleString('en-US');
+        const cell = row.querySelector('.row-total');
+        if (cell) cell.textContent = fmt(total);
         return total;
     }
 
-    // ─── محاسبه کل ───
+    // ═══ محاسبه‌ی همه + خلاصه ═══
     function calcAll() {
         let subtotal = 0;
-        container.querySelectorAll('.item-row').forEach(function(row) {
+        container.querySelectorAll('.item-row').forEach((row) => {
+            // اگه ردیف مخفی/حذف‌شده باشه، نادیده بگیر
+            if (row.dataset.removed === '1') return;
             subtotal += calcRow(row);
         });
 
         const discount = parseFloat(discountInput?.value) || 0;
         const taxPct = parseFloat(taxInput?.value) || 0;
-
         const afterDiscount = Math.max(subtotal - discount, 0);
         const taxAmount = Math.round(afterDiscount * taxPct / 100);
         const total = afterDiscount + taxAmount;
 
-        document.getElementById('sum-subtotal').textContent = subtotal.toLocaleString('en-US');
-        document.getElementById('sum-discount').textContent = discount.toLocaleString('en-US');
-        document.getElementById('sum-tax').textContent = taxAmount.toLocaleString('en-US');
-        document.getElementById('sum-total').textContent = total.toLocaleString('en-US');
+        document.getElementById('sum-subtotal').textContent = fmt(subtotal);
+        document.getElementById('sum-discount').textContent = fmt(discount);
+        document.getElementById('sum-tax').textContent = fmt(taxAmount);
+        document.getElementById('sum-total').textContent = fmt(total);
     }
 
-    // ─── پر کردن خودکار قیمت وقتی کالا انتخاب شد ───
-    function fillPrice(row) {
-        const productSelect = row.querySelector('.item-product');
+    // ═══ پر کردن خودکار قیمت ═══
+    function fillPrice(row, product) {
         const priceInput = row.querySelector('.item-price');
-        if (!productSelect || !priceInput) return;
+        if (!priceInput || !product) return;
 
-        const productId = productSelect.value;
-        if (!productId) return;
+        // فقط اگه کاربر قبلاً قیمت دستی وارد نکرده، پر کن
+        const currentPrice = parseFloat(priceInput.value) || 0;
+        if (currentPrice === 0) {
+            priceInput.value = product.price;
+        }
+        calcAll();
+    }
 
-        const price = productPrices[productId];
-        if (price !== undefined) {
-            priceInput.value = price;
-            calcRow(row);
-            calcAll();
+    // ═══ مخفی کردن select اصلی + init search input ═══
+    function initRow(row) {
+        const wrapper = row.querySelector('.product-autocomplete');
+        if (!wrapper) return;
+
+        const select = wrapper.querySelector('select');
+        const searchInput = wrapper.querySelector('.product-search');
+        if (!select || !searchInput) return;
+
+        // اگه مقدار انتخاب‌شده داره، در input نمایش بده
+        const selectedOpt = select.options[select.selectedIndex];
+        if (selectedOpt && selectedOpt.value) {
+            searchInput.value = selectedOpt.textContent.trim();
+        }
+
+        // پاک کردن مقدار input در ردیف‌های خالی (جلوگیری از placeholder عجیب)
+        if (!select.value && !searchInput.value) {
+            searchInput.value = '';
         }
     }
 
-    // ─── Event Listeners ───
+    // ═══ رندر لیست پیشنهادها ═══
+    function renderSuggestions(row, query) {
+        const wrapper = row.querySelector('.product-autocomplete');
+        const box = wrapper.querySelector('.product-suggestions');
+        const q = query.trim().toLowerCase();
 
-    // تغییر کالا → autofill قیمت
-    container.addEventListener('change', function(e) {
-        if (e.target.classList.contains('item-product')) {
-            const row = e.target.closest('.item-row');
-            if (row) fillPrice(row);
+        if (!q) {
+            box.classList.add('hidden');
+            box.innerHTML = '';
+            return;
+        }
+
+        const matches = productsData.filter((p) => {
+            return p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
+        }).slice(0, 10);
+
+        if (matches.length === 0) {
+            box.innerHTML = '<div class="px-3 py-2 text-xs text-gray-400">کالایی یافت نشد</div>';
+            box.classList.remove('hidden');
+            return;
+        }
+
+        box.innerHTML = matches.map((p) => `
+            <div class="product-suggestion px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                 data-id="${p.id}"
+                 data-price="${p.price}">
+                <div class="flex justify-between items-center gap-2">
+                    <div class="min-w-0 flex-1">
+                        <div class="font-medium text-gray-800 text-sm truncate">${escapeHtml(p.name)}</div>
+                        <div class="text-xs text-gray-400 font-mono" dir="ltr">${escapeHtml(p.code)}</div>
+                    </div>
+                    <div class="text-xs text-blue-600 font-bold whitespace-nowrap" dir="ltr">${fmt(p.price)}</div>
+                </div>
+            </div>
+        `).join('');
+
+        box.classList.remove('hidden');
+    }
+
+    // ═══ escape HTML ═══
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // ═══ انتخاب پیشنهاد ═══
+    function selectSuggestion(row, suggestionEl) {
+        const wrapper = row.querySelector('.product-autocomplete');
+        const select = wrapper.querySelector('select');
+        const searchInput = wrapper.querySelector('.product-search');
+        const box = wrapper.querySelector('.product-suggestions');
+
+        const id = suggestionEl.dataset.id;
+        const price = parseFloat(suggestionEl.dataset.price);
+        const product = productsData.find((p) => String(p.id) === String(id));
+
+        if (!product) return;
+
+        select.value = id;
+        searchInput.value = product.name;
+
+        // Trigger change event برای سازگاری
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+
+        // پر کردن قیمت
+        fillPrice(row, product);
+
+        box.classList.add('hidden');
+        box.innerHTML = '';
+    }
+
+    // ═══ اضافه کردن سطر جدید ═══
+    function addRow() {
+        if (!emptyTpl || !totalFormsInput) return;
+
+        const newIndex = parseInt(totalFormsInput.value);
+        const html = emptyTpl.innerHTML.replace(/__prefix__/g, newIndex);
+        const tbody = container;
+        const temp = document.createElement('tbody');
+        temp.innerHTML = html.trim();
+        const newRow = temp.firstElementChild;
+
+        if (!newRow) return;
+
+        tbody.appendChild(newRow);
+        totalFormsInput.value = newIndex + 1;
+        initRow(newRow);
+
+        // فوکوس روی input جستجو
+        const searchInput = newRow.querySelector('.product-search');
+        if (searchInput) searchInput.focus();
+
+        calcAll();
+    }
+
+    // ═══ حذف سطر ═══
+    function removeRow(row) {
+        // اگه سطر ذخیره‌شده (دارای pk) بود، DELETE رو تیک بزن و مخفی کن
+        const deleteBox = row.querySelector('input[name$="-DELETE"]');
+        if (deleteBox) {
+            deleteBox.checked = true;
+            row.dataset.removed = '1';
+            row.style.display = 'none';
+            calcAll();
+            return;
+        }
+
+        // اگه سطر جدید بود، کاملاً حذف کن
+        row.remove();
+        calcAll();
+    }
+
+    // ═══ Event Delegation — کلیک روی پیشنهاد ═══
+    container.addEventListener('click', (e) => {
+        // کلیک روی suggestion
+        const suggestion = e.target.closest('.product-suggestion');
+        if (suggestion) {
+            const row = suggestion.closest('.item-row');
+            if (row) selectSuggestion(row, suggestion);
+            return;
+        }
+
+        // کلیک روی remove-row
+        const removeBtn = e.target.closest('.remove-row');
+        if (removeBtn) {
+            const row = removeBtn.closest('.item-row');
+            if (row) removeRow(row);
+            return;
         }
     });
 
-    // تغییر تعداد یا قیمت → محاسبه
-    container.addEventListener('input', function(e) {
+    // ═══ Event Delegation — input روی search ═══
+    container.addEventListener('input', (e) => {
+        // جستجوی کالا
+        if (e.target.classList.contains('product-search')) {
+            const row = e.target.closest('.item-row');
+            if (row) renderSuggestions(row, e.target.value);
+            return;
+        }
+
+        // تغییر تعداد یا قیمت → محاسبه
         if (e.target.classList.contains('item-qty') || e.target.classList.contains('item-price')) {
             calcAll();
         }
     });
 
+    // ═══ مخفی کردن پیشنهادها وقتی کاربر فوکوس رو از دست می‌ده ═══
+    container.addEventListener('focusout', (e) => {
+        if (e.target.classList.contains('product-search')) {
+            setTimeout(() => {
+                const row = e.target.closest('.item-row');
+                if (!row) return;
+                const box = row.querySelector('.product-suggestions');
+                if (box) {
+                    box.classList.add('hidden');
+                    box.innerHTML = '';
+                }
+            }, 200);
+        }
+    });
+
+    // ═══ پاک کردن input → پاک کردن select ═══
+    container.addEventListener('focusin', (e) => {
+        if (e.target.classList.contains('product-search')) {
+            // اگه input خالی شد، پیشنهادها رو نشون بده
+            if (!e.target.value.trim()) {
+                const row = e.target.closest('.item-row');
+                if (row) {
+                    const select = row.querySelector('.product-autocomplete select');
+                    if (select) select.value = '';
+                }
+            }
+        }
+    });
+
+    // ═══ discount/tax input → محاسبه ═══
     if (discountInput) discountInput.addEventListener('input', calcAll);
     if (taxInput) taxInput.addEventListener('input', calcAll);
 
-    // اجرای اولیه
+    // ═══ دکمه‌ی افزودن سطر ═══
+    if (addRowBtn) addRowBtn.addEventListener('click', addRow);
+
+    // ═══ Init — همه‌ی ردیف‌های اولیه ═══
+    container.querySelectorAll('.item-row').forEach(initRow);
     calcAll();
-});
+
+})();
 </script>
 
 {% endblock %}

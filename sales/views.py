@@ -25,10 +25,7 @@ DEDUCTING_STATUSES = ('issued', 'paid')
 # ═════════════════════════════════════════════════
 
 def _parse_jalali_date(value):
-    """
-    تبدیل تاریخ شمسی به میلادی (۷.۶).
-    اعداد فارسی/عربی، جداکننده‌های - . و فاصله رو پشتیبانی می‌کنه.
-    """
+    """تبدیل تاریخ شمسی به میلادی (۷.۶)"""
     if not value:
         return None
     try:
@@ -53,12 +50,20 @@ def _get_employee_choices():
     ).order_by('first_name', 'last_name', 'username')
 
 
-def _products_prices_dict():
-    """دیکشنری قیمت محصولات برای autofill در فرم فاکتور"""
-    return {
-        str(pk): float(price)
-        for pk, price in Product.objects.values_list('id', 'price')
-    }
+def _products_data():
+    """
+    لیست کالاهای فعال با نام + کد + قیمت — برای autocomplete (۷.۱۰).
+    سبک و cache-friendly.
+    """
+    return [
+        {
+            'id': p.pk,
+            'name': p.name,
+            'code': p.code,
+            'price': float(p.price),
+        }
+        for p in Product.objects.only('id', 'name', 'code', 'price')
+    ]
 
 
 def _apply_invoice_stock(invoice, user):
@@ -164,7 +169,6 @@ def invoice_list(request):
     qs = Invoice.objects.select_related('customer', 'created_by').all()
     qs, filters = _apply_invoice_filters(qs, request)
 
-    # ─── آمار کلی ───
     all_invoices = Invoice.objects.all()
     stats = {
         'total': all_invoices.count(),
@@ -176,7 +180,6 @@ def invoice_list(request):
         ).aggregate(s=Sum('total'))['s'] or 0,
     }
 
-    # ─── آمار فیلترشده (فقط اگه فیلتر فعال باشه) ───
     has_filters = any([
         filters['search'], filters['current_status'],
         filters['current_payment'], filters['current_employee'],
@@ -264,7 +267,7 @@ def invoice_create(request):
         'formset': formset,
         'title': 'صدور فاکتور جدید',
         'submit_label': 'صدور فاکتور',
-        'products_prices': _products_prices_dict(),
+        'products_data': _products_data(),
     })
 
 
@@ -307,7 +310,7 @@ def invoice_edit(request, pk):
         'title': f'ویرایش فاکتور {invoice.number}',
         'submit_label': 'ذخیره تغییرات',
         'invoice': invoice,
-        'products_prices': _products_prices_dict(),
+        'products_data': _products_data(),
     })
 
 
