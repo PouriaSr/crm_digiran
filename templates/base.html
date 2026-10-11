@@ -157,10 +157,12 @@
             </div>
             {% endif %}
 
-            <!-- ⭐ مدیریت کاربران -->
-            {% if 'accounts.manage_users' in user_permissions %}
+            <!-- ⭐ تنظیمات سیستم -->
+            {% if 'accounts.manage_users' in user_permissions or 'audit.view' in user_permissions %}
             <div class="pt-3 mt-3 border-t border-white/10">
                 <div class="px-3 py-1 text-xs text-gray-400 mb-1">تنظیمات سیستم</div>
+
+                {% if 'accounts.manage_users' in user_permissions %}
                 <a href="{% url 'accounts:user_list' %}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'accounts' and 'user' in request.resolver_match.url_name %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,6 +173,18 @@
                     </svg>
                     <span>کاربران سیستم</span>
                 </a>
+                {% endif %}
+
+                {% if 'audit.view' in user_permissions %}
+                <a href="{% url 'audit:list' %}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'audit' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                    </svg>
+                    <span>لاگ سیستم</span>
+                </a>
+                {% endif %}
             </div>
             {% endif %}
         </nav>
@@ -262,6 +276,7 @@
     window.addEventListener('load', function () {
         if (typeof jalaliDatepicker !== 'undefined') {
             jalaliDatepicker.startWatch({
+                selector: '[data-jdp]:not([data-jdp-only-month])',
                 time: false,
                 hasSecond: false,
                 showTodayBtn: true,

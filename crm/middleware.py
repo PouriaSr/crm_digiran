@@ -1,7 +1,7 @@
 """
-Thread-local برای نگه‌داشتن کاربر جاری در signalها.
+Thread-local برای نگه‌داشتن request و user جاری در signalها.
 اجازه می‌دهد signalها بدون دسترسی مستقیم به request،
-نویسنده‌ی تغییرات را ثبت کنند (۷.۹ و ۸.۴).
+نویسنده و IP تغییرات را ثبت کنند (۷.۹ و ۸.۴).
 """
 import threading
 
@@ -14,9 +14,14 @@ def get_current_user():
     return getattr(_thread_locals, 'user', None)
 
 
+def get_current_request():
+    """request جاری — یا None اگه خارج از HTTP باشه"""
+    return getattr(_thread_locals, 'request', None)
+
+
 class CurrentUserMiddleware:
     """
-    کاربر جاری را در thread-local ذخیره می‌کند.
+    کاربر و request جاری را در thread-local ذخیره می‌کند.
     باید بعد از AuthenticationMiddleware قرار بگیرد.
     """
 
@@ -24,9 +29,11 @@ class CurrentUserMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        _thread_locals.request = request
         _thread_locals.user = getattr(request, 'user', None)
         try:
             response = self.get_response(request)
         finally:
+            _thread_locals.request = None
             _thread_locals.user = None
         return response

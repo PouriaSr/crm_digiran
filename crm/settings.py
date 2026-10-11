@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'sales',
     'hr',
     'dashboard',
+    'audit',
 ]
 
 

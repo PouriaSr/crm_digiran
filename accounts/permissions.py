@@ -94,6 +94,8 @@ PERMISSIONS = {
 
     # ─── مدیریت کاربران ───
     'accounts.manage_users': [ROLE_ADMIN],
+    # ─── لاگ سیستم ───
+    'audit.view': [ROLE_ADMIN],
 }
 
 
