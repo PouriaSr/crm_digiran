@@ -110,3 +110,103 @@ class AuditLogBasicTest(TestCase):
         Customer.objects.create(name='تست', mobile='09120000999')
         log = AuditLog.objects.first()
         self.assertEqual(log.icon, '➕')
+
+
+# ═══════════════════════════════════════════════════════════
+# تست فیلترها و ویو Audit Log
+# ═══════════════════════════════════════════════════════════
+class AuditLogFilterTest(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_superuser('audit_admin', password='t123456')
+        cls.user2 = User.objects.create_user('audit_user2', password='t123456')
+
+    def setUp(self):
+        AuditLog.objects.all().delete()
+        self.client.force_login(self.admin)
+
+        # ساخت داده‌های تست
+        c1 = Customer.objects.create(name='مشتری ۱', mobile='09120001001')
+        AuditLog.objects.all().delete()
+
+        from crm.middleware import _thread_locals
+        _thread_locals.user = self.admin
+        try:
+            c1.name = 'مشتری ۱ ویرایش'
+            c1.save()
+        finally:
+            _thread_locals.user = None
+
+        c2 = Customer.objects.create(name='مشتری ۲', mobile='09120001002')
+        AuditLog.objects.filter(
+            model_name='customers.Customer', object_id=c2.pk, action='created'
+        ).update(user=self.user2)
+
+    def _url(self, **params):
+        from django.urls import reverse
+        base = reverse('audit:list')
+        if params:
+            qs = '&'.join(f'{k}={v}' for k, v in params.items())
+            return f'{base}?{qs}'
+        return base
+
+    def test_view_accessible_by_admin(self):
+        r = self.client.get(self._url())
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'لاگ سیستم')
+
+    def test_view_denied_for_non_admin(self):
+        self.client.force_login(self.user2)
+        r = self.client.get(self._url())
+        self.assertEqual(r.status_code, 403)
+
+    def test_filter_by_action(self):
+        r = self.client.get(self._url(action='updated'))
+        self.assertEqual(r.status_code, 200)
+        logs = list(r.context['page_obj'])
+        self.assertTrue(all(log.action == 'updated' for log in logs))
+
+    def test_filter_by_model(self):
+        r = self.client.get(self._url(model='customers.Customer'))
+        self.assertEqual(r.status_code, 200)
+        logs = list(r.context['page_obj'])
+        self.assertTrue(all(log.model_name == 'customers.Customer' for log in logs))
+
+    def test_filter_by_user(self):
+        r = self.client.get(self._url(user=self.user2.pk))
+        self.assertEqual(r.status_code, 200)
+        logs = list(r.context['page_obj'])
+        self.assertTrue(all(log.user_id == self.user2.pk for log in logs))
+
+    def test_filter_by_search(self):
+        r = self.client.get(self._url(q='مشتری'))
+        self.assertEqual(r.status_code, 200)
+        self.assertGreater(len(r.context['page_obj']), 0)
+
+    def test_stats_count(self):
+        r = self.client.get(self._url())
+        self.assertEqual(r.status_code, 200)
+        stats = r.context['stats']
+        self.assertIn('total', stats)
+        self.assertIn('created', stats)
+        self.assertIn('updated', stats)
+        self.assertIn('deleted', stats)
+        self.assertGreaterEqual(stats['total'], 2)
+
+    def test_pagination_works(self):
+        # ساخت ۶۰ رکورد
+        for i in range(60):
+            Customer.objects.create(name=f'م{i}', mobile=f'09120001{i:03d}')
+        r = self.client.get(self._url())
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.context['page_obj']), 50)  # page_size=50
+
+    def test_filtered_count_displayed(self):
+        r = self.client.get(self._url(action='updated'))
+        self.assertIn('filtered_count', r.context)
+
+    def test_empty_result_when_no_match(self):
+        r = self.client.get(self._url(q='XYZ_NONEXISTENT_XYZ'))
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(list(r.context['page_obj'])), 0)

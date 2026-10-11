@@ -686,3 +686,287 @@ class LoginRateLimitViewTest(TestCase):
         # IP جدید می‌تونه لاگین کنه
         response = self._success_login(ip='2.2.2.2')
         self.assertEqual(response.status_code, 302)
+
+
+# ═══════════════════════════════════════════════════════════
+# تست‌های 2FA — فاز ۸.۳
+# ═══════════════════════════════════════════════════════════
+import time
+from django_otp.oath import TOTP
+from django_otp.plugins.otp_totp.models import TOTPDevice
+from django_otp.plugins.otp_static.models import StaticDevice, StaticToken
+
+
+def _generate_valid_totp(device):
+    """تولید کد TOTP معتبر برای تست"""
+    totp = TOTP(device.bin_key, device.step, device.t0, device.digits)
+    totp.time = time.time()
+    return str(totp.token()).zfill(device.digits)
+
+
+class TwoFactorSetupTest(TestCase):
+
+    def setUp(self):
+        TOTPDevice.objects.all().delete()
+        StaticDevice.objects.all().delete()
+
+        self.user = User.objects.create_user('tfa_user', password='t123456')
+        self.client.force_login(self.user)
+
+    def test_setup_page_loads(self):
+        from django.urls import reverse
+        r = self.client.get(reverse('accounts:twofa_setup'))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'QR')
+
+    def test_setup_creates_unconfirmed_device(self):
+        from django.urls import reverse
+        self.client.get(reverse('accounts:twofa_setup'))
+        device = TOTPDevice.objects.filter(user=self.user).first()
+        self.assertIsNotNone(device)
+        self.assertFalse(device.confirmed)
+
+    def test_setup_with_valid_code_confirms_device(self):
+        from django.urls import reverse
+        # ایجاد device
+        self.client.get(reverse('accounts:twofa_setup'))
+        device = TOTPDevice.objects.get(user=self.user)
+        token = _generate_valid_totp(device)
+
+        r = self.client.post(reverse('accounts:twofa_setup'), {'code': token})
+
+        device.refresh_from_db()
+        self.assertTrue(device.confirmed)
+        # redirect به recovery codes
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('recovery', r.url)
+
+    def test_setup_with_invalid_code_shows_error(self):
+        from django.urls import reverse
+        self.client.get(reverse('accounts:twofa_setup'))
+
+        r = self.client.post(reverse('accounts:twofa_setup'), {'code': '000000'})
+
+        # هنوز در same page
+        self.assertEqual(r.status_code, 200)
+        device = TOTPDevice.objects.get(user=self.user)
+        self.assertFalse(device.confirmed)
+
+    def test_recovery_codes_generated_after_setup(self):
+        from django.urls import reverse
+        self.client.get(reverse('accounts:twofa_setup'))
+        device = TOTPDevice.objects.get(user=self.user)
+        token = _generate_valid_totp(device)
+
+        self.client.post(reverse('accounts:twofa_setup'), {'code': token})
+
+        # ۱۰ کد بازیابی
+        static_device = StaticDevice.objects.filter(user=self.user).first()
+        self.assertIsNotNone(static_device)
+        self.assertEqual(static_device.token_set.count(), 10)
+
+
+class TwoFactorVerifyTest(TestCase):
+
+    def setUp(self):
+        TOTPDevice.objects.all().delete()
+        StaticDevice.objects.all().delete()
+
+        self.user = User.objects.create_user('tfa_verify', password='t123456')
+        self.device = TOTPDevice.objects.create(
+            user=self.user, name='default', confirmed=True,
+        )
+        self.device.refresh_from_db()
+
+    def test_login_with_2fa_redirects_to_verify(self):
+        from django.urls import reverse
+        r = self.client.post(reverse('accounts:login'), {
+            'username': 'tfa_verify',
+            'password': 't123456',
+        })
+        # redirect به verify
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('/2fa/', r.url)
+        # کاربر لاگین نشده
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_verify_with_valid_totp(self):
+        from django.urls import reverse
+        # اول login
+        self.client.post(reverse('accounts:login'), {
+            'username': 'tfa_verify', 'password': 't123456',
+        })
+        # کد معتبر
+        token = _generate_valid_totp(self.device)
+        r = self.client.post(reverse('accounts:twofa_verify'), {'code': token})
+
+        # redirect به داشبورد
+        self.assertEqual(r.status_code, 302)
+        # کاربر لاگین شده
+        self.assertIn('_auth_user_id', self.client.session)
+
+    def test_verify_with_invalid_totp(self):
+        from django.urls import reverse
+        self.client.post(reverse('accounts:login'), {
+            'username': 'tfa_verify', 'password': 't123456',
+        })
+        r = self.client.post(reverse('accounts:twofa_verify'), {'code': '999999'})
+
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_verify_without_login_redirects(self):
+        from django.urls import reverse
+        r = self.client.get(reverse('accounts:twofa_verify'))
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('/login/', r.url)
+
+
+class TwoFactorRecoveryTest(TestCase):
+
+    def setUp(self):
+        TOTPDevice.objects.all().delete()
+        StaticDevice.objects.all().delete()
+
+        self.user = User.objects.create_user('tfa_recovery', password='t123456')
+        TOTPDevice.objects.create(user=self.user, name='default', confirmed=True)
+
+        # کدهای بازیابی
+        static_device = StaticDevice.objects.create(
+            user=self.user, name='recovery', confirmed=True,
+        )
+        self.recovery_token = StaticToken.random_token()
+        static_device.token_set.create(token=self.recovery_token)
+
+    def test_verify_with_recovery_code(self):
+        from django.urls import reverse
+        self.client.post(reverse('accounts:login'), {
+            'username': 'tfa_recovery', 'password': 't123456',
+        })
+        r = self.client.post(reverse('accounts:twofa_verify'), {
+            'code': self.recovery_token,
+        })
+
+        # لاگین موفق
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('_auth_user_id', self.client.session)
+
+    def test_recovery_code_consumed_after_use(self):
+        from django.urls import reverse
+        self.client.post(reverse('accounts:login'), {
+            'username': 'tfa_recovery', 'password': 't123456',
+        })
+        self.client.post(reverse('accounts:twofa_verify'), {
+            'code': self.recovery_token,
+        })
+
+        # کد باید مصرف شده باشه
+        static_device = StaticDevice.objects.filter(user=self.user).first()
+        self.assertEqual(static_device.token_set.count(), 0)
+
+    def test_recovery_code_single_use(self):
+        from django.urls import reverse
+        # بار اول
+        self.client.post(reverse('accounts:login'), {
+            'username': 'tfa_recovery', 'password': 't123456',
+        })
+        self.client.post(reverse('accounts:twofa_verify'), {
+            'code': self.recovery_token,
+        })
+        self.client.logout()
+
+        # بار دوم — باید رد بشه
+        self.client.post(reverse('accounts:login'), {
+            'username': 'tfa_recovery', 'password': 't123456',
+        })
+        r = self.client.post(reverse('accounts:twofa_verify'), {
+            'code': self.recovery_token,
+        })
+        self.assertEqual(r.status_code, 200)  # still on verify page
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+
+class TwoFactorDisableTest(TestCase):
+
+    def setUp(self):
+        TOTPDevice.objects.all().delete()
+        StaticDevice.objects.all().delete()
+
+        self.user = User.objects.create_user('tfa_disable', password='t123456')
+        self.device = TOTPDevice.objects.create(
+            user=self.user, name='default', confirmed=True,
+        )
+        self.device.refresh_from_db()
+        self.client.force_login(self.user)
+
+    def test_disable_with_valid_code(self):
+        from django.urls import reverse
+        token = _generate_valid_totp(self.device)
+        r = self.client.post(reverse('accounts:twofa_disable'), {'code': token})
+
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(TOTPDevice.objects.filter(user=self.user).count(), 0)
+
+    def test_disable_with_invalid_code(self):
+        from django.urls import reverse
+        r = self.client.post(reverse('accounts:twofa_disable'), {'code': '999999'})
+
+        self.assertEqual(r.status_code, 200)
+        # device باقی‌مونده
+        self.assertEqual(TOTPDevice.objects.filter(user=self.user).count(), 1)
+
+
+# ═══════════════════════════════════════════════════════════
+# تست Duplicate — User
+# ═══════════════════════════════════════════════════════════
+class UserDuplicateTest(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.existing = User.objects.create_user(
+            'existing_user', password='t123456', email='existing@example.com',
+        )
+
+    def test_unique_username_is_valid(self):
+        from .forms import UserCreateForm
+        form = UserCreateForm(data={
+            'username': 'brand_new_user',
+            'email': 'new@example.com',
+            'first_name': 'X',
+            'last_name': 'Y',
+            'password1': 'test1234',
+            'password2': 'test1234',
+            'role': 'sales',
+            'is_active': True,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_duplicate_username_blocks(self):
+        from .forms import UserCreateForm
+        form = UserCreateForm(data={
+            'username': 'existing_user',
+            'email': 'new@example.com',
+            'first_name': 'X',
+            'last_name': 'Y',
+            'password1': 'test1234',
+            'password2': 'test1234',
+            'role': 'sales',
+            'is_active': True,
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('username', form.errors)
+
+    def test_duplicate_email_blocks(self):
+        from .forms import UserCreateForm
+        form = UserCreateForm(data={
+            'username': 'brand_new_user',
+            'email': 'existing@example.com',
+            'first_name': 'X',
+            'last_name': 'Y',
+            'password1': 'test1234',
+            'password2': 'test1234',
+            'role': 'sales',
+            'is_active': True,
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('email', form.errors)

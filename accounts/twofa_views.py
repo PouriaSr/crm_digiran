@@ -84,24 +84,25 @@ def twofa_setup(request):
     if has_2fa(user):
         return redirect('accounts:twofa_disable')
 
-    # حذف دستگاه‌های تاییدنشده قبلی (برای شروع تازه)
-    TOTPDevice.objects.filter(user=user, confirmed=False).delete()
-    device = TOTPDevice.objects.create(user=user, name='default', confirmed=False)
-
     if request.method == 'POST':
-        code = request.POST.get('code', '').strip().replace(' ', '')
-
         # کاربر می‌خواد QR جدید بگیره
         if 'regenerate' in request.POST:
-            device.delete()
+            TOTPDevice.objects.filter(user=user, confirmed=False).delete()
             return redirect('accounts:twofa_setup')
+
+        # گرفتن device فعلی (که از GET ساخته شده)
+        device = get_unconfirmed_totp(user)
+        if not device:
+            messages.error(request, 'نشست منقضی شده. دوباره تلاش کنید.')
+            return redirect('accounts:twofa_setup')
+
+        code = request.POST.get('code', '').strip().replace(' ', '')
 
         if not code:
             messages.error(request, 'لطفاً کد ۶ رقمی را وارد کنید.')
         elif device.verify_token(code):
             device.confirmed = True
             device.save()
-            # تولید کدهای بازیابی
             codes = generate_recovery_codes(user)
             request.session['2fa_new_recovery_codes'] = codes
             messages.success(request, '✅ 2FA با موفقیت فعال شد.')
@@ -109,11 +110,16 @@ def twofa_setup(request):
         else:
             messages.error(request, '❌ کد وارد شده صحیح نیست. دوباره تلاش کنید.')
 
-    config_url = device.config_url
+    else:
+        # GET: حذف device تاییدنشده قبلی و ساخت جدید
+        TOTPDevice.objects.filter(user=user, confirmed=False).delete()
+        TOTPDevice.objects.create(user=user, name='default', confirmed=False)
 
+    # رفرش برای هر دو حالت (POST و GET)
+    device = get_unconfirmed_totp(user)
     return render(request, 'accounts/2fa_setup.html', {
         'device': device,
-        'config_url': config_url,
+        'config_url': device.config_url,
         'secret_key': device.key,
     })
 

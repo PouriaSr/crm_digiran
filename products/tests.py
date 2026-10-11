@@ -235,3 +235,148 @@ class ProductPropertiesTest(TestCase):
             price=100000, cost_price=0,
         )
         self.assertEqual(p.profit_margin, 0)
+
+
+# ═══════════════════════════════════════════════════════════
+# تست Duplicate — Product و Category
+# ═══════════════════════════════════════════════════════════
+class ProductDuplicateTest(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.category = Category.objects.create(
+            name='دسته اصلی', slug='main-cat',
+        )
+        cls.existing = Product.objects.create(
+            name='کالای موجود', code='EXIST-001',
+            category=cls.category, price=100000, stock=10,
+        )
+
+    def test_unique_code_is_valid(self):
+        from .forms import ProductForm
+        form = ProductForm(data={
+            'name': 'کالای جدید',
+            'code': 'NEW-001',
+            'category': self.category.pk,
+            'unit': 'عدد',
+            'price': 50000,
+            'cost_price': 40000,
+            'stock': 5,
+            'min_stock': 1,
+            'is_active': True,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_duplicate_code_blocks_save(self):
+        from .forms import ProductForm
+        form = ProductForm(data={
+            'name': 'کالای جدید',
+            'code': 'EXIST-001',
+            'category': self.category.pk,
+            'unit': 'عدد',
+            'price': 50000,
+            'stock': 5,
+            'is_active': True,
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('code', form.errors)
+        self.assertIn('کالای موجود', str(form.errors['code']))
+
+    def test_code_normalization_persian_digits(self):
+        """کد با ارقام فارسی → نرمال‌سازی و تشخیص duplicate"""
+        from .forms import ProductForm
+        form = ProductForm(data={
+            'name': 'X',
+            'code': 'EXIST-۰۰۱',   # ارقام فارسی
+            'category': self.category.pk,
+            'unit': 'عدد',
+            'price': 1000,
+            'stock': 0,
+            'is_active': True,
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('code', form.errors)
+
+    def test_code_normalization_spaces(self):
+        """کد با فاصله → نرمال‌سازی"""
+        from .forms import ProductForm
+        form = ProductForm(data={
+            'name': 'X',
+            'code': 'EXIST - 001',
+            'category': self.category.pk,
+            'unit': 'عدد',
+            'price': 1000,
+            'stock': 0,
+            'is_active': True,
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('code', form.errors)
+
+    def test_similar_name_shows_warning(self):
+        """نام کاملاً مشابه → warning نه block (چون code یکتاست)"""
+        from .forms import ProductForm
+        form = ProductForm(data={
+            'name': 'کالای موجود',   # exact same name
+            'code': 'DIFFERENT-001',
+            'category': self.category.pk,
+            'unit': 'عدد',
+            'price': 1000,
+            'cost_price': 500,
+            'stock': 0,
+            'min_stock': 0,
+            'is_active': True,
+        })
+        # باید valid باشه (code یکتاست)
+        self.assertTrue(form.is_valid(), form.errors)
+        # ولی warning برای نام
+        name_warnings = [w for w in form.duplicate_warnings if w['field'] == 'name']
+        self.assertGreaterEqual(len(name_warnings), 1)
+
+    def test_edit_self_keeps_code(self):
+        """ویرایش خود کالا → block نکنه"""
+        from .forms import ProductForm
+        form = ProductForm(
+            data={
+                'name': 'کالای موجود ویرایش',
+                'code': 'EXIST-001',
+                'category': self.category.pk,
+                'unit': 'عدد',
+                'price': 200000,
+                'cost_price': 150000,
+                'stock': 10,
+                'min_stock': 2,
+                'is_active': True,
+            },
+            instance=self.existing,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
+
+class CategoryDuplicateTest(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.existing = Category.objects.create(
+            name='دسته اصلی', slug='main-cat-2',
+        )
+
+    def test_unique_name_is_valid(self):
+        from .forms import CategoryForm
+        form = CategoryForm(data={
+            'name': 'دسته جدید',
+            'slug': 'new-cat',
+            'order': 1,
+            'is_active': True,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_duplicate_name_blocks(self):
+        from .forms import CategoryForm
+        form = CategoryForm(data={
+            'name': 'دسته اصلی',
+            'slug': 'another-slug',
+            'order': 1,
+            'is_active': True,
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('name', form.errors)
