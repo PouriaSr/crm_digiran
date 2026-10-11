@@ -1,14 +1,13 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
+from .auth_views import RateLimitedLoginView
 
 app_name = 'accounts'
 
 urlpatterns = [
-    # ورود/خروج
-    path('login/', auth_views.LoginView.as_view(
-        template_name='accounts/login.html'
-    ), name='login'),
+    # ورود/خروج — LoginView سفارشی با rate limiting (۸.۲)
+    path('login/', RateLimitedLoginView.as_view(), name='login'),
     path('logout/', auth_views.LogoutView.as_view(
         next_page='accounts:login'
     ), name='logout'),

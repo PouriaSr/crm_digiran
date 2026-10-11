@@ -140,6 +140,39 @@ else:
         }
     }
 
+# ═══════════════════════════════════════════════════════════
+# Cache — برای rate limiting و session caching (۸.۲)
+# ═══════════════════════════════════════════════════════════
+# توسعه: LocMemCache (per-process، برای dev کافیه)
+# تولید: Redis (multi-worker safe)
+REDIS_URL = os.getenv('REDIS_URL', '').strip()
+
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+            'KEY_PREFIX': 'crm',
+            'TIMEOUT': 300,
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'crm-digiran-cache',
+            'TIMEOUT': 300,
+        }
+    }
+
+
+# ═══════════════════════════════════════════════════════════
+# Rate limiting روی login (۸.۲)
+# ═══════════════════════════════════════════════════════════
+LOGIN_FAILED_ATTEMPTS = int(os.getenv('LOGIN_FAILED_ATTEMPTS', '5'))
+LOGIN_FAILED_IP_ATTEMPTS = int(os.getenv('LOGIN_FAILED_IP_ATTEMPTS', '20'))
+LOGIN_FAILED_WINDOW = int(os.getenv('LOGIN_FAILED_WINDOW', str(15 * 60)))  # 15 دقیقه
+LOGIN_LOCKOUT = int(os.getenv('LOGIN_LOCKOUT', str(15 * 60)))              # 15 دقیقه
 
 # ═══════════════════════════════════════════════════════════
 # اعتبارسنجی رمز
@@ -293,6 +326,11 @@ LOGGING = {
         'crm.security': {
             'handlers': ['console', 'file'],
             'level': 'WARNING',
+            'propagate': False,
+        },
+        'crm.ratelimit': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
             'propagate': False,
         },
     },

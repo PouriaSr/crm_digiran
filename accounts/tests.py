@@ -526,3 +526,163 @@ class RBACOnViewsTest(TestCase):
         self.assertIn('بازگشت به داشبورد', content)
         # نقش کاربر
         self.assertIn('اپراتور', content)
+        
+
+# ═══════════════════════════════════════════════════════════
+# ۸.۲ — Rate Limiting روی login
+# ═══════════════════════════════════════════════════════════
+from django.core.cache import cache
+from .ratelimit import (
+    get_client_ip, is_locked, get_lock_remaining,
+    register_failure, clear_failures, get_remaining_attempts,
+    _key_user, _key_ip,
+)
+
+
+class LoginRateLimitUnitTest(TestCase):
+    """تست‌های واحد روی توابع ratelimit.py"""
+
+    def setUp(self):
+        cache.clear()
+
+    def test_get_client_ip_direct(self):
+        from django.test import RequestFactory
+        factory = RequestFactory()
+        req = factory.get('/', REMOTE_ADDR='10.0.0.5')
+        self.assertEqual(get_client_ip(req), '10.0.0.5')
+
+    def test_get_client_ip_forwarded(self):
+        from django.test import RequestFactory
+        factory = RequestFactory()
+        req = factory.get('/', HTTP_X_FORWARDED_FOR='203.0.113.7, 10.0.0.1')
+        self.assertEqual(get_client_ip(req), '203.0.113.7')
+
+    def test_get_client_ip_real_ip_header(self):
+        from django.test import RequestFactory
+        factory = RequestFactory()
+        req = factory.get('/', HTTP_X_REAL_IP='203.0.113.9')
+        self.assertEqual(get_client_ip(req), '203.0.113.9')
+
+    def test_not_locked_initially(self):
+        self.assertFalse(is_locked('u1', '1.1.1.1'))
+        self.assertEqual(get_lock_remaining('u1', '1.1.1.1'), 0)
+
+    def test_register_failures_below_limit(self):
+        for i in range(4):
+            result = register_failure('u1', '1.1.1.1')
+        self.assertIsNone(result)  # هنوز قفل نشده
+        self.assertFalse(is_locked('u1', '1.1.1.1'))
+        self.assertEqual(get_remaining_attempts('u1', '1.1.1.1'), 1)
+
+    def test_lock_after_user_limit(self):
+        for _ in range(5):
+            register_failure('u1', '1.1.1.1')
+        self.assertTrue(is_locked('u1', '1.1.1.1'))
+        self.assertGreater(get_lock_remaining('u1', '1.1.1.1'), 0)
+
+    def test_clear_failures(self):
+        for _ in range(3):
+            register_failure('u1', '1.1.1.1')
+        clear_failures('u1', '1.1.1.1')
+        self.assertFalse(is_locked('u1', '1.1.1.1'))
+        self.assertEqual(get_remaining_attempts('u1', '1.1.1.1'), 5)
+
+    def test_different_ips_are_independent(self):
+        for _ in range(5):
+            register_failure('u1', '1.1.1.1')
+        self.assertTrue(is_locked('u1', '1.1.1.1'))
+        self.assertFalse(is_locked('u1', '2.2.2.2'))
+
+    def test_ip_layer_blocks_after_many_usernames(self):
+        """۲۰ تلاش از یک IP با usernameهای مختلف → IP قفل می‌شه"""
+        for i in range(20):
+            register_failure(f'u{i}', '1.1.1.1')
+        self.assertTrue(is_locked('brandnew', '1.1.1.1'))
+
+
+class LoginRateLimitViewTest(TestCase):
+    """تست‌های integration روی RateLimitedLoginView"""
+
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user('rl_user', password='correct1234')
+        self.url = reverse('accounts:login')
+
+    def _fail_login(self, username='rl_user', ip='127.0.0.1'):
+        return self.client.post(
+            self.url,
+            {'username': username, 'password': 'wrong-password'},
+            REMOTE_ADDR=ip,
+        )
+
+    def _success_login(self, username='rl_user', ip='127.0.0.1'):
+        return self.client.post(
+            self.url,
+            {'username': username, 'password': 'correct1234'},
+            REMOTE_ADDR=ip,
+        )
+
+    def test_successful_login_no_lock(self):
+        response = self._success_login()
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(is_locked('rl_user', '127.0.0.1'))
+
+    def test_failed_login_increments_counter(self):
+        self._fail_login()
+        # هنوز قفل نیست ولی یک تلاش کم شده
+        self.assertFalse(is_locked('rl_user', '127.0.0.1'))
+        self.assertEqual(get_remaining_attempts('rl_user', '127.0.0.1'), 4)
+
+    def test_lockout_after_max_failed_attempts(self):
+        for _ in range(5):
+            self._fail_login()
+        self.assertTrue(is_locked('rl_user', '127.0.0.1'))
+
+    def test_correct_password_after_lockout_is_blocked(self):
+        """حتی رمز درست هم بعد از قفل کار نمی‌کنه"""
+        for _ in range(5):
+            self._fail_login()
+
+        response = self._success_login()
+
+        # باید به login redirect بشه، نه داشبورد
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+        # کاربر نباید لاگین شده باشه
+        self.assertFalse(self.client.session.get('_auth_user_id'))
+
+    def test_successful_login_clears_failures(self):
+        for _ in range(3):
+            self._fail_login()
+
+        response = self._success_login()
+        self.assertEqual(response.status_code, 302)
+
+        # شمارنده پاک شده
+        self.assertEqual(get_remaining_attempts('rl_user', '127.0.0.1'), 5)
+
+    def test_lockout_message_shown_on_login_page(self):
+        """پیام خطای قفل روی صفحه‌ی login نمایش داده می‌شه"""
+        # ۵ تلاش ناموفق → قفل فعال می‌شه
+        for _ in range(5):
+            self._fail_login()
+
+        # تلاش ششم → بلوک می‌شه + redirect به login + پیام
+        response = self.client.post(
+            self.url,
+            {'username': 'rl_user', 'password': 'wrong-password'},
+            REMOTE_ADDR='127.0.0.1',
+            follow=True,
+        )
+        content = response.content.decode('utf-8')
+        self.assertIn('مسدود', content)
+
+    def test_other_ip_can_still_login(self):
+        """قفل یک IP روی IP دیگه اثر نداره"""
+        for _ in range(5):
+            self._fail_login(ip='1.1.1.1')
+
+        # IP جدید می‌تونه لاگین کنه
+        response = self._success_login(ip='2.2.2.2')
+        self.assertEqual(response.status_code, 302)
