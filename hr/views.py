@@ -9,6 +9,7 @@ from django.utils import timezone
 from accounts.permissions import require_permission
 from .models import Employee, Task, LeaveRequest, Attendance
 from .forms import EmployeeForm, TaskForm, LeaveRequestForm, AttendanceForm
+from crm.duplicate_check import show_duplicate_warnings
 
 
 # ═══════════════════════════════════════════
@@ -89,6 +90,7 @@ def employee_create(request):
         form = EmployeeForm(request.POST)
         if form.is_valid():
             employee = form.save()
+            show_duplicate_warnings(request, form)
             messages.success(request, f'کارمند «{employee.full_name}» اضافه شد.')
             return redirect('hr:employee_detail', pk=employee.pk)
     else:
@@ -109,6 +111,7 @@ def employee_edit(request, pk):
         form = EmployeeForm(request.POST, instance=employee)
         if form.is_valid():
             form.save()
+            show_duplicate_warnings(request, form)
             messages.success(request, 'اطلاعات کارمند به‌روزرسانی شد.')
             return redirect('hr:employee_detail', pk=employee.pk)
     else:

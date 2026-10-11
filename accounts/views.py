@@ -6,6 +6,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from accounts.permissions import require_permission
 from .forms import UserCreateForm, UserEditForm, UserPasswordForm, get_user_role, ensure_groups
+from crm.duplicate_check import show_duplicate_warnings
 
 
 # ═══════════════════════════════════════════════════════════
@@ -103,6 +104,7 @@ def user_create(request):
         form = UserCreateForm(request.POST)
         if form.is_valid():
             user = form.save()
+            show_duplicate_warnings(request, form)
             messages.success(request, f'کاربر «{user.username}» با موفقیت ساخته شد.')
             return redirect('accounts:user_list')
     else:
@@ -135,6 +137,7 @@ def user_edit(request, pk):
                 return redirect('accounts:user_edit', pk=pk)
 
             form.save()
+            show_duplicate_warnings(request, form)
             messages.success(request, 'اطلاعات کاربر به‌روزرسانی شد.')
             return redirect('accounts:user_list')
     else:

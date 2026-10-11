@@ -6,7 +6,7 @@ from django.db.models import Q, Sum, F, Count
 from accounts.permissions import require_permission, has_permission
 from .models import Product, StockMovement, Category
 from .forms import ProductForm, CategoryForm
-
+from crm.duplicate_check import show_duplicate_warnings
 
 # ═══════════════════════════════════════════════════════════
 # کالاها
@@ -121,6 +121,7 @@ def product_create(request):
         form = ProductForm(request.POST)
         if form.is_valid():
             product = form.save()
+            show_duplicate_warnings(request, form)
             messages.success(request, f'کالای «{product.name}» اضافه شد.')
             return redirect('products:detail', pk=product.pk)
     else:
@@ -141,6 +142,7 @@ def product_edit(request, pk):
         form = ProductForm(request.POST, instance=product)
         if form.is_valid():
             form.save()
+            show_duplicate_warnings(request, form)
             messages.success(request, 'اطلاعات کالا به‌روزرسانی شد.')
             return redirect('products:detail', pk=product.pk)
     else:
@@ -244,6 +246,7 @@ def category_create(request):
         form = CategoryForm(request.POST)
         if form.is_valid():
             category = form.save()
+            show_duplicate_warnings(request, form)
             messages.success(request, f'دسته‌بندی «{category.name}» اضافه شد.')
             return redirect('products:category_list')
     else:
@@ -268,6 +271,7 @@ def category_edit(request, pk):
         form = CategoryForm(request.POST, instance=category)
         if form.is_valid():
             form.save()
+            show_duplicate_warnings(request, form)
             messages.success(request, 'دسته‌بندی به‌روزرسانی شد.')
             return redirect('products:category_list')
     else:
