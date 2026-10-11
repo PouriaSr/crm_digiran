@@ -15,14 +15,35 @@
 </div>
 
 <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
-    <form method="get" class="flex flex-wrap gap-3 items-center">
-        <label class="text-sm font-medium text-gray-700">انتخاب ماه:</label>
-        <input type="text" name="month" value="{{ selected_month }}"
-               placeholder="۱۴۰۵/۰۷"
-               class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-               style="width: 140px;">
-        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">نمایش</button>
-        <span class="text-xs text-gray-400">فرمت: سال/ماه (مثلاً ۱۴۰۵/۰۷)</span>
+    <form method="get" class="flex flex-wrap gap-3 items-end">
+        <div>
+            <label class="block text-xs text-gray-500 mb-1.5">سال</label>
+            <select name="year" id="year-select"
+                    class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
+                    style="width: 110px;"
+                    dir="ltr">
+                {% for y in year_choices %}
+                    <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-xs text-gray-500 mb-1.5">ماه</label>
+            <select name="month_num" id="month-select"
+                    class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
+                    style="width: 160px;">
+                {% for num, label in month_choices %}
+                    <option value="{{ num }}" {% if num == selected_month_num %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+            نمایش
+        </button>
+
+        <span class="text-xs text-gray-400 mb-2">ماه و سال را انتخاب کنید</span>
     </form>
 </div>
 

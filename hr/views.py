@@ -483,43 +483,63 @@ def attendance_delete(request, pk):
 @login_required
 @require_permission('hr.attendance')
 def attendance_report(request):
+    import jdatetime
+    from datetime import timedelta
+    from django.db.models import Count, Q, Sum
+    from django.utils import timezone
+
     now = timezone.now()
     j_now = jdatetime.date.fromgregorian(date=now.date())
 
-    month_start = jdatetime.date(j_now.year, j_now.month, 1).togregorian()
-    if j_now.month == 12:
-        month_end = jdatetime.date(j_now.year + 1, 1, 1).togregorian() - timedelta(days=1)
-    else:
-        month_end = jdatetime.date(j_now.year, j_now.month + 1, 1).togregorian() - timedelta(days=1)
+    # ─── انتخاب سال/ماه از query ───
+    try:
+        selected_year = int(request.GET.get('year', j_now.year))
+    except (ValueError, TypeError):
+        selected_year = j_now.year
 
-    selected_month = request.GET.get('month', '')
-    if selected_month:
-        try:
-            year, month = map(int, selected_month.split('/'))
-            month_start = jdatetime.date(year, month, 1).togregorian()
-            if month == 12:
-                next_m = jdatetime.date(year + 1, 1, 1)
-            else:
-                next_m = jdatetime.date(year, month + 1, 1)
-            month_end = next_m.togregorian() - timedelta(days=1)
-        except (ValueError, AttributeError):
-            pass
+    try:
+        selected_month_num = int(request.GET.get('month_num', j_now.month))
+    except (ValueError, TypeError):
+        selected_month_num = j_now.month
+
+    if not (1 <= selected_month_num <= 12):
+        selected_month_num = j_now.month
+
+    # ─── بازه‌ی ماه شمسی ───
+    month_start = jdatetime.date(selected_year, selected_month_num, 1).togregorian()
+    if selected_month_num == 12:
+        next_month = jdatetime.date(selected_year + 1, 1, 1)
+    else:
+        next_month = jdatetime.date(selected_year, selected_month_num + 1, 1)
+    month_end = next_month.togregorian() - timedelta(days=1)
+
+    # ─── لیست‌های dropdown ───
+    year_choices = list(range(j_now.year - 3, j_now.year + 2))
+    month_choices = [
+        (1, 'فروردین'),
+        (2, 'اردیبهشت'),
+        (3, 'خرداد'),
+        (4, 'تیر'),
+        (5, 'مرداد'),
+        (6, 'شهریور'),
+        (7, 'مهر'),
+        (8, 'آبان'),
+        (9, 'آذر'),
+        (10, 'دی'),
+        (11, 'بهمن'),
+        (12, 'اسفند'),
+    ]
 
     employees = list(Employee.objects.filter(is_active=True))
     employee_ids = [e.pk for e in employees]
 
-    # ═══════════════════════════════════════════════════════════
-    # بهینه‌سازی N+1: قبلاً ۶ کوئری به‌ازای هر کارمند
-    # الان: ۲ کوئری کل (مستقل از تعداد کارمندان)
-    # ═══════════════════════════════════════════════════════════
-
+    # ═══ بهینه‌سازی: ۲ کوئری کل ═══
     base_qs = Attendance.objects.filter(
         date__gte=month_start,
         date__lte=month_end,
         employee_id__in=employee_ids,
     )
 
-    # ═══ کوئری ۱: شمارش‌ها با GROUP BY در سطح دیتابیس ═══
     counts_qs = base_qs.values('employee_id').annotate(
         total_days=Count('id'),
         present=Count('id', filter=Q(status='present')),
@@ -529,17 +549,12 @@ def attendance_report(request):
     )
     counts_map = {row['employee_id']: row for row in counts_qs}
 
-    # ═══ کوئری ۲: فقط ستون‌های لازم برای محاسبه‌ی work_hours ═══
-    # چون work_hours در مدل یک property است (نه فیلد DB)،
-    # نمی‌توان از Sum در aggregate استفاده کرد. پس فقط
-    # check_in/check_out را می‌گیریم و در پایتون جمع می‌زنیم.
     hours_map = {}
     for rec in base_qs.only('employee_id', 'check_in', 'check_out'):
         wh = rec.work_hours
         if wh:
             hours_map[rec.employee_id] = hours_map.get(rec.employee_id, 0) + wh
 
-    # ═══ ساخت گزارش نهایی ═══
     report = []
     for emp in employees:
         c = counts_map.get(emp.pk, {})
@@ -557,7 +572,10 @@ def attendance_report(request):
         'report': report,
         'month_start': month_start,
         'month_end': month_end,
-        'selected_month': selected_month or f"{j_now.year}/{j_now.month:02d}",
+        'selected_year': selected_year,
+        'selected_month_num': selected_month_num,
+        'year_choices': year_choices,
+        'month_choices': month_choices,
     }
     return render(request, 'hr/attendance_report.html', context)
 
