@@ -8,7 +8,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User as AuthUser
 from django.db.models import (
-    Q, Sum, Count, F, Avg,
+    Q, Sum, Count, F, Avg, Min, Max,
     Case, When, Value, DecimalField,
 )
 from django.http import HttpResponse
@@ -27,9 +27,9 @@ DEC_FIELD = DecimalField(max_digits=15, decimal_places=0)
 ZERO = Decimal('0')
 
 
-# ═══════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
 # توابع کمکی — سطح دسترسی و فیلتر کاربر
-# ═══════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
 
 def _is_manager(user):
     """آیا این کاربر می‌تواند همه‌ی داده‌ها را ببیند؟"""
@@ -83,9 +83,9 @@ def _filtered_invoices(owner, statuses=None):
     return qs
 
 
-# ═══════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
 # توابع کمکی تاریخ
-# ═══════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
 
 def _to_jalali_month(g_date):
     try:
@@ -126,9 +126,17 @@ def _parse_jalali_date(value):
         return None
 
 
-# ═══════════════════════════════════════════
-# جمع‌آوری داده‌های داشبورد
-# ═══════════════════════════════════════════
+def _get_employee_choices():
+    """کاربران فعال برای dropdown فیلتر"""
+    return AuthUser.objects.filter(
+        is_active=True,
+        is_staff=True,
+    ).order_by('first_name', 'last_name', 'username')
+
+
+# ═══════════════════════════════════════════════════════════
+# جمع‌آوری داده‌های داشبورد اصلی
+# ═══════════════════════════════════════════════════════════
 
 def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None):
     """جمع‌آوری داده‌های داشبورد با فیلتر تاریخ، نقش و کاربر"""
@@ -175,11 +183,7 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
     total_invoices = invoices_qs.count()
     total_sales = invoices_qs.aggregate(s=Sum('total'))['s'] or ZERO
 
-    # ═══════════════════════════════════════════════════════════
-    # بهینه‌سازی N+1: فروش این ماه / ماه قبل / سال قبل
-    # قبلاً ۳ کوئری aggregate جدا → الان ۱ کوئری
-    # ═══════════════════════════════════════════════════════════
-
+    # ═══ بهینه‌سازی: فروش این ماه / ماه قبل / سال قبل (۱ کوئری) ═══
     month_start, month_end = _get_month_range(now_j.year, now_j.month)
     prev_year = now_j.year if now_j.month > 1 else now_j.year - 1
     prev_month = now_j.month - 1 if now_j.month > 1 else 12
@@ -226,12 +230,7 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
     else:
         yearly_change = 100 if sales_this_month > 0 else 0
 
-    # ═══════════════════════════════════════════════════════════
-    # بهینه‌سازی N+1: نمودار فروش ۱۲ ماه اخیر
-    # قبلاً ۱۲ کوئری aggregate جدا → الان ۱ کوئری
-    # ═══════════════════════════════════════════════════════════
-
-    # ابتدا بازه‌ها را بدون کوئری می‌سازیم
+    # ═══ بهینه‌سازی: نمودار فروش ۱۲ ماه (۱ کوئری) ═══
     month_ranges = []
     for i in range(11, -1, -1):
         m = now_j.month - i
@@ -328,7 +327,7 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
         for p in top_products
     ]
 
-    # ═══ عملکرد کارمندان (فقط برای مدیرها و بدون فیلتر کاربر) ═══
+    # ═══ عملکرد کارمندان (فقط مدیرها، بدون فیلتر) ═══
     if is_mgr and filter_user_selected is None:
         employee_perf = invoices_qs.filter(
             created_by__isnull=False
@@ -358,10 +357,7 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
     emp_chart_names = [e['name'] for e in employee_perf_list[:10]]
     emp_chart_values = [e['total_sales'] for e in employee_perf_list[:10]]
 
-    # ═══════════════════════════════════════════════════════════
-    # بهینه‌سازی N+1: قیف فروش
-    # قبلاً ۲ کوئری جدا برای leads_with_invoice و paid_leads → الان ۱
-    # ═══════════════════════════════════════════════════════════
+    # ═══ قیف فروش ═══
     leads_qs = customers_qs.filter(status='lead')
     leads_count = leads_qs.count()
 
@@ -438,11 +434,7 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
     # ═══ لیست کاربران برای dropdown فیلتر (فقط مدیرها) ═══
     filter_users_list = []
     if is_mgr:
-        filter_users_list = AuthUser.objects.filter(
-            is_active=True,
-            is_superuser=False,
-            is_staff=True,
-        ).order_by('first_name', 'last_name', 'username')
+        filter_users_list = _get_employee_choices()
 
     # ═══ آماده‌سازی JSON ═══
     def _json(obj):
@@ -472,13 +464,11 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
             'pending_leaves': pending_leaves,
         },
 
-        # داده‌های خام (برای Excel)
         'sales_data': sales_data,
         'sales_labels': sales_labels,
         'source_data': source_data,
         'source_labels': source_labels,
 
-        # JSON امن برای چارت‌ها
         'sales_data_json': _json(sales_data),
         'sales_labels_json': _json(sales_labels),
         'source_data_json': _json(source_data),
@@ -490,7 +480,6 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
         'emp_chart_names_json': _json(emp_chart_names),
         'emp_chart_values_json': _json(emp_chart_values),
 
-        # داده‌های معمولی
         'compare_data': compare_data,
         'funnel': funnel_data,
         'top_products': top_products_list,
@@ -498,9 +487,9 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
     }
 
 
-# ═══════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
 # Views
-# ═══════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
 
 @login_required
 @require_permission('dashboard.view')
@@ -667,7 +656,7 @@ def export_excel(request):
     ws2.column_dimensions['A'].width = 20
     ws2.column_dimensions['B'].width = 25
 
-    # ═══ Sheet 3: عملکرد کارمندان (فقط اگه لیست خالی نباشه) ═══
+    # ═══ Sheet 3: عملکرد کارمندان ═══
     if data.get('employee_perf'):
         ws3 = wb.create_sheet('عملکرد کارمندان')
         ws3.sheet_view.rightToLeft = True
@@ -741,3 +730,291 @@ def export_excel(request):
     filename = f'crm-report-{datetime.now().strftime("%Y%m%d-%H%M")}.xlsx'
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
+
+
+# ═══════════════════════════════════════════════════════════
+# BI Dashboard — فاز ۷.۷
+# ═══════════════════════════════════════════════════════════
+
+def _bi_heatmap_data(calls_qs):
+    """
+    Heatmap ساعت‌های طلایی تماس‌ها.
+    Returns: (matrix[7][24], day_labels, hour_labels)
+    """
+    # ترتیب روزهای هفته در ایران: شنبه ... جمعه
+    # weekday() پایتون: 0=Monday, 5=Saturday, 6=Sunday
+    day_order = [5, 6, 0, 1, 2, 3, 4]
+    day_labels = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه']
+
+    matrix = [[0] * 24 for _ in range(7)]
+    for call_date, _status in calls_qs.values_list('call_date', 'status'):
+        if call_date is None:
+            continue
+        py_dow = call_date.weekday()
+        try:
+            row = day_order.index(py_dow)
+        except ValueError:
+            continue
+        matrix[row][call_date.hour] += 1
+
+    hour_labels = [f'{h:02d}' for h in range(24)]
+    return matrix, day_labels, hour_labels
+
+
+@login_required
+@require_permission('dashboard.view')
+def bi_dashboard(request):
+    """صفحه‌ی BI — گزارش‌های عمیق با نمودارهای تعاملی"""
+    today = timezone.now().date()
+    now_j = jdatetime.date.fromgregorian(date=today)
+    is_mgr = _is_manager(request.user)
+
+    # ─── فیلتر کاربر ───
+    filter_user_id = request.GET.get('employee', '').strip() or None
+    owner = _get_data_owner(request.user, filter_user_id)
+    filter_user_selected = None
+    if is_mgr and owner is not None:
+        filter_user_selected = owner
+
+    invoices_qs = _filtered_invoices(owner)
+    calls_qs = _filtered_calls(owner)
+    customers_qs = _filtered_customers(owner)
+
+    # ═══════════════════════════════════════════
+    # KPI ها
+    # ═══════════════════════════════════════════
+    total_customers = customers_qs.count()
+    active_customers = customers_qs.filter(status='active').count()
+    lead_customers = customers_qs.filter(status='lead').count()
+
+    conversion_rate = round(
+        (active_customers / total_customers * 100) if total_customers else 0, 1
+    )
+
+    invoice_stats = invoices_qs.aggregate(
+        total_amount=Sum('total'),
+        count=Count('id'),
+    )
+    avg_invoice = (
+        (invoice_stats['total_amount'] or 0) / invoice_stats['count']
+        if invoice_stats['count'] else 0
+    )
+
+    customers_with_first_invoice = (
+        customers_qs
+        .filter(invoices__status__in=['issued', 'paid'])
+        .annotate(first_invoice_date=Min('invoices__issue_date'))
+        .filter(first_invoice_date__isnull=False)
+    )
+    total_days = 0
+    count_days = 0
+    for c in customers_with_first_invoice.only('first_contact_date'):
+        first_inv = getattr(c, 'first_invoice_date', None)
+        if first_inv and c.first_contact_date:
+            delta = (first_inv - c.first_contact_date.date()).days
+            if delta >= 0:
+                total_days += delta
+                count_days += 1
+    avg_conversion_days = round(total_days / count_days, 1) if count_days else 0
+
+    # ═══════════════════════════════════════════
+    # Trend فروش ۱۲ ماه
+    # ═══════════════════════════════════════════
+    trend_labels = []
+    trend_current = []
+    trend_previous = []
+    for i in range(11, -1, -1):
+        m = now_j.month - i
+        y = now_j.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        s_start, s_end = _get_month_range(y, m)
+        if s_start is None:
+            continue
+
+        cur = invoices_qs.filter(
+            issue_date__gte=s_start, issue_date__lte=s_end
+        ).aggregate(s=Sum('total'))['s'] or 0
+        trend_current.append(float(cur))
+        trend_labels.append(f'{y}/{m:02d}')
+
+        prev_start, prev_end = _get_month_range(y - 1, m)
+        if prev_start:
+            prev = invoices_qs.filter(
+                issue_date__gte=prev_start, issue_date__lte=prev_end
+            ).aggregate(s=Sum('total'))['s'] or 0
+            trend_previous.append(float(prev))
+        else:
+            trend_previous.append(0)
+
+    # ═══════════════════════════════════════════
+    # Heatmap ساعت‌های طلایی
+    # ═══════════════════════════════════════════
+    heatmap_matrix, heatmap_days, heatmap_hours = _bi_heatmap_data(calls_qs)
+    heatmap_series = []
+    for i, day in enumerate(heatmap_days):
+        heatmap_series.append({
+            'name': day,
+            'data': [
+                {'x': heatmap_hours[h], 'y': heatmap_matrix[i][h]}
+                for h in range(24)
+            ],
+        })
+
+    # ═══════════════════════════════════════════
+    # نرخ تبدیل هر منبع جذب
+    # ═══════════════════════════════════════════
+    source_map = dict(Customer.SOURCE_CHOICES)
+    sources_qs = customers_qs.values('source').annotate(
+        total=Count('id'),
+        active=Count('id', filter=Q(status='active')),
+    ).order_by('-total')
+
+    source_data = []
+    for s in sources_qs:
+        src_key = s['source']
+        total = s['total']
+        active = s['active']
+        rate = round((active / total * 100) if total else 0, 1)
+        source_data.append({
+            'label': source_map.get(src_key, 'سایر'),
+            'total': total,
+            'active': active,
+            'rate': rate,
+        })
+
+    # ═══════════════════════════════════════════
+    # Top 10 مشتریان
+    # ═══════════════════════════════════════════
+    top_customers = (
+        customers_qs
+        .annotate(
+            total_purchase=Sum(
+                'invoices__total',
+                filter=Q(invoices__status__in=['issued', 'paid']),
+            ),
+            invoice_count=Count(
+                'invoices',
+                filter=Q(invoices__status__in=['issued', 'paid']),
+            ),
+        )
+        .filter(total_purchase__gt=0)
+        .order_by('-total_purchase')[:10]
+    )
+
+    # ═══════════════════════════════════════════
+    # Top 10 کالاها
+    # ═══════════════════════════════════════════
+    top_products = (
+        InvoiceItem.objects
+        .filter(invoice__in=invoices_qs)
+        .values('product__name', 'product__code')
+        .annotate(
+            total_qty=Sum('quantity'),
+            total_revenue=Sum('total_price'),
+        )
+        .order_by('-total_revenue')[:10]
+    )
+
+    # ═══════════════════════════════════════════
+    # Top 10 کارمندان
+    # ═══════════════════════════════════════════
+    top_employees = []
+    if owner is None:
+        emp_qs = (
+            invoices_qs
+            .filter(created_by__isnull=False)
+            .values(
+                'created_by__username',
+                'created_by__first_name',
+                'created_by__last_name',
+            )
+            .annotate(
+                total_sales=Sum('total'),
+                invoice_count=Count('id'),
+            )
+            .order_by('-total_sales')[:10]
+        )
+        for e in emp_qs:
+            name = f"{e['created_by__first_name'] or ''} {e['created_by__last_name'] or ''}".strip()
+            if not name:
+                name = e['created_by__username']
+            top_employees.append({
+                'name': name,
+                'username': e['created_by__username'],
+                'total_sales': float(e['total_sales'] or 0),
+                'invoice_count': e['invoice_count'],
+            })
+
+    # ═══════════════════════════════════════════
+    # مشتریان غیرفعال (بدون خرید ۹۰+ روز)
+    # ═══════════════════════════════════════════
+    cutoff = today - timedelta(days=90)
+
+    inactive_customers = (
+        customers_qs
+        .annotate(
+            last_invoice=Max(
+                'invoices__issue_date',
+                filter=Q(invoices__status__in=['issued', 'paid']),
+            ),
+        )
+        .filter(
+            Q(last_invoice__lt=cutoff) | Q(last_invoice__isnull=True),
+            status__in=['active', 'inactive'],
+        )
+        .order_by('last_invoice')[:10]
+    )
+
+    # ═══════════════════════════════════════════
+    # لیست کاربران برای فیلتر
+    # ═══════════════════════════════════════════
+    filter_users_list = []
+    if is_mgr:
+        filter_users_list = _get_employee_choices()
+
+    # ═══════════════════════════════════════════
+    # آماده‌سازی JSON
+    # ═══════════════════════════════════════════
+    def _json(obj):
+        return json.dumps(obj, ensure_ascii=False)
+
+    context = {
+        'today': now_j.strftime('%Y/%m/%d'),
+        'is_manager_view': is_mgr,
+        'filter_user_selected': filter_user_selected,
+        'filter_users_list': filter_users_list,
+        'filter_user_id': filter_user_id or '',
+
+        'kpis': {
+            'total_customers': total_customers,
+            'active_customers': active_customers,
+            'lead_customers': lead_customers,
+            'conversion_rate': conversion_rate,
+            'avg_invoice': float(avg_invoice),
+            'avg_conversion_days': avg_conversion_days,
+        },
+
+        'trend_labels': trend_labels,
+        'trend_current': trend_current,
+        'trend_previous': trend_previous,
+
+        'heatmap_series': heatmap_series,
+        'heatmap_hours': heatmap_hours,
+
+        'source_data': source_data,
+
+        'top_customers': top_customers,
+        'top_products': top_products,
+        'top_employees': top_employees,
+        'inactive_customers': inactive_customers,
+
+        'trend_labels_json': _json(trend_labels),
+        'trend_current_json': _json(trend_current),
+        'trend_previous_json': _json(trend_previous),
+        'heatmap_series_json': _json(heatmap_series),
+        'heatmap_hours_json': _json(heatmap_hours),
+        'source_data_json': _json(source_data),
+    }
+    return render(request, 'dashboard/bi.html', context)

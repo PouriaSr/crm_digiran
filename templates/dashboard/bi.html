@@ -1,0 +1,403 @@
+{% extends 'base.html' %}
+{% load fa_numbers %}
+
+{% block title %}گزارش‌های BI{% endblock %}
+
+{% block content %}
+
+<!-- ═══ سربرگ ═══ -->
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">گزارش‌های تحلیلی (BI)</h1>
+        <p class="text-sm text-gray-500 mt-1">
+            تحلیل عمیق فروش، مشتریان و عملکرد کارمندان — {{ today }}
+        </p>
+    </div>
+    <a href="{% url 'dashboard:home' %}" class="text-blue-600 hover:underline text-sm">← داشبورد اصلی</a>
+</div>
+
+<!-- ═══ فیلتر کاربر (فقط مدیرها) ═══ -->
+{% if is_manager_view %}
+<div class="bg-white rounded-xl p-4 shadow-sm mb-6">
+    <form method="get" class="flex flex-wrap gap-3 items-center">
+        <label class="text-sm font-medium text-gray-700 whitespace-nowrap">نمایش داده‌های:</label>
+        <select name="employee" onchange="this.form.submit()"
+                class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+            <option value="" {% if not filter_user_id %}selected{% endif %}>همه‌ی کارمندان</option>
+            {% for u in filter_users_list %}
+                <option value="{{ u.pk }}" {% if filter_user_id == u.pk|stringformat:"s" %}selected{% endif %}>
+                    {{ u.get_full_name|default:u.username }}
+                </option>
+            {% endfor %}
+        </select>
+
+        {% if filter_user_selected %}
+        <a href="{% url 'dashboard:bi' %}" class="text-sm text-gray-500 hover:text-gray-700">پاک کردن فیلتر</a>
+        {% endif %}
+    </form>
+
+    {% if filter_user_selected %}
+    <div class="mt-3 pt-3 border-t border-gray-100 text-sm text-blue-700 flex items-center gap-2">
+        <span>🔍</span>
+        <span>نمایش داده‌های: <strong>{{ filter_user_selected.get_full_name|default:filter_user_selected.username }}</strong></span>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- ═══ KPI Cards ═══ -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-blue-500">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">👥</div>
+            <div class="text-gray-500 text-xs">کل مشتریان</div>
+        </div>
+        <div class="text-2xl font-bold text-gray-800">{{ kpis.total_customers|fa_num }}</div>
+        <div class="text-xs text-gray-400 mt-1">
+            فعال: <span class="text-green-600 font-bold">{{ kpis.active_customers|fa_num }}</span>
+            • لید: <span class="text-yellow-600 font-bold">{{ kpis.lead_customers|fa_num }}</span>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-green-500">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center text-green-600">📈</div>
+            <div class="text-gray-500 text-xs">نرخ تبدیل لید</div>
+        </div>
+        <div class="text-2xl font-bold text-green-700">{{ kpis.conversion_rate }}٪</div>
+        <div class="text-xs text-gray-400 mt-1">active / total</div>
+    </div>
+
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-purple-500">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-9 h-9 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600">💰</div>
+            <div class="text-gray-500 text-xs">میانگین فاکتور</div>
+        </div>
+        <div class="text-xl font-bold text-purple-700" dir="ltr">{{ kpis.avg_invoice|floatformat:0 }}</div>
+        <div class="text-xs text-gray-400 mt-1">تومان</div>
+    </div>
+
+    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-yellow-500">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-9 h-9 bg-yellow-100 rounded-lg flex items-center justify-center text-yellow-600">⏱</div>
+            <div class="text-gray-500 text-xs">میانگین زمان تبدیل</div>
+        </div>
+        <div class="text-2xl font-bold text-yellow-700">{{ kpis.avg_conversion_days }} روز</div>
+        <div class="text-xs text-gray-400 mt-1">اولین تماس → اولین فاکتور</div>
+    </div>
+</div>
+
+<!-- ═══ Trend فروش ۱۲ ماه ═══ -->
+<div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+    <h2 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+        <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-sm">📊</span>
+        روند فروش ۱۲ ماه اخیر (مقایسه با سال قبل)
+    </h2>
+    <div id="trendChart" style="min-height: 320px;"></div>
+</div>
+
+<!-- ═══ Heatmap ساعت‌های طلایی ═══ -->
+<div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+    <h2 class="font-bold text-gray-700 mb-1 flex items-center gap-2">
+        <span class="w-7 h-7 bg-red-100 text-red-600 rounded-lg flex items-center justify-center text-sm">🔥</span>
+        ساعت‌های طلایی تماس‌گیری
+    </h2>
+    <p class="text-xs text-gray-400 mb-4">رنگ‌های تیره‌تر = تماس‌های بیشتر در آن ساعت و روز</p>
+    <div id="heatmapChart" style="min-height: 340px;"></div>
+</div>
+
+<!-- ═══ نرخ تبدیل منابع جذب ═══ -->
+<div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+    <h2 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+        <span class="w-7 h-7 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center text-sm">🎯</span>
+        کارایی منابع جذب مشتری
+    </h2>
+    {% if source_data %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50">
+                <tr class="text-gray-600">
+                    <th class="text-right px-4 py-2 font-medium">منبع جذب</th>
+                    <th class="text-right px-4 py-2 font-medium">کل مشتری</th>
+                    <th class="text-right px-4 py-2 font-medium">تبدیل‌شده</th>
+                    <th class="text-right px-4 py-2 font-medium">نرخ تبدیل</th>
+                    <th class="text-right px-4 py-2 font-medium w-48">نمودار</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for s in source_data %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-right font-medium text-gray-800">{{ s.label }}</td>
+                    <td class="px-4 py-3 text-right text-gray-600">{{ s.total|fa_num }}</td>
+                    <td class="px-4 py-3 text-right text-green-600 font-bold">{{ s.active|fa_num }}</td>
+                    <td class="px-4 py-3 text-right">
+                        <span class="font-bold {% if s.rate >= 50 %}text-green-700{% elif s.rate >= 25 %}text-yellow-700{% else %}text-red-600{% endif %}">
+                            {{ s.rate }}٪
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="bg-gray-100 rounded-full h-2 overflow-hidden" dir="ltr">
+                            <div class="h-full bg-gradient-to-r from-blue-400 to-blue-600"
+                                 style="width: {{ s.rate }}%;"></div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-8 text-gray-400">داده‌ای برای نمایش وجود ندارد</div>
+    {% endif %}
+</div>
+
+<!-- ═══ دو ستون: Top Customers + Top Products ═══ -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100">
+            <h2 class="font-bold text-gray-700 flex items-center gap-2">
+                <span class="w-7 h-7 bg-green-100 text-green-600 rounded-lg flex items-center justify-center text-sm">🏆</span>
+                برترین مشتریان
+            </h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr class="text-gray-600">
+                        <th class="text-right px-4 py-2 font-medium">#</th>
+                        <th class="text-right px-4 py-2 font-medium">مشتری</th>
+                        <th class="text-right px-4 py-2 font-medium">فاکتور</th>
+                        <th class="text-right px-4 py-2 font-medium">مجموع خرید</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for c in top_customers %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-right text-xs text-gray-400">{{ forloop.counter }}</td>
+                        <td class="px-4 py-3 text-right">
+                            <a href="{% url 'customers:detail' c.pk %}" class="font-medium text-gray-800 hover:text-blue-600">{{ c.name }}</a>
+                            <div class="text-xs text-gray-400 font-mono" dir="ltr">{{ c.mobile }}</div>
+                        </td>
+                        <td class="px-4 py-3 text-right text-gray-600">{{ c.invoice_count|fa_num }}</td>
+                        <td class="px-4 py-3 text-right font-bold text-green-700" dir="ltr">{{ c.total_purchase|floatformat:0 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center py-8 text-gray-400">داده‌ای نیست</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100">
+            <h2 class="font-bold text-gray-700 flex items-center gap-2">
+                <span class="w-7 h-7 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center text-sm">📦</span>
+                پرفروش‌ترین کالاها
+            </h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr class="text-gray-600">
+                        <th class="text-right px-4 py-2 font-medium">#</th>
+                        <th class="text-right px-4 py-2 font-medium">کالا</th>
+                        <th class="text-right px-4 py-2 font-medium">تعداد</th>
+                        <th class="text-right px-4 py-2 font-medium">درآمد</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for p in top_products %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-right text-xs text-gray-400">{{ forloop.counter }}</td>
+                        <td class="px-4 py-3 text-right">
+                            <div class="font-medium text-gray-800">{{ p.product__name }}</div>
+                            <div class="text-xs text-gray-400 font-mono" dir="ltr">{{ p.product__code }}</div>
+                        </td>
+                        <td class="px-4 py-3 text-right text-gray-700 font-bold">{{ p.total_qty|fa_num }}</td>
+                        <td class="px-4 py-3 text-right font-bold text-blue-700" dir="ltr">{{ p.total_revenue|floatformat:0 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center py-8 text-gray-400">داده‌ای نیست</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Top Employees ═══ -->
+{% if top_employees %}
+<div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b border-gray-100">
+        <h2 class="font-bold text-gray-700 flex items-center gap-2">
+            <span class="w-7 h-7 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm">🥇</span>
+            برترین کارمندان
+        </h2>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50">
+                <tr class="text-gray-600">
+                    <th class="text-right px-4 py-2 font-medium">#</th>
+                    <th class="text-right px-4 py-2 font-medium">کارمند</th>
+                    <th class="text-right px-4 py-2 font-medium">تعداد فاکتور</th>
+                    <th class="text-right px-4 py-2 font-medium">مجموع فروش</th>
+                    <th class="text-right px-4 py-2 font-medium w-48">سهم</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for e in top_employees %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-right text-xs text-gray-400">{{ forloop.counter }}</td>
+                    <td class="px-4 py-3 text-right">
+                        <div class="font-medium text-gray-800">{{ e.name }}</div>
+                        <div class="text-xs text-gray-400" dir="ltr">{{ e.username }}</div>
+                    </td>
+                    <td class="px-4 py-3 text-right text-gray-600">{{ e.invoice_count|fa_num }}</td>
+                    <td class="px-4 py-3 text-right font-bold text-green-700" dir="ltr">{{ e.total_sales|floatformat:0 }}</td>
+                    <td class="px-4 py-3">
+                        <div class="bg-gray-100 rounded-full h-2 overflow-hidden" dir="ltr">
+                            <div class="h-full bg-gradient-to-r from-green-400 to-green-600"
+                                 style="width: {% if top_employees.0.total_sales %}{% widthratio e.total_sales top_employees.0.total_sales 100 %}{% else %}0{% endif %}%;"></div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- ═══ مشتریان غیرفعال ═══ -->
+<div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+        <h2 class="font-bold text-gray-700 flex items-center gap-2">
+            <span class="w-7 h-7 bg-red-100 text-red-600 rounded-lg flex items-center justify-center text-sm">⚠️</span>
+            مشتریان غیرفعال (بدون خرید ۹۰+ روز)
+        </h2>
+        <span class="text-xs text-gray-400">نیازمند پیگیری</span>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50">
+                <tr class="text-gray-600">
+                    <th class="text-right px-4 py-2 font-medium">مشتری</th>
+                    <th class="text-right px-4 py-2 font-medium">موبایل</th>
+                    <th class="text-right px-4 py-2 font-medium">آخرین خرید</th>
+                    <th class="text-right px-4 py-2 font-medium">مسئول</th>
+                    <th class="px-4 py-2"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for c in inactive_customers %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-right">
+                        <a href="{% url 'customers:detail' c.pk %}" class="font-medium text-gray-800 hover:text-blue-600">{{ c.name }}</a>
+                    </td>
+                    <td class="px-4 py-3 text-right text-gray-600 font-mono text-xs" dir="ltr">{{ c.mobile }}</td>
+                    <td class="px-4 py-3 text-right text-xs">
+                        {% if c.last_invoice %}
+                            <span class="text-gray-700" dir="ltr">{{ c.last_invoice|date:"Y/m/d" }}</span>
+                        {% else %}
+                            <span class="text-red-600 font-medium">هیچ‌وقت</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-right text-gray-600 text-xs">
+                        {% if c.assigned_to %}
+                            {{ c.assigned_to.get_full_name|default:c.assigned_to.username }}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-left">
+                        <a href="{% url 'calls:create' %}?customer={{ c.pk }}"
+                           class="text-xs text-green-600 hover:text-green-800 font-medium">
+                            📞 تماس
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center py-8 text-gray-400">همه‌ی مشتریان فعال هستند ✅</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ═══ ۱. نمودار Trend فروش ═══
+    const trendLabels = {{ trend_labels_json|safe }};
+    const trendCurrent = {{ trend_current_json|safe }};
+    const trendPrevious = {{ trend_previous_json|safe }};
+
+    new ApexCharts(document.querySelector("#trendChart"), {
+        chart: { type: 'area', height: 340, fontFamily: 'Vazirmatn', toolbar: { show: false } },
+        series: [
+            { name: 'سال جاری', data: trendCurrent },
+            { name: 'سال قبل', data: trendPrevious },
+        ],
+        xaxis: {
+            categories: trendLabels,
+            labels: { style: { fontFamily: 'Vazirmatn' } },
+        },
+        yaxis: {
+            labels: {
+                style: { fontFamily: 'Vazirmatn' },
+                formatter: (val) => Number(val).toLocaleString('en-US'),
+            },
+        },
+        colors: ['#3b82f6', '#94a3b8'],
+        stroke: { curve: 'smooth', width: 3 },
+        fill: { type: 'gradient', gradient: { opacityFrom: 0.5, opacityTo: 0.1 } },
+        dataLabels: { enabled: false },
+        legend: { position: 'top', horizontalAlign: 'right', fontFamily: 'Vazirmatn' },
+        tooltip: {
+            y: { formatter: (val) => Number(val).toLocaleString('en-US') + ' تومان' },
+        },
+        grid: { borderColor: '#e5e7eb', strokeDashArray: 3 },
+    }).render();
+
+    // ═══ ۲. Heatmap ساعت‌های طلایی ═══
+    const heatmapSeries = {{ heatmap_series_json|safe }};
+
+    new ApexCharts(document.querySelector("#heatmapChart"), {
+        chart: { type: 'heatmap', height: 360, fontFamily: 'Vazirmatn', toolbar: { show: false } },
+        series: heatmapSeries,
+        dataLabels: { enabled: false },
+        colors: ['#3b82f6'],
+        xaxis: {
+            type: 'category',
+            labels: { style: { fontFamily: 'Vazirmatn' } },
+        },
+        yaxis: {
+            labels: { style: { fontFamily: 'Vazirmatn' } },
+        },
+        plotOptions: {
+            heatmap: {
+                shadeIntensity: 0.6,
+                radius: 4,
+                colorScale: {
+                    ranges: [
+                        { from: 0, to: 0, color: '#f3f4f6', name: 'صفر' },
+                        { from: 1, to: 5, color: '#bfdbfe', name: 'کم' },
+                        { from: 6, to: 15, color: '#60a5fa', name: 'متوسط' },
+                        { from: 16, to: 999, color: '#1e40af', name: 'زیاد' },
+                    ],
+                },
+            },
+        },
+        tooltip: {
+            y: { formatter: (val) => val + ' تماس' },
+        },
+    }).render();
+
+});
+</script>
+{% endblock %}
