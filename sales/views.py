@@ -1,4 +1,5 @@
 import json
+import jdatetime
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -6,6 +7,7 @@ from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q, Sum
 from django.utils import timezone
+from django.contrib.auth.models import User
 from products.models import Product
 from accounts.permissions import require_permission
 from .models import Invoice, InvoiceItem
@@ -21,6 +23,36 @@ DEDUCTING_STATUSES = ('issued', 'paid')
 # ═════════════════════════════════════════════════
 # توابع کمکی
 # ═════════════════════════════════════════════════
+
+def _parse_jalali_date(value):
+    """
+    تبدیل تاریخ شمسی به میلادی (۷.۶).
+    اعداد فارسی/عربی، جداکننده‌های - . و فاصله رو پشتیبانی می‌کنه.
+    """
+    if not value:
+        return None
+    try:
+        persian = '۰۱۲۳۴۵۶۷۸۹'
+        arabic = '٠١٢٣٤٥٦٧٨٩'
+        for i, (p, a) in enumerate(zip(persian, arabic)):
+            value = value.replace(p, str(i)).replace(a, str(i))
+        value = value.replace('-', '/').replace('.', '/')
+        if ' ' in value:
+            value = value.split(' ', 1)[0]
+        y, m, d = map(int, value.split('/'))
+        return jdatetime.date(y, m, d).togregorian()
+    except (ValueError, AttributeError):
+        return None
+
+
+def _get_employee_choices():
+    """کاربران فعال برای dropdown فیلتر"""
+    return User.objects.filter(
+        is_active=True,
+        is_staff=True,
+    ).order_by('first_name', 'last_name', 'username')
+
+
 def _products_prices_dict():
     """دیکشنری قیمت محصولات برای autofill در فرم فاکتور"""
     return {
@@ -63,29 +95,76 @@ def _reverse_invoice_stock(invoice, user):
 
 
 # ═════════════════════════════════════════════════
-# فهرست و جزئیات
+# فیلترهای پیشرفته (۷.۶)
 # ═════════════════════════════════════════════════
-@login_required
-@require_permission('invoices.view')
-def invoice_list(request):
-    invoices = Invoice.objects.select_related('customer', 'created_by').all()
 
+def _apply_invoice_filters(qs, request):
+    """اعمال همه‌ی فیلترها روی queryset فاکتورها — برمی‌گردونه (qs, filters_dict)"""
     search = request.GET.get('q', '').strip()
     if search:
-        invoices = invoices.filter(
+        qs = qs.filter(
             Q(number__icontains=search) |
             Q(customer__name__icontains=search) |
             Q(customer__mobile__icontains=search)
         )
 
-    status = request.GET.get('status', '')
+    status = request.GET.get('status', '').strip()
     if status:
-        invoices = invoices.filter(status=status)
+        qs = qs.filter(status=status)
 
-    payment_type = request.GET.get('payment_type', '')
+    payment_type = request.GET.get('payment_type', '').strip()
     if payment_type:
-        invoices = invoices.filter(payment_type=payment_type)
+        qs = qs.filter(payment_type=payment_type)
 
+    employee = request.GET.get('employee', '').strip()
+    if employee:
+        qs = qs.filter(created_by_id=employee)
+
+    from_date_str = request.GET.get('from_date', '').strip()
+    to_date_str = request.GET.get('to_date', '').strip()
+    from_date = _parse_jalali_date(from_date_str)
+    to_date = _parse_jalali_date(to_date_str)
+    if from_date:
+        qs = qs.filter(issue_date__gte=from_date)
+    if to_date:
+        qs = qs.filter(issue_date__lte=to_date)
+
+    amount_min_str = request.GET.get('amount_min', '').strip()
+    amount_max_str = request.GET.get('amount_max', '').strip()
+    try:
+        if amount_min_str:
+            qs = qs.filter(total__gte=int(amount_min_str.replace(',', '')))
+    except (ValueError, TypeError):
+        amount_min_str = ''
+    try:
+        if amount_max_str:
+            qs = qs.filter(total__lte=int(amount_max_str.replace(',', '')))
+    except (ValueError, TypeError):
+        amount_max_str = ''
+
+    filters = {
+        'search': search,
+        'current_status': status,
+        'current_payment': payment_type,
+        'current_employee': employee,
+        'from_date': from_date_str,
+        'to_date': to_date_str,
+        'amount_min': amount_min_str,
+        'amount_max': amount_max_str,
+    }
+    return qs, filters
+
+
+# ═════════════════════════════════════════════════
+# فهرست و جزئیات
+# ═════════════════════════════════════════════════
+@login_required
+@require_permission('invoices.view')
+def invoice_list(request):
+    qs = Invoice.objects.select_related('customer', 'created_by').all()
+    qs, filters = _apply_invoice_filters(qs, request)
+
+    # ─── آمار کلی ───
     all_invoices = Invoice.objects.all()
     stats = {
         'total': all_invoices.count(),
@@ -97,17 +176,33 @@ def invoice_list(request):
         ).aggregate(s=Sum('total'))['s'] or 0,
     }
 
-    paginator = Paginator(invoices, 20)
+    # ─── آمار فیلترشده (فقط اگه فیلتر فعال باشه) ───
+    has_filters = any([
+        filters['search'], filters['current_status'],
+        filters['current_payment'], filters['current_employee'],
+        filters['from_date'], filters['to_date'],
+        filters['amount_min'], filters['amount_max'],
+    ])
+
+    filtered_stats = None
+    if has_filters:
+        filtered_stats = {
+            'count': qs.count(),
+            'total': qs.aggregate(s=Sum('total'))['s'] or 0,
+        }
+
+    paginator = Paginator(qs, 20)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
     context = {
         'page_obj': page_obj,
         'stats': stats,
-        'search': search,
-        'current_status': status,
-        'current_payment': payment_type,
+        'filtered_stats': filtered_stats,
+        'has_filters': has_filters,
+        'employees': _get_employee_choices(),
         'status_choices': Invoice.STATUS_CHOICES,
         'payment_choices': Invoice.PAYMENT_TYPE_CHOICES,
+        **filters,
     }
     return render(request, 'sales/list.html', context)
 
@@ -152,9 +247,7 @@ def invoice_create(request):
 
                     formset.instance = invoice
                     formset.save()
-                    # ⭐ signal post_save روی InvoiceItem مبالغ رو خودکار حساب می‌کنه
 
-                    # ⭐ کاهش موجودی اگه فاکتور در وضعیت صادرشده/پرداخت‌شده باشه
                     if invoice.status in DEDUCTING_STATUSES:
                         _apply_invoice_stock(invoice, request.user)
 
@@ -191,16 +284,12 @@ def invoice_edit(request, pk):
         if form.is_valid() and formset.is_valid():
             try:
                 with transaction.atomic():
-                    # ⭐ ۱. اگه قبلاً کم شده بود، اول برگردون
                     if old_status in DEDUCTING_STATUSES:
                         _reverse_invoice_stock(invoice, request.user)
 
-                    # ⭐ ۲. حالا فرم رو ذخیره کن
                     invoice = form.save()
                     formset.save()
-                    # ⭐ signal خودش مبالغ رو حساب می‌کنه
 
-                    # ⭐ ۳. اگه وضعیت جدید باید کم کنه، اعمال کن
                     if invoice.status in DEDUCTING_STATUSES:
                         _apply_invoice_stock(invoice, request.user)
 
@@ -233,7 +322,6 @@ def invoice_delete(request, pk):
     if request.method == 'POST':
         try:
             with transaction.atomic():
-                # ⭐ اگه فاکتور در انبار تاثیر داشته، برگردون
                 if invoice.status in DEDUCTING_STATUSES:
                     _reverse_invoice_stock(invoice, request.user)
 

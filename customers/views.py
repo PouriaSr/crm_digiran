@@ -1,3 +1,4 @@
+import jdatetime
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -8,6 +9,28 @@ from django.http import JsonResponse
 from accounts.permissions import require_permission
 from .models import Customer, CustomerNote
 from .forms import CustomerForm, CustomerNoteForm
+
+
+# ═══════════════════════════════════════════════════════════════
+# کمکی — تاریخ شمسی (۷.۶)
+# ═══════════════════════════════════════════════════════════════
+
+def _parse_jalali_date(value):
+    """تبدیل تاریخ شمسی به میلادی — None اگه نامعتبر بود"""
+    if not value:
+        return None
+    try:
+        persian = '۰۱۲۳۴۵۶۷۸۹'
+        arabic = '٠١٢٣٤٥٦٧٨٩'
+        for i, (p, a) in enumerate(zip(persian, arabic)):
+            value = value.replace(p, str(i)).replace(a, str(i))
+        value = value.replace('-', '/').replace('.', '/')
+        if ' ' in value:
+            value = value.split(' ', 1)[0]
+        y, m, d = map(int, value.split('/'))
+        return jdatetime.date(y, m, d).togregorian()
+    except (ValueError, AttributeError):
+        return None
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -23,7 +46,7 @@ def _add_duplicate_warnings(request, form):
     if not warnings:
         return
 
-    seen = set()  # جلوگیری از پیام تکراری اگه هم موبایل هم کد ملی یکی باشه
+    seen = set()
     for warn in warnings:
         dup = warn['customer']
         key = (warn['field'], dup.pk)
@@ -58,17 +81,39 @@ def customer_list(request):
             Q(national_id__icontains=search)
         )
 
-    status = request.GET.get('status', '')
+    status = request.GET.get('status', '').strip()
     if status:
         customers = customers.filter(status=status)
 
-    source = request.GET.get('source', '')
+    source = request.GET.get('source', '').strip()
     if source:
         customers = customers.filter(source=source)
 
-    employee = request.GET.get('employee', '')
+    employee = request.GET.get('employee', '').strip()
     if employee:
         customers = customers.filter(assigned_to_id=employee)
+
+    # ⭐ ۷.۶ — بازه‌ی تاریخ ثبت
+    from_date_str = request.GET.get('from_date', '').strip()
+    to_date_str = request.GET.get('to_date', '').strip()
+    from_date = _parse_jalali_date(from_date_str)
+    to_date = _parse_jalali_date(to_date_str)
+    if from_date:
+        customers = customers.filter(created_at__date__gte=from_date)
+    if to_date:
+        customers = customers.filter(created_at__date__lte=to_date)
+
+    # ⭐ ۷.۶ — فیلتر داشتن/نداشتن فاکتور
+    has_invoice = request.GET.get('has_invoice', '').strip()
+    if has_invoice == 'yes':
+        customers = customers.filter(invoices__isnull=False).distinct()
+    elif has_invoice == 'no':
+        customers = customers.filter(invoices__isnull=True)
+
+    has_filters = any([
+        search, status, source, employee,
+        from_date_str, to_date_str, has_invoice,
+    ])
 
     total = Customer.objects.count()
     leads = Customer.objects.filter(status='lead').count()
@@ -88,6 +133,11 @@ def customer_list(request):
         'current_status': status,
         'current_source': source,
         'current_employee': employee,
+        'from_date': from_date_str,
+        'to_date': to_date_str,
+        'current_has_invoice': has_invoice,
+        'has_filters': has_filters,
+        'filtered_count': customers.count() if has_filters else None,
         'employees': employees,
         'status_choices': Customer.STATUS_CHOICES,
         'source_choices': Customer.SOURCE_CHOICES,
@@ -137,10 +187,7 @@ def customer_create(request):
             customer.created_by = request.user
             customer.save()
             messages.success(request, f'مشتری «{customer.name}» با موفقیت اضافه شد.')
-
-            # ⭐ ۷.۵ — هشدار تکراری (نه بلاک)
             _add_duplicate_warnings(request, form)
-
             return redirect('customers:detail', pk=customer.pk)
     else:
         form = CustomerForm()
@@ -161,10 +208,7 @@ def customer_edit(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, 'اطلاعات مشتری به‌روزرسانی شد.')
-
-            # ⭐ ۷.۵ — هشدار تکراری (نه بلاک)
             _add_duplicate_warnings(request, form)
-
             return redirect('customers:detail', pk=customer.pk)
     else:
         form = CustomerForm(instance=customer)
@@ -184,7 +228,6 @@ def customer_edit(request, pk):
 @login_required
 @require_permission('customers.edit')
 def note_create(request, pk):
-    """ثبت یادداشت جدید — پشتیبانی از AJAX"""
     customer = get_object_or_404(Customer, pk=pk)
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
@@ -222,7 +265,6 @@ def note_create(request, pk):
 @login_required
 @require_permission('customers.edit')
 def note_edit(request, pk, note_pk):
-    """ویرایش یادداشت — فقط نویسنده یا سوپریوزر"""
     customer = get_object_or_404(Customer, pk=pk)
     note = get_object_or_404(CustomerNote, pk=note_pk, customer=customer)
 
@@ -254,7 +296,6 @@ def note_edit(request, pk, note_pk):
 @login_required
 @require_permission('customers.edit')
 def note_delete(request, pk, note_pk):
-    """حذف یادداشت — فقط نویسنده یا سوپریوزر"""
     customer = get_object_or_404(Customer, pk=pk)
     note = get_object_or_404(CustomerNote, pk=note_pk, customer=customer)
 
@@ -279,7 +320,6 @@ def note_delete(request, pk, note_pk):
 @login_required
 @require_permission('customers.edit')
 def note_toggle_pin(request, pk, note_pk):
-    """سنجاق/لغو سنجاق یادداشت"""
     customer = get_object_or_404(Customer, pk=pk)
     note = get_object_or_404(CustomerNote, pk=note_pk, customer=customer)
 
