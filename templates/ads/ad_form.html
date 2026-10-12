@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-4 md:p-6 max-w-3xl mx-auto" dir="rtl">
+
+  <div class="mb-6">
+    <a href="{% url 'ads:list' %}" class="text-sm text-blue-600 hover:underline">← بازگشت به لیست</a>
+    <h1 class="text-2xl font-bold text-gray-800 mt-2">{{ title }}</h1>
+  </div>
+
+  <form method="post" class="bg-white rounded-xl shadow-sm p-6 space-y-5">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+        {{ form.non_field_errors }}
+      </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">عنوان <span class="text-red-500">*</span></label>
+        {{ form.platform }}
+        {% if form.platform.errors %}<p class="text-red-500 text-xs mt-1">{{ form.platform.errors.0 }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">فرآیند <span class="text-red-500">*</span></label>
+        {{ form.process }}
+        {% if form.process.errors %}<p class="text-red-500 text-xs mt-1">{{ form.process.errors.0 }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">هزینه (تومان) <span class="text-red-500">*</span></label>
+        {{ form.cost }}
+        <p class="text-xs text-gray-400 mt-1">به صورت خودکار از فرآیند پر می‌شود، قابل ویرایش است.</p>
+        {% if form.cost.errors %}<p class="text-red-500 text-xs mt-1">{{ form.cost.errors.0 }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">منبع <span class="text-red-500">*</span></label>
+        {{ form.source }}
+        {% if form.source.errors %}<p class="text-red-500 text-xs mt-1">{{ form.source.errors.0 }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">محصول</label>
+        {{ form.product }}
+        <p class="text-xs text-gray-400 mt-1">فقط محصولات با موجودی غیر صفر.</p>
+        {% if form.product.errors %}<p class="text-red-500 text-xs mt-1">{{ form.product.errors.0 }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">شماره آگهی <span class="text-red-500">*</span></label>
+        {{ form.ad_number }}
+        <p class="text-xs text-gray-400 mt-1">خودکار بر اساس پلتفرم پر می‌شود.</p>
+        {% if form.ad_number.errors %}<p class="text-red-500 text-xs mt-1">{{ form.ad_number.errors.0 }}</p>{% endif %}
+      </div>
+
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">توضیحات</label>
+      {{ form.note }}
+    </div>
+
+    <div class="flex gap-3 pt-3 border-t border-gray-100">
+      <button type="submit"
+              class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium">
+        ذخیره
+      </button>
+      <a href="{% url 'ads:list' %}"
+         class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg text-sm">
+        انصراف
+      </a>
+    </div>
+  </form>
+
+  {% if is_edit and logs %}
+  <div class="mt-8 bg-white rounded-xl shadow-sm p-6">
+    <h2 class="text-lg font-bold text-gray-800 mb-4">📜 تاریخچه تغییرات</h2>
+    <div class="space-y-3">
+      {% for log in logs %}
+      <div class="border-r-4 border-blue-200 pr-3 py-2 text-sm">
+        <div class="flex items-center gap-2 text-xs text-gray-500 mb-1">
+          <span class="font-medium text-gray-700">{{ log.changed_by.username }}</span>
+          <span>•</span>
+          <span>{{ log.changed_at|date:"Y/m/d H:i" }}</span>
+          <span class="px-2 py-0.5 rounded-full bg-gray-100">{{ log.get_action_display }}</span>
+        </div>
+        {% if log.changes %}
+        <ul class="text-xs text-gray-600 space-y-0.5">
+          {% for field, vals in log.changes.items %}
+            <li>
+              <span class="font-medium">{{ field }}:</span>
+              <span class="text-red-500 line-through">{{ vals.0 }}</span>
+              <span class="mx-1">→</span>
+              <span class="text-green-600">{{ vals.1 }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% if log.note %}<p class="text-xs text-gray-400 mt-1">{{ log.note }}</p>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const platformSelect = document.querySelector('select[name="platform"]');
+  const processSelect = document.querySelector('select[name="process"]');
+  const costInput = document.querySelector('input[name="cost"]');
+  const adNumberInput = document.querySelector('input[name="ad_number"]');
+  const isEdit = {{ is_edit|yesno:"true,false" }};
+
+  if (!platformSelect || !processSelect) return;
+
+  // 🔄 فیلتر پویای فرآیندها + شماره آگهی بعدی
+  platformSelect.addEventListener('change', function() {
+    const pid = this.value;
+    processSelect.innerHTML = '<option value="">---------</option>';
+
+    if (!pid) {
+      if (adNumberInput && !isEdit) adNumberInput.value = '';
+      return;
+    }
+
+    // ۱. فرآیندها
+    fetch(`/ads/api/platform/${pid}/processes/`)
+      .then(r => r.json())
+      .then(data => {
+        data.processes.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.name;
+          opt.dataset.cost = p.default_cost;
+          processSelect.appendChild(opt);
+        });
+      })
+      .catch(err => console.error('خطا در بارگذاری فرآیندها:', err));
+
+    // ۲. شماره آگهی بعدی (فقط توی create)
+    if (adNumberInput && !isEdit) {
+      fetch(`/ads/api/platform/${pid}/next-ad-number/`)
+        .then(r => r.json())
+        .then(data => {
+          adNumberInput.value = data.ad_number;
+        })
+        .catch(err => console.error('خطا در گرفتن شماره آگهی:', err));
+    }
+  });
+
+  // 💰 پر کردن هزینه با انتخاب فرآیند
+  processSelect.addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    if (opt && opt.dataset.cost && costInput && !costInput.value) {
+      costInput.value = opt.dataset.cost;
+    }
+  });
+});
+</script>
+{% endblock %}

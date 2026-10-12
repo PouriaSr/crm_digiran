@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-4 md:p-6 max-w-5xl mx-auto" dir="rtl">
+
+  <div class="mb-6">
+    <a href="{% url 'ads:list' %}" class="text-sm text-blue-600 hover:underline">← بازگشت به تبلیغات</a>
+    <h1 class="text-2xl font-bold text-gray-800 mt-2">⚙️ مدیریت فرآیندها</h1>
+    <p class="text-sm text-gray-500 mt-1">هر فرآیند به یک پلتفرم تعلق دارد و هزینه‌ی پیش‌فرض مشخصی دارد.</p>
+  </div>
+
+  <form method="post" class="bg-white rounded-xl shadow-sm p-5 mb-6">
+    {% csrf_token %}
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">عنوان <span class="text-red-500">*</span></label>
+        {{ form.platform }}
+        {% if form.platform.errors %}<p class="text-red-500 text-xs mt-1">{{ form.platform.errors.0 }}</p>{% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">نام فرآیند <span class="text-red-500">*</span></label>
+        {{ form.name }}
+        {% if form.name.errors %}<p class="text-red-500 text-xs mt-1">{{ form.name.errors.0 }}</p>{% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">هزینه (تومان) <span class="text-red-500">*</span></label>
+        {{ form.default_cost }}
+        {% if form.default_cost.errors %}<p class="text-red-500 text-xs mt-1">{{ form.default_cost.errors.0 }}</p>{% endif %}
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">{{ form.is_active }}<label class="text-sm text-gray-700">فعال</label></div>
+        <button type="submit" class="ml-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">افزودن</button>
+      </div>
+    </div>
+  </form>
+
+  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 text-gray-600 border-b border-gray-100">
+        <tr>
+          <th class="px-4 py-3 text-right font-medium">#</th>
+          <th class="px-4 py-3 text-right font-medium">عنوان</th>
+          <th class="px-4 py-3 text-right font-medium">نام فرآیند</th>
+          <th class="px-4 py-3 text-right font-medium">هزینه پیش‌فرض</th>
+          <th class="px-4 py-3 text-right font-medium">فعال</th>
+          <th class="px-4 py-3 text-right font-medium">تعداد تبلیغ</th>
+          <th class="px-4 py-3 text-center font-medium">عملیات</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for item in items %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 text-gray-500">{{ forloop.counter }}</td>
+          <td class="px-4 py-3 text-gray-600">{{ item.platform.name }}</td>
+          <td class="px-4 py-3 font-medium text-gray-800">{{ item.name }}</td>
+          <td class="px-4 py-3 text-gray-800 font-medium">{{ item.default_cost }} تومان</td>
+          <td class="px-4 py-3">{% if item.is_active %}<span class="text-green-600 text-xs">✓ فعال</span>{% else %}<span class="text-gray-400 text-xs">غیرفعال</span>{% endif %}</td>
+          <td class="px-4 py-3 text-gray-600">{{ item.ads.count }}</td>
+          <td class="px-4 py-3 text-center">
+            <form method="post" action="{% url 'ads:process_delete' item.pk %}" class="inline" onsubmit="return confirm('حذف شود؟');">
+              {% csrf_token %}
+              <button type="submit" class="text-red-600 hover:text-red-800 text-xs font-medium">حذف</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="px-4 py-10 text-center text-gray-400">هیچ فرآیندی تعریف نشده است.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endblock %}

@@ -4,24 +4,22 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
-from accounts.permissions import require_permission
+from accounts.permissions import require_permission, PERMISSIONS
 from .forms import UserCreateForm, UserEditForm, UserPasswordForm, get_user_role, ensure_groups
 from crm.duplicate_check import show_duplicate_warnings
 
 
 # ═══════════════════════════════════════════════════════════
-# مدیریت کاربران — همه با require_permission (۸.۱)
+# مدیریت کاربران
 # ═══════════════════════════════════════════════════════════
 
 @login_required
 @require_permission('accounts.manage_users')
 def user_list(request):
-    # اطمینان از وجود گروه‌ها
     ensure_groups()
 
     users = User.objects.all().prefetch_related('groups').order_by('-date_joined')
 
-    # جستجو
     search = request.GET.get('q', '').strip()
     if search:
         users = users.filter(
@@ -31,7 +29,6 @@ def user_list(request):
             Q(email__icontains=search)
         )
 
-    # فیلتر نقش
     role_filter = request.GET.get('role', '')
     if role_filter:
         if role_filter == 'admin':
@@ -48,7 +45,6 @@ def user_list(request):
             if group_name:
                 users = users.filter(groups__name=group_name)
 
-    # آمار
     stats = {
         'total': User.objects.count(),
         'active': User.objects.filter(is_active=True).count(),
@@ -59,7 +55,6 @@ def user_list(request):
     paginator = Paginator(users, 20)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
-    # برای هر کاربر، نقش نمایش داده شود
     users_data = []
     for u in page_obj:
         users_data.append({
@@ -71,6 +66,7 @@ def user_list(request):
                 ('support', 'پشتیبان'),
                 ('accountant', 'حسابدار'),
                 ('operator', 'اپراتور'),
+                ('ads_manager', 'مسئول تبلیغات'),
                 ('none', 'بدون نقش خاص'),
             ]).get(get_user_role(u), '—'),
             'role_key': get_user_role(u),
@@ -89,7 +85,8 @@ def user_list(request):
             ('support', 'پشتیبان'),
             ('accountant', 'حسابدار'),
             ('operator', 'اپراتور'),
-            ('none', 'بدون نقش'),
+            ('ads_manager', 'مسئول تبلیغات'),
+            ('none', 'بدون نقش خاص'),
             ('active', 'فعال'),
             ('inactive', 'غیرفعال'),
         ],
@@ -126,12 +123,10 @@ def user_edit(request, pk):
     if request.method == 'POST':
         form = UserEditForm(request.POST, instance=user)
         if form.is_valid():
-            # اگه داره خودش رو غیرفعال می‌کنه، اجازه نده
             if user == request.user and not form.cleaned_data.get('is_active'):
                 messages.error(request, 'نمی‌توانید حساب خودتان را غیرفعال کنید.')
                 return redirect('accounts:user_edit', pk=pk)
 
-            # اگه داره نقش خودش رو از مدیر کل عوض می‌کنه، اجازه نده
             if user == request.user and form.cleaned_data.get('role') != 'admin':
                 messages.error(request, 'نمی‌توانید نقش خودتان را از مدیر کل تغییر دهید.')
                 return redirect('accounts:user_edit', pk=pk)
@@ -150,6 +145,7 @@ def user_edit(request, pk):
         'is_create': False,
         'user_obj': user,
         'is_self': user == request.user,
+        'permissions_map': PERMISSIONS,
     })
 
 
@@ -179,12 +175,10 @@ def user_password(request, pk):
 def user_delete(request, pk):
     user = get_object_or_404(User, pk=pk)
 
-    # جلوگیری از حذف خود
     if user == request.user:
         messages.error(request, 'نمی‌توانید حساب خودتان را حذف کنید.')
         return redirect('accounts:user_list')
 
-    # ⭐ چک ارتباط‌های مهم — اگه کاربر داده‌ی مرتبط داره، حذف نکن
     blockers = []
 
     if hasattr(user, 'employee_profile'):

@@ -1,64 +1,53 @@
-# ═══ Python ═══
+# ═══════════════════════════════════════
+# Python
+# ═══════════════════════════════════════
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
 
-# ═══ Virtual Environment ═══
+# ═══════════════════════════════════════
+# Virtual Environment
+# ═══════════════════════════════════════
 .venv/
 venv/
-ENV/
 env/
-.python-version
+ENV/
 
-# ═══ Django ═══
+# ═══════════════════════════════════════
+# Django
+# ═══════════════════════════════════════
 *.log
 db.sqlite3
 db.sqlite3-journal
-/media/
-/staticfiles/
-/logs/
+staticfiles/
+media/
+logs/
+backups/
 
-# ═══ Backups ═══
-/backups/
-*.sqlite3
-*.sqlite3.gz
-
-# ═══ Environment ═══
+# ═══════════════════════════════════════
+# Environment Variables
+# ═══════════════════════════════════════
 .env
 .env.local
 .env.*.local
+.env.production
+.env.production.local
 
-# ═══ IDE ═══
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# ═══ OS ═══
+# ═══════════════════════════════════════
+# OS
+# ═══════════════════════════════════════
 .DS_Store
 Thumbs.db
 
-# ═══ uv ═══
-# uv.lock رو نگه‌دار (باید commit بشه)
-# .venv/ بالا ignore شده
-# Windows metadata
-*:Zone.Identifier
-measure_queries.py
+# ═══════════════════════════════════════
+# Editor
+# ═══════════════════════════════════════
+.idea/
+.vscode/
+*.swp
+*.swo

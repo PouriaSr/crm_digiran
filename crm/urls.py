@@ -12,6 +12,7 @@ urlpatterns = [
     path('invoices/', include('sales.urls')),
     path('hr/', include('hr.urls')),
     path('audit/', include('audit.urls')),
+    path('ads/', include('ads.urls')),
 ]
 
 

@@ -1,0 +1,397 @@
+{% extends "base.html" %}
+{% load fa_numbers %}
+
+{% block content %}
+<div class="p-4 md:p-6" dir="rtl">
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- هدر صفحه -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-800">📢 مدیریت تبلیغات</h1>
+      <p class="text-sm text-gray-500 mt-1">ثبت و پیگیری تبلیغات در پلتفرم‌های مختلف</p>
+    </div>
+    <a href="{% url 'ads:create' %}"
+       class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+      </svg>
+      ثبت تبلیغ جدید
+    </a>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- کارت‌های آمار -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+    <div class="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+      <div>
+        <p class="text-xs text-gray-500 mb-1">کل تبلیغات</p>
+        <p class="text-2xl font-bold text-gray-800">{{ stats.total|fa_num }}</p>
+      </div>
+      <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
+        <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+      <div>
+        <p class="text-xs text-gray-500 mb-1">جمع هزینه (تومان)</p>
+        <p class="text-2xl font-bold text-gray-800">{{ stats.total_cost|fa_num }}</p>
+      </div>
+      <div class="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center">
+        <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+      <div>
+        <p class="text-xs text-gray-500 mb-1">این ماه</p>
+        <p class="text-2xl font-bold text-gray-800">{{ stats.this_month|fa_num }}</p>
+      </div>
+      <div class="w-12 h-12 bg-orange-50 rounded-lg flex items-center justify-center">
+        <svg class="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+      <div>
+        <p class="text-xs text-gray-500 mb-1">پلتفرم‌های فعال</p>
+        <p class="text-2xl font-bold text-gray-800">{{ stats.platforms|fa_num }}</p>
+      </div>
+      <div class="w-12 h-12 bg-purple-50 rounded-lg flex items-center justify-center">
+        <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 16.875h3.375m0 0h3.375m-3.375 0V13.5m0 3.375v3.375M6 10.5h2.25a2.25 2.25 0 002.25-2.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v2.25A2.25 2.25 0 006 10.5zm0 9.75h2.25A2.25 2.25 0 0010.5 18v-2.25a2.25 2.25 0 00-2.25-2.25H6a2.25 2.25 0 00-2.25 2.25V18A2.25 2.25 0 006 20.25zm9.75-9.75H18a2.25 2.25 0 002.25-2.25V6A2.25 2.25 0 0018 3.75h-2.25A2.25 2.25 0 0013.5 6v2.25a2.25 2.25 0 002.25 2.25z"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- سرچ + فیلتر -->
+  <!-- ═══════════════════════════════════════ -->
+  <form method="get" class="bg-white rounded-xl shadow-sm p-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+      <div class="md:col-span-2">
+        <input type="text" name="q" value="{{ q }}"
+               placeholder="جستجو: شماره آگهی، عنوان، فرآیند، منبع، محصول..."
+               class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+      </div>
+      <div>
+        <select name="platform"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+          <option value="">همه عنوان‌ها</option>
+          {% for p in platforms %}
+            <option value="{{ p.id }}" {% if current_platform == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if is_admin %}
+      <div>
+        <select name="user"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+          <option value="">همه کارشناسان</option>
+          {% for uid, uname in users %}
+            <option value="{{ uid }}">{{ uname }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+    </div>
+    <div class="flex gap-2 mt-3">
+      <button type="submit"
+              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+        اعمال فیلتر
+      </button>
+      <a href="{% url 'ads:list' %}"
+         class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm">
+        پاک کردن
+      </a>
+    </div>
+  </form>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- جدول اصلی تبلیغات -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 text-gray-600 border-b border-gray-100">
+        <tr>
+          <th class="px-4 py-3 text-center font-medium">#</th>
+          <th class="px-4 py-3 text-center font-medium">عنوان</th>
+          <th class="px-4 py-3 text-center font-medium">فرآیند</th>
+          <th class="px-4 py-3 text-center font-medium">هزینه</th>
+          <th class="px-4 py-3 text-center font-medium">منبع</th>
+          <th class="px-4 py-3 text-center font-medium">محصول</th>
+          <th class="px-4 py-3 text-center font-medium">شماره آگهی</th>
+          <th class="px-4 py-3 text-center font-medium">کارشناس</th>
+          <th class="px-4 py-3 text-center font-medium">تاریخ</th>
+          <th class="px-4 py-3 text-center font-medium">عملیات</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for ad in page_obj %}
+        <tr class="hover:bg-gray-50 transition">
+          <td class="px-4 py-3 text-center text-gray-500">{{ forloop.counter0|add:page_obj.start_index|fa_num }}</td>
+          <td class="px-4 py-3 text-center font-medium text-gray-800">{{ ad.platform.name }}</td>
+          <td class="px-4 py-3 text-center text-gray-600">{{ ad.process.name }}</td>
+          <td class="px-4 py-3 text-center text-gray-800 font-medium">{{ ad.cost|fa_num }} تومان</td>
+          <td class="px-4 py-3 text-center text-gray-600" dir="ltr">{{ ad.source.phone_number }}</td>
+          <td class="px-4 py-3 text-center text-gray-600">{% if ad.product %}{{ ad.product.name }}{% else %}—{% endif %}</td>
+          <td class="px-4 py-3 text-center text-gray-600" dir="ltr">{{ ad.ad_number }}</td>
+          <td class="px-4 py-3 text-center text-gray-600">{{ ad.created_by.username }}</td>
+          <td class="px-4 py-3 text-center text-gray-500 text-xs">{{ ad.created_at|date:"Y/m/d H:i" }}</td>
+          <td class="px-4 py-3 text-center">
+            <a href="{% url 'ads:edit' ad.pk %}" class="text-blue-600 hover:text-blue-800 text-xs font-medium">جزئیات و ویرایش</a>
+            {% if is_admin %}
+              <form method="post" action="{% url 'ads:delete' ad.pk %}" class="inline mr-2" onsubmit="return confirm('مطمئنید؟');">
+                {% csrf_token %}
+                <button type="submit" class="text-red-600 hover:text-red-800 text-xs font-medium">حذف</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="10" class="px-4 py-12 text-center text-gray-400">
+            هیچ تبلیغی ثبت نشده است.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- Pagination -->
+  <!-- ═══════════════════════════════════════ -->
+  {% if page_obj.has_other_pages %}
+  <div class="flex items-center justify-center gap-1 mt-6">
+    {% if page_obj.has_previous %}
+      <a href="?{% querystring page=page_obj.previous_page_number %}"
+         class="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-sm hover:bg-gray-50">قبلی</a>
+    {% endif %}
+    {% for num in page_obj.paginator.page_range %}
+      {% if page_obj.number == num %}
+        <span class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm">{{ num|fa_num }}</span>
+      {% elif num > page_obj.number|add:-3 and num < page_obj.number|add:3 %}
+        <a href="?{% querystring page=num %}"
+           class="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-sm hover:bg-gray-50">{{ num|fa_num }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+      <a href="?{% querystring page=page_obj.next_page_number %}"
+         class="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-sm hover:bg-gray-50">بعدی</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- لینک‌های مدیریت ادمین -->
+  <!-- ═══════════════════════════════════════ -->
+  {% if is_admin %}
+  <div class="mt-6 bg-white rounded-xl shadow-sm p-4">
+    <div class="flex items-center gap-2 mb-3">
+      <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a6.759 6.759 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+      </svg>
+      <span class="text-sm font-medium text-gray-700">مدیریت تعاریف (فقط ادمین)</span>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a href="{% url 'ads:platform_list' %}" class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg">عنوان‌ها</a>
+      <a href="{% url 'ads:process_list' %}" class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg">فرآیندها</a>
+      <a href="{% url 'ads:source_list' %}" class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg">منابع</a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- گزارش تفصیلی -->
+  <!-- ═══════════════════════════════════════ -->
+  <div id="report" class="mt-8">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-xl font-bold text-gray-800">📊 گزارش تفصیلی</h2>
+        <p class="text-sm text-gray-500 mt-1">
+          {% if is_admin %}گزارش همه‌ی کارشناسان با فیلتر{% else %}گزارش عملکرد شما{% endif %}
+        </p>
+      </div>
+      <a href="{% url 'ads:export_report' %}?{{ request.GET.urlencode }}"
+         class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+        </svg>
+        خروجی Excel
+      </a>
+    </div>
+
+    <!-- فیلترهای گزارش -->
+    <form method="get" action="{% url 'ads:list' %}#report"
+          class="bg-white rounded-xl shadow-sm p-4 mb-4">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">از تاریخ</label>
+          <input type="text" name="report_from" value="{{ report.from }}"
+                 data-jdp placeholder="1404/01/01"
+                 class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">تا تاریخ</label>
+          <input type="text" name="report_to" value="{{ report.to }}"
+                 data-jdp placeholder="1404/12/29"
+                 class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+        </div>
+        {% if is_admin %}
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">کارشناس</label>
+          <select name="report_user"
+                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+            <option value="">همه کارشناسان</option>
+            {% for uid, uname in users %}
+              <option value="{{ uid }}" {% if report.user_id == uid|stringformat:"s" %}selected{% endif %}>{{ uname }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        <div class="flex gap-2">
+          <button type="submit"
+                  class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+            اعمال فیلتر
+          </button>
+          <a href="{% url 'ads:list' %}#report"
+             class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm">
+            پاک کردن
+          </a>
+        </div>
+      </div>
+    </form>
+
+    <!-- کارت‌های خلاصه -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div class="bg-white rounded-xl shadow-sm p-4">
+        <p class="text-xs text-gray-500 mb-1">تعداد کل در بازه</p>
+        <p class="text-2xl font-bold text-gray-800">{{ report.summary.count|fa_num }}</p>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-4">
+        <p class="text-xs text-gray-500 mb-1">جمع هزینه در بازه (تومان)</p>
+        <p class="text-2xl font-bold text-gray-800">{{ report.summary.total_cost|fa_num }}</p>
+      </div>
+    </div>
+
+    <!-- نمودار -->
+    {% if report.chart_values %}
+    <div class="bg-white rounded-xl shadow-sm p-5 mb-4">
+      <h3 class="text-sm font-medium text-gray-700 mb-4 text-center">هزینه بر اساس پلتفرم (تومان)</h3>
+      <div id="adsReportChart" style="min-height: 300px;"></div>
+    </div>
+    {% endif %}
+
+    <!-- جدول تفکیک پلتفرم -->
+    {% if report.by_platform %}
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-4">
+      <div class="px-4 py-3 border-b border-gray-100">
+        <h3 class="text-sm font-medium text-gray-700 text-center">تفکیک بر اساس پلتفرم</h3>
+      </div>
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-gray-600">
+          <tr>
+            <th class="px-4 py-2 text-center font-medium">عنوان</th>
+            <th class="px-4 py-2 text-center font-medium">تعداد</th>
+            <th class="px-4 py-2 text-center font-medium">جمع هزینه (تومان)</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for item in report.by_platform %}
+          <tr>
+            <td class="px-4 py-2 text-center text-gray-800">{{ item.platform__name }}</td>
+            <td class="px-4 py-2 text-center text-gray-600">{{ item.count|fa_num }}</td>
+            <td class="px-4 py-2 text-center text-gray-800 font-medium">{{ item.total|fa_num }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- جدول تفکیک کارشناس (ادمین) -->
+    {% if is_admin and report.by_user %}
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div class="px-4 py-3 border-b border-gray-100">
+        <h3 class="text-sm font-medium text-gray-700 text-center">تفکیک بر اساس کارشناس</h3>
+      </div>
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-gray-600">
+          <tr>
+            <th class="px-4 py-2 text-center font-medium">کارشناس</th>
+            <th class="px-4 py-2 text-center font-medium">تعداد</th>
+            <th class="px-4 py-2 text-center font-medium">جمع هزینه (تومان)</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for item in report.by_user %}
+          <tr>
+            <td class="px-4 py-2 text-center text-gray-800">{{ item.created_by__username }}</td>
+            <td class="px-4 py-2 text-center text-gray-600">{{ item.count|fa_num }}</td>
+            <td class="px-4 py-2 text-center text-gray-800 font-medium">{{ item.total|fa_num }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- Chart Script -->
+  {% if report.chart_values %}
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const el = document.querySelector('#adsReportChart');
+    if (!el || typeof ApexCharts === 'undefined') return;
+
+    new ApexCharts(el, {
+      chart: {
+        type: 'bar',
+        height: 300,
+        fontFamily: 'inherit',
+        toolbar: { show: false },
+      },
+      series: [{
+        name: 'هزینه (تومان)',
+        data: {{ report.chart_values|safe }},
+      }],
+      xaxis: {
+        categories: {{ report.chart_labels|safe }},
+        labels: { style: { fontFamily: 'inherit' } },
+      },
+      yaxis: {
+        labels: {
+          formatter: v => Math.round(v).toLocaleString('fa-IR'),
+          style: { fontFamily: 'inherit' },
+        },
+      },
+      colors: ['#2563EB'],
+      plotOptions: {
+        bar: { borderRadius: 6, columnWidth: '50%' },
+      },
+      dataLabels: { enabled: false },
+      tooltip: {
+        y: { formatter: v => v.toLocaleString('fa-IR') + ' تومان' },
+      },
+    }).render();
+  });
+  </script>
+  {% endif %}
+
+</div>
+{% endblock %}

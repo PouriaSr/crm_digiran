@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 from django import forms
 from django.contrib.auth.models import User, Group
 
@@ -9,6 +11,7 @@ ROLE_CHOICES = [
     ('support', 'پشتیبان'),
     ('accountant', 'حسابدار'),
     ('operator', 'اپراتور'),
+    ('ads_manager', 'مسئول تبلیغات'),
     ('none', 'بدون نقش خاص'),
 ]
 
@@ -18,17 +21,16 @@ ROLE_GROUP_MAP = {
     'support': 'پشتیبان',
     'accountant': 'حسابدار',
     'operator': 'اپراتور',
+    'ads_manager': 'مسئول تبلیغات',
 }
 
 
 def ensure_groups():
-    """ساخت گروه‌ها در صورت نبودن"""
     for group_name in ROLE_GROUP_MAP.values():
         Group.objects.get_or_create(name=group_name)
 
 
 def get_user_role(user):
-    """تشخیص نقش فعلی کاربر"""
     if user.is_superuser:
         return 'admin'
     for role_key, group_name in ROLE_GROUP_MAP.items():
@@ -37,37 +39,46 @@ def get_user_role(user):
     return 'none'
 
 
+# ─── کلاس استایل ───
+class StyledMixin:
+    input_class = 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'
+
+
+# ═══════════════════════════════════════════════════════════
+# UserCreateForm
+# ═══════════════════════════════════════════════════════════
 class UserCreateForm(forms.ModelForm):
     password1 = forms.CharField(
         label='رمز عبور',
-        widget=forms.PasswordInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'dir': 'ltr'})
+        widget=forms.PasswordInput(attrs={'class': StyledMixin.input_class, 'dir': 'ltr'}),
     )
     password2 = forms.CharField(
         label='تکرار رمز عبور',
-        widget=forms.PasswordInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'dir': 'ltr'})
+        widget=forms.PasswordInput(attrs={'class': StyledMixin.input_class, 'dir': 'ltr'}),
     )
     role = forms.ChoiceField(
         label='نقش', choices=ROLE_CHOICES, initial='sales',
-        widget=forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'})
+        widget=forms.Select(attrs={'class': StyledMixin.input_class}),
     )
     is_active = forms.BooleanField(
         label='فعال', required=False, initial=True,
-        widget=forms.CheckboxInput(attrs={'class': 'w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500'})
+        widget=forms.CheckboxInput(attrs={'class': 'w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500'}),
     )
 
     class Meta:
         model = User
         fields = ['username', 'first_name', 'last_name', 'email']
         widgets = {
-            'username': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': 'نام کاربری', 'dir': 'ltr'}),
-            'first_name': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': 'نام'}),
-            'last_name': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': 'نام خانوادگی'}),
-            'email': forms.EmailInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': 'email@example.com', 'dir': 'ltr'}),
+            'username': forms.TextInput(attrs={'class': StyledMixin.input_class, 'placeholder': 'نام کاربری', 'dir': 'ltr'}),
+            'first_name': forms.TextInput(attrs={'class': StyledMixin.input_class, 'placeholder': 'نام'}),
+            'last_name': forms.TextInput(attrs={'class': StyledMixin.input_class, 'placeholder': 'نام خانوادگی'}),
+            'email': forms.EmailInput(attrs={'class': StyledMixin.input_class, 'placeholder': 'email@example.com', 'dir': 'ltr'}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.duplicate_warnings = []
+        self.permission_groups = OrderedDict()  # برای تمپلیت (خالی در create)
 
     def clean_username(self):
         from crm.duplicate_check import find_exact_match, normalize_code
@@ -117,31 +128,78 @@ class UserCreateForm(forms.ModelForm):
         return user
 
 
+# ═══════════════════════════════════════════════════════════
+# UserEditForm — با override
+# ═══════════════════════════════════════════════════════════
 class UserEditForm(forms.ModelForm):
     role = forms.ChoiceField(
         label='نقش', choices=ROLE_CHOICES,
-        widget=forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'})
+        widget=forms.Select(attrs={'class': StyledMixin.input_class}),
     )
     is_active = forms.BooleanField(
         label='فعال', required=False,
-        widget=forms.CheckboxInput(attrs={'class': 'w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500'})
+        widget=forms.CheckboxInput(attrs={'class': 'w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500'}),
     )
 
     class Meta:
         model = User
         fields = ['username', 'first_name', 'last_name', 'email']
         widgets = {
-            'username': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'dir': 'ltr'}),
-            'first_name': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
-            'last_name': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
-            'email': forms.EmailInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'dir': 'ltr'}),
+            'username': forms.TextInput(attrs={'class': StyledMixin.input_class, 'dir': 'ltr'}),
+            'first_name': forms.TextInput(attrs={'class': StyledMixin.input_class}),
+            'last_name': forms.TextInput(attrs={'class': StyledMixin.input_class}),
+            'email': forms.EmailInput(attrs={'class': StyledMixin.input_class, 'dir': 'ltr'}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.duplicate_warnings = []
+        self.permission_groups = OrderedDict()
+
         if self.instance and self.instance.pk:
             self.fields['role'].initial = get_user_role(self.instance)
+            self._build_permission_fields()
+
+    def _build_permission_fields(self):
+        from accounts.permissions import PERMISSIONS, PERMISSION_META
+
+        existing = {
+            o.permission_key: o.granted
+            for o in self.instance.permission_overrides.all()
+        }
+
+        user_role = get_user_role(self.instance)
+        role_effective = {
+            pk: (user_role in roles) for pk, roles in PERMISSIONS.items()
+        }
+
+        for perm_key, (cat, label) in PERMISSION_META.items():
+            field_name = 'perm__' + perm_key.replace('.', '_')
+
+            if perm_key in existing:
+                initial = 'allow' if existing[perm_key] else 'deny'
+            else:
+                initial = 'inherit'
+
+            self.fields[field_name] = forms.ChoiceField(
+                choices=[
+                    ('inherit', 'خودکار (از نقش)'),
+                    ('allow', '✓ دسترسی'),
+                    ('deny', '✗ بدون دسترسی'),
+                ],
+                initial=initial,
+                required=False,
+                widget=forms.Select(attrs={
+                    'class': 'w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-500'
+                }),
+            )
+
+            self.permission_groups.setdefault(cat, []).append({
+                'key': perm_key,
+                'field': self[field_name],
+                'label': label,
+                'role_status': role_effective.get(perm_key, False),
+            })
 
     def clean_username(self):
         from crm.duplicate_check import find_exact_match, normalize_code
@@ -178,23 +236,38 @@ class UserEditForm(forms.ModelForm):
             if role in ROLE_GROUP_MAP:
                 group, _ = Group.objects.get_or_create(name=ROLE_GROUP_MAP[role])
                 user.groups.add(group)
+
+            # ذخیره overrideها (فقط برای غیر سوپریوزر)
+            from accounts.permissions import PERMISSIONS
+            from accounts.models import UserPermissionOverride
+
+            if not user.is_superuser:
+                user.permission_overrides.all().delete()
+                for perm_key in PERMISSIONS:
+                    field_name = 'perm__' + perm_key.replace('.', '_')
+                    val = self.cleaned_data.get(field_name, 'inherit')
+                    if val == 'allow':
+                        UserPermissionOverride.objects.create(
+                            user=user, permission_key=perm_key, granted=True,
+                        )
+                    elif val == 'deny':
+                        UserPermissionOverride.objects.create(
+                            user=user, permission_key=perm_key, granted=False,
+                        )
         return user
 
 
+# ═══════════════════════════════════════════════════════════
+# UserPasswordForm
+# ═══════════════════════════════════════════════════════════
 class UserPasswordForm(forms.Form):
     password1 = forms.CharField(
         label='رمز جدید',
-        widget=forms.PasswordInput(attrs={
-            'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
-            'dir': 'ltr'
-        })
+        widget=forms.PasswordInput(attrs={'class': StyledMixin.input_class, 'dir': 'ltr'}),
     )
     password2 = forms.CharField(
         label='تکرار رمز جدید',
-        widget=forms.PasswordInput(attrs={
-            'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
-            'dir': 'ltr'
-        })
+        widget=forms.PasswordInput(attrs={'class': StyledMixin.input_class, 'dir': 'ltr'}),
     )
 
     def clean(self):

@@ -38,4 +38,19 @@ AUDIT_MODELS = {
         'username', 'email', 'first_name', 'last_name',
         'is_active', 'is_staff', 'is_superuser',
     ],
+
+    # ─── تبلیغات ───
+    'ads.Ad': [
+        'platform', 'process', 'cost', 'source',
+        'product', 'ad_number', 'note',
+    ],
+    'ads.AdPlatform': [
+        'name', 'is_active',
+    ],
+    'ads.AdProcess': [
+        'platform', 'name', 'default_cost', 'is_active',
+    ],
+    'ads.AdSource': [
+        'phone_number', 'label', 'is_active',
+    ],
 }
