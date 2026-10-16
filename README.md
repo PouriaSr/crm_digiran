@@ -6,6 +6,9 @@
 
 ---
 
+<img width="1901" height="982" alt="image" src="https://github.com/user-attachments/assets/ca50ed56-9a79-4d8e-9ea8-a5ab42418e01" />
+
+
 ## فهرست مطالب
 
 - [وضعیت پروژه](#وضعیت-پروژه)
