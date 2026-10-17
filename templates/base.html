@@ -18,9 +18,123 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/majidh1/JalaliDatePicker@master/dist/jalalidatepicker.min.css" />
     <script src="https://cdn.jsdelivr.net/gh/majidh1/JalaliDatePicker@master/dist/jalalidatepicker.min.js"></script>
 
+    <!-- Tom Select -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+
     <style>
         body { font-family: 'Vazirmatn', sans-serif; }
         [x-cloak] { display: none !important; }
+        
+        /* =========================================
+           ۱. رفع مشکل کادر توی کادر
+           ========================================= */
+        .ts-wrapper {
+            width: 100% !important;
+            border: none !important;
+            box-shadow: none !important;
+            background: transparent !important;
+            padding: 0 !important;
+        }
+        select.tomselected {
+            display: none !important;
+        }
+
+        /* =========================================
+           ۲. استایل اصلی Tom Select
+           ========================================= */
+        .ts-wrapper .ts-control {
+            border-radius: 0.5rem !important;
+            border: 1px solid #d1d5db !important;
+            padding: 0.5rem 0.75rem !important;
+            font-size: 0.875rem !important;
+            min-height: 42px !important;
+            background-color: #ffffff !important;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+            transition: all 0.2s ease !important;
+            position: relative !important;
+            color: #374151 !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        .ts-wrapper:hover .ts-control {
+            border-color: #93c5fd !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important; 
+        }
+        .ts-wrapper.focus .ts-control {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+            outline: none !important;
+        }
+
+        .ts-wrapper.single .ts-control::after {
+            content: "▼" !important;
+            font-size: 0.6rem !important;
+            color: #9ca3af !important;
+            position: absolute !important;
+            left: 12px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            pointer-events: none !important;
+        }
+
+        .ts-wrapper .ts-control .item {
+            color: #111827 !important;
+            font-weight: 500 !important;
+        }
+
+        /* منوی باز شده */
+        .ts-dropdown {
+            border-radius: 0.5rem !important;
+            border: 1px solid #e5e7eb !important;
+            margin-top: 6px !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+            background: white !important;
+            padding: 6px !important;
+            z-index: 9999 !important;
+            box-sizing: border-box !important;
+        }
+
+        /* کادر جستجوی داخل منو */
+        .ts-dropdown .dropdown-input-wrap {
+            padding: 4px 4px 8px 4px !important;
+            border-bottom: 1px solid #f3f4f6 !important;
+            margin-bottom: 4px !important;
+        }
+        
+        .ts-dropdown .dropdown-input {
+            width: 100% !important;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 0.375rem !important;
+            padding: 0.4rem 0.75rem !important;
+            font-size: 0.85rem !important;
+            outline: none !important;
+            background-color: #f9fafb !important;
+            box-sizing: border-box !important;
+        }
+        
+        .ts-dropdown .dropdown-input:focus {
+            border-color: #3b82f6 !important;
+            background-color: #fff !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+        }
+
+        /* گزینه‌های داخل لیست */
+        .ts-dropdown .option {
+            padding: 0.5rem 0.75rem !important;
+            border-radius: 0.375rem !important;
+            color: #4b5563 !important;
+            transition: background-color 0.15s ease !important;
+            cursor: pointer !important;
+            display: block !important;
+            width: 100% !important;
+            text-align: right !important;
+        }
+        
+        .ts-dropdown .option:hover, .ts-dropdown .option.active {
+            background-color: #eff6ff !important;
+            color: #1d4ed8 !important;
+        }
     </style>
 
     {% block extra_head %}{% endblock %}
@@ -311,6 +425,111 @@
             });
         }
     });
+</script>
+
+<!-- راه‌اندازی Tom Select و اتصال به API ها -->
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selects = document.querySelectorAll('select:not(.no-search)');
+    let platformTomSelect = null;
+    let processTomSelect = null;
+
+    selects.forEach(function(el) {
+        let labelText = "انتخاب کنید...";
+        
+        // پیدا کردن لیبل
+        if (el.id) {
+            const label = document.querySelector('label[for="' + el.id + '"]');
+            if (label) labelText = label.innerText.replace(/[\*\:]/g, '').trim();
+        }
+        if (labelText === "انتخاب کنید..." && el.closest('div')) {
+            const parentLabel = el.closest('div').querySelector('label');
+            if (parentLabel) labelText = parentLabel.innerText.replace(/[\*\:]/g, '').trim();
+        }
+        if (labelText === "انتخاب کنید..." && el.name) {
+            const nameMap = {
+                'customer': 'مشتری', 'status': 'وضعیت', 'user': 'کارمند', 
+                'platform': 'عنوان', 'process': 'فرآیند', 'source': 'منبع', 
+                'product': 'محصول', 'employee': 'پرسنل'
+            };
+            if (nameMap[el.name]) labelText = nameMap[el.name];
+        }
+
+        // تغییر متن گزینه پیش‌فرض
+        if (el.options.length > 0 && (el.options[0].value === "" || el.options[0].text.includes('---------'))) {
+            el.options[0].text = labelText === "انتخاب کنید..." ? "همه موارد" : "همه " + labelText;
+        }
+
+        // فعال‌سازی Tom Select
+        const ts = new TomSelect(el, {
+            create: false,
+            plugins: ['dropdown_input'], 
+            placeholder: labelText, 
+            maxOptions: 1000,
+            dropdownParent: 'body', // 👈 این خط مشکل بریده شدن در جدول را حل می‌کند
+            render: {
+                no_results: function(data, escape) {
+                    return '<div class="no-results p-3 text-gray-500 text-center text-sm">موردی یافت نشد</div>';
+                }
+            }
+        });
+
+        // ذخیره نمونه‌ها
+        if (el.name === 'platform') platformTomSelect = ts;
+        if (el.name === 'process') processTomSelect = ts;
+    });
+
+    // ==========================================
+    // ۱. وقتی پلتفرم عوض شد، فرآیندها را بیار
+    // ==========================================
+    if (platformTomSelect && processTomSelect) {
+        platformTomSelect.on('change', function(platformId) {
+            processTomSelect.clear();
+            processTomSelect.clearOptions();
+            
+            const costInput = document.querySelector('input[name="cost"]');
+            if (costInput) costInput.value = '';
+            
+            if (!platformId) return;
+
+            fetch(`/ads/api/platform/${platformId}/processes/`)
+                .then(response => response.json())
+                .then(data => {
+                    data.processes.forEach(process => {
+                        processTomSelect.addOption({
+                            value: process.id,
+                            text: process.name
+                        });
+                    });
+                    processTomSelect.refreshOptions();
+                })
+                .catch(err => console.error('Error fetching processes:', err));
+        });
+    }
+
+    // ==========================================
+    // ۲. وقتی فرآیند عوض شد، قیمت را خودکار پر کن
+    // ==========================================
+    if (processTomSelect) {
+        processTomSelect.on('change', function(processId) {
+            const costInput = document.querySelector('input[name="cost"]');
+            if (!costInput) return;
+
+            if (!processId) {
+                costInput.value = ''; 
+                return;
+            }
+
+            fetch(`/ads/api/process/${processId}/cost/`)
+                .then(response => response.json())
+                .then(data => {
+                    costInput.value = data.cost; 
+                })
+                .catch(err => console.error('Error fetching cost:', err));
+        });
+    }
+});
 </script>
 
 {% block extra_js %}{% endblock %}

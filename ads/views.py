@@ -12,28 +12,44 @@ import jdatetime
 
 from .forms import AdForm, AdPlatformForm, AdProcessForm, AdSourceForm
 from .models import Ad, AdLog, AdPlatform, AdProcess, AdSource
-from .permissions import is_ads_manager, is_admin_only
-
+from accounts.models import UserPermissionOverride
 
 # ─────────────────────────────────────────────
-# Decorator ها
+# سیستم بررسی دسترسی سفارشی (اصلاح نهایی)
 # ─────────────────────────────────────────────
-def ads_manager_required(view_func):
-    @login_required
-    def wrapper(request, *args, **kwargs):
-        if not is_ads_manager(request.user):
-            return HttpResponseForbidden('دسترسی ندارید')
-        return view_func(request, *args, **kwargs)
-    return wrapper
+def check_permission(user, perm_key):
+    """بررسی دسترسی با در نظر گرفتن override های دیتابیس"""
+    if user.is_superuser:
+        return True
+        
+    # ۱. چک کردن تنظیمات دستی (override) که ادمین اعمال کرده
+    override = UserPermissionOverride.objects.filter(user=user, permission_key=perm_key).first()
+    if override:
+        return override.granted
+        
+    # ۲. ترجمه کلیدهای سفارشی به کلیدهای استاندارد جنگو
+    key_map = {
+        'ads.add': 'ads.add_ad',
+        'ads.edit': 'ads.change_ad',
+        'ads.delete': 'ads.delete_ad',
+        # اگر کلیدهای سفارشی دیگری دارید، اینجا اضافه کنید
+    }
+    
+    django_perm_key = key_map.get(perm_key, perm_key)
+    
+    # ۳. استفاده از دسترسی‌های پیش‌فرض گروه (نقش)
+    return user.has_perm(django_perm_key)
 
-
-def admin_required(view_func):
-    @login_required
-    def wrapper(request, *args, **kwargs):
-        if not is_admin_only(request.user):
-            return HttpResponseForbidden('فقط ادمین')
-        return view_func(request, *args, **kwargs)
-    return wrapper
+def perm_required(perm_key):
+    """دکوراتور برای استفاده در ویوها"""
+    def decorator(view_func):
+        @login_required
+        def _wrapped_view(request, *args, **kwargs):
+            if not check_permission(request.user, perm_key):
+                return HttpResponseForbidden('شما دسترسی لازم برای این عملیات را ندارید.')
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+    return decorator
 
 
 # ─────────────────────────────────────────────
@@ -74,7 +90,7 @@ def _apply_report_filters(request, qs):
 # ─────────────────────────────────────────────
 # لیست تبلیغات + گزارش
 # ─────────────────────────────────────────────
-@ads_manager_required
+@perm_required('ads.view_ad')
 def ad_list(request):
     qs = Ad.objects.select_related(
         'platform', 'process', 'source', 'product', 'created_by',
@@ -170,6 +186,12 @@ def ad_list(request):
         'is_admin': request.user.is_superuser,
         'stats': stats,
         'report': report,
+        # ارسال دسترسی‌ها به قالب (با کلیدهای سفارشی شما)
+        'can_view': check_permission(request.user, 'ads.view_ad'),
+        'can_create': check_permission(request.user, 'ads.add'), 
+        'can_edit': check_permission(request.user, 'ads.edit'),    
+        'can_delete': check_permission(request.user, 'ads.delete'), 
+        'can_manage_definitions': check_permission(request.user, 'ads.manage_defs'),
     }
     return render(request, 'ads/ad_list.html', context)
 
@@ -177,7 +199,7 @@ def ad_list(request):
 # ─────────────────────────────────────────────
 # خروجی Excel گزارش
 # ─────────────────────────────────────────────
-@ads_manager_required
+@perm_required('ads.view_ad')
 def ad_export_report(request):
     import openpyxl
     from openpyxl.styles import Alignment, Font, PatternFill
@@ -278,7 +300,7 @@ def ad_export_report(request):
 # ─────────────────────────────────────────────
 # ایجاد تبلیغ
 # ─────────────────────────────────────────────
-@ads_manager_required
+@perm_required('ads.add') 
 @require_http_methods(['GET', 'POST'])
 def ad_create(request):
     if request.method == 'POST':
@@ -315,12 +337,19 @@ def ad_create(request):
 
 
 # ─────────────────────────────────────────────
-# ویرایش تبلیغ
+# ویرایش تبلیغ (و مشاهده)
 # ─────────────────────────────────────────────
-@ads_manager_required
+@login_required
 @require_http_methods(['GET', 'POST'])
 def ad_edit(request, pk):
     ad = get_object_or_404(Ad, pk=pk)
+    
+    if request.method == 'POST':
+        if not check_permission(request.user, 'ads.edit'): 
+            return HttpResponseForbidden('شما فقط دسترسی مشاهده دارید.')
+    else:
+        if not check_permission(request.user, 'ads.view_ad'):
+            return HttpResponseForbidden('شما دسترسی مشاهده ندارید.')
 
     if not request.user.is_superuser and ad.created_by_id != request.user.id:
         return HttpResponseForbidden('فقط رکوردهای خودتان')
@@ -378,9 +407,9 @@ def ad_edit(request, pk):
 
 
 # ─────────────────────────────────────────────
-# حذف تبلیغ (فقط ادمین)
+# حذف تبلیغ
 # ─────────────────────────────────────────────
-@admin_required
+@perm_required('ads.delete') 
 @require_http_methods(['POST'])
 def ad_delete(request, pk):
     ad = get_object_or_404(Ad, pk=pk)
@@ -397,9 +426,9 @@ def ad_delete(request, pk):
 
 
 # ─────────────────────────────────────────────
-# مدیریت عنوان‌ها (فقط ادمین)
+# مدیریت عنوان‌ها، فرآیندها و منابع
 # ─────────────────────────────────────────────
-@admin_required
+@perm_required('ads.manage_defs')
 def platform_list(request):
     if request.method == 'POST':
         form = AdPlatformForm(request.POST)
@@ -414,7 +443,7 @@ def platform_list(request):
     })
 
 
-@admin_required
+@perm_required('ads.manage_defs')
 @require_http_methods(['POST'])
 def platform_delete(request, pk):
     obj = get_object_or_404(AdPlatform, pk=pk)
@@ -426,10 +455,7 @@ def platform_delete(request, pk):
     return redirect('ads:platform_list')
 
 
-# ─────────────────────────────────────────────
-# مدیریت فرآیندها (فقط ادمین)
-# ─────────────────────────────────────────────
-@admin_required
+@perm_required('ads.manage_defs')
 def process_list(request):
     if request.method == 'POST':
         form = AdProcessForm(request.POST)
@@ -445,7 +471,7 @@ def process_list(request):
     })
 
 
-@admin_required
+@perm_required('ads.manage_defs')
 @require_http_methods(['POST'])
 def process_delete(request, pk):
     obj = get_object_or_404(AdProcess, pk=pk)
@@ -457,10 +483,7 @@ def process_delete(request, pk):
     return redirect('ads:process_list')
 
 
-# ─────────────────────────────────────────────
-# مدیریت منابع (فقط ادمین)
-# ─────────────────────────────────────────────
-@admin_required
+@perm_required('ads.manage_defs')
 def source_list(request):
     if request.method == 'POST':
         form = AdSourceForm(request.POST)
@@ -475,7 +498,7 @@ def source_list(request):
     })
 
 
-@admin_required
+@perm_required('ads.manage_defs')
 @require_http_methods(['POST'])
 def source_delete(request, pk):
     obj = get_object_or_404(AdSource, pk=pk)
@@ -488,9 +511,9 @@ def source_delete(request, pk):
 
 
 # ─────────────────────────────────────────────
-# API: فرآیندهای یک پلتفرم
+# API ها
 # ─────────────────────────────────────────────
-@ads_manager_required
+@perm_required('ads.view_ad')
 def platform_processes_api(request, pk):
     processes = AdProcess.objects.filter(
         platform_id=pk, is_active=True,
@@ -498,10 +521,7 @@ def platform_processes_api(request, pk):
     return JsonResponse({'processes': list(processes)})
 
 
-# ─────────────────────────────────────────────
-# API: هزینه‌ی یک فرآیند
-# ─────────────────────────────────────────────
-@ads_manager_required
+@perm_required('ads.view_ad')
 def process_cost_api(request, pk):
     process = get_object_or_404(AdProcess, pk=pk, is_active=True)
     return JsonResponse({
@@ -511,10 +531,7 @@ def process_cost_api(request, pk):
     })
 
 
-# ─────────────────────────────────────────────
-# API: شماره آگهی بعدی برای یک پلتفرم
-# ─────────────────────────────────────────────
-@ads_manager_required
+@perm_required('ads.view_ad')
 def platform_next_ad_number_api(request, pk):
     platform = get_object_or_404(AdPlatform, pk=pk, is_active=True)
     return JsonResponse({

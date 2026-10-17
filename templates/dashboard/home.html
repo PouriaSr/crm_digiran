@@ -56,33 +56,32 @@
 </div>
 {% endif %}
 
-<!-- ═══ فیلتر تاریخ و کاربر ═══ -->
-<div class="bg-white rounded-xl p-4 shadow-sm mb-6">
-    <form method="get" class="flex flex-wrap gap-3 items-center">
-        <div class="flex items-center gap-2">
-            <label class="text-sm font-medium text-gray-700 whitespace-nowrap">از تاریخ:</label>
+<!-- ═══ فیلتر تاریخ و کاربر (چیدمان گرید حرفه‌ای) ═══ -->
+<div class="bg-white rounded-xl p-5 shadow-sm mb-6">
+    <form method="get" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+        <!-- فیلد از تاریخ -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">از تاریخ</label>
             <input type="text" name="from_date" value="{{ from_date_jalali }}"
                    data-jdp data-jdp-time="false"
                    placeholder="۱۴۰۴/۰۱/۰۱"
-                   class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                   style="width: 140px;">
+                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
         </div>
 
-        <div class="flex items-center gap-2">
-            <label class="text-sm font-medium text-gray-700 whitespace-nowrap">تا تاریخ:</label>
+        <!-- فیلد تا تاریخ -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">تا تاریخ</label>
             <input type="text" name="to_date" value="{{ to_date_jalali }}"
                    data-jdp data-jdp-time="false"
                    placeholder="۱۴۰۵/۱۲/۲۹"
-                   class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                   style="width: 140px;">
+                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
         </div>
 
+        <!-- فیلد کارمند -->
         {% if is_manager_view %}
-        <div class="flex items-center gap-2">
-            <label class="text-sm font-medium text-gray-700 whitespace-nowrap">کارمند:</label>
-            <select name="employee"
-                    class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    style="min-width: 180px;">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">کارمند</label>
+            <select name="employee" class="w-full">
                 <option value="">👥 همه کاربران</option>
                 {% for u in filter_users_list %}
                     <option value="{{ u.id }}" {% if filter_user_id == u.id|stringformat:"s" %}selected{% endif %}>
@@ -93,17 +92,21 @@
         </div>
         {% endif %}
 
-        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 flex items-center gap-1.5">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-            </svg>
-            اعمال فیلتر
-        </button>
-
-        {% if from_date_jalali or to_date_jalali or filter_user_id %}
-        <a href="{% url 'dashboard:home' %}" class="text-xs text-red-600 hover:underline">پاک کردن فیلترها</a>
-        {% endif %}
+        <!-- دکمه‌ها -->
+        <div class="flex gap-2 w-full">
+            <button type="submit" class="flex-1 px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 flex items-center justify-center gap-1.5 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                </svg>
+                اعمال فیلتر
+            </button>
+            {% if from_date_jalali or to_date_jalali or filter_user_id %}
+            <a href="{% url 'dashboard:home' %}" class="px-4 py-2.5 bg-red-50 text-red-600 rounded-lg text-sm hover:bg-red-100 transition text-center flex items-center justify-center">
+                پاک کردن
+            </a>
+            {% endif %}
+        </div>
     </form>
 </div>
 

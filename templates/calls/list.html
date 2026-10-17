@@ -41,59 +41,81 @@
     </div>
 </div>
 
-<!-- ═══ فیلترها ═══ -->
-<div class="bg-white rounded-xl p-4 shadow-sm mb-6">
-    <form method="get" class="flex flex-wrap gap-3 items-center">
-        <div class="flex-1 min-w-[200px]">
+<!-- ═══ فیلترها (چیدمان گرید حرفه‌ای) ═══ -->
+<div class="bg-white rounded-xl p-5 shadow-sm mb-6">
+    <form method="get" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
+        
+        <!-- جستجو (عرض بیشتر) -->
+        <div class="md:col-span-2 lg:col-span-1">
+            <label class="block text-xs font-medium text-gray-600 mb-1.5">جستجو</label>
             <input type="text" name="q" value="{{ search }}"
-                   placeholder="جستجو نام، شماره یا یادداشت..."
-                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                   placeholder="نام، شماره یا یادداشت..."
+                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
         </div>
 
-        <select name="status" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">همه وضعیت‌ها</option>
-            {% for value, label in status_choices %}
-                <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1.5">وضعیت</label>
+            <select name="status" class="w-full">
+                <option value="">همه وضعیت‌ها</option>
+                {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
-        <select name="call_type" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">همه انواع</option>
-            {% for value, label in type_choices %}
-                <option value="{{ value }}" {% if current_call_type == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1.5">نوع تماس</label>
+            <select name="call_type" class="w-full">
+                <option value="">همه انواع</option>
+                {% for value, label in type_choices %}
+                    <option value="{{ value }}" {% if current_call_type == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
-        <select name="purpose" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">همه اهداف</option>
-            {% for value, label in purpose_choices %}
-                <option value="{{ value }}" {% if current_purpose == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1.5">هدف</label>
+            <select name="purpose" class="w-full">
+                <option value="">همه اهداف</option>
+                {% for value, label in purpose_choices %}
+                    <option value="{{ value }}" {% if current_purpose == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
-        <select name="followup" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">همه پیگیری‌ها</option>
-            <option value="pending" {% if current_followup == 'pending' %}selected{% endif %}>⏳ در انتظار پیگیری</option>
-            <option value="done" {% if current_followup == 'done' %}selected{% endif %}>✅ پیگیری شده</option>
-            <option value="has_date" {% if current_followup == 'has_date' %}selected{% endif %}>📅 دارای تاریخ پیگیری</option>
-        </select>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1.5">پیگیری</label>
+            <select name="followup" class="w-full">
+                <option value="">همه پیگیری‌ها</option>
+                <option value="pending" {% if current_followup == 'pending' %}selected{% endif %}>⏳ در انتظار</option>
+                <option value="done" {% if current_followup == 'done' %}selected{% endif %}>✅ پیگیری شده</option>
+                <option value="has_date" {% if current_followup == 'has_date' %}selected{% endif %}>📅 دارای تاریخ</option>
+            </select>
+        </div>
 
-        <select name="employee" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">همه کارمندان</option>
-            {% for emp in employees %}
-                <option value="{{ emp.id }}" {% if current_employee == emp.id|stringformat:"s" %}selected{% endif %}>
-                    {{ emp.get_full_name|default:emp.username }}
-                </option>
-            {% endfor %}
-        </select>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1.5">کارمند</label>
+            <select name="employee" class="w-full">
+                <option value="">همه کارمندان</option>
+                {% for emp in employees %}
+                    <option value="{{ emp.id }}" {% if current_employee == emp.id|stringformat:"s" %}selected{% endif %}>
+                        {{ emp.get_full_name|default:emp.username }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
 
-        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
-            اعمال فیلتر
-        </button>
-
-        {% if search or current_status or current_call_type or current_purpose or current_employee or current_followup %}
-        <a href="{% url 'calls:list' %}" class="text-sm text-gray-500 hover:text-gray-700">پاک کردن فیلترها</a>
-        {% endif %}
+        <!-- دکمه‌ها -->
+        <div class="flex gap-2 w-full md:col-span-2 lg:col-span-2">
+            <button type="submit" class="flex-1 px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition">
+                اعمال فیلتر
+            </button>
+            {% if search or current_status or current_call_type or current_purpose or current_employee or current_followup %}
+            <a href="{% url 'calls:list' %}" class="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 transition text-center flex items-center justify-center">
+                پاک کردن
+            </a>
+            {% endif %}
+        </div>
     </form>
 </div>
 
@@ -231,7 +253,7 @@
 </div>
 {% endif %}
 
-<!-- ═══ مودال ارجاع (فقط اگه دسترسی داره) ═══ -->
+<!-- ═══ مودال ارجاع ═══ -->
 {% if 'calls.reassign' in user_permissions %}
 <div id="reassign-modal"
      class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 items-center justify-center p-4"
