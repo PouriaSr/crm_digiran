@@ -255,7 +255,43 @@ class UserEditForm(forms.ModelForm):
                             user=user, permission_key=perm_key, granted=False,
                         )
         return user
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.is_active = self.cleaned_data.get('is_active', True)
+        role = self.cleaned_data.get('role')
+        if role == 'admin':
+            user.is_superuser = True
+            user.is_staff = True
+        else:
+            user.is_superuser = False
+            user.is_staff = True
+        if commit:
+            user.save()
+            user.groups.clear()
+            if role in ROLE_GROUP_MAP:
+                group, _ = Group.objects.get_or_create(name=ROLE_GROUP_MAP[role])
+                user.groups.add(group)
 
+            # ذخیره overrideها (فقط برای غیر سوپریوزر)
+            from accounts.permissions import PERMISSION_META  # <--- این خط تغییر کرد
+            from accounts.models import UserPermissionOverride
+
+            if not user.is_superuser:
+                user.permission_overrides.all().delete()
+                
+                # اینجا به جای PERMISSIONS از PERMISSION_META استفاده می‌کنیم
+                for perm_key in PERMISSION_META: 
+                    field_name = 'perm__' + perm_key.replace('.', '_')
+                    val = self.cleaned_data.get(field_name, 'inherit')
+                    if val == 'allow':
+                        UserPermissionOverride.objects.create(
+                            user=user, permission_key=perm_key, granted=True,
+                        )
+                    elif val == 'deny':
+                        UserPermissionOverride.objects.create(
+                            user=user, permission_key=perm_key, granted=False,
+                        )
+        return user
 
 # ═══════════════════════════════════════════════════════════
 # UserPasswordForm
