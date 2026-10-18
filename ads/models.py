@@ -159,7 +159,15 @@ class Ad(models.Model):
 
 
 class AdLog(models.Model):
-    """تاریخچه کامل تغییرات — چه کسی، چه زمانی، چه تغییری"""
+    """تاریخچه کامل تغییرات — چه کسی، چه زمانی، چه تغییری
+
+    ⭐ نکته طراحی (Fix #2):
+    - `ad` با `on_delete=SET_NULL` تعریف شده تا با حذف Ad، لاگ‌ها زنده بمانند.
+    - `ad_number_snapshot` شناسه‌ی خوانا را در خود لاگ نگه می‌دارد؛ پس از حذف
+      Ad، هنوز می‌توان فهمید که این لاگ مربوط به کدام آگهی بوده.
+    - `save()` به‌طور خودکار snapshot را از ad پر می‌کند؛ پس در views نیازی
+      به تغییر کد نیست.
+    """
     ACTION_CHOICES = [
         ('create', 'ایجاد'),
         ('update', 'ویرایش'),
@@ -168,9 +176,19 @@ class AdLog(models.Model):
 
     ad = models.ForeignKey(
         Ad,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='logs',
         verbose_name='تبلیغ',
+    )
+    # ⭐ اسنپ‌شات شناسه برای حفظ قابلیت audit پس از حذف Ad
+    ad_number_snapshot = models.CharField(
+        'شماره آگهی (اسنپ‌شات)',
+        max_length=100,
+        blank=True,
+        db_index=True,
+        help_text='حفظ شناسه حتی پس از حذف رکورد اصلی',
     )
     action = models.CharField(
         'عملیات',
@@ -198,7 +216,27 @@ class AdLog(models.Model):
         ordering = ['-changed_at']
         indexes = [
             models.Index(fields=['ad', '-changed_at']),
+            models.Index(fields=['ad_number_snapshot', '-changed_at']),
         ]
 
+    def save(self, *args, **kwargs):
+        # ⭐ Fix #2: پر کردن خودکار snapshot از ad (فقط یک‌بار، در اولین ذخیره)
+        if not self.ad_number_snapshot and self.ad_id:
+            try:
+                self.ad_number_snapshot = self.ad.ad_number
+            except Ad.DoesNotExist:
+                # اگر Ad هنوز وجود ندارد (مثلاً batch insert)، بی‌صدا رد شو
+                pass
+        super().save(*args, **kwargs)
+
+    @property
+    def ad_label(self):
+        """شناسه‌ی نمایشی — حتی اگر Ad حذف شده باشد کار می‌کند"""
+        if self.ad_number_snapshot:
+            return self.ad_number_snapshot
+        if self.ad_id:
+            return self.ad.ad_number
+        return '—'
+
     def __str__(self):
-        return f'{self.ad} — {self.get_action_display()}'
+        return f'{self.ad_label} — {self.get_action_display()}'

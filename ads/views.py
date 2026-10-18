@@ -170,9 +170,9 @@ def ad_list(request):
         'stats': stats,
         'report': report,
         'can_view': check_permission(request.user, 'ads.view'),
-        'can_create': check_permission(request.user, 'ads.add'), 
-        'can_edit': check_permission(request.user, 'ads.edit'),    
-        'can_delete': check_permission(request.user, 'ads.delete'), 
+        'can_create': check_permission(request.user, 'ads.add'),
+        'can_edit': check_permission(request.user, 'ads.edit'),
+        'can_delete': check_permission(request.user, 'ads.delete'),
         'can_manage_definitions': check_permission(request.user, 'ads.manage_defs'),
     }
     return render(request, 'ads/ad_list.html', context)
@@ -282,7 +282,7 @@ def ad_export_report(request):
 # ─────────────────────────────────────────────
 # ایجاد تبلیغ
 # ─────────────────────────────────────────────
-@perm_required('ads.add') 
+@perm_required('ads.add')
 @require_http_methods(['GET', 'POST'])
 def ad_create(request):
     if request.method == 'POST':
@@ -325,14 +325,18 @@ def ad_create(request):
 @require_http_methods(['GET', 'POST'])
 def ad_edit(request, pk):
     ad = get_object_or_404(Ad, pk=pk)
-    
-    if request.method == 'POST':
-        if not check_permission(request.user, 'ads.edit'): 
-            return HttpResponseForbidden('شما فقط دسترسی مشاهده دارید.')
-    else:
-        if not check_permission(request.user, 'ads.view'):
-            return HttpResponseForbidden('شما دسترسی مشاهده ندارید.')
 
+    # ⭐ Fix #12: ads.view برای GET و POST هر دو چک می‌شود (پیش‌نیاز منطقی)
+    # قبلاً اگر کاربر override داشت (edit=True, view=False)، با POST مستقیم
+    # (curl) می‌توانست داده را تغییر دهد بدون اینکه هرگز فرم را دیده باشد.
+    if not check_permission(request.user, 'ads.view'):
+        return HttpResponseForbidden('شما دسترسی مشاهده ندارید.')
+
+    # POST علاوه بر view، نیاز به edit هم دارد
+    if request.method == 'POST' and not check_permission(request.user, 'ads.edit'):
+        return HttpResponseForbidden('شما دسترسی ویرایش ندارید.')
+
+    # چک مالکیت رکورد (غیرسوپریوزر فقط رکوردهای خودش)
     if not request.user.is_superuser and ad.created_by_id != request.user.id:
         return HttpResponseForbidden('فقط رکوردهای خودتان')
 
@@ -391,11 +395,14 @@ def ad_edit(request, pk):
 # ─────────────────────────────────────────────
 # حذف تبلیغ
 # ─────────────────────────────────────────────
-@perm_required('ads.delete') 
+@perm_required('ads.delete')
 @require_http_methods(['POST'])
 def ad_delete(request, pk):
     ad = get_object_or_404(Ad, pk=pk)
     with transaction.atomic():
+        # ⭐ Fix #2: AdLog.ad حالا SET_NULL است.
+        # پس از ad.delete()، لاگ با ad_id=NULL باقی می‌ماند و
+        # ad_number_snapshot هویت آگهی را حفظ می‌کند.
         AdLog.objects.create(
             ad=ad,
             action='delete',
@@ -403,7 +410,7 @@ def ad_delete(request, pk):
             note=f'حذف تبلیغ {ad.ad_number}',
         )
         ad.delete()
-    messages.success(request, 'تبلیغ حذف شد.')
+    messages.success(request, 'تبلیغ حذف شد. لاگ حذف در سیستم ثبت شد.')
     return redirect('ads:list')
 
 

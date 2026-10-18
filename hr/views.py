@@ -91,6 +91,20 @@ def employee_create(request):
         if form.is_valid():
             employee = form.save()
             show_duplicate_warnings(request, form)
+
+            # ⭐ Fix #19: هشدار کیفیت داده اگر کد ملی خالی است
+            # (کارمندانی که nid ندارند، در آینده ممکن است دو رکورد ناخواسته ایجاد کنند)
+            if not employee.national_id:
+                empty_nid_count = Employee.objects.filter(
+                    Q(national_id__isnull=True) | Q(national_id='')
+                ).exclude(pk=employee.pk).count()
+                if empty_nid_count > 0:
+                    messages.warning(
+                        request,
+                        f'توجه: {empty_nid_count} کارمند دیگر هم بدون کد ملی ثبت شده‌اند. '
+                        'برای کیفیت داده بهتر است کد ملی این کارمند را تکمیل کنید.'
+                    )
+
             messages.success(request, f'کارمند «{employee.full_name}» اضافه شد.')
             return redirect('hr:employee_detail', pk=employee.pk)
     else:
@@ -265,13 +279,31 @@ def task_delete(request, pk):
 @login_required
 @require_permission('hr.manage_tasks')
 def task_toggle_status(request, pk):
+    """
+    ⭐ Fix #18: برای status نامعتبر هم بازخورد می‌دهد (قبلاً سکوت می‌کرد).
+    """
     task = get_object_or_404(Task, pk=pk)
     if request.method == 'POST':
-        new_status = request.POST.get('status')
-        if new_status in dict(Task.STATUS_CHOICES):
+        new_status = request.POST.get('status', '').strip()
+        valid_statuses = dict(Task.STATUS_CHOICES)
+
+        if new_status in valid_statuses:
             task.status = new_status
             task.save()
-            messages.success(request, f'وضعیت وظیفه به «{task.get_status_display()}» تغییر کرد.')
+            messages.success(
+                request,
+                f'وضعیت وظیفه به «{task.get_status_display()}» تغییر کرد.'
+            )
+        else:
+            messages.error(
+                request,
+                f'وضعیت «{new_status or "(خالی)"}» نامعتبر است. '
+                'لطفاً یکی از گزینه‌های موجود را انتخاب کنید.'
+            )
+    else:
+        # درخواست GET → پیام مناسب
+        messages.warning(request, 'تغییر وضعیت فقط با POST امکان‌پذیر است.')
+
     return redirect('hr:task_detail', pk=task.pk)
 
 
@@ -364,15 +396,27 @@ def leave_create(request):
 @login_required
 @require_permission('hr.review_leaves')
 def leave_review(request, pk):
+    """
+    ⭐ Fix #10: action نامعتبر → خطا و redirect قبل از ذخیره‌ی reviewer.
+    قبلاً اگر action نامعتبر بود، status تغییر نمی‌کرد ولی reviewed_by/reviewed_at
+    ست می‌شد → رکورد «بررسی‌شده‌ی ناتمام» ثبت می‌شد.
+    """
     leave = get_object_or_404(LeaveRequest, pk=pk)
 
     if request.method == 'POST':
-        action = request.POST.get('action')
+        action = request.POST.get('action', '').strip()
         note = request.POST.get('review_note', '').strip()
+
+        if action not in ('approve', 'reject'):
+            messages.error(
+                request,
+                'عملیات نامعتبر است. لطفاً یکی از گزینه‌های «تایید» یا «رد» را انتخاب کنید.'
+            )
+            return redirect('hr:leave_review', pk=pk)
 
         if action == 'approve':
             leave.status = 'approved'
-        elif action == 'reject':
+        else:  # action == 'reject'
             leave.status = 'rejected'
 
         leave.reviewed_by = request.user

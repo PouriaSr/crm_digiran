@@ -1,5 +1,5 @@
 """
-Views 2FA — فاز ۸.۳
+Views 2FA — فاز ۸.۳ + Rate Limiting فاز ۸.۲
 
 جریان:
 1. کاربر از پروفایل → /accounts/2fa/setup/ → QR + تایید
@@ -21,13 +21,21 @@ from django.views.decorators.http import require_http_methods
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from django_otp.plugins.otp_static.models import StaticDevice, StaticToken
 
+from .ratelimit import (
+    get_client_ip,
+    is_locked,
+    register_failure,
+    clear_failures,
+    get_lock_remaining,
+)
+
 
 # ═══════════════════════════════════════════════════════════
 # توابع کمکی
 # ═══════════════════════════════════════════════════════════
 
 def get_confirmed_totp(user):
-    """دستگاه TOTP تاییدشده کاربر (یا None)"""
+    """دستگاه TOTP تایید‌شده کاربر (یا None)"""
     return TOTPDevice.objects.filter(user=user, confirmed=True).first()
 
 
@@ -188,9 +196,15 @@ def twofa_disable(request):
 # Verify — تایید در زمان لاگین
 # ═══════════════════════════════════════════════════════════
 
+def _clear_2fa_session(request):
+    """پاک‌سازی کامل state 2FA از session"""
+    request.session.pop('2fa_user_id', None)
+    request.session.pop('2fa_next', None)
+
+
 @require_http_methods(['GET', 'POST'])
 def twofa_verify(request):
-    """تایید کد 2FA بعد از ورود نام‌کاربری/رمز"""
+    """تایید کد 2FA بعد از ورود نام‌کاربری/رمز + Rate Limiting"""
     user_id = request.session.get('2fa_user_id')
     if not user_id:
         return redirect('accounts:login')
@@ -198,27 +212,55 @@ def twofa_verify(request):
     try:
         user = User.objects.get(pk=user_id)
     except User.DoesNotExist:
-        request.session.pop('2fa_user_id', None)
+        _clear_2fa_session(request)
+        return redirect('accounts:login')
+
+    ip = get_client_ip(request)
+
+    # ── لایه Rate Limiting: چک قفل بودن ──
+    if is_locked(user.username, ip):
+        _clear_2fa_session(request)
+        remaining = get_lock_remaining(user.username, ip)
+        minutes = max(1, (remaining + 59) // 60)
+        messages.error(
+            request,
+            f'به دلیل تلاش‌های ناموفق مکرر، ورود موقتاً مسدود شده است. '
+            f'لطفاً {minutes} دقیقه‌ی دیگر دوباره تلاش کنید.'
+        )
         return redirect('accounts:login')
 
     device = get_confirmed_totp(user)
     if not device:
         # عجیب — کاربر 2FA نداره ولی اینجاست. لاگین کن.
         auth_login(request, user)
-        request.session.pop('2fa_user_id', None)
+        _clear_2fa_session(request)
         return redirect('dashboard:home')
 
     if request.method == 'POST':
         code = request.POST.get('code', '').strip().replace(' ', '')
 
-        # چک TOTP
+        # ── چک TOTP ──
         if code and device.verify_token(code):
+            clear_failures(user.username, ip)
             return _complete_login(request, user)
 
-        # چک کد بازیابی
+        # ── چک کد بازیابی ──
         if code and verify_recovery_code(user, code):
+            clear_failures(user.username, ip)
             messages.warning(request, '⚠️ این کد بازیابی مصرف شد. لطفاً کدهای جدید بسازید.')
             return _complete_login(request, user)
+
+        # ── کد نامعتبر → ثبت failure ──
+        register_failure(user.username, ip)
+
+        # اگه همین تلاش باعث قفل شد، به login redirect کن
+        if is_locked(user.username, ip):
+            _clear_2fa_session(request)
+            messages.error(
+                request,
+                'تلاش‌های ناموفق بیش از حد مجاز. ورود موقتاً مسدود شد.'
+            )
+            return redirect('accounts:login')
 
         messages.error(request, '❌ کد وارد شده صحیح نیست.')
 

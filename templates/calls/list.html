@@ -97,7 +97,7 @@
             <label class="block text-xs font-medium text-gray-600 mb-1.5">کارمند</label>
             <select name="employee" class="w-full">
                 <option value="">همه کارمندان</option>
-                {% for emp in employees %}
+                {% for emp in reassign_users %}
                     <option value="{{ emp.id }}" {% if current_employee == emp.id|stringformat:"s" %}selected{% endif %}>
                         {{ emp.get_full_name|default:emp.username }}
                     </option>

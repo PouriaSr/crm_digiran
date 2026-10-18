@@ -47,7 +47,7 @@ class EmployeeForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.duplicate_warnings = []
-        
+
         if self.instance and self.instance.pk:
             self.fields['user'].queryset = User.objects.filter(
                 models.Q(employee_profile__isnull=True) |
@@ -90,8 +90,27 @@ class EmployeeForm(forms.ModelForm):
         return result or timezone.now().date()
 
     def clean_national_id(self):
+        """
+        ⭐ Fix #11: چک طول و نوع ارقام، هم‌راستا با CustomerForm.
+        Employee.national_id = CharField(max_length=10) است، ولی در MySQL غیر-strict
+        مقادیر بلندتر truncate می‌شوند و در PostgreSQL خطای 500 می‌دهند.
+        """
         from crm.duplicate_check import normalize_digits
-        return normalize_digits(self.cleaned_data.get('national_id', '')).replace(' ', '').replace('-', '')
+        nid = normalize_digits(
+            self.cleaned_data.get('national_id', '')
+        ).replace(' ', '').replace('-', '')
+
+        # خالی مجاز است (بعضی کارمندان کد ملی نداده‌اند)
+        if not nid:
+            return ''
+
+        if not nid.isdigit():
+            raise forms.ValidationError('کد ملی باید فقط شامل ارقام باشد.')
+
+        if len(nid) != 10:
+            raise forms.ValidationError('کد ملی باید دقیقاً ۱۰ رقم باشد.')
+
+        return nid
 
     def clean_mobile(self):
         from crm.duplicate_check import normalize_phone
@@ -223,7 +242,7 @@ class LeaveRequestForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         from accounts.permissions import has_permission
-        
+
         employee_qs = Employee.objects.filter(is_active=True)
 
         if self.user and not has_permission(self.user, 'hr.review_leaves'):
