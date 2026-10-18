@@ -12,17 +12,6 @@ class InvoiceForm(forms.ModelForm):
     """فرم سربرگ فاکتور"""
 
     # ⭐ تاریخ‌ها به‌عنوان CharField برای تقویم شمسی
-    issue_date = forms.CharField(
-        required=False,
-        label='تاریخ صدور',
-        widget=forms.TextInput(attrs={
-            'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
-            'data-jdp': '',
-            'data-jdp-time': 'false',
-            'placeholder': '۱۴۰۵/۰۱/۱۵',
-            'autocomplete': 'off',
-        })
-    )
     due_date = forms.CharField(
         required=False,
         label='مهلت پرداخت',
@@ -37,7 +26,7 @@ class InvoiceForm(forms.ModelForm):
 
     class Meta:
         model = Invoice
-        fields = ['customer', 'status', 'payment_type', 'issue_date', 'due_date',
+        fields = ['customer', 'status', 'payment_type', 'due_date',
                   'discount', 'tax_percent', 'notes']
         widgets = {
             'customer': forms.Select(attrs={
@@ -51,11 +40,11 @@ class InvoiceForm(forms.ModelForm):
             }),
             'discount': forms.NumberInput(attrs={
                 'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
-                'placeholder': '0', 'min': 0, 'dir': 'ltr'
+                'placeholder': '۰', 'min': 0, 'dir': 'ltr'
             }),
             'tax_percent': forms.NumberInput(attrs={
                 'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
-                'placeholder': '9', 'min': 0, 'max': 100, 'step': '0.01', 'dir': 'ltr'
+                'placeholder': '۹', 'min': 0, 'max': 100, 'step': '0.01', 'dir': 'ltr'
             }),
             'notes': forms.Textarea(attrs={
                 'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
@@ -66,13 +55,7 @@ class InvoiceForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        if self.instance and self.instance.pk and self.instance.issue_date:
-            j = jdatetime.date.fromgregorian(date=self.instance.issue_date)
-            self.initial['issue_date'] = j.strftime('%Y/%m/%d')
-        else:
-            j = jdatetime.date.fromgregorian(date=timezone.now().date())
-            self.initial['issue_date'] = j.strftime('%Y/%m/%d')
-
+        
         if self.instance and self.instance.pk and self.instance.due_date:
             j = jdatetime.date.fromgregorian(date=self.instance.due_date)
             self.initial['due_date'] = j.strftime('%Y/%m/%d')
@@ -84,23 +67,7 @@ class InvoiceForm(forms.ModelForm):
             value = value.replace(p, str(i)).replace(a, str(i))
         return value
 
-    def clean_issue_date(self):
-        value = self.cleaned_data.get('issue_date')
-        if not value:
-            return timezone.now().date()
-        if hasattr(value, 'year'):
-            return value
-
-        value = self._to_en(str(value).strip()).replace('-', '/').replace('.', '/')
-        if ' ' in value:
-            value = value.split(' ', 1)[0]
-
-        try:
-            y, m, d = map(int, value.split('/'))
-            return jdatetime.date(y, m, d).togregorian()
-        except (ValueError, AttributeError):
-            raise forms.ValidationError('تاریخ معتبر نیست')
-
+    
     def clean_due_date(self):
         value = self.cleaned_data.get('due_date')
         if not value:
@@ -135,11 +102,11 @@ class InvoiceItemForm(forms.ModelForm):
             }),
             'quantity': forms.NumberInput(attrs={
                 'class': 'item-qty w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
-                'min': 1, 'placeholder': '1',
+                'min': 1, 'placeholder': '۱',
             }),
             'unit_price': forms.NumberInput(attrs={
                 'class': 'item-price w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
-                'min': 0, 'placeholder': '0', 'dir': 'ltr'
+                'min': 0, 'placeholder': '۰', 'dir': 'ltr'
             }),
         }
 

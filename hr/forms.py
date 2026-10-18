@@ -15,31 +15,23 @@ class EmployeeForm(forms.ModelForm):
             'placeholder': '۱۳۷۰/۰۱/۱۵', 'autocomplete': 'off',
         })
     )
-    hire_date = forms.CharField(
-        required=False, label='تاریخ استخدام',
-        widget=forms.TextInput(attrs={
-            'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
-            'data-jdp': '', 'data-jdp-time': 'false',
-            'placeholder': '۱۴۰۵/۰۱/۱۵', 'autocomplete': 'off',
-        })
-    )
 
     class Meta:
         model = Employee
         fields = ['user', 'first_name', 'last_name', 'national_id', 'mobile',
                   'email', 'address', 'birth_date', 'position', 'contract_type',
-                  'hire_date', 'salary', 'is_active', 'notes']
+                  'salary', 'is_active', 'notes']
         widgets = {
             'user': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
             'first_name': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': 'نام'}),
             'last_name': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': 'نام خانوادگی'}),
-            'national_id': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': '1234567890', 'dir': 'ltr'}),
-            'mobile': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': '09121234567', 'dir': 'ltr'}),
+            'national_id': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': '۱۲۳۴۵۶۷۸۹۰', 'dir': 'ltr'}),
+            'mobile': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': '۰۹۱۲۱۲۳۴۵۶۷', 'dir': 'ltr'}),
             'email': forms.EmailInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'dir': 'ltr'}),
             'address': forms.Textarea(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'rows': 2}),
             'position': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
             'contract_type': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
-            'salary': forms.NumberInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': '0', 'dir': 'ltr', 'min': 0}),
+            'salary': forms.NumberInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': '۰', 'dir': 'ltr', 'min': 0}),
             'is_active': forms.CheckboxInput(attrs={'class': 'w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500'}),
             'notes': forms.Textarea(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'rows': 3}),
         }
@@ -56,14 +48,8 @@ class EmployeeForm(forms.ModelForm):
             if self.instance.birth_date:
                 j = jdatetime.date.fromgregorian(date=self.instance.birth_date)
                 self.initial['birth_date'] = j.strftime('%Y/%m/%d')
-            if self.instance.hire_date:
-                j = jdatetime.date.fromgregorian(date=self.instance.hire_date)
-                self.initial['hire_date'] = j.strftime('%Y/%m/%d')
-        else:
             self.fields['user'].queryset = User.objects.filter(employee_profile__isnull=True)
-            j = jdatetime.date.fromgregorian(date=timezone.now().date())
-            self.initial['hire_date'] = j.strftime('%Y/%m/%d')
-
+            
     def _to_en(self, value):
         from crm.duplicate_check import normalize_digits
         return normalize_digits(value)
@@ -85,10 +71,7 @@ class EmployeeForm(forms.ModelForm):
     def clean_birth_date(self):
         return self._parse_jalali(self.cleaned_data.get('birth_date'))
 
-    def clean_hire_date(self):
-        result = self._parse_jalali(self.cleaned_data.get('hire_date'))
-        return result or timezone.now().date()
-
+    
     def clean_national_id(self):
         """
         ⭐ Fix #11: چک طول و نوع ارقام، هم‌راستا با CustomerForm.
@@ -299,18 +282,10 @@ class LeaveRequestForm(forms.ModelForm):
 
 
 class AttendanceForm(forms.ModelForm):
-    date = forms.CharField(
-        label='تاریخ',
-        widget=forms.TextInput(attrs={
-            'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm',
-            'data-jdp': '', 'data-jdp-time': 'false',
-            'placeholder': '۱۴۰۵/۰۱/۱۵', 'autocomplete': 'off',
-        })
-    )
 
     class Meta:
         model = Attendance
-        fields = ['employee', 'date', 'check_in', 'check_out', 'status', 'notes']
+        fields = ['employee', 'check_in', 'check_out', 'status', 'notes']
         widgets = {
             'employee': forms.Select(attrs={
                 'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'
@@ -336,13 +311,7 @@ class AttendanceForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['employee'].queryset = Employee.objects.filter(is_active=True)
 
-        if self.instance and self.instance.pk and self.instance.date:
-            j = jdatetime.date.fromgregorian(date=self.instance.date)
-            self.initial['date'] = j.strftime('%Y/%m/%d')
-        else:
-            j = jdatetime.date.fromgregorian(date=timezone.now().date())
-            self.initial['date'] = j.strftime('%Y/%m/%d')
-
+        
     def _to_en(self, value):
         persian = '۰۱۲۳۴۵۶۷۸۹'
         arabic = '٠١٢٣٤٥٦٧٨٩'
@@ -350,21 +319,7 @@ class AttendanceForm(forms.ModelForm):
             value = value.replace(p, str(i)).replace(a, str(i))
         return value
 
-    def clean_date(self):
-        value = self.cleaned_data.get('date')
-        if not value:
-            return timezone.now().date()
-        if hasattr(value, 'year'):
-            return value
-        value = self._to_en(str(value).strip()).replace('-', '/').replace('.', '/')
-        if ' ' in value:
-            value = value.split(' ', 1)[0]
-        try:
-            y, m, d = map(int, value.split('/'))
-            return jdatetime.date(y, m, d).togregorian()
-        except (ValueError, AttributeError):
-            raise forms.ValidationError('تاریخ معتبر نیست')
-
+    
 
 # ═══════════════════════════════════════════════════════════
 # فرم ویرایش پروفایل شخصی
@@ -378,7 +333,7 @@ class MyProfileForm(forms.ModelForm):
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
             'last_name': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
-            'mobile': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': '09121234567', 'dir': 'ltr'}),
+            'mobile': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': '۰۹۱۲۱۲۳۴۵۶۷', 'dir': 'ltr'}),
             'email': forms.EmailInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'dir': 'ltr'}),
             'address': forms.Textarea(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'rows': 3}),
             'birth_date': forms.TextInput(attrs={

@@ -130,9 +130,9 @@ def _apply_invoice_filters(qs, request):
     from_date = _parse_jalali_date(from_date_str)
     to_date = _parse_jalali_date(to_date_str)
     if from_date:
-        qs = qs.filter(issue_date__gte=from_date)
+        qs = qs.filter(issue_date__date__gte=from_date)
     if to_date:
-        qs = qs.filter(issue_date__lte=to_date)
+        qs = qs.filter(issue_date__date__lte=to_date)
 
     amount_min_str = request.GET.get('amount_min', '').strip()
     amount_max_str = request.GET.get('amount_max', '').strip()

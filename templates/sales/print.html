@@ -473,7 +473,7 @@
             <h3>مشخصات فاکتور</h3>
             <div class="meta-item">
                 <span class="label">تاریخ صدور:</span>
-                <span class="value" style="direction: rtl;">{{ invoice.issue_date|jdate:"Y/m/d"|fa_digits }}</span>
+                <span class="value" style="direction: rtl;">{{ invoice.issue_date|jdate:"Y/m/d H:i"|fa_digits }}</span>
             </div>
             {% if invoice.due_date %}
             <div class="meta-item">

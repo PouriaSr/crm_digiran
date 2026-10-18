@@ -88,28 +88,28 @@
             <div class="flex items-center gap-2">
                 <label class="text-xs text-gray-500 whitespace-nowrap">از تاریخ:</label>
                 <input type="text" name="from_date" value="{{ from_date }}" data-jdp
-                       placeholder="1405/01/01" autocomplete="off"
+                       placeholder="۱۴۰۵/۰۱/۰۱" autocomplete="off"
                        class="flex-1 sm:flex-none sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" dir="ltr">
             </div>
 
             <div class="flex items-center gap-2">
                 <label class="text-xs text-gray-500 whitespace-nowrap">تا تاریخ:</label>
                 <input type="text" name="to_date" value="{{ to_date }}" data-jdp
-                       placeholder="1405/12/29" autocomplete="off"
+                       placeholder="۱۴۰۵/۱۲/۲۹" autocomplete="off"
                        class="flex-1 sm:flex-none sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" dir="ltr">
             </div>
 
             <div class="flex items-center gap-2">
                 <label class="text-xs text-gray-500 whitespace-nowrap">از مبلغ:</label>
                 <input type="text" name="amount_min" value="{{ amount_min }}"
-                       placeholder="0" autocomplete="off"
+                       placeholder="۰" autocomplete="off"
                        class="flex-1 sm:flex-none sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" dir="ltr">
             </div>
 
             <div class="flex items-center gap-2">
                 <label class="text-xs text-gray-500 whitespace-nowrap">تا مبلغ:</label>
                 <input type="text" name="amount_max" value="{{ amount_max }}"
-                       placeholder="9999999" autocomplete="off"
+                       placeholder="۹۹۹۹۹۹۹" autocomplete="off"
                        class="flex-1 sm:flex-none sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" dir="ltr">
             </div>
 
@@ -173,7 +173,7 @@
                     {% endif %}
                 </td>
                 <td class="px-4 py-3 text-right text-gray-600 text-xs">{{ invoice.get_payment_type_display }}</td>
-                <td class="px-4 py-3 text-right text-gray-500 text-xs" dir="ltr">{{ invoice.issue_date|jdate:"Y/m/d" }}</td>
+                <td class="px-4 py-3 text-right text-gray-500 text-xs" dir="ltr">{{ invoice.issue_date|jdate:"Y/m/d H:i" }}</td>
                 <td class="px-4 py-3 text-right whitespace-nowrap">
                     <div class="flex items-center gap-1">
                         <a href="{% url 'sales:detail' invoice.pk %}" class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50">جزئیات</a>
@@ -230,7 +230,7 @@
             </div>
             <div class="flex justify-between text-xs gap-3">
                 <span class="text-gray-400">تاریخ صدور</span>
-                <span class="font-medium text-gray-800" dir="ltr">{{ invoice.issue_date|jdate:"Y/m/d" }}</span>
+                <span class="font-medium text-gray-800" dir="ltr">{{ invoice.issue_date|jdate:"Y/m/d H:i" }}</span>
             </div>
         </div>
         <!-- Actions -->

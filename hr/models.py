@@ -43,7 +43,7 @@ class Employee(models.Model):
                                  choices=POSITION_CHOICES, default='other')
     contract_type = models.CharField('نوع قرارداد', max_length=20,
                                       choices=CONTRACT_CHOICES, default='full_time')
-    hire_date = models.DateField('تاریخ استخدام', default=timezone.now)
+    hire_date = models.DateTimeField('تاریخ استخدام', default=timezone.now)
     salary = models.DecimalField('حقوق پایه (تومان)', max_digits=15, decimal_places=0,
                                   default=0, blank=True, null=True)
     is_active = models.BooleanField('فعال', default=True)

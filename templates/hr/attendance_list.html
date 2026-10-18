@@ -47,12 +47,12 @@
 <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
     <form method="get" class="filters-row">
         <div>
-            <input type="text" name="from" value="{{ from_date }}" placeholder="از تاریخ 1405/07/01"
+            <input type="text" name="from" value="{{ from_date }}" placeholder="از تاریخ ۱۴۰۵/۰۷/۰۱"
                    data-jdp data-jdp-time="false"
                    class="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
         <div>
-            <input type="text" name="to" value="{{ to_date }}" placeholder="تا تاریخ 1405/07/30"
+            <input type="text" name="to" value="{{ to_date }}" placeholder="تا تاریخ ۱۴۰۵/۰۷/۳۰"
                    data-jdp data-jdp-time="false"
                    class="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
@@ -73,7 +73,7 @@
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr class="text-gray-600">
                 <th class="text-right px-4 py-3 font-medium">کارمند</th>
-                <th class="text-right px-4 py-3 font-medium">تاریخ</th>
+                <th class="text-right px-4 py-3 font-medium">تاریخ و زمان ثبت</th>
                 <th class="text-right px-4 py-3 font-medium">ورود</th>
                 <th class="text-right px-4 py-3 font-medium">خروج</th>
                 <th class="text-right px-4 py-3 font-medium">ساعت کاری</th>
@@ -85,7 +85,7 @@
             {% for att in page_obj %}
             <tr class="hover:bg-gray-50">
                 <td class="px-4 py-3 text-right font-medium">{{ att.employee.full_name }}</td>
-                <td class="px-4 py-3 text-right text-xs" data-label="تاریخ" dir="ltr">{{ att.date|jdate:"Y/m/d" }}</td>
+                <td class="px-4 py-3 text-right text-xs" data-label="تاریخ" dir="ltr">{{ att.date|jdate:"Y/m/d" }} <span class="text-gray-400 mx-1">|</span> {{ att.created_at|jdate:"H:i" }}</td>
                 <td class="px-4 py-3 text-right font-mono text-xs" data-label="ورود" dir="ltr">{{ att.check_in|time:"H:i"|default:"--" }}</td>
                 <td class="px-4 py-3 text-right font-mono text-xs" data-label="خروج" dir="ltr">{{ att.check_out|time:"H:i"|default:"--" }}</td>
                 <td class="px-4 py-3 text-right text-xs" data-label="ساعت کاری">{{ att.work_hours_display }}</td>
