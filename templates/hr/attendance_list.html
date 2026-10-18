@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-
+{% load fa_numbers %}
 {% block title %}حضور و غیاب{% endblock %}
 
 {% block content %}
@@ -84,7 +84,7 @@
             {% for att in page_obj %}
             <tr class="hover:bg-gray-50">
                 <td class="px-4 py-3 text-right font-medium">{{ att.employee.full_name }}</td>
-                <td class="px-4 py-3 text-right text-xs" dir="ltr">{{ att.date|date:"Y/m/d" }}</td>
+                <td class="px-4 py-3 text-right text-xs" dir="ltr">{{ att.date|jdate:"Y/m/d" }}</td>
                 <td class="px-4 py-3 text-right font-mono text-xs" dir="ltr">{{ att.check_in|time:"H:i"|default:"—" }}</td>
                 <td class="px-4 py-3 text-right font-mono text-xs" dir="ltr">{{ att.check_out|time:"H:i"|default:"—" }}</td>
                 <td class="px-4 py-3 text-right text-xs">{{ att.work_hours_display }}</td>

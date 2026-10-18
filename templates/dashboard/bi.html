@@ -312,7 +312,7 @@
                     <td class="px-4 py-3 text-right text-gray-600 font-mono text-xs" dir="ltr">{{ c.mobile }}</td>
                     <td class="px-4 py-3 text-right text-xs">
                         {% if c.last_invoice %}
-                            <span class="text-gray-700" dir="ltr">{{ c.last_invoice|date:"Y/m/d" }}</span>
+                            <span class="text-gray-700" dir="ltr">{{ c.last_invoice|jdate:"Y/m/d" }}</span>
                         {% else %}
                             <span class="text-red-600 font-medium">هیچ‌وقت</span>
                         {% endif %}

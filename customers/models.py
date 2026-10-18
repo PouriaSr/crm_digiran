@@ -20,7 +20,7 @@ class Customer(models.Model):
         ('other', 'سایر'),
     ]
 
-    name = models.CharField('نام مشتری', max_length=200)
+    name = models.CharField('نام مشتری', max_length=200, db_index=True)
     mobile = models.CharField('شماره تماس', max_length=15, db_index=True)
     email = models.EmailField('ایمیل', blank=True, null=True)
 
@@ -38,7 +38,7 @@ class Customer(models.Model):
                                    related_name='created_customers',
                                    verbose_name='ایجادکننده')
 
-    national_id = models.CharField('کد ملی', max_length=10, blank=True, null=True)
+    national_id = models.CharField('کد ملی', max_length=10, blank=True, null=True, db_index=True)
     birth_date = models.DateField('تاریخ تولد', blank=True, null=True)
     address = models.TextField('آدرس', blank=True, null=True)
     notes = models.TextField('یادداشت قدیمی', blank=True, null=True,
@@ -55,6 +55,8 @@ class Customer(models.Model):
         indexes = [
             models.Index(fields=['-created_at']),
             models.Index(fields=['status']),
+            models.Index(fields=['source']),
+            models.Index(fields=['status', 'created_at']),
         ]
 
     def __str__(self):

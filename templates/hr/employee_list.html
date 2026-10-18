@@ -4,6 +4,8 @@
 
 {% block content %}
 
+{% load fa_numbers %}
+
 <div class="flex justify-between items-center mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-800">پرسنل</h1>
@@ -96,7 +98,7 @@
                         <span class="text-xs text-gray-300">—</span>
                     {% endif %}
                 </td>
-                <td class="px-4 py-3 text-right text-gray-500 text-xs" dir="ltr">{{ emp.hire_date|date:"Y/m/d" }}</td>
+                <td class="px-4 py-3 text-right text-gray-500 text-xs" dir="ltr">{{ emp.hire_date|jdate:"Y/m/d" }}</td>
                 <td class="px-4 py-3 text-right">
                     {% if emp.is_active %}
                         <span class="px-2.5 py-1 rounded-full text-xs bg-green-100 text-green-700">فعال</span>

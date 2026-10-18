@@ -2,7 +2,7 @@ import re
 from django import forms
 
 from crm.duplicate_check import (
-    find_exact_match, find_similar_matches,
+    find_similar_matches,
     normalize_code, normalize_text,
 )
 from .models import Product, Category
@@ -48,13 +48,22 @@ class ProductForm(forms.ModelForm):
         # ─── Exact block: code ───
         code = cleaned.get('code')
         if code:
-            existing = find_exact_match(Product, 'code', code, normalize_code, exclude_pk)
+            # ⭐ استفاده از all_objects برای چک کردن کالاهای حذف‌شده
+            qs = Product.all_objects.filter(code__iexact=code)
+            if exclude_pk:
+                qs = qs.exclude(pk=exclude_pk)
+            
+            existing = qs.first()
             if existing:
-                self.add_error('code', f'⛔ کد کالا «{code}» قبلاً برای «{existing.name}» ثبت شده است.')
+                if existing.is_deleted:
+                    self.add_error('code', f'⛔ کد کالا «{code}» قبلاً برای کالای حذف‌شده «{existing.name}» ثبت شده است. ابتدا آن کالا را از لیست حذف‌شده‌ها بازیابی کنید.')
+                else:
+                    self.add_error('code', f'⛔ کد کالا «{code}» قبلاً برای «{existing.name}» ثبت شده است.')
 
         # ─── Similar warn: name ───
         name = cleaned.get('name')
         if name:
+            # برای نام، همون کالاهای حذف‌نشده کافیست (چون فقط یک هشدار است)
             for obj, ratio in find_similar_matches(Product, 'name', name, normalize_text, exclude_pk=exclude_pk):
                 self.duplicate_warnings.append({
                     'field': 'name', 'label': 'نام کالا',
@@ -97,6 +106,7 @@ class CategoryForm(forms.ModelForm):
         # ─── Exact block: name ───
         name = cleaned.get('name')
         if name:
+            from crm.duplicate_check import find_exact_match
             existing = find_exact_match(Category, 'name', name, normalize_text, exclude_pk)
             if existing:
                 self.add_error('name', f'⛔ دسته‌بندی با همین نام «{existing.name}» قبلاً ثبت شده است.')

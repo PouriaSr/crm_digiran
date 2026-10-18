@@ -51,8 +51,11 @@ def call_list(request):
 
     # ═══ فیلتر وضعیت پیگیری ═══
     followup_status = request.GET.get('followup', '')
+    today = timezone.now().date() # ⭐ گرفتن تاریخ امروز
+    
     if followup_status == 'pending':
-        calls = calls.filter(status='followup', is_followed_up=False)
+        # ⭐ دقیقاً هم‌منطق با سیستم اعلان‌ها (تاریخ پیگیری گذشته یا امروز است و تیک نخورده)
+        calls = calls.filter(follow_up_date__lte=today, is_followed_up=False)
     elif followup_status == 'done':
         calls = calls.filter(is_followed_up=True)
     elif followup_status == 'has_date':

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% load query_helpers %}
-
+{% load fa_numbers %}
 {% block title %}مشتریان{% endblock %}
 
 {% block content %}
@@ -199,8 +199,8 @@
                     {% endif %}
                 </td>
                 <td class="px-4 py-3 text-right text-gray-500 text-xs whitespace-nowrap">
-                    <div>{{ customer.created_at|date:"Y/m/d" }}</div>
-                    <div class="text-gray-400 font-mono mt-0.5" dir="ltr">{{ customer.created_at|date:"H:i" }}</div>
+                    <div>{{ customer.created_at|jdate:"Y/m/d" }}</div>
+                    <div class="text-gray-400 font-mono mt-0.5" dir="ltr">{{ customer.created_at|jdate:"H:i" }}</div>
                 </td>
                 <td class="px-4 py-3 text-right">
                     <a href="{% url 'customers:detail' customer.pk %}" class="text-blue-600 hover:text-blue-800 text-xs">جزئیات</a>

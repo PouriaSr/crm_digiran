@@ -1,5 +1,7 @@
 from django.apps import AppConfig
 
-class AccountsConfig(AppConfig):
+
+class CustomersConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'customers'  # ← بدون پیشوند apps.
+    name = 'customers'
+    verbose_name = 'مشتریان' # (اختیاری: این خط رو اضافه کردم تا در پنل ادمین زیباتر دیده بشه)

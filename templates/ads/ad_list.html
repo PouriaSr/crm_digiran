@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load fa_numbers %}
+{% load query_helpers %}
 
 {% block content %}
 <div class="p-4 md:p-6" dir="rtl">
@@ -141,7 +142,7 @@
           <td class="px-4 py-3 text-center text-gray-600">{% if ad.product %}{{ ad.product.name }}{% else %}—{% endif %}</td>
           <td class="px-4 py-3 text-center text-gray-600" dir="ltr">{{ ad.ad_number }}</td>
           <td class="px-4 py-3 text-center text-gray-600">{{ ad.created_by.username }}</td>
-          <td class="px-4 py-3 text-center text-gray-500 text-xs">{{ ad.created_at|date:"Y/m/d H:i" }}</td>
+          <td class="px-4 py-3 text-center text-gray-500 text-xs">{{ ad.created_at|jdate:"Y/m/d H:i" }}</td>
           <td class="px-4 py-3 text-center">
             
             <!-- دکمه ویرایش و جزئیات (آبی) -->

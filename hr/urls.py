@@ -28,4 +28,5 @@ urlpatterns = [
     path('attendance/report/', views.attendance_report, name='attendance_report'),
 
     path('my-profile/', views.my_profile, name='my_profile'),
+    path('my-profile/edit/', views.edit_my_profile, name='edit_my_profile'), # ⭐ مسیر جدید
 ]

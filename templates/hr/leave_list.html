@@ -4,6 +4,8 @@
 
 {% block content %}
 
+{% load fa_numbers %}
+
 <div class="flex justify-between items-center mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-800">درخواست‌های مرخصی</h1>
@@ -78,8 +80,8 @@
                     <div class="font-medium text-gray-800">{{ leave.employee.full_name }}</div>
                 </td>
                 <td class="px-4 py-3 text-right text-xs">{{ leave.get_leave_type_display }}</td>
-                <td class="px-4 py-3 text-right text-xs" dir="ltr">{{ leave.start_date|date:"Y/m/d" }}</td>
-                <td class="px-4 py-3 text-right text-xs" dir="ltr">{{ leave.end_date|date:"Y/m/d" }}</td>
+                <td class="px-4 py-3 text-right text-xs" dir="ltr">{{ leave.start_date|jdate:"Y/m/d" }}</td>
+                <td class="px-4 py-3 text-right text-xs" dir="ltr">{{ leave.end_date|jdate:"Y/m/d" }}</td>
                 <td class="px-4 py-3 text-right text-xs font-bold">{{ leave.days_count }} روز</td>
                 <td class="px-4 py-3 text-right">
                     {% if leave.status == 'pending' %}

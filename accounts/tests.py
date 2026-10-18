@@ -521,7 +521,7 @@ class RBACOnViewsTest(TestCase):
 
         self.assertEqual(response.status_code, 403)
         content = response.content.decode('utf-8')
-        self.assertIn('403', content)
+        self.assertIn('۴۰۳', content)
         self.assertIn('دسترسی غیرمجاز', content)
         self.assertIn('بازگشت به داشبورد', content)
         # نقش کاربر
@@ -970,3 +970,92 @@ class UserDuplicateTest(TestCase):
         })
         self.assertFalse(form.is_valid())
         self.assertIn('email', form.errors)
+# ═══════════════════════════════════════════════════════════
+# تست یکپارچگی اعلان‌ها (Notification Integration)
+# ═══════════════════════════════════════════════════════════
+from django.test import TestCase
+from django.contrib.auth.models import User, Group
+from django.urls import reverse
+from django.utils import timezone
+from datetime import timedelta
+
+from accounts.notifications import get_notifications
+from accounts.forms import ensure_groups, ROLE_GROUP_MAP
+from calls.models import Call
+from hr.models import Task, Employee, LeaveRequest
+
+
+class NotificationIntegrationTest(TestCase):
+    """تست می‌کند که اعلان‌ها با لیست‌های مقصدشان هم‌خوانی داشته باشند"""
+
+    @classmethod
+    def setUpTestData(cls):
+        ensure_groups()
+        cls.admin = User.objects.create_superuser('admin_notif', password='t123456')
+        
+        # ساخت یک پروفایل پرسنلی برای ادمین
+        cls.employee = Employee.objects.create(
+            user=cls.admin, first_name='تست', last_name='تست', is_active=True
+        )
+        
+        cls.today = timezone.now().date()
+        cls.yesterday = cls.today - timedelta(days=1)
+
+    def setUp(self):
+        self.client.force_login(self.admin)
+
+    def test_call_notification_and_link(self):
+        """تست اعلان تماس پیگیری و لینک آن"""
+        # ۱. یک تماس با تاریخ دیروز و تیک نخورده می‌سازیم
+        call = Call.objects.create(
+            caller_name='علی', call_number='09120000000',
+            follow_up_date=self.yesterday, is_followed_up=False,
+            called_by=self.admin, status='answered'
+        )
+        
+        # ۲. چک می‌کنیم اعلان داده شود
+        notifs = get_notifications(self.admin)
+        call_notif = next((n for n in notifs if 'تماس نیازمند پیگیری' in n['title']), None)
+        self.assertIsNotNone(call_notif, "اعلان تماس ساخته نشد!")
+        
+        # ۳. چک می‌کنیم لینک اعلان، تماس را به درستی نشان دهد
+        response = self.client.get(call_notif['url'])
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'علی')
+        self.assertEqual(len(response.context['page_obj']), 1)
+
+    def test_task_notification_and_link(self):
+        """تست اعلان وظایف عقب‌افتاده و لینک آن"""
+        # ۱. یک وظیفه با مهلت دیروز می‌سازیم
+        task = Task.objects.create(
+            title='وظیفه عقب‌افتاده', due_date=self.yesterday,
+            assigned_to=self.employee, status='in_progress'
+        )
+        
+        # ۲. چک می‌کنیم اعلان داده شود
+        notifs = get_notifications(self.admin)
+        task_notif = next((n for n in notifs if 'وظیفه عقب‌افتاده' in n['title']), None)
+        self.assertIsNotNone(task_notif, "اعلان وظیفه ساخته نشد!")
+        
+        # ۳. چک می‌کنیم لینک اعلان، وظیفه را به درستی نشان دهد
+        response = self.client.get(task_notif['url'])
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'وظیفه عقب‌افتاده')
+
+    def test_leave_notification_and_link(self):
+        """تست اعلان مرخصی در انتظار و لینک آن"""
+        # ۱. یک درخواست مرخصی در انتظار می‌سازیم
+        leave = LeaveRequest.objects.create(
+            employee=self.employee, start_date=self.today, end_date=self.today,
+            status='pending', leave_type='annual'
+        )
+        
+        # ۲. چک می‌کنیم اعلان داده شود
+        notifs = get_notifications(self.admin)
+        leave_notif = next((n for n in notifs if 'مرخصی در انتظار' in n['title']), None)
+        self.assertIsNotNone(leave_notif, "اعلان مرخصی ساخته نشد!")
+        
+        # ۳. چک می‌کنیم لینک اعلان، مرخصی را به درستی نشان دهد
+        response = self.client.get(leave_notif['url'])
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'تست تست') # نام کارمند

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% load query_helpers %}
-
+{% load fa_numbers %}
 {% block title %}لاگ سیستم{% endblock %}
 
 {% block content %}
@@ -229,7 +229,7 @@
 
                     <div class="flex items-center gap-3 mt-2 text-xs text-gray-400">
                         <span>👤 {{ log.user_display }}</span>
-                        <span>{{ log.created_at|date:"Y/m/d H:i" }}</span>
+                        <span>{{ log.created_at|jdate:"Y/m/d H:i" }}</span>
                         {% if log.ip_address %}
                         <span dir="ltr">🌐 {{ log.ip_address }}</span>
                         {% endif %}

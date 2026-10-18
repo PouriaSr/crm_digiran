@@ -33,8 +33,8 @@ class Employee(models.Model):
 
     first_name = models.CharField('نام', max_length=100)
     last_name = models.CharField('نام خانوادگی', max_length=100)
-    national_id = models.CharField('کد ملی', max_length=10, blank=True, null=True)
-    mobile = models.CharField('شماره تماس', max_length=15, blank=True, null=True)
+    national_id = models.CharField('کد ملی', max_length=10, blank=True, null=True, db_index=True)
+    mobile = models.CharField('شماره تماس', max_length=15, blank=True, null=True, db_index=True)
     email = models.EmailField('ایمیل', blank=True, null=True)
     address = models.TextField('آدرس', blank=True, null=True)
     birth_date = models.DateField('تاریخ تولد', null=True, blank=True)
@@ -105,7 +105,7 @@ class Task(models.Model):
     status = models.CharField('وضعیت', max_length=20,
                                choices=STATUS_CHOICES, default='pending', db_index=True)
 
-    due_date = models.DateField('مهلت انجام', null=True, blank=True)
+    due_date = models.DateField('مهلت انجام', null=True, blank=True, db_index=True)
     completed_at = models.DateTimeField('تاریخ اتمام', null=True, blank=True)
 
     created_at = models.DateTimeField('تاریخ ایجاد', auto_now_add=True)
@@ -169,8 +169,8 @@ class LeaveRequest(models.Model):
     leave_type = models.CharField('نوع مرخصی', max_length=20,
                                    choices=LEAVE_TYPE_CHOICES, default='annual')
 
-    start_date = models.DateField('از تاریخ')
-    end_date = models.DateField('تا تاریخ')
+    start_date = models.DateField('از تاریخ', db_index=True)
+    end_date = models.DateField('تا تاریخ', db_index=True)
     days_count = models.PositiveIntegerField('تعداد روز', default=1)
 
     reason = models.TextField('علت', blank=True, null=True)

@@ -11,7 +11,7 @@
         <h1 class="text-2xl font-bold text-gray-800">
             سلام {{ request.user.get_full_name|default:request.user.username }}، روز کاری خوبی داشته باشی 👋
         </h1>
-        <p class="text-sm text-gray-500 mt-1">{{ today|fa_date }} — خلاصه عملکرد سازمان شما</p>
+        <p class="text-sm text-gray-500 mt-1">{{ today|fa_digits }} — خلاصه عملکرد سازمان شما</p>
     </div>
 
     {% if 'dashboard.export' in user_permissions %}

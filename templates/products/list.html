@@ -4,6 +4,8 @@
 
 {% block content %}
 
+{% load fa_numbers %}
+
 <!-- ═══ سربرگ ═══ -->
 <div class="flex justify-between items-center mb-6">
     <div>
@@ -151,7 +153,7 @@
                     </div>
                     {% if product.is_deleted %}
                     <div class="text-xs text-red-600 mt-0.5">
-                        حذف‌شده — {{ product.deleted_at|date:"Y/m/d" }}
+                        حذف‌شده — {{ product.deleted_at|jdate:"Y/m/d" }}
                     </div>
                     {% endif %}
                 </td>
