@@ -2,18 +2,20 @@
 {% load query_helpers %}
 {% load fa_numbers %}
 {% block title %}مشتریان{% endblock %}
+{% block mobile_title %}مشتریان{% endblock %}
 
 {% block content %}
 
-<div class="flex justify-between items-center mb-6">
+<!-- Header -->
+<div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-800">مشتریان و مخاطبین</h1>
-        <p class="text-sm text-gray-500 mt-1">مدیریت کامل مشتریان — جستجو، فیلتر و پیگیری</p>
+        <p class="text-sm text-gray-500 mt-1">مدیریت کامل مشتریان -- جستجو، فیلتر و پیگیری</p>
     </div>
     {% if 'customers.add' in user_permissions %}
-    <div class="flex gap-2 flex-wrap">
+    <div class="action-buttons action-buttons-hidden-mobile flex flex-col sm:flex-row gap-2">
         <a href="{% url 'customers:excel_import' %}"
-           class="px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 text-sm">
+           class="px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
@@ -21,7 +23,7 @@
             ورود از Excel
         </a>
         <a href="{% url 'customers:create' %}"
-           class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+           class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
@@ -31,9 +33,10 @@
     {% endif %}
 </div>
 
+<!-- Stat cards -->
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
     <div class="bg-white rounded-xl p-5 shadow-sm flex items-center gap-4">
-        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
             <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -46,7 +49,7 @@
     </div>
 
     <div class="bg-white rounded-xl p-5 shadow-sm flex items-center gap-4">
-        <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+        <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
             <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
@@ -59,7 +62,7 @@
     </div>
 
     <div class="bg-white rounded-xl p-5 shadow-sm flex items-center gap-4">
-        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
             <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -72,11 +75,10 @@
     </div>
 </div>
 
-<!-- فیلترهای پیشرفته (۷.۶) -->
+<!-- Filters -->
 <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
     <form method="get" class="space-y-3">
-        <!-- ردیف ۱ -->
-        <div class="flex flex-wrap gap-3 items-center">
+        <div class="flex flex-col sm:flex-row flex-wrap gap-3 sm:items-center">
             <div class="flex-1 min-w-[200px]">
                 <input type="text" name="q" value="{{ search }}"
                        placeholder="جستجو نام، موبایل، ایمیل یا کد ملی..."
@@ -113,20 +115,19 @@
             </select>
         </div>
 
-        <!-- ردیف ۲ -->
-        <div class="flex flex-wrap gap-3 items-center">
+        <div class="flex flex-col sm:flex-row flex-wrap gap-3 sm:items-center">
             <div class="flex items-center gap-2">
                 <label class="text-xs text-gray-500 whitespace-nowrap">ثبت از:</label>
                 <input type="text" name="from_date" value="{{ from_date }}" data-jdp
-                       placeholder="۱۴۰۵/۰۱/۰۱" autocomplete="off"
-                       class="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" dir="ltr">
+                       placeholder="1405/01/01" autocomplete="off"
+                       class="flex-1 sm:flex-none sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" dir="ltr">
             </div>
 
             <div class="flex items-center gap-2">
                 <label class="text-xs text-gray-500 whitespace-nowrap">تا:</label>
                 <input type="text" name="to_date" value="{{ to_date }}" data-jdp
-                       placeholder="۱۴۰۵/۱۲/۲۹" autocomplete="off"
-                       class="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" dir="ltr">
+                       placeholder="1405/12/29" autocomplete="off"
+                       class="flex-1 sm:flex-none sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" dir="ltr">
             </div>
 
             <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
@@ -134,7 +135,7 @@
             </button>
 
             {% if has_filters %}
-            <a href="{% url 'customers:list' %}" class="text-sm text-gray-500 hover:text-gray-700">پاک کردن فیلترها</a>
+            <a href="{% url 'customers:list' %}" class="text-sm text-gray-500 hover:text-gray-700 text-center sm:text-right">پاک کردن فیلترها</a>
             {% endif %}
         </div>
     </form>
@@ -147,7 +148,8 @@
     {% endif %}
 </div>
 
-<div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+<!-- Desktop: table -->
+<div class="hidden md:block bg-white rounded-xl shadow-sm overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr class="text-gray-600">
@@ -195,7 +197,7 @@
                     {% if customer.assigned_to %}
                         {{ customer.assigned_to.get_full_name|default:customer.assigned_to.username }}
                     {% else %}
-                        —
+                        --
                     {% endif %}
                 </td>
                 <td class="px-4 py-3 text-right text-gray-500 text-xs whitespace-nowrap">
@@ -215,9 +217,73 @@
     </table>
 </div>
 
-<!-- صفحه‌بندی — حفظ همه‌ی فیلترها -->
+<!-- ===== MOBILE CARDS START ===== -->
+<div class="md:hidden space-y-3">
+    {% for customer in page_obj %}
+    <article class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <!-- Header -->
+        <header class="px-4 py-3 flex items-center gap-3 border-b border-gray-100">
+            <div class="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center font-bold flex-shrink-0">
+                {{ customer.name|first|upper }}
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="font-bold text-gray-900 truncate">{{ customer.name }}</div>
+                {% if customer.email %}<div class="text-xs text-gray-500 truncate" dir="ltr">{{ customer.email }}</div>{% endif %}
+            </div>
+            {% if customer.status == 'lead' %}
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium bg-red-50 text-red-700 border border-red-200 whitespace-nowrap flex-shrink-0">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>{{ customer.get_status_display }}
+                </span>
+            {% elif customer.status == 'active' %}
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium bg-green-50 text-green-700 border border-green-200 whitespace-nowrap flex-shrink-0">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>{{ customer.get_status_display }}
+                </span>
+            {% elif customer.status == 'inactive' %}
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium bg-gray-50 text-gray-700 border border-gray-200 whitespace-nowrap flex-shrink-0">
+                    <span class="w-1.5 h-1.5 rounded-full bg-gray-500"></span>{{ customer.get_status_display }}
+                </span>
+            {% else %}
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium bg-yellow-50 text-yellow-700 border border-yellow-200 whitespace-nowrap flex-shrink-0">
+                    <span class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>{{ customer.get_status_display }}
+                </span>
+            {% endif %}
+        </header>
+        <!-- Hero: Phone -->
+        <div class="px-4 py-3 border-b border-gray-100">
+            <div class="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1">شماره تماس</div>
+            <div class="font-mono text-lg font-bold text-gray-900" dir="ltr">{{ customer.mobile }}</div>
+        </div>
+        <!-- Meta -->
+        <div class="px-4 py-2 space-y-1.5">
+            <div class="flex justify-between text-xs gap-3">
+                <span class="text-gray-400">منبع</span>
+                <span class="font-medium text-gray-800">{{ customer.get_source_display }}</span>
+            </div>
+            <div class="flex justify-between text-xs gap-3">
+                <span class="text-gray-400">مسئول</span>
+                <span class="font-medium text-gray-800 truncate">{% if customer.assigned_to %}{{ customer.assigned_to.get_full_name|default:customer.assigned_to.username }}{% else %}--{% endif %}</span>
+            </div>
+            <div class="flex justify-between text-xs gap-3">
+                <span class="text-gray-400">تاریخ ثبت</span>
+                <span class="font-medium text-gray-800" dir="ltr">{{ customer.created_at|jdate:"Y/m/d" }}</span>
+            </div>
+        </div>
+        <!-- Action -->
+        <div class="px-4 py-3 border-t border-gray-100">
+            <a href="{% url 'customers:detail' customer.pk %}" class="block w-full text-center py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium active:bg-blue-700 transition">
+                مشاهده جزئیات
+            </a>
+        </div>
+    </article>
+    {% empty %}
+    <div class="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400 text-sm">مشتری‌ای یافت نشد</div>
+    {% endfor %}
+</div>
+<!-- ===== MOBILE CARDS END ===== -->
+
+
 {% if page_obj.has_other_pages %}
-<div class="flex justify-center mt-6 gap-2">
+<div class="flex justify-center mt-6 gap-2 flex-wrap">
     {% if page_obj.has_previous %}
         <a href="?{% querystring page=page_obj.previous_page_number %}"
            class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">قبلی</a>
@@ -234,4 +300,14 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block fab %}
+{% if 'customers.add' in user_permissions %}
+<a href="{% url 'customers:create' %}" class="app-fab" title="مشتری جدید" aria-label="مشتری جدید">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+    </svg>
+</a>
+{% endif %}
 {% endblock %}

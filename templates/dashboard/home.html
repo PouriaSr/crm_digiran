@@ -2,11 +2,12 @@
 {% load fa_numbers %}
 
 {% block title %}داشبورد{% endblock %}
+{% block mobile_title %}داشبورد{% endblock %}
 
 {% block content %}
 
 <!-- ═══ خوش‌آمد + دکمه Excel ═══ -->
-<div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+<div class="page-header">
     <div>
         <h1 class="text-2xl font-bold text-gray-800">
             سلام {{ request.user.get_full_name|default:request.user.username }}، روز کاری خوبی داشته باشی 👋
@@ -15,7 +16,8 @@
     </div>
 
     {% if 'dashboard.export' in user_permissions %}
-    <a href="{% url 'dashboard:export_excel' %}?from_date={{ from_date_jalali }}&to_date={{ to_date_jalali }}&employee={{ filter_user_id }}"
+    <div class="action-buttons flex gap-2">
+<a href="{% url 'dashboard:export_excel' %}?from_date={{ from_date_jalali }}&to_date={{ to_date_jalali }}&employee={{ filter_user_id }}"
        class="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 text-sm font-medium shadow-sm">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -23,6 +25,7 @@
         </svg>
         دانلود Excel
     </a>
+</div>
     {% endif %}
 </div>
 
@@ -408,7 +411,7 @@ var yaxisMillion = {
 
 
 // ═══ روند فروش ۱۲ ماه ═══
-new ApexCharts(document.querySelector("#salesChart"), {
+new ApexCharts(document.querySelector("#salesChart"), window.apexMobileMerge({
     chart: { type: 'area', height: 300, fontFamily: 'Vazirmatn', toolbar: { show: false } },
     series: [{ name: 'فروش', data: {{ sales_data_json|safe }} }],
     xaxis: {
@@ -426,11 +429,11 @@ new ApexCharts(document.querySelector("#salesChart"), {
     tooltip: {
         y: { formatter: function (val) { return toFaNum(val) + ' تومان'; } }
     }
-}).render();
+})).render();
 
 
 // ═══ مقایسه فروش ═══
-new ApexCharts(document.querySelector("#compareChart"), {
+new ApexCharts(document.querySelector("#compareChart"), window.apexMobileMerge({
     chart: { type: 'bar', height: 300, fontFamily: 'Vazirmatn', toolbar: { show: false } },
     series: [{ name: 'فروش', data: compareData.values }],
     xaxis: {
@@ -458,11 +461,11 @@ new ApexCharts(document.querySelector("#compareChart"), {
     tooltip: {
         y: { formatter: function (val) { return toFaNum(val) + ' تومان'; } }
     }
-}).render();
+})).render();
 
 
 // ═══ منابع جذب مشتری ═══
-new ApexCharts(document.querySelector("#sourceChart"), {
+new ApexCharts(document.querySelector("#sourceChart"), window.apexMobileMerge({
     chart: { type: 'donut', height: 280, fontFamily: 'Vazirmatn' },
     series: {{ source_data_json|safe }},
     labels: {{ source_labels_json|safe }},
@@ -476,11 +479,11 @@ new ApexCharts(document.querySelector("#sourceChart"), {
         style: { fontFamily: 'Vazirmatn' }
     },
     plotOptions: { pie: { donut: { size: '60%' } } }
-}).render();
+})).render();
 
 
 // ═══ قیف فروش ═══
-new ApexCharts(document.querySelector("#funnelChart"), {
+new ApexCharts(document.querySelector("#funnelChart"), window.apexMobileMerge({
     chart: { type: 'bar', height: 280, fontFamily: 'Vazirmatn', toolbar: { show: false } },
     series: [{ name: 'تعداد', data: funnelData.values }],
     xaxis: {
@@ -505,11 +508,11 @@ new ApexCharts(document.querySelector("#funnelChart"), {
         style: { fontFamily: 'Vazirmatn' }
     },
     legend: { show: false }
-}).render();
+})).render();
 
 
 // ═══ وضعیت تماس‌ها ═══
-new ApexCharts(document.querySelector("#callStatusChart"), {
+new ApexCharts(document.querySelector("#callStatusChart"), window.apexMobileMerge({
     chart: { type: 'pie', height: 280, fontFamily: 'Vazirmatn' },
     series: {{ call_status_data_json|safe }},
     labels: {{ call_status_labels_json|safe }},
@@ -522,12 +525,12 @@ new ApexCharts(document.querySelector("#callStatusChart"), {
         },
         style: { fontFamily: 'Vazirmatn' }
     }
-}).render();
+})).render();
 
 
 // ═══ عملکرد کارمندان فروش (فقط مدیرها بدون فیلتر) ═══
 {% if is_manager_view and not filter_user_selected and employee_perf %}
-new ApexCharts(document.querySelector("#employeeChart"), {
+new ApexCharts(document.querySelector("#employeeChart"), window.apexMobileMerge({
     chart: { type: 'bar', height: 350, fontFamily: 'Vazirmatn', toolbar: { show: false } },
     series: [{ name: 'فروش', data: {{ emp_chart_values_json|safe }} }],
     xaxis: {
@@ -559,7 +562,7 @@ new ApexCharts(document.querySelector("#employeeChart"), {
     tooltip: {
         y: { formatter: function (val) { return toFaNum(val) + ' تومان'; } }
     }
-}).render();
+})).render();
 {% endif %}
 </script>
 {% endblock %}

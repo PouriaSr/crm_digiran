@@ -1,23 +1,23 @@
 {% extends 'base.html' %}
 
 {% block title %}دسته‌بندی‌ها{% endblock %}
+{% block mobile_title %}دسته‌بندی‌ها{% endblock %}
 
 {% block content %}
 
-<!-- ═══ سربرگ ═══ -->
-<div class="flex justify-between items-center mb-6">
+<div class="page-header">
     <div>
         <h1 class="text-2xl font-bold text-gray-800">دسته‌بندی کالاها</h1>
         <p class="text-sm text-gray-500 mt-1">مدیریت دسته‌بندی‌های محصولات</p>
     </div>
-    <div class="flex gap-2">
+    <div class="action-buttons action-buttons-hidden-mobile flex gap-2">
         <a href="{% url 'products:list' %}"
-           class="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm">
-            ← کالاها
+           class="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm flex items-center justify-center">
+            بازگشت به کالاها
         </a>
         {% if 'categories.manage' in user_permissions %}
         <a href="{% url 'products:category_create' %}"
-           class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+           class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
@@ -27,8 +27,7 @@
     </div>
 </div>
 
-<!-- ═══ کارت‌های آمار ═══ -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+<div class="stats-grid stats-grid-3">
     <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-blue-500">
         <div class="text-gray-500 text-sm">کل دسته‌ها</div>
         <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.total }}</div>
@@ -43,9 +42,8 @@
     </div>
 </div>
 
-<!-- ═══ فیلتر ═══ -->
 <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
-    <form method="get" class="flex flex-wrap gap-3 items-center">
+    <form method="get" class="filters-row">
         <div class="flex-1 min-w-[200px]">
             <input type="text" name="q" value="{{ search }}"
                    placeholder="جستجو نام یا slug..."
@@ -63,9 +61,8 @@
     </form>
 </div>
 
-<!-- ═══ جدول ═══ -->
 <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
-    <table class="w-full text-sm">
+    <table class="responsive-table w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr class="text-gray-600">
                 <th class="text-right px-4 py-3 font-medium">دسته</th>
@@ -90,19 +87,19 @@
                         </div>
                     </div>
                 </td>
-                <td class="px-4 py-3 text-right text-gray-600 font-mono text-xs" dir="ltr">{{ cat.slug }}</td>
-                <td class="px-4 py-3 text-right text-gray-600">{{ cat.order }}</td>
-                <td class="px-4 py-3 text-right">
+                <td class="px-4 py-3 text-right text-gray-600 font-mono text-xs" data-label="slug" dir="ltr">{{ cat.slug }}</td>
+                <td class="px-4 py-3 text-right text-gray-600" data-label="ترتیب">{{ cat.order }}</td>
+                <td class="px-4 py-3 text-right" data-label="تعداد کالا">
                     {% if cat.products_count > 0 %}
                         <a href="{% url 'products:list' %}?category={{ cat.slug }}"
                            class="text-blue-600 hover:underline text-xs">
                             {{ cat.products_count }} کالا
                         </a>
                     {% else %}
-                        <span class="text-xs text-gray-300">—</span>
+                        <span class="text-xs text-gray-300">--</span>
                     {% endif %}
                 </td>
-                <td class="px-4 py-3 text-right">
+                <td class="px-4 py-3 text-right" data-label="وضعیت">
                     {% if cat.is_active %}
                         <span class="px-2.5 py-1 rounded-full text-xs bg-green-100 text-green-700">فعال</span>
                     {% else %}
@@ -111,20 +108,14 @@
                 </td>
                 <td class="px-4 py-3 text-right whitespace-nowrap">
                     {% if 'categories.manage' in user_permissions %}
-                    <div class="flex items-center gap-1">
                         <a href="{% url 'products:category_edit' cat.pk %}"
-                           class="text-yellow-600 hover:text-yellow-800 text-xs px-2 py-1 rounded hover:bg-yellow-50">
-                            ویرایش
-                        </a>
+                           class="text-yellow-600 hover:text-yellow-800 text-xs px-2 py-1 rounded hover:bg-yellow-50">ویرایش</a>
                         {% if cat.products_count == 0 %}
                         <a href="{% url 'products:category_delete' cat.pk %}"
-                           class="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">
-                            حذف
-                        </a>
+                           class="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">حذف</a>
                         {% endif %}
-                    </div>
                     {% else %}
-                    <span class="text-xs text-gray-400">—</span>
+                    <span class="text-xs text-gray-400">--</span>
                     {% endif %}
                 </td>
             </tr>
@@ -137,4 +128,14 @@
     </table>
 </div>
 
+{% endblock %}
+
+{% block fab %}
+{% if 'categories.manage' in user_permissions %}
+<a href="{% url 'products:category_create' %}" class="app-fab" title="دسته‌بندی جدید" aria-label="دسته‌بندی جدید">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+    </svg>
+</a>
+{% endif %}
 {% endblock %}

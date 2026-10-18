@@ -4,23 +4,24 @@
 {% load fa_numbers %}
 {% block content %}
 
-<div class="flex justify-between items-center mb-6">
+<div class="page-header">
     <div>
         <h1 class="text-2xl font-bold text-gray-800">گزارش ماهانه حضور</h1>
         <p class="text-sm text-gray-500 mt-1" dir="ltr">
-            {{ month_start|jdate:"Y/m/d" }} — {{ month_end|jdate:"Y/m/d" }}
+            {{ month_start|jdate:"Y/m/d" }} -- {{ month_end|jdate:"Y/m/d" }}
         </p>
     </div>
-    <a href="{% url 'hr:attendance_list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت</a>
+    <div class="action-buttons flex gap-2">
+        <a href="{% url 'hr:attendance_list' %}" class="text-blue-600 hover:underline text-sm">بازگشت به لیست</a>
+    </div>
 </div>
 
 <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
-    <form method="get" class="flex flex-wrap gap-3 items-end">
-        <div>
+    <form method="get" class="filters-row">
+        <div class="w-full sm:w-auto">
             <label class="block text-xs text-gray-500 mb-1.5">سال</label>
             <select name="year" id="year-select"
-                    class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
-                    style="width: 110px;"
+                    class="w-full sm:w-28 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
                     dir="ltr">
                 {% for y in year_choices %}
                     <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
@@ -28,27 +29,28 @@
             </select>
         </div>
 
-        <div>
+        <div class="w-full sm:w-auto">
             <label class="block text-xs text-gray-500 mb-1.5">ماه</label>
             <select name="month_num" id="month-select"
-                    class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
-                    style="width: 160px;">
+                    class="w-full sm:w-40 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer">
                 {% for num, label in month_choices %}
                     <option value="{{ num }}" {% if num == selected_month_num %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
             </select>
         </div>
 
-        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
-            نمایش
-        </button>
+        <div class="w-full sm:w-auto flex flex-col justify-end">
+            <button type="submit" class="w-full sm:w-auto px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                نمایش
+            </button>
+        </div>
 
-        <span class="text-xs text-gray-400 mb-2">ماه و سال را انتخاب کنید</span>
+        <span class="text-xs text-gray-400 w-full sm:w-auto text-center sm:text-right">ماه و سال را انتخاب کنید</span>
     </form>
 </div>
 
 <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
-    <table class="w-full text-sm">
+    <table class="responsive-table w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr class="text-gray-600">
                 <th class="text-right px-4 py-3 font-medium">کارمند</th>
@@ -69,13 +71,13 @@
                         {{ row.employee.full_name }}
                     </a>
                 </td>
-                <td class="px-4 py-3 text-right text-xs text-gray-600">{{ row.employee.get_position_display }}</td>
-                <td class="px-4 py-3 text-right font-bold">{{ row.total_days }}</td>
-                <td class="px-4 py-3 text-right text-green-600 font-bold">{{ row.present }}</td>
-                <td class="px-4 py-3 text-right text-yellow-600">{{ row.late }}</td>
-                <td class="px-4 py-3 text-right text-red-600">{{ row.absent }}</td>
-                <td class="px-4 py-3 text-right text-blue-600">{{ row.leave }}</td>
-                <td class="px-4 py-3 text-right font-mono text-xs">{{ row.total_hours }} ساعت</td>
+                <td class="px-4 py-3 text-right text-xs text-gray-600" data-label="سمت">{{ row.employee.get_position_display }}</td>
+                <td class="px-4 py-3 text-right font-bold" data-label="روزهای ثبت‌شده">{{ row.total_days }}</td>
+                <td class="px-4 py-3 text-right text-green-600 font-bold" data-label="حاضر">{{ row.present }}</td>
+                <td class="px-4 py-3 text-right text-yellow-600" data-label="تاخیر">{{ row.late }}</td>
+                <td class="px-4 py-3 text-right text-red-600" data-label="غایب">{{ row.absent }}</td>
+                <td class="px-4 py-3 text-right text-blue-600" data-label="مرخصی">{{ row.leave }}</td>
+                <td class="px-4 py-3 text-right font-mono text-xs" data-label="جمع ساعت">{{ row.total_hours }} ساعت</td>
             </tr>
             {% empty %}
             <tr><td colspan="8" class="text-center py-12 text-gray-400">کارمندی یافت نشد</td></tr>

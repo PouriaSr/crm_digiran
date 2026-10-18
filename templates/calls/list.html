@@ -1,52 +1,52 @@
 {% extends 'base.html' %}
 {% load fa_numbers %}
 {% block title %}تماس‌ها{% endblock %}
+{% block mobile_title %}تماس‌ها{% endblock %}
 
 {% block content %}
 
-<!-- ═══ سربرگ ═══ -->
-<div class="flex justify-between items-center mb-6">
+<!-- Header -->
+<div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-800">تماس‌ها</h1>
         <p class="text-sm text-gray-500 mt-1">مدیریت و پیگیری تماس‌های ورودی و خروجی</p>
     </div>
     {% if 'calls.add' in user_permissions %}
-    <a href="{% url 'calls:create' %}"
-       class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+    <div class="action-buttons-hidden-mobile"><a href="{% url 'calls:create' %}"
+       class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
         </svg>
         تماس جدید
-    </a>
+    </a></div>
     {% endif %}
 </div>
 
-<!-- ═══ کارت‌های آمار ═══ -->
-<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-blue-500">
-        <div class="text-gray-500 text-sm">کل تماس‌ها</div>
-        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.total }}</div>
+<!-- Stat cards -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+    <div class="bg-white rounded-xl p-4 md:p-5 shadow-sm border-t-4 border-blue-500">
+        <div class="text-gray-500 text-xs md:text-sm">کل تماس‌ها</div>
+        <div class="text-xl md:text-2xl font-bold text-gray-800 mt-1">{{ stats.total }}</div>
     </div>
-    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-green-500">
-        <div class="text-gray-500 text-sm">امروز</div>
-        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.today }}</div>
+    <div class="bg-white rounded-xl p-4 md:p-5 shadow-sm border-t-4 border-green-500">
+        <div class="text-gray-500 text-xs md:text-sm">امروز</div>
+        <div class="text-xl md:text-2xl font-bold text-gray-800 mt-1">{{ stats.today }}</div>
     </div>
-    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-yellow-500">
-        <div class="text-gray-500 text-sm">۷ روز اخیر</div>
-        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.week }}</div>
+    <div class="bg-white rounded-xl p-4 md:p-5 shadow-sm border-t-4 border-yellow-500">
+        <div class="text-gray-500 text-xs md:text-sm">۷ روز اخیر</div>
+        <div class="text-xl md:text-2xl font-bold text-gray-800 mt-1">{{ stats.week }}</div>
     </div>
-    <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-red-500">
-        <div class="text-gray-500 text-sm">نیاز به پیگیری</div>
-        <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.followup }}</div>
+    <div class="bg-white rounded-xl p-4 md:p-5 shadow-sm border-t-4 border-red-500">
+        <div class="text-gray-500 text-xs md:text-sm">نیاز به پیگیری</div>
+        <div class="text-xl md:text-2xl font-bold text-gray-800 mt-1">{{ stats.followup }}</div>
     </div>
 </div>
 
-<!-- ═══ فیلترها (چیدمان گرید حرفه‌ای) ═══ -->
-<div class="bg-white rounded-xl p-5 shadow-sm mb-6">
-    <form method="get" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
-        
-        <!-- جستجو (عرض بیشتر) -->
-        <div class="md:col-span-2 lg:col-span-1">
+<!-- Filters -->
+<div class="bg-white rounded-xl p-4 md:p-5 shadow-sm mb-6">
+    <form method="get" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+
+        <div class="sm:col-span-2 lg:col-span-1">
             <label class="block text-xs font-medium text-gray-600 mb-1.5">جستجو</label>
             <input type="text" name="q" value="{{ search }}"
                    placeholder="نام، شماره یا یادداشت..."
@@ -87,17 +87,17 @@
             <label class="block text-xs font-medium text-gray-600 mb-1.5">پیگیری</label>
             <select name="followup" class="w-full">
                 <option value="">همه پیگیری‌ها</option>
-                <option value="pending" {% if current_followup == 'pending' %}selected{% endif %}>⏳ در انتظار</option>
-                <option value="done" {% if current_followup == 'done' %}selected{% endif %}>✅ پیگیری شده</option>
-                <option value="has_date" {% if current_followup == 'has_date' %}selected{% endif %}>📅 دارای تاریخ</option>
+                <option value="pending" {% if current_followup == 'pending' %}selected{% endif %}>در انتظار</option>
+                <option value="done" {% if current_followup == 'done' %}selected{% endif %}>پیگیری شده</option>
+                <option value="has_date" {% if current_followup == 'has_date' %}selected{% endif %}>دارای تاریخ</option>
             </select>
         </div>
 
-        <div>
+        <div class="sm:col-span-2 lg:col-span-1">
             <label class="block text-xs font-medium text-gray-600 mb-1.5">کارمند</label>
             <select name="employee" class="w-full">
                 <option value="">همه کارمندان</option>
-                {% for emp in reassign_users %}
+                {% for emp in employees %}
                     <option value="{{ emp.id }}" {% if current_employee == emp.id|stringformat:"s" %}selected{% endif %}>
                         {{ emp.get_full_name|default:emp.username }}
                     </option>
@@ -105,8 +105,7 @@
             </select>
         </div>
 
-        <!-- دکمه‌ها -->
-        <div class="flex gap-2 w-full md:col-span-2 lg:col-span-2">
+        <div class="flex gap-2 w-full sm:col-span-2 lg:col-span-2">
             <button type="submit" class="flex-1 px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition">
                 اعمال فیلتر
             </button>
@@ -119,8 +118,8 @@
     </form>
 </div>
 
-<!-- ═══ جدول ═══ -->
-<div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+<!-- Desktop: table -->
+<div class="hidden md:block bg-white rounded-xl shadow-sm overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr class="text-gray-600">
@@ -147,7 +146,7 @@
                 <td class="px-3 py-3 text-right text-gray-600 font-mono">
                     <span dir="ltr">{{ call.call_number }}</span>
                 </td>
-                <td class="px-3 py-3 text-right whitespace-nowrap">
+                <td class="px-3 py-3 text-right whitespace-nowrap" data-label="نوع">
                     {% if call.call_type == 'incoming' %}
                         <span class="inline-flex items-center gap-1 text-xs text-green-700">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,7 +163,7 @@
                         </span>
                     {% endif %}
                 </td>
-                <td class="px-3 py-3 text-right whitespace-nowrap">
+                <td class="px-3 py-3 text-right whitespace-nowrap" data-label="وضعیت">
                     {% if call.status == 'answered' %}
                         <span class="inline-block px-2.5 py-1 rounded-full text-xs bg-green-100 text-green-700">{{ call.get_status_display }}</span>
                     {% elif call.status == 'missed' %}
@@ -180,26 +179,19 @@
                 <td class="px-3 py-3 text-right whitespace-nowrap">
                     {% if call.status == 'followup' and not call.is_followed_up %}
                         <span class="inline-flex items-center gap-1 text-xs text-yellow-700 bg-yellow-50 px-2.5 py-1 rounded-full">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
                             در انتظار
                         </span>
                     {% elif call.is_followed_up %}
                         <span class="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2.5 py-1 rounded-full">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                            </svg>
                             انجام شده
                         </span>
                     {% else %}
-                        <span class="text-xs text-gray-300">—</span>
+                        <span class="text-xs text-gray-300">--</span>
                     {% endif %}
                 </td>
 
                 <td class="px-3 py-3 text-right text-gray-600 whitespace-nowrap">
-                    {{ call.called_by.get_full_name|default:call.called_by.username|default:"—" }}
+                    {{ call.called_by.get_full_name|default:call.called_by.username|default:"--" }}
                 </td>
                 <td class="px-3 py-3 text-right text-gray-500 text-xs whitespace-nowrap">
                     <div>{{ call.call_date|jdate:"Y/m/d" }}</div>
@@ -236,9 +228,82 @@
     </table>
 </div>
 
-<!-- ═══ صفحه‌بندی ═══ -->
+<!-- ===== MOBILE CARDS START ===== -->
+<div class="md:hidden space-y-3">
+    {% for call in page_obj %}
+    <article class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <!-- Header -->
+        <header class="px-4 py-3 flex items-start gap-3 border-b border-gray-100">
+            <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0
+                {% if call.call_type == 'incoming' %}bg-green-100 text-green-600{% else %}bg-blue-100 text-blue-600{% endif %}">
+                {% if call.call_type == 'incoming' %}
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+                {% else %}
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+                {% endif %}
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="font-bold text-gray-900 truncate">{{ call.caller_name }}</div>
+                {% if call.customer %}<div class="text-xs text-gray-500 truncate">مشتری: {{ call.customer.name }}</div>{% endif %}
+            </div>
+            {% if call.status == 'answered' %}
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium bg-green-50 text-green-700 border border-green-200 whitespace-nowrap flex-shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>{{ call.get_status_display }}</span>
+            {% elif call.status == 'missed' %}
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium bg-red-50 text-red-700 border border-red-200 whitespace-nowrap flex-shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>{{ call.get_status_display }}</span>
+            {% elif call.status == 'followup' %}
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium bg-yellow-50 text-yellow-700 border border-yellow-200 whitespace-nowrap flex-shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>{{ call.get_status_display }}</span>
+            {% else %}
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium bg-gray-50 text-gray-700 border border-gray-200 whitespace-nowrap flex-shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-gray-500"></span>{{ call.get_status_display }}</span>
+            {% endif %}
+        </header>
+        <!-- Hero: Phone -->
+        <div class="px-4 py-3 border-b border-gray-100">
+            <div class="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1">شماره تماس</div>
+            <div class="font-mono text-lg font-bold text-gray-900" dir="ltr">{{ call.call_number }}</div>
+        </div>
+        <!-- Meta -->
+        <div class="px-4 py-2 space-y-1.5">
+            <div class="flex justify-between text-xs gap-3">
+                <span class="text-gray-400">هدف</span>
+                <span class="font-medium text-gray-800">{{ call.get_purpose_display }}</span>
+            </div>
+            <div class="flex justify-between text-xs gap-3">
+                <span class="text-gray-400">پیگیری</span>
+                {% if call.status == 'followup' and not call.is_followed_up %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-yellow-50 text-yellow-700"><span class="w-1 h-1 rounded-full bg-yellow-500"></span>در انتظار</span>
+                {% elif call.is_followed_up %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-green-50 text-green-700"><span class="w-1 h-1 rounded-full bg-green-500"></span>انجام شد</span>
+                {% else %}<span class="text-gray-300">--</span>{% endif %}
+            </div>
+            <div class="flex justify-between text-xs gap-3">
+                <span class="text-gray-400">کارمند</span>
+                <span class="font-medium text-gray-800 truncate">{{ call.called_by.get_full_name|default:call.called_by.username|default:"--" }}</span>
+            </div>
+            <div class="flex justify-between text-xs gap-3">
+                <span class="text-gray-400">تاریخ</span>
+                <span class="font-medium text-gray-800" dir="ltr">{{ call.call_date|jdate:"Y/m/d H:i" }}</span>
+            </div>
+        </div>
+        <!-- Actions -->
+        <div class="px-4 py-3 border-t border-gray-100 flex gap-2">
+            <a href="{% url 'calls:detail' call.pk %}" class="flex-1 text-center py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium active:bg-blue-700 transition">جزئیات</a>
+            {% if 'calls.reassign' in user_permissions %}
+            <button type="button" onclick="openReassign({{ call.pk }}, '{{ call.caller_name|escapejs }}')"
+                    class="flex-1 text-center py-2.5 bg-yellow-50 text-yellow-700 rounded-xl text-sm font-medium active:bg-yellow-100 transition">
+                ارجاع
+            </button>
+            {% endif %}
+        </div>
+    </article>
+    {% empty %}
+    <div class="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400 text-sm">تماسی یافت نشد</div>
+    {% endfor %}
+</div>
+<!-- ===== MOBILE CARDS END ===== -->
+
+
 {% if page_obj.has_other_pages %}
-<div class="flex justify-center mt-6 gap-2">
+<div class="flex justify-center mt-6 gap-2 flex-wrap">
     {% if page_obj.has_previous %}
         <a href="?page={{ page_obj.previous_page_number }}"
            class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">قبلی</a>
@@ -253,13 +318,13 @@
 </div>
 {% endif %}
 
-<!-- ═══ مودال ارجاع ═══ -->
+<!-- Reassign modal -->
 {% if 'calls.reassign' in user_permissions %}
 <div id="reassign-modal"
      class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 items-center justify-center p-4"
      style="display: none;">
 
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
 
         <div class="flex items-center justify-between p-5 border-b border-gray-100">
             <div class="flex items-center gap-2">
@@ -293,8 +358,8 @@
                 </label>
                 <select name="called_by" id="reassign-select" required
                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-                    <option value="">— انتخاب کنید —</option>
-                    {% for emp in employees %}
+                    <option value="">-- انتخاب کنید --</option>
+                    {% for emp in reassign_users %}
                         <option value="{{ emp.id }}">
                             {{ emp.get_full_name|default:emp.username }}
                         </option>
@@ -359,26 +424,26 @@
         }
 
         submitBtn.disabled = true;
-        submitBtn.innerHTML = 'در حال ارجاع...';
+        submitBtn.textContent = 'در حال ارجاع...';
 
         try {
             const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-            const response = await fetch(`/calls/${callId}/reassign/`, {
+            const response = await fetch('/calls/' + callId + '/reassign/', {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': csrfToken,
                     'X-Requested-With': 'XMLHttpRequest',
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: `called_by=${encodeURIComponent(newUserId)}`
+                body: 'called_by=' + encodeURIComponent(newUserId)
             });
 
             const data = await response.json();
 
             if (data.success) {
                 messageEl.className = 'mb-4 text-sm p-3 rounded-lg bg-green-50 text-green-700';
-                messageEl.textContent = '✅ ' + data.message;
+                messageEl.textContent = data.message;
                 messageEl.classList.remove('hidden');
 
                 setTimeout(() => {
@@ -386,17 +451,17 @@
                 }, 1000);
             } else {
                 messageEl.className = 'mb-4 text-sm p-3 rounded-lg bg-red-50 text-red-700';
-                messageEl.textContent = '❌ ' + (data.error || 'خطا در ارجاع');
+                messageEl.textContent = data.error || 'خطا در ارجاع';
                 messageEl.classList.remove('hidden');
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = 'تلاش مجدد';
+                submitBtn.textContent = 'تلاش مجدد';
             }
         } catch (error) {
             messageEl.className = 'mb-4 text-sm p-3 rounded-lg bg-red-50 text-red-700';
-            messageEl.textContent = '❌ خطای شبکه: ' + error.message;
+            messageEl.textContent = 'خطای شبکه: ' + error.message;
             messageEl.classList.remove('hidden');
             submitBtn.disabled = false;
-            submitBtn.innerHTML = 'تلاش مجدد';
+            submitBtn.textContent = 'تلاش مجدد';
         }
     }
 
@@ -415,4 +480,14 @@
 </script>
 {% endif %}
 
+{% endblock %}
+
+{% block fab %}
+{% if 'calls.add' in user_permissions %}
+<a href="{% url 'calls:create' %}" class="app-fab" title="تماس جدید" aria-label="تماس جدید">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+    </svg>
+</a>
+{% endif %}
 {% endblock %}
