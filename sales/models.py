@@ -39,7 +39,7 @@ class Invoice(models.Model):
                                      choices=PAYMENT_TYPE_CHOICES, default='cash')
 
     # ═══ تاریخ‌ها ═══
-    issue_date = models.DateField('تاریخ صدور', default=timezone.now, db_index=True)
+    issue_date = models.DateTimeField('تاریخ صدور', default=timezone.now, db_index=True)
     due_date = models.DateField('مهلت پرداخت', null=True, blank=True, db_index=True)
 
     # ═══ مالیات و تخفیف ═══

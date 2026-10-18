@@ -222,6 +222,22 @@ window.apexMobileMerge = function (options) {
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
 
     <style>
+
+        /* ============================================================
+           GLOBAL FONT UNIFICATION (Vazirmatn everywhere)
+           ============================================================ */
+        *, *::before, *::after {
+            font-family: 'Vazirmatn', sans-serif !important;
+        }
+        /* Explicitly target form elements and 3rd-party libraries */
+        body, input, button, select, textarea, optgroup, option,
+        .ts-wrapper, .ts-control, .ts-dropdown, .ts-dropdown .option,
+        .apexcharts-canvas, .apexcharts-tooltip, .apexcharts-legend-text,
+        .apexcharts-xaxis-label, .apexcharts-yaxis-label {
+            font-family: 'Vazirmatn', sans-serif !important;
+        }
+
+
         body { font-family: 'Vazirmatn', sans-serif; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
         [x-cloak] { display: none !important; }
 

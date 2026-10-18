@@ -702,7 +702,7 @@ def _get_bi_data(user, filter_user_id=None):
     for c in customers_with_first_invoice.only('first_contact_date'):
         first_inv = getattr(c, 'first_invoice_date', None)
         if first_inv and c.first_contact_date:
-            delta = (first_inv - c.first_contact_date.date()).days
+            delta = (first_inv.date() - c.first_contact_date.date()).days
             if delta >= 0:
                 total_days += delta
                 count_days += 1

@@ -101,7 +101,7 @@
                         <span class="text-xs text-gray-300">--</span>
                     {% endif %}
                 </td>
-                <td class="px-4 py-3 text-right text-gray-500 text-xs" data-label="تاریخ استخدام" dir="ltr">{{ emp.hire_date|jdate:"Y/m/d" }}</td>
+                <td class="px-4 py-3 text-right text-gray-500 text-xs" data-label="تاریخ استخدام" dir="ltr">{{ emp.hire_date|jdate:"Y/m/d H:i" }}</td>
                 <td class="px-4 py-3 text-right" data-label="وضعیت">
                     {% if emp.is_active %}
                         <span class="px-2.5 py-1 rounded-full text-xs bg-green-100 text-green-700">فعال</span>
