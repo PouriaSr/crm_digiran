@@ -6,7 +6,8 @@ from django.core.paginator import Paginator
 from django.db.models import Q, Sum
 from django.contrib.auth.models import User
 from django.http import JsonResponse
-from accounts.permissions import require_permission
+from django.views.decorators.http import require_POST
+from accounts.permissions import require_permission, has_permission
 from .models import Customer, CustomerNote
 from .forms import CustomerForm, CustomerNoteForm
 
@@ -32,10 +33,6 @@ def _parse_jalali_date(value):
     except (ValueError, AttributeError):
         return None
 
-
-# ═══════════════════════════════════════════════════════════════
-# کمکی — نمایش هشدار تکراری‌ها (۷.۵)
-# ═══════════════════════════════════════════════════════════════
 
 # ═══════════════════════════════════════════════════════════════
 # کمکی — نمایش هشدار تکراری‌ها (ارتقاءیافته)
@@ -137,15 +134,23 @@ def customer_list(request):
 def customer_detail(request, pk):
     customer = get_object_or_404(Customer, pk=pk)
 
+    # ⭐ فقط کاربرانی که invoices.view دارند، اطلاعات فاکتور را می‌بینند
+    can_view_invoices = has_permission(request.user, 'invoices.view')
+
     calls = customer.calls.select_related('called_by').order_by('-call_date')[:10]
-    invoices = customer.invoices.order_by('-created_at')[:10]
 
-    paid_count = customer.invoices.filter(status='paid').count()
-    issued_count = customer.invoices.filter(status='issued').count()
-
-    total_purchase = customer.invoices.filter(
-        status__in=['issued', 'paid']
-    ).aggregate(s=Sum('total'))['s'] or 0
+    if can_view_invoices:
+        invoices = customer.invoices.order_by('-created_at')[:10]
+        paid_count = customer.invoices.filter(status='paid').count()
+        issued_count = customer.invoices.filter(status='issued').count()
+        total_purchase = customer.invoices.filter(
+            status__in=['issued', 'paid']
+        ).aggregate(s=Sum('total'))['s'] or 0
+    else:
+        invoices = customer.invoices.none()
+        paid_count = 0
+        issued_count = 0
+        total_purchase = 0
 
     calls_count = customer.calls.count()
     notes = customer.notes_new.select_related('created_by').all()
@@ -160,6 +165,7 @@ def customer_detail(request, pk):
         'paid_count': paid_count,
         'issued_count': issued_count,
         'total_purchase': total_purchase,
+        'can_view_invoices': can_view_invoices,
     }
     return render(request, 'customers/detail.html', context)
 
@@ -306,7 +312,9 @@ def note_delete(request, pk, note_pk):
 
 @login_required
 @require_permission('customers.edit')
+@require_POST
 def note_toggle_pin(request, pk, note_pk):
+    """سنجاق/لغو سنجاق یادداشت — فقط POST (جلوگیری از CSRF)"""
     customer = get_object_or_404(Customer, pk=pk)
     note = get_object_or_404(CustomerNote, pk=note_pk, customer=customer)
 

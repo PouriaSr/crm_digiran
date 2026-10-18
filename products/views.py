@@ -83,26 +83,30 @@ def product_detail(request, pk):
     from sales.models import InvoiceItem
     product = get_object_or_404(Product.all_objects, pk=pk)
 
-    # ═══════════════════════════════════════════════════════════
-    # بهینه‌سازی N+1: قبلاً ۳ کوئری filter + محاسبه‌ی sum در Python
-    # الان: ۱ کوئری برای aggregate + ۱ کوئری برای recent_items
-    # ═══════════════════════════════════════════════════════════
-    base_qs = InvoiceItem.objects.filter(
-        product=product,
-        invoice__status__in=['issued', 'paid'],
-    )
+    # ⭐ Fix: Info leak — فقط کاربرانی که invoices.view دارند، اطلاعات فاکتور را می‌بینند
+    # (operator و support که invoices.view ندارند، نباید مبلغ/مشتری/شماره فاکتور ببینند)
+    can_view_invoices = has_permission(request.user, 'invoices.view')
 
-    recent_items = (
-        base_qs
-        .select_related('invoice', 'invoice__customer')
-        .order_by('-invoice__created_at')[:10]
-    )
+    if can_view_invoices:
+        base_qs = InvoiceItem.objects.filter(
+            product=product,
+            invoice__status__in=['issued', 'paid'],
+        )
 
-    totals = base_qs.aggregate(
-        total_sold=Sum('quantity'),
-        total_revenue=Sum('total_price'),
-        invoices_count=Count('invoice', distinct=True),
-    )
+        recent_items = (
+            base_qs
+            .select_related('invoice', 'invoice__customer')
+            .order_by('-invoice__created_at')[:10]
+        )
+
+        totals = base_qs.aggregate(
+            total_sold=Sum('quantity'),
+            total_revenue=Sum('total_price'),
+            invoices_count=Count('invoice', distinct=True),
+        )
+    else:
+        recent_items = InvoiceItem.objects.none()
+        totals = {'total_sold': 0, 'total_revenue': 0, 'invoices_count': 0}
 
     context = {
         'product': product,
@@ -110,6 +114,7 @@ def product_detail(request, pk):
         'total_sold': totals['total_sold'] or 0,
         'total_revenue': totals['total_revenue'] or 0,
         'invoices_count': totals['invoices_count'] or 0,
+        'can_view_invoices': can_view_invoices,
     }
     return render(request, 'products/detail.html', context)
 
@@ -220,7 +225,6 @@ def category_list(request):
 
     # ═══════════════════════════════════════════════════════════
     # بهینه‌سازی N+1: یک annotation برای همه‌ی products_count
-    # (بدون این خط، هر ردیف یک کوئری COUNT جدا می‌زنه)
     # ═══════════════════════════════════════════════════════════
     categories = categories.annotate(_products_count=Count('products'))
 
@@ -290,13 +294,17 @@ def category_edit(request, pk):
 @require_permission('categories.manage')
 def category_delete(request, pk):
     category = get_object_or_404(Category, pk=pk)
-    products_count = category.products_count
+
+    # ⭐ Fix: از Product.all_objects استفاده می‌کنیم تا soft-deletedها هم شمرده شوند.
+    # در غیر این صورت، اگر همه‌ی کالاهای یک دسته soft-delete شده باشند،
+    # products_count صفر می‌شود ولی category.delete() با ProtectedError → 500 می‌شکند.
+    products_count = Product.all_objects.filter(category=category).count()
 
     if request.method == 'POST':
         if products_count > 0:
             messages.error(
                 request,
-                f'این دسته دارای {products_count} کالا است و قابل حذف نیست. '
+                f'این دسته دارای {products_count} کالا (شامل حذف‌شده‌ها) است و قابل حذف نیست. '
                 'ابتدا کالاها را به دسته‌ی دیگری منتقل کنید یا دسته را غیرفعال کنید.'
             )
             return redirect('products:category_list')

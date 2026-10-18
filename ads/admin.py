@@ -1,7 +1,28 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 
+from .forms import AdForm
 from .models import Ad, AdLog, AdPlatform, AdProcess, AdSource
+
+
+class AdAdminForm(AdForm):
+    """
+    فرم admin برای Ad — با دو تفاوت مهم نسبت به AdForm سایت:
+
+    1. queryset فرآیندها را روی همه‌ی processهای فعال ست می‌کند
+       (سایت از JS برای dynamically filter کردن استفاده می‌کند،
+        ولی admin JS ما را ندارد).
+
+    2. rest از منطق AdForm (clean، unique check، platform/process matching)
+       دقیقاً همان است — یعنی ادمین هم نمی‌تواند داده‌ی ناسازگار بسازد.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # در admin همه‌ی processهای فعال را نمایش بده
+        # (چون JS نداریم که به platform-change واکنش دهد).
+        # clean() همچنان تناسب platform.process را enforce می‌کند.
+        self.fields['process'].queryset = AdProcess.objects.filter(is_active=True)
 
 
 @admin.register(AdPlatform)
@@ -27,6 +48,11 @@ class AdSourceAdmin(ModelAdmin):
 
 @admin.register(Ad)
 class AdAdmin(ModelAdmin):
+    # ⭐ Fix #6: استفاده از AdForm به‌جای ModelForm پیش‌فرض
+    # این کار همه‌ی اعتبارسنجی‌های clean() را در admin هم فعال می‌کند
+    # (مثلاً process متعلق به platform دیگر نمی‌تواند ثبت شود).
+    form = AdAdminForm
+
     list_display = [
         'ad_number', 'platform', 'process', 'cost',
         'source', 'product', 'created_by', 'created_at',
@@ -35,6 +61,11 @@ class AdAdmin(ModelAdmin):
     search_fields = ['ad_number', 'source__phone_number', 'product__name']
     readonly_fields = ['created_at', 'created_by']
     date_hierarchy = 'created_at'
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(AdLog)

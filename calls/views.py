@@ -51,8 +51,8 @@ def call_list(request):
 
     # ═══ فیلتر وضعیت پیگیری ═══
     followup_status = request.GET.get('followup', '')
-    today = timezone.now().date() # ⭐ گرفتن تاریخ امروز
-    
+    today = timezone.now().date()  # ⭐ گرفتن تاریخ امروز
+
     if followup_status == 'pending':
         # ⭐ دقیقاً هم‌منطق با سیستم اعلان‌ها (تاریخ پیگیری گذشته یا امروز است و تیک نخورده)
         calls = calls.filter(follow_up_date__lte=today, is_followed_up=False)
@@ -76,8 +76,16 @@ def call_list(request):
     paginator = Paginator(calls, 20)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
-    # ═══ کارمندان برای dropdown ═══
+    # ═══ dropdown فیلتر: فقط کاربرانی که حداقل یک تماس دارند ═══
     employees = User.objects.filter(calls__isnull=False).distinct()
+
+    # ⭐ Fix #8: لیست جداگانه برای مودال ارجاع
+    # مودال ارجاع باید همه‌ی کاربران فعال را نشان دهد (حتی بدون تماس قبلی)،
+    # تا بتوان تماس را به کاربر جدید هم ارجاع داد.
+    # فیلتر dropdown همچنان از `employees` (فقط کسانی که تماس دارند) استفاده می‌کند.
+    reassign_users = User.objects.filter(
+        is_active=True,
+    ).order_by('first_name', 'last_name', 'username')
 
     context = {
         'page_obj': page_obj,
@@ -88,7 +96,8 @@ def call_list(request):
         'current_purpose': purpose,
         'current_employee': employee,
         'current_followup': followup_status,
-        'employees': employees,
+        'employees': employees,            # ← برای filter dropdown
+        'reassign_users': reassign_users,  # ← برای modal ارجاع
         'status_choices': Call.CALL_STATUS_CHOICES,
         'type_choices': Call.CALL_TYPE_CHOICES,
         'purpose_choices': Call.CALL_PURPOSE_CHOICES,
@@ -217,7 +226,10 @@ def call_reassign(request, pk):
         messages.success(request, f'تماس از «{old_name}» به «{new_name}» ارجاع شد.')
         return redirect('calls:detail', pk=call.pk)
 
-    users = User.objects.filter(is_active=True).order_by('first_name', 'username')
+    # ⭐ Fix #8: صفحه‌ی reassign حالا از reassign_users استفاده می‌کند
+    # (قبلاً `users` بود — همان لیست را می‌داد که کار می‌کرد،
+    # ولی نام متغیر را یکسان کردیم تا با context نام‌گذاری template یکسان شود)
+    users = User.objects.filter(is_active=True).order_by('first_name', 'last_name', 'username')
     return render(request, 'calls/reassign.html', {
         'call': call,
         'users': users,
