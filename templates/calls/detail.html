@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-
+{% load fa_numbers %}
 {% block title %}تماس با {{ call.caller_name }}{% endblock %}
 
 {% block content %}
@@ -70,7 +70,7 @@
         <dl class="space-y-3 text-sm">
             <div class="flex justify-between">
                 <dt class="text-gray-500">تاریخ تماس:</dt>
-                <dd class="text-gray-800" dir="ltr">{{ call.call_date|date:"Y/m/d H:i" }}</dd>
+                <dd class="text-gray-800" dir="ltr">{{ call.call_date|jdate:"Y/m/d H:i" }}</dd>
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">مدت مکالمه:</dt>
@@ -92,7 +92,7 @@
         <dl class="space-y-3 text-sm">
             <div class="flex justify-between">
                 <dt class="text-gray-500">تاریخ پیگیری:</dt>
-                <dd class="text-gray-800" dir="ltr">{{ call.follow_up_date|date:"Y/m/d"|default:"—" }}</dd>
+                <dd class="text-gray-800" dir="ltr">{{ call.follow_up_date|jdate:"Y/m/d"|default:"—" }}</dd>
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">وضعیت پیگیری:</dt>
@@ -108,7 +108,7 @@
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">آخرین ویرایش:</dt>
-                <dd class="text-gray-800" dir="ltr">{{ call.updated_at|date:"Y/m/d H:i" }}</dd>
+                <dd class="text-gray-800" dir="ltr">{{ call.updated_at|jdate:"Y/m/d H:i" }}</dd>
             </div>
         </dl>
     </div>

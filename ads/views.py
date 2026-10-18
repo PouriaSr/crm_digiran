@@ -12,36 +12,19 @@ import jdatetime
 
 from .forms import AdForm, AdPlatformForm, AdProcessForm, AdSourceForm
 from .models import Ad, AdLog, AdPlatform, AdProcess, AdSource
-from accounts.models import UserPermissionOverride
+from accounts.permissions import has_permission as _has_permission
 
 # ─────────────────────────────────────────────
-# سیستم بررسی دسترسی سفارشی (اصلاح نهایی)
+# سیستم بررسی دسترسی یکپارچه
 # ─────────────────────────────────────────────
 def check_permission(user, perm_key):
-    """بررسی دسترسی با در نظر گرفتن override های دیتابیس"""
+    """بررسی دسترسی با استفاده از سیستم مرکزی RBAC"""
     if user.is_superuser:
         return True
-        
-    # ۱. چک کردن تنظیمات دستی (override) که ادمین اعمال کرده
-    override = UserPermissionOverride.objects.filter(user=user, permission_key=perm_key).first()
-    if override:
-        return override.granted
-        
-    # ۲. ترجمه کلیدهای سفارشی به کلیدهای استاندارد جنگو
-    key_map = {
-        'ads.add': 'ads.add_ad',
-        'ads.edit': 'ads.change_ad',
-        'ads.delete': 'ads.delete_ad',
-        # اگر کلیدهای سفارشی دیگری دارید، اینجا اضافه کنید
-    }
-    
-    django_perm_key = key_map.get(perm_key, perm_key)
-    
-    # ۳. استفاده از دسترسی‌های پیش‌فرض گروه (نقش)
-    return user.has_perm(django_perm_key)
+    return _has_permission(user, perm_key)
 
 def perm_required(perm_key):
-    """دکوراتور برای استفاده در ویوها"""
+    """دکوراتور برای بررسی دسترسی در ویوها"""
     def decorator(view_func):
         @login_required
         def _wrapped_view(request, *args, **kwargs):
@@ -90,7 +73,7 @@ def _apply_report_filters(request, qs):
 # ─────────────────────────────────────────────
 # لیست تبلیغات + گزارش
 # ─────────────────────────────────────────────
-@perm_required('ads.view_ad')
+@perm_required('ads.view')
 def ad_list(request):
     qs = Ad.objects.select_related(
         'platform', 'process', 'source', 'product', 'created_by',
@@ -186,8 +169,7 @@ def ad_list(request):
         'is_admin': request.user.is_superuser,
         'stats': stats,
         'report': report,
-        # ارسال دسترسی‌ها به قالب (با کلیدهای سفارشی شما)
-        'can_view': check_permission(request.user, 'ads.view_ad'),
+        'can_view': check_permission(request.user, 'ads.view'),
         'can_create': check_permission(request.user, 'ads.add'), 
         'can_edit': check_permission(request.user, 'ads.edit'),    
         'can_delete': check_permission(request.user, 'ads.delete'), 
@@ -199,7 +181,7 @@ def ad_list(request):
 # ─────────────────────────────────────────────
 # خروجی Excel گزارش
 # ─────────────────────────────────────────────
-@perm_required('ads.view_ad')
+@perm_required('ads.view')
 def ad_export_report(request):
     import openpyxl
     from openpyxl.styles import Alignment, Font, PatternFill
@@ -348,7 +330,7 @@ def ad_edit(request, pk):
         if not check_permission(request.user, 'ads.edit'): 
             return HttpResponseForbidden('شما فقط دسترسی مشاهده دارید.')
     else:
-        if not check_permission(request.user, 'ads.view_ad'):
+        if not check_permission(request.user, 'ads.view'):
             return HttpResponseForbidden('شما دسترسی مشاهده ندارید.')
 
     if not request.user.is_superuser and ad.created_by_id != request.user.id:
@@ -513,7 +495,7 @@ def source_delete(request, pk):
 # ─────────────────────────────────────────────
 # API ها
 # ─────────────────────────────────────────────
-@perm_required('ads.view_ad')
+@perm_required('ads.view')
 def platform_processes_api(request, pk):
     processes = AdProcess.objects.filter(
         platform_id=pk, is_active=True,
@@ -521,7 +503,7 @@ def platform_processes_api(request, pk):
     return JsonResponse({'processes': list(processes)})
 
 
-@perm_required('ads.view_ad')
+@perm_required('ads.view')
 def process_cost_api(request, pk):
     process = get_object_or_404(AdProcess, pk=pk, is_active=True)
     return JsonResponse({
@@ -531,7 +513,7 @@ def process_cost_api(request, pk):
     })
 
 
-@perm_required('ads.view_ad')
+@perm_required('ads.view')
 def platform_next_ad_number_api(request, pk):
     platform = get_object_or_404(AdPlatform, pk=pk, is_active=True)
     return JsonResponse({

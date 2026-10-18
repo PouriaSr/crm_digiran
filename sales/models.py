@@ -1,5 +1,6 @@
 import jdatetime
-from django.db import models, transaction
+import time
+from django.db import models, transaction, IntegrityError
 from django.contrib.auth.models import User
 from django.utils import timezone
 from customers.models import Customer
@@ -38,15 +39,15 @@ class Invoice(models.Model):
                                      choices=PAYMENT_TYPE_CHOICES, default='cash')
 
     # ═══ تاریخ‌ها ═══
-    issue_date = models.DateField('تاریخ صدور', default=timezone.now)
-    due_date = models.DateField('مهلت پرداخت', null=True, blank=True)
+    issue_date = models.DateField('تاریخ صدور', default=timezone.now, db_index=True)
+    due_date = models.DateField('مهلت پرداخت', null=True, blank=True, db_index=True)
 
     # ═══ مالیات و تخفیف ═══
     discount = models.DecimalField('تخفیف (تومان)', max_digits=15, decimal_places=0, default=0)
     tax_percent = models.DecimalField('درصد مالیات', max_digits=5, decimal_places=2, default=9)
     tax_amount = models.DecimalField('مبلغ مالیات', max_digits=15, decimal_places=0, default=0)
     subtotal = models.DecimalField('جمع اقلام', max_digits=15, decimal_places=0, default=0)
-    total = models.DecimalField('مبلغ نهایی', max_digits=15, decimal_places=0, default=0)
+    total = models.DecimalField('مبلغ نهایی', max_digits=15, decimal_places=0, default=0, db_index=True)
 
     # ═══ توضیحات ═══
     notes = models.TextField('توضیحات', blank=True, null=True)
@@ -66,6 +67,10 @@ class Invoice(models.Model):
         verbose_name = 'فاکتور'
         verbose_name_plural = 'فاکتورها'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'issue_date']),
+            models.Index(fields=['created_at']),
+        ]
 
     def __str__(self):
         return f"{self.number} - {self.customer.name}"
@@ -84,13 +89,30 @@ class Invoice(models.Model):
     def save(self, *args, **kwargs):
         # تولید شماره فاکتور خودکار — با تاریخ شمسی و ضد race condition
         if not self.number:
-            with transaction.atomic():
-                last = Invoice.objects.select_for_update().order_by('-id').first()
-                new_id = (last.id + 1) if last else 1
-                now_j = jdatetime.datetime.now()
-                self.number = f"INV-{now_j.year}{now_j.month:02d}-{new_id:04d}"
-
-        super().save(*args, **kwargs)
+            max_retries = 5
+            for attempt in range(max_retries):
+                try:
+                    with transaction.atomic():
+                        # قفل کردن آخرین رکورد برای محاسبه ID جدید
+                        last = Invoice.objects.select_for_update().order_by('-id').first()
+                        new_id = (last.id + 1) if last else 1
+                        now_j = jdatetime.datetime.now()
+                        self.number = f"INV-{now_j.year}{now_j.month:02d}-{new_id:04d}"
+                        
+                        # ذخیره در دیتابیس
+                        super().save(*args, **kwargs)
+                    return  # اگر موفق بود، از حلقه خارج شو
+                except IntegrityError:
+                    if attempt == max_retries - 1:
+                        raise  # اگر بعد از ۵ بار باز هم خطا داد، خطا رو بفرست
+                    
+                    # ریست کردن مقادیر برای تلاش بعدی
+                    self.pk = None
+                    self.number = None
+                    time.sleep(0.1)  # تاخیر خیلی کوتاه تا تراکنش دیگر تمام شود
+        else:
+            # اگر شماره از قبل وجود دارد، فقط ذخیره کن
+            super().save(*args, **kwargs)
 
     @property
     def status_color(self):

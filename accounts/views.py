@@ -7,6 +7,8 @@ from django.db.models import Q
 from accounts.permissions import require_permission, PERMISSIONS
 from .forms import UserCreateForm, UserEditForm, UserPasswordForm, get_user_role, ensure_groups
 from crm.duplicate_check import show_duplicate_warnings
+from django.contrib.auth.views import PasswordChangeView
+from django.urls import reverse_lazy
 
 
 # ═══════════════════════════════════════════════════════════
@@ -240,3 +242,14 @@ def user_toggle_active(request, pk):
         status = 'فعال' if user.is_active else 'غیرفعال'
         messages.success(request, f'کاربر «{user.username}» {status} شد.')
     return redirect('accounts:user_list')
+
+# ═══════════════════════════════════════════════════════════
+# تغییر رمز عبور توسط خود کاربر
+# ═══════════════════════════════════════════════════════════
+class CustomPasswordChangeView(PasswordChangeView):
+    template_name = 'accounts/password_change.html'
+    success_url = reverse_lazy('hr:my_profile')
+
+    def form_valid(self, form):
+        messages.success(self.request, '✅ رمز عبور شما با موفقیت تغییر کرد.')
+        return super().form_valid(form)

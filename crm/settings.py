@@ -110,6 +110,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
+
+    # ⭐ تبدیل خودکار اعداد به فارسی در کل سیستم
+    'crm.middleware.PersianDigitsMiddleware',
 ]
 
 

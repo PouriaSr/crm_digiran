@@ -39,7 +39,7 @@ class Call(models.Model):
     )
 
     # ═══ اطلاعات تماس ═══
-    caller_name = models.CharField('نام تماس‌گیرنده', max_length=200)
+    caller_name = models.CharField('نام تماس‌گیرنده', max_length=200, db_index=True)
     call_number = models.CharField('شماره تماس', max_length=15, db_index=True)
 
     # ═══ وضعیت و نوع ═══

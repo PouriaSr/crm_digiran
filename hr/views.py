@@ -6,9 +6,9 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q, Count
 from django.utils import timezone
-from accounts.permissions import require_permission
+from accounts.permissions import require_permission, has_permission
 from .models import Employee, Task, LeaveRequest, Attendance
-from .forms import EmployeeForm, TaskForm, LeaveRequestForm, AttendanceForm
+from .forms import EmployeeForm, TaskForm, LeaveRequestForm, AttendanceForm, MyProfileForm
 from crm.duplicate_check import show_duplicate_warnings
 
 
@@ -144,6 +144,9 @@ def employee_delete(request, pk):
 @login_required
 @require_permission('hr.view_tasks')
 def task_list(request):
+    # ⭐ متغیر today به بالای تابع منتقل شد تا در فیلترها قابل استفاده باشد
+    today = timezone.now().date()
+
     tasks = Task.objects.select_related('assigned_to', 'created_by').all()
 
     search = request.GET.get('q', '').strip()
@@ -165,7 +168,11 @@ def task_list(request):
     if employee:
         tasks = tasks.filter(assigned_to_id=employee)
 
-    today = timezone.now().date()
+    # ⭐ فیلتر جدید برای اعلان‌ها
+    due = request.GET.get('due', '')
+    if due == 'overdue':
+        tasks = tasks.filter(due_date__lt=today).exclude(status__in=['done', 'cancelled'])
+
     stats = {
         'total': Task.objects.count(),
         'pending': Task.objects.filter(status='pending').count(),
@@ -274,7 +281,15 @@ def task_toggle_status(request, pk):
 
 @login_required
 def leave_list(request):
+    can_review = has_permission(request.user, 'hr.review_leaves')
+
     leaves = LeaveRequest.objects.select_related('employee', 'reviewed_by').all()
+
+    if not can_review:
+        if hasattr(request.user, 'employee_profile'):
+            leaves = leaves.filter(employee=request.user.employee_profile)
+        else:
+            leaves = leaves.none()
 
     status = request.GET.get('status', '')
     if status:
@@ -292,11 +307,18 @@ def leave_list(request):
             Q(reason__icontains=search)
         )
 
+    stats_qs = LeaveRequest.objects.all()
+    if not can_review:
+        if hasattr(request.user, 'employee_profile'):
+            stats_qs = stats_qs.filter(employee=request.user.employee_profile)
+        else:
+            stats_qs = stats_qs.none()
+
     stats = {
-        'total': LeaveRequest.objects.count(),
-        'pending': LeaveRequest.objects.filter(status='pending').count(),
-        'approved': LeaveRequest.objects.filter(status='approved').count(),
-        'rejected': LeaveRequest.objects.filter(status='rejected').count(),
+        'total': stats_qs.count(),
+        'pending': stats_qs.filter(status='pending').count(),
+        'approved': stats_qs.filter(status='approved').count(),
+        'rejected': stats_qs.filter(status='rejected').count(),
     }
 
     paginator = Paginator(leaves, 20)
@@ -316,14 +338,21 @@ def leave_list(request):
 
 @login_required
 def leave_create(request):
+    can_review = has_permission(request.user, 'hr.review_leaves')
+    has_profile = hasattr(request.user, 'employee_profile')
+
+    if not (can_review or has_profile):
+        messages.error(request, 'شما پروفایل پرسنلی ندارید و نمی‌توانید درخواست مرخصی ثبت کنید.')
+        return redirect('dashboard:home')
+
     if request.method == 'POST':
-        form = LeaveRequestForm(request.POST)
+        form = LeaveRequestForm(request.POST, user=request.user)
         if form.is_valid():
             leave = form.save()
             messages.success(request, 'درخواست مرخصی ثبت شد.')
             return redirect('hr:leave_list')
     else:
-        form = LeaveRequestForm()
+        form = LeaveRequestForm(user=request.user)
 
     return render(request, 'hr/leave_form.html', {
         'form': form,
@@ -491,7 +520,6 @@ def attendance_report(request):
     now = timezone.now()
     j_now = jdatetime.date.fromgregorian(date=now.date())
 
-    # ─── انتخاب سال/ماه از query ───
     try:
         selected_year = int(request.GET.get('year', j_now.year))
     except (ValueError, TypeError):
@@ -505,7 +533,6 @@ def attendance_report(request):
     if not (1 <= selected_month_num <= 12):
         selected_month_num = j_now.month
 
-    # ─── بازه‌ی ماه شمسی ───
     month_start = jdatetime.date(selected_year, selected_month_num, 1).togregorian()
     if selected_month_num == 12:
         next_month = jdatetime.date(selected_year + 1, 1, 1)
@@ -513,27 +540,16 @@ def attendance_report(request):
         next_month = jdatetime.date(selected_year, selected_month_num + 1, 1)
     month_end = next_month.togregorian() - timedelta(days=1)
 
-    # ─── لیست‌های dropdown ───
     year_choices = list(range(j_now.year - 3, j_now.year + 2))
     month_choices = [
-        (1, 'فروردین'),
-        (2, 'اردیبهشت'),
-        (3, 'خرداد'),
-        (4, 'تیر'),
-        (5, 'مرداد'),
-        (6, 'شهریور'),
-        (7, 'مهر'),
-        (8, 'آبان'),
-        (9, 'آذر'),
-        (10, 'دی'),
-        (11, 'بهمن'),
-        (12, 'اسفند'),
+        (1, 'فروردین'), (2, 'اردیبهشت'), (3, 'خرداد'), (4, 'تیر'),
+        (5, 'مرداد'), (6, 'شهریور'), (7, 'مهر'), (8, 'آبان'),
+        (9, 'آذر'), (10, 'دی'), (11, 'بهمن'), (12, 'اسفند'),
     ]
 
     employees = list(Employee.objects.filter(is_active=True))
     employee_ids = [e.pk for e in employees]
 
-    # ═══ بهینه‌سازی: ۲ کوئری کل ═══
     base_qs = Attendance.objects.filter(
         date__gte=month_start,
         date__lte=month_end,
@@ -607,7 +623,6 @@ def my_profile(request):
         status='done'
     ).order_by('-completed_at')[:5]
 
-    # ═══ 2FA status ═══
     totp_device = TOTPDevice.objects.filter(user=request.user, confirmed=True).first()
     has_2fa = totp_device is not None
 
@@ -624,8 +639,29 @@ def my_profile(request):
         'calls_count': calls_count,
         'invoices_count': invoices_count,
         'created_customers_count': created_customers_count,
-        # 2FA
         'has_2fa': has_2fa,
         'recovery_codes_count': recovery_codes_count,
     }
     return render(request, 'hr/my_profile.html', context)
+
+
+@login_required
+def edit_my_profile(request):
+    try:
+        employee = request.user.employee_profile
+    except Employee.DoesNotExist:
+        messages.warning(request, 'برای حساب کاربری شما پروفایل پرسنلی ثبت نشده است.')
+        return redirect('dashboard:home')
+
+    if request.method == 'POST':
+        form = MyProfileForm(request.POST, instance=employee)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'اطلاعات پروفایل شما با موفقیت به‌روزرسانی شد.')
+            return redirect('hr:my_profile')
+    else:
+        form = MyProfileForm(instance=employee)
+
+    return render(request, 'hr/profile_edit.html', {
+        'form': form,
+    })

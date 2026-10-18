@@ -4,6 +4,8 @@
 
 {% block content %}
 
+{% load fa_numbers %}
+
 <div class="mb-6">
     <h1 class="text-2xl font-bold text-gray-800">پروفایل من</h1>
     <p class="text-sm text-gray-500 mt-1">اطلاعات شخصی و فعالیت‌های شما در سیستم</p>
@@ -16,8 +18,19 @@
             {{ employee.first_name|first|upper }}
         </div>
         <div class="flex-1">
-            <h2 class="text-2xl font-bold text-gray-800">{{ employee.full_name }}</h2>
-            <p class="text-gray-500 text-sm mt-1">{{ employee.get_position_display }}</p>
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">{{ employee.full_name }}</h2>
+                    <p class="text-gray-500 text-sm mt-1">{{ employee.get_position_display }}</p>
+                </div>
+                <a href="{% url 'hr:edit_my_profile' %}" 
+                   class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium flex items-center gap-1.5 shadow-sm">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    ویرایش پروفایل
+                </a>
+            </div>
 
             <div class="flex gap-2 mt-3 flex-wrap">
                 <span class="px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-700">{{ employee.get_contract_type_display }}</span>
@@ -25,7 +38,7 @@
                     <span class="px-3 py-1 rounded-full text-xs bg-green-100 text-green-700">✅ فعال</span>
                 {% endif %}
                 <span class="px-3 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
-                    از {{ employee.hire_date|date:"Y/m/d" }}
+                    از {{ employee.hire_date|jdate:"Y/m/d" }}
                 </span>
             </div>
         </div>
@@ -115,7 +128,7 @@
 
                     {% if task.due_date %}
                         <span class="text-xs {% if task.is_overdue %}text-red-600 font-bold{% else %}text-gray-400{% endif %}" dir="ltr">
-                            {{ task.due_date|date:"Y/m/d" }}
+                            {{ task.due_date|jdate:"Y/m/d" }}
                             {% if task.is_overdue %} ⚠️{% endif %}
                         </span>
                     {% endif %}
@@ -151,7 +164,7 @@
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">تاریخ تولد:</dt>
-                <dd class="text-gray-800" dir="ltr">{{ employee.birth_date|date:"Y/m/d"|default:"—" }}</dd>
+                <dd class="text-gray-800" dir="ltr">{{ employee.birth_date|jdate:"Y/m/d"|default:"—" }}</dd>
             </div>
         </dl>
     </div>
@@ -169,7 +182,7 @@
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">تاریخ استخدام:</dt>
-                <dd class="text-gray-800" dir="ltr">{{ employee.hire_date|date:"Y/m/d" }}</dd>
+                <dd class="text-gray-800" dir="ltr">{{ employee.hire_date|jdate:"Y/m/d" }}</dd>
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">حقوق پایه:</dt>
@@ -178,14 +191,16 @@
         </dl>
     </div>
 </div>
-<!-- ═══ امنیت — 2FA ═══ -->
+
+<!-- ═══ امنیت — 2FA و تغییر رمز ═══ -->
 <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
     <h2 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
         <span class="w-7 h-7 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm">🔐</span>
         امنیت حساب
     </h2>
 
-    <div class="flex items-start justify-between gap-4 p-4 rounded-lg {% if has_2fa %}bg-green-50 border border-green-200{% else %}bg-yellow-50 border border-yellow-200{% endif %}">
+    <!-- بخش 2FA -->
+    <div class="flex items-start justify-between gap-4 p-4 rounded-lg mb-4 {% if has_2fa %}bg-green-50 border border-green-200{% else %}bg-yellow-50 border border-yellow-200{% endif %}">
         <div class="flex-1">
             <div class="font-medium text-gray-800 mb-1">
                 {% if has_2fa %}
@@ -202,7 +217,6 @@
                     {% endif %}
                 {% else %}
                     با فعال‌سازی 2FA، امنیت حساب شما به‌طور چشمگیری افزایش می‌یابد.
-                    برای فعال‌سازی به اپلیکیشن Google Authenticator یا Microsoft Authenticator نیاز دارید.
                 {% endif %}
             </div>
         </div>
@@ -224,5 +238,21 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- بخش تغییر رمز عبور -->
+    <div class="flex items-center justify-between gap-4 p-4 rounded-lg bg-blue-50 border border-blue-200">
+        <div class="flex-1">
+            <div class="font-medium text-gray-800 mb-1">
+                🔑 تغییر رمز عبور
+            </div>
+            <div class="text-xs text-gray-600 leading-relaxed">
+                در صورت نیاز به تغییر رمز عبور، از این بخش استفاده کنید.
+            </div>
+        </div>
+        <a href="{% url 'accounts:password_change' %}"
+           class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium whitespace-nowrap">
+            تغییر رمز
+        </a>
+    </div>
 </div>
-{% endblock %}  
+{% endblock %}

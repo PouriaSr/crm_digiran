@@ -4,6 +4,8 @@
 
 {% block content %}
 
+{% load fa_numbers %}
+
 <div class="flex justify-between items-center mb-6">
     <a href="{% url 'sales:list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست</a>
     <div class="flex gap-2">
@@ -119,12 +121,12 @@
         <dl class="space-y-3 text-sm">
             <div class="flex justify-between">
                 <dt class="text-gray-500">تاریخ صدور:</dt>
-                <dd class="text-gray-800" dir="ltr">{{ invoice.issue_date|date:"Y/m/d" }}</dd>
+                <dd class="text-gray-800" dir="ltr">{{ invoice.issue_date|jdate:"Y/m/d" }}</dd>
             </div>
             {% if invoice.due_date %}
             <div class="flex justify-between">
                 <dt class="text-gray-500">مهلت پرداخت:</dt>
-                <dd class="text-gray-800" dir="ltr">{{ invoice.due_date|date:"Y/m/d" }}</dd>
+                <dd class="text-gray-800" dir="ltr">{{ invoice.due_date|jdate:"Y/m/d" }}</dd>
             </div>
             {% endif %}
             <div class="flex justify-between">
@@ -139,7 +141,7 @@
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">تاریخ ایجاد:</dt>
-                <dd class="text-gray-800 text-xs">{{ invoice.created_at|date:"Y/m/d H:i" }}</dd>
+                <dd class="text-gray-800 text-xs">{{ invoice.created_at|jdate:"Y/m/d H:i" }}</dd>
             </div>
         </dl>
     </div>
@@ -201,7 +203,7 @@
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 flex-wrap mb-1">
                         <span class="font-medium text-gray-800 text-sm">{{ log.get_action_display }}</span>
-                        <span class="text-xs text-gray-400">{{ log.created_at|date:"Y/m/d H:i" }}</span>
+                        <span class="text-xs text-gray-400">{{ log.created_at|jdate:"Y/m/d H:i" }}</span>
                         <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{{ log.user_display }}</span>
                     </div>
                     <p class="text-gray-700 text-sm">{{ log.description }}</p>

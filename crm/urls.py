@@ -1,7 +1,5 @@
 from django.contrib import admin
 from django.urls import path, include
-from django.urls import path
-from crm import views as crm_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -14,8 +12,8 @@ urlpatterns = [
     path('hr/', include('hr.urls')),
     path('audit/', include('audit.urls')),
     path('ads/', include('ads.urls')),
-    path('setup/run-command/', crm_views.run_setup_command, name='run_setup_command'),
-
+    
+    # ⛔ خط setup/run-command/ کاملاً حذف شد.
 ]
 
 

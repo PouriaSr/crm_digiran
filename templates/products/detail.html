@@ -4,6 +4,8 @@
 
 {% block content %}
 
+{% load fa_numbers %}
+
 <div class="flex justify-between items-center mb-6">
     <a href="{% url 'products:list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست</a>
     <div class="flex gap-2">
@@ -27,7 +29,7 @@
         <div class="font-bold">این کالا حذف نرم شده است</div>
         <div class="text-sm mt-1">
             تاریخ حذف:
-            <strong>{{ product.deleted_at|date:"Y/m/d H:i" }}</strong>
+            <strong>{{ product.deleted_at|jdate:"Y/m/d H:i" }}</strong>
             {% if product.is_used %}
             — این کالا در فاکتورها یا گردش انبار استفاده شده و به‌همین‌دلیل حذف کامل نشده.
             {% endif %}
@@ -113,11 +115,11 @@
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">تاریخ ایجاد:</dt>
-                <dd class="text-gray-800">{{ product.created_at|date:"Y/m/d H:i" }}</dd>
+                <dd class="text-gray-800">{{ product.created_at|jdate:"Y/m/d H:i" }}</dd>
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">آخرین ویرایش:</dt>
-                <dd class="text-gray-800">{{ product.updated_at|date:"Y/m/d H:i" }}</dd>
+                <dd class="text-gray-800">{{ product.updated_at|jdate:"Y/m/d H:i" }}</dd>
             </div>
         </dl>
     </div>
@@ -203,7 +205,7 @@
                 </td>
                 <td class="px-6 py-3 text-right text-xs">{{ item.quantity }} {{ product.unit }}</td>
                 <td class="px-6 py-3 text-right text-xs font-bold" dir="ltr">{{ item.total_price|floatformat:0 }}</td>
-                <td class="px-6 py-3 text-right text-xs text-gray-500" dir="ltr">{{ item.invoice.issue_date|date:"Y/m/d" }}</td>
+                <td class="px-6 py-3 text-right text-xs text-gray-500" dir="ltr">{{ item.invoice.issue_date|jdate:"Y/m/d" }}</td>
             </tr>
             {% endfor %}
         </tbody>

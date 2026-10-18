@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 
 {% block title %}گزارش ماهانه حضور{% endblock %}
-
+{% load fa_numbers %}
 {% block content %}
 
 <div class="flex justify-between items-center mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-800">گزارش ماهانه حضور</h1>
         <p class="text-sm text-gray-500 mt-1" dir="ltr">
-            {{ month_start|date:"Y/m/d" }} — {{ month_end|date:"Y/m/d" }}
+            {{ month_start|jdate:"Y/m/d" }} — {{ month_end|jdate:"Y/m/d" }}
         </p>
     </div>
     <a href="{% url 'hr:attendance_list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت</a>

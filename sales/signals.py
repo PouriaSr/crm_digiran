@@ -1,8 +1,9 @@
 from decimal import Decimal
 from datetime import date, datetime
 
-from django.db.models.signals import pre_save, post_save, post_delete
+from django.db.models.signals import pre_save, post_save, post_delete, pre_delete
 from django.dispatch import receiver
+from django.utils import timezone
 
 from crm.middleware import get_current_user
 from .models import Invoice, InvoiceItem, InvoiceLog
@@ -20,18 +21,23 @@ def _recalc_invoice_totals(invoice_id):
         return
 
     invoice.calculate_totals()
-    invoice.save(update_fields=['subtotal', 'tax_amount', 'total', 'updated_at'])
+    
+    # استفاده از update() به‌جای save() برای جلوگیری از ساخت لاگ‌های یتیم
+    Invoice.objects.filter(pk=invoice_id).update(
+        subtotal=invoice.subtotal,
+        tax_amount=invoice.tax_amount,
+        total=invoice.total,
+        updated_at=timezone.now()
+    )
 
 
 @receiver(post_save, sender=InvoiceItem)
 def recalc_on_item_save(sender, instance, **kwargs):
-    """بعد از ذخیره‌ی هر قلم، مبالغ فاکتور رو دوباره حساب کن"""
     _recalc_invoice_totals(instance.invoice_id)
 
 
 @receiver(post_delete, sender=InvoiceItem)
 def recalc_on_item_delete(sender, instance, **kwargs):
-    """بعد از حذف هر قلم، مبالغ فاکتور رو دوباره حساب کن"""
     _recalc_invoice_totals(instance.invoice_id)
 
 
@@ -39,7 +45,6 @@ def recalc_on_item_delete(sender, instance, **kwargs):
 # Audit Trail — ۷.۹
 # ═══════════════════════════════════════════════════════════
 
-# فیلدهایی که در فاکتور رصد می‌شن
 TRACKED_INVOICE_FIELDS = {
     'status': 'وضعیت',
     'payment_type': 'نوع پرداخت',
@@ -49,7 +54,6 @@ TRACKED_INVOICE_FIELDS = {
     'issue_date': 'تاریخ صدور',
 }
 
-# فیلدهایی که saveهای داخلی (recalc) با update_fields می‌فرستن
 _INTERNAL_UPDATE_FIELDS = {'subtotal', 'tax_amount', 'total', 'updated_at'}
 
 
@@ -58,12 +62,6 @@ _INTERNAL_UPDATE_FIELDS = {'subtotal', 'tax_amount', 'total', 'updated_at'}
 # ═══════════════════════════════════════════════════════════
 
 def _to_comparable(v):
-    """
-    تبدیل مقدار به یک شکل قابل مقایسه‌ی یکنواخت:
-    - Decimal → normalize (9.00 → 9)
-    - datetime → date ISO (چون فقط date-level comparison لازمه)
-    - None → رشته‌ی خالی
-    """
     if v is None:
         return ''
     if isinstance(v, Decimal):
@@ -76,12 +74,10 @@ def _to_comparable(v):
 
 
 def _values_equal(a, b):
-    """آیا دو مقدار برابرن؟ (با نرمال‌سازی type)"""
     return _to_comparable(a) == _to_comparable(b)
 
 
 def _format_value(field_name, value, instance):
-    """نمایش خوانا از یک مقدار (choice fields رو به display تبدیل می‌کنه)"""
     if value is None or value == '':
         return '—'
 
@@ -106,12 +102,10 @@ def _format_value(field_name, value, instance):
 def capture_old_invoice_state(sender, instance, **kwargs):
     update_fields = kwargs.get('update_fields')
 
-    # saveهای داخلی (recalc) رو نادیده بگیر
     if update_fields is not None and set(update_fields).issubset(_INTERNAL_UPDATE_FIELDS):
         instance._old_state = None
         return
 
-    # ایجاد جدید — state قدیمی نداره
     if not instance.pk:
         instance._old_state = None
         return
@@ -135,7 +129,6 @@ def log_invoice_save(sender, instance, created, **kwargs):
 
     user = get_current_user()
 
-    # ─── ایجاد جدید ───
     if created:
         InvoiceLog.objects.create(
             invoice=instance,
@@ -145,7 +138,6 @@ def log_invoice_save(sender, instance, created, **kwargs):
         )
         return
 
-    # ─── ویرایش — مقایسه با state قدیمی ───
     old = getattr(instance, '_old_state', None)
     if not old:
         return
@@ -154,7 +146,6 @@ def log_invoice_save(sender, instance, created, **kwargs):
         old_val = getattr(old, field, None)
         new_val = getattr(instance, field, None)
 
-        # ⭐ مقایسه‌ی امن با نرمال‌سازی type
         if _values_equal(old_val, new_val):
             continue
 
@@ -236,14 +227,36 @@ def log_item_save(sender, instance, created, **kwargs):
 
 
 # ═══════════════════════════════════════════════════════════
-# InvoiceItem: post_delete — ثبت لاگ
+# Invoice & InvoiceItem: مدیریت حذف (اصلاح نهایی)
 # ═══════════════════════════════════════════════════════════
+
+# ⭐ یک متغیر سراسری برای نگه‌داشتن فاکتورهایی که در حال حذف هستند
+_DELETING_INVOICES = set()
+
+@receiver(pre_delete, sender=Invoice)
+def mark_invoice_deleting(sender, instance, **kwargs):
+    """قبل از حذف فاکتور، آیدی آن را در لیست حذف قرار می‌دهیم"""
+    _DELETING_INVOICES.add(instance.pk)
+
+@receiver(post_delete, sender=Invoice)
+def unmark_invoice_deleting(sender, instance, **kwargs):
+    """بعد از حذف فاکتور، آیدی آن را از لیست حذف خارج می‌کنیم"""
+    _DELETING_INVOICES.discard(instance.pk)
 
 @receiver(post_delete, sender=InvoiceItem)
 def log_item_delete(sender, instance, **kwargs):
+    # ⭐ اگر فاکتور مربوطه در حال حذف باشد، اصلاً لاگ نمی‌سازیم
+    if instance.invoice_id in _DELETING_INVOICES:
+        return
+
     user = get_current_user()
+    
+    # چک اضافی برای اطمینان از وجود فاکتور در دیتابیس
+    if not Invoice.objects.filter(pk=instance.invoice_id).exists():
+        return
+        
     InvoiceLog.objects.create(
-        invoice=instance.invoice,
+        invoice_id=instance.invoice_id,
         user=user,
         action=InvoiceLog.ACTION_ITEM_REMOVED,
         description=(

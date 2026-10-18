@@ -11,6 +11,8 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(
         next_page='accounts:login'
     ), name='logout'),
+    # تغییر رمز توسط خود کاربر
+    path('password-change/', views.CustomPasswordChangeView.as_view(), name='password_change'),
 
     # 2FA — فاز ۸.۳
     path('2fa/setup/', twofa_views.twofa_setup, name='twofa_setup'),

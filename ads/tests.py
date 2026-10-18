@@ -250,8 +250,8 @@ class AdTestCase(TestCase):
         )
         self.client.force_login(self.admin)
         r = self.client.get(reverse('ads:list'))
-        self.assertContains(r, 'A1')
-        self.assertContains(r, 'A2')
+        self.assertContains(r, 'A۱')
+        self.assertContains(r, 'A۲')
 
     # ─── سرچ ───
     def test_search_by_ad_number(self):

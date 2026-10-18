@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-
+{% load fa_numbers %}
 {% block title %}تماس‌ها{% endblock %}
 
 {% block content %}
@@ -202,8 +202,8 @@
                     {{ call.called_by.get_full_name|default:call.called_by.username|default:"—" }}
                 </td>
                 <td class="px-3 py-3 text-right text-gray-500 text-xs whitespace-nowrap">
-                    <div>{{ call.call_date|date:"Y/m/d" }}</div>
-                    <div class="text-gray-400 font-mono mt-0.5" dir="ltr">{{ call.call_date|date:"H:i" }}</div>
+                    <div>{{ call.call_date|jdate:"Y/m/d" }}</div>
+                    <div class="text-gray-400 font-mono mt-0.5" dir="ltr">{{ call.call_date|jdate:"H:i" }}</div>
                 </td>
                 <td class="px-3 py-3 text-right whitespace-nowrap">
                     <div class="flex items-center gap-1">

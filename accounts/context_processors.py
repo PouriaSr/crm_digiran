@@ -9,7 +9,7 @@ from .permissions import (
     ROLE_ACCOUNTANT,
     ROLE_OPERATOR,
 )
-
+from .notifications import get_notifications # ⭐ اضافه شد
 
 def permissions_context(request):
     user = request.user
@@ -25,9 +25,12 @@ def permissions_context(request):
             'is_support': False,
             'is_accountant': False,
             'is_operator': False,
+            'notifications': [],
+            'notifications_count': 0,
         }
 
     role = get_user_role(user)
+    notifications = get_notifications(user)
 
     return {
         'user_permissions': get_user_permissions(user),
@@ -39,4 +42,6 @@ def permissions_context(request):
         'is_support': role == ROLE_SUPPORT,
         'is_accountant': role == ROLE_ACCOUNTANT,
         'is_operator': role == ROLE_OPERATOR,
+        'notifications': notifications, # ⭐ اضافه شد
+        'notifications_count': len(notifications), # ⭐ اضافه شد
     }

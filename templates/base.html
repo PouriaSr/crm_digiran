@@ -135,6 +135,15 @@
             background-color: #eff6ff !important;
             color: #1d4ed8 !important;
         }
+
+        /* ═══════════════════════════════════════════════════════════
+           ۳. وسط‌چین کردن تمام جداول کل سیستم
+           ═══════════════════════════════════════════════════════════ */
+        table th, 
+        table td {
+            text-align: center !important;
+            vertical-align: middle !important;
+        }
     </style>
 
     {% block extra_head %}{% endblock %}
@@ -356,6 +365,48 @@
             </form>
 
             <div class="flex items-center gap-4">
+                <!-- ⭐ سیستم اعلان‌ها ⭐ -->
+                <div class="relative" x-data="{ notifOpen: false }">
+                    <button @click="notifOpen = !notifOpen" class="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition focus:outline-none">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                        {% if notifications_count > 0 %}
+                        <span class="absolute top-1 right-1 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-red-500 rounded-full">{{ notifications_count }}</span>
+                        {% endif %}
+                    </button>
+
+                    <!-- منوی باز شونده اعلان‌ها -->
+                    <div x-show="notifOpen" @click.away="notifOpen = false" x-cloak
+                         class="absolute left-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden"
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 translate-y-2"
+                         x-transition:enter-end="opacity-100 translate-y-0">
+                        <div class="px-4 py-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                            <h3 class="font-bold text-gray-800 text-sm">اعلان‌های شما</h3>
+                            <span class="text-xs text-gray-500">{{ notifications_count }} مورد جدید</span>
+                        </div>
+                        <div class="max-h-80 overflow-y-auto">
+                            {% for notif in notifications %}
+                            <a href="{{ notif.url }}" class="flex items-start gap-3 p-4 hover:bg-gray-50 border-b border-gray-50 last:border-0 transition">
+                                <div class="w-8 h-8 rounded-full {{ notif.bg }} flex items-center justify-center text-sm flex-shrink-0">
+                                    {{ notif.icon }}
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm text-gray-800 leading-relaxed">{{ notif.title }}</p>
+                                </div>
+                            </a>
+                            {% empty %}
+                            <div class="p-8 text-center flex flex-col items-center justify-center">
+                                <div class="text-4xl mb-2">🎉</div>
+                                <p class="text-gray-500 text-sm">هیچ اعلان جدیدی ندارید!</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <!-- ⭐ پایان سیستم اعلان‌ها ⭐ -->
+
                 <a href="{% url 'hr:my_profile' %}"
                    class="flex items-center gap-2 hover:bg-gray-100 rounded-lg px-2 py-1 transition"
                    title="مشاهده پروفایل من">

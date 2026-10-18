@@ -4,6 +4,8 @@
 
 {% block content %}
 
+{% load fa_numbers %}
+
 <div class="flex justify-between items-center mb-6">
     <a href="{% url 'hr:employee_list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست</a>
     <div class="flex gap-2 flex-wrap">
@@ -85,7 +87,7 @@
             </div>
             <div>
                 <div class="text-gray-500 text-sm">تاریخ استخدام</div>
-                <div class="text-sm font-bold text-gray-800" dir="ltr">{{ employee.hire_date|date:"Y/m/d" }}</div>
+                <div class="text-sm font-bold text-gray-800" dir="ltr">{{ employee.hire_date|jdate:"Y/m/d" }}</div>
             </div>
         </div>
     </div>
@@ -110,7 +112,7 @@
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">تاریخ تولد:</dt>
-                <dd class="text-gray-800" dir="ltr">{{ employee.birth_date|date:"Y/m/d"|default:"—" }}</dd>
+                <dd class="text-gray-800" dir="ltr">{{ employee.birth_date|jdate:"Y/m/d"|default:"—" }}</dd>
             </div>
             <div>
                 <dt class="text-gray-500 mb-1">آدرس:</dt>
@@ -180,7 +182,7 @@
                 </td>
                 <td class="px-6 py-3 text-right text-xs">{{ task.get_status_display }}</td>
                 <td class="px-6 py-3 text-right text-xs {% if task.is_overdue %}text-red-600 font-bold{% else %}text-gray-500{% endif %}" dir="ltr">
-                    {{ task.due_date|date:"Y/m/d"|default:"—" }}
+                    {{ task.due_date|jdate:"Y/m/d"|default:"—" }}
                 </td>
                 <td class="px-6 py-3 text-left">
                     <a href="{% url 'hr:task_detail' task.pk %}" class="text-xs text-blue-600 hover:underline">مشاهده</a>
