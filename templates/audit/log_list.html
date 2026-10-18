@@ -2,6 +2,7 @@
 {% load query_helpers %}
 {% load fa_numbers %}
 {% block title %}لاگ سیستم{% endblock %}
+{% block mobile_title %}لاگ سیستم{% endblock %}
 
 {% block content %}
 
@@ -271,7 +272,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const dailyLabels = {{ daily_labels_json|safe }};
     const dailyData = {{ daily_data_json|safe }};
 
-    new ApexCharts(document.querySelector("#dailyActivityChart"), {
+    new ApexCharts(document.querySelector("#dailyActivityChart"), window.apexMobileMerge({
         chart: {
             type: 'area',
             height: 260,
@@ -297,13 +298,13 @@ document.addEventListener('DOMContentLoaded', function () {
         tooltip: {
             y: { formatter: (val) => val + ' رویداد' },
         },
-    }).render();
+    })).render();
 
     // ═══ توزیع رویدادها ═══
     const actionLabels = {{ action_labels_json|safe }};
     const actionData = {{ action_data_json|safe }};
 
-    new ApexCharts(document.querySelector("#actionDistChart"), {
+    new ApexCharts(document.querySelector("#actionDistChart"), window.apexMobileMerge({
         chart: {
             type: 'donut',
             height: 240,
@@ -342,7 +343,7 @@ document.addEventListener('DOMContentLoaded', function () {
         tooltip: {
             y: { formatter: (val) => val + ' رویداد' },
         },
-    }).render();
+    })).render();
 
 });
 </script>

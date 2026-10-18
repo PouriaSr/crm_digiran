@@ -2,18 +2,19 @@
 {% load fa_numbers %}
 
 {% block title %}گزارش‌های BI{% endblock %}
+{% block mobile_title %}گزارش BI{% endblock %}
 
 {% block content %}
 
 <!-- ═══ سربرگ ═══ -->
-<div class="flex justify-between items-center mb-6">
+<div class="page-header">
     <div>
         <h1 class="text-2xl font-bold text-gray-800">گزارش‌های تحلیلی (BI)</h1>
         <p class="text-sm text-gray-500 mt-1">
             تحلیل عمیق فروش، مشتریان و عملکرد کارمندان — {{ today }}
         </p>
     </div>
-    <div class="flex gap-2">
+    <div class="action-buttons flex gap-2">
         <a href="{% url 'dashboard:bi_export' %}{% if filter_user_id %}?employee={{ filter_user_id }}{% endif %}"
            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,7 +116,10 @@
         ساعت‌های طلایی تماس‌گیری
     </h2>
     <p class="text-xs text-gray-400 mb-4">رنگ‌های تیره‌تر = تماس‌های بیشتر در آن ساعت و روز</p>
-    <div id="heatmapChart" style="min-height: 340px;"></div>
+    <div class="overflow-x-auto -mx-4 md:mx-0 px-4 md:px-0 pb-2">
+        <div id="heatmapChart" style="min-width: 720px; min-height: 340px;"></div>
+    </div>
+    <p class="text-xs text-gray-400 mt-2 text-center md:hidden">نمودار را افقی اسکرول کنید</p>
 </div>
 
 <!-- ═══ نرخ تبدیل منابع جذب ═══ -->
@@ -349,7 +353,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const trendCurrent = {{ trend_current_json|safe }};
     const trendPrevious = {{ trend_previous_json|safe }};
 
-    new ApexCharts(document.querySelector("#trendChart"), {
+    new ApexCharts(document.querySelector("#trendChart"), window.apexMobileMerge({
         chart: { type: 'area', height: 340, fontFamily: 'Vazirmatn', toolbar: { show: false } },
         series: [
             { name: 'سال جاری', data: trendCurrent },
@@ -374,12 +378,12 @@ document.addEventListener('DOMContentLoaded', function () {
             y: { formatter: (val) => Number(val).toLocaleString('en-US') + ' تومان' },
         },
         grid: { borderColor: '#e5e7eb', strokeDashArray: 3 },
-    }).render();
+    })).render();
 
     // ═══ ۲. Heatmap ساعت‌های طلایی ═══
     const heatmapSeries = {{ heatmap_series_json|safe }};
 
-    new ApexCharts(document.querySelector("#heatmapChart"), {
+    new ApexCharts(document.querySelector("#heatmapChart"), window.apexMobileMerge({
         chart: { type: 'heatmap', height: 360, fontFamily: 'Vazirmatn', toolbar: { show: false } },
         series: heatmapSeries,
         dataLabels: { enabled: false },
@@ -408,7 +412,7 @@ document.addEventListener('DOMContentLoaded', function () {
         tooltip: {
             y: { formatter: (val) => val + ' تماس' },
         },
-    }).render();
+    })).render();
 
 });
 </script>

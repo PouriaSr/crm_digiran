@@ -1,21 +1,22 @@
 {% extends 'base.html' %}
 {% load fa_numbers %}
 {% block title %}حضور و غیاب{% endblock %}
+{% block mobile_title %}حضور و غیاب{% endblock %}
 
 {% block content %}
 
-<div class="flex justify-between items-center mb-6">
+<div class="page-header">
     <div>
         <h1 class="text-2xl font-bold text-gray-800">حضور و غیاب</h1>
         <p class="text-sm text-gray-500 mt-1">ثبت و مدیریت حضور کارمندان</p>
     </div>
-    <div class="flex gap-2">
+    <div class="action-buttons action-buttons-hidden-mobile flex gap-2">
         <a href="{% url 'hr:attendance_report' %}"
-           class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 text-sm">
-            📊 گزارش ماهانه
+           class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 text-sm">
+            گزارش ماهانه
         </a>
         <a href="{% url 'hr:attendance_create' %}"
-           class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm">
+           class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-sm">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
@@ -24,7 +25,7 @@
     </div>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+<div class="stats-grid stats-grid-4">
     <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-blue-500">
         <div class="text-gray-500 text-sm">ثبت‌شده امروز</div>
         <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.today }}</div>
@@ -44,16 +45,16 @@
 </div>
 
 <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
-    <form method="get" class="flex flex-wrap gap-3 items-center">
+    <form method="get" class="filters-row">
         <div>
-            <input type="text" name="from" value="{{ from_date }}" placeholder="از تاریخ ۱۴۰۵/۰۷/۰۱"
+            <input type="text" name="from" value="{{ from_date }}" placeholder="از تاریخ 1405/07/01"
                    data-jdp data-jdp-time="false"
-                   class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
         <div>
-            <input type="text" name="to" value="{{ to_date }}" placeholder="تا تاریخ ۱۴۰۵/۰۷/۳۰"
+            <input type="text" name="to" value="{{ to_date }}" placeholder="تا تاریخ 1405/07/30"
                    data-jdp data-jdp-time="false"
-                   class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
         <select name="employee" class="px-4 py-2 border border-gray-300 rounded-lg text-sm">
             <option value="">همه کارمندان</option>
@@ -68,7 +69,7 @@
 </div>
 
 <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
-    <table class="w-full text-sm">
+    <table class="responsive-table w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr class="text-gray-600">
                 <th class="text-right px-4 py-3 font-medium">کارمند</th>
@@ -84,11 +85,11 @@
             {% for att in page_obj %}
             <tr class="hover:bg-gray-50">
                 <td class="px-4 py-3 text-right font-medium">{{ att.employee.full_name }}</td>
-                <td class="px-4 py-3 text-right text-xs" dir="ltr">{{ att.date|jdate:"Y/m/d" }}</td>
-                <td class="px-4 py-3 text-right font-mono text-xs" dir="ltr">{{ att.check_in|time:"H:i"|default:"—" }}</td>
-                <td class="px-4 py-3 text-right font-mono text-xs" dir="ltr">{{ att.check_out|time:"H:i"|default:"—" }}</td>
-                <td class="px-4 py-3 text-right text-xs">{{ att.work_hours_display }}</td>
-                <td class="px-4 py-3 text-right">
+                <td class="px-4 py-3 text-right text-xs" data-label="تاریخ" dir="ltr">{{ att.date|jdate:"Y/m/d" }}</td>
+                <td class="px-4 py-3 text-right font-mono text-xs" data-label="ورود" dir="ltr">{{ att.check_in|time:"H:i"|default:"--" }}</td>
+                <td class="px-4 py-3 text-right font-mono text-xs" data-label="خروج" dir="ltr">{{ att.check_out|time:"H:i"|default:"--" }}</td>
+                <td class="px-4 py-3 text-right text-xs" data-label="ساعت کاری">{{ att.work_hours_display }}</td>
+                <td class="px-4 py-3 text-right" data-label="وضعیت">
                     {% if att.status == 'present' %}<span class="px-2.5 py-1 rounded-full text-xs bg-green-100 text-green-700">حاضر</span>
                     {% elif att.status == 'late' %}<span class="px-2.5 py-1 rounded-full text-xs bg-yellow-100 text-yellow-700">تاخیر</span>
                     {% elif att.status == 'absent' %}<span class="px-2.5 py-1 rounded-full text-xs bg-red-100 text-red-700">غایب</span>
@@ -115,4 +116,14 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block fab %}
+{% if 'hr.attendance' in user_permissions %}
+<a href="{% url 'hr:attendance_create' %}" class="app-fab" title="ثبت حضور" aria-label="ثبت حضور">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+    </svg>
+</a>
+{% endif %}
 {% endblock %}

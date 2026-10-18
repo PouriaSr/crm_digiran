@@ -1,28 +1,31 @@
 {% extends 'base.html' %}
 
 {% block title %}پرسنل{% endblock %}
+{% block mobile_title %}پرسنل{% endblock %}
 
 {% block content %}
 
 {% load fa_numbers %}
 
-<div class="flex justify-between items-center mb-6">
+<div class="page-header">
     <div>
         <h1 class="text-2xl font-bold text-gray-800">پرسنل</h1>
         <p class="text-sm text-gray-500 mt-1">مدیریت کارمندان و تیم</p>
     </div>
     {% if 'hr.manage_employees' in user_permissions %}
-    <a href="{% url 'hr:employee_create' %}"
-       class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-        </svg>
-        کارمند جدید
-    </a>
+    <div class="action-buttons action-buttons-hidden-mobile flex gap-2">
+        <a href="{% url 'hr:employee_create' %}"
+           class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            کارمند جدید
+        </a>
+    </div>
     {% endif %}
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+<div class="stats-grid stats-grid-3">
     <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-blue-500">
         <div class="text-gray-500 text-sm">کل کارمندان</div>
         <div class="text-2xl font-bold text-gray-800 mt-1">{{ stats.total }}</div>
@@ -38,7 +41,7 @@
 </div>
 
 <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
-    <form method="get" class="flex flex-wrap gap-3 items-center">
+    <form method="get" class="filters-row">
         <div class="flex-1 min-w-[200px]">
             <input type="text" name="q" value="{{ search }}"
                    placeholder="جستجو نام، موبایل یا کد ملی..."
@@ -63,7 +66,7 @@
 </div>
 
 <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
-    <table class="w-full text-sm">
+    <table class="responsive-table w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr class="text-gray-600">
                 <th class="text-right px-4 py-3 font-medium">کارمند</th>
@@ -89,17 +92,17 @@
                         </div>
                     </div>
                 </td>
-                <td class="px-4 py-3 text-right text-gray-600 text-xs">{{ emp.get_position_display }}</td>
-                <td class="px-4 py-3 text-right text-gray-600 font-mono text-xs"><span dir="ltr">{{ emp.mobile|default:"—" }}</span></td>
-                <td class="px-4 py-3 text-right">
+                <td class="px-4 py-3 text-right text-gray-600 text-xs" data-label="سمت">{{ emp.get_position_display }}</td>
+                <td class="px-4 py-3 text-right text-gray-600 font-mono text-xs" data-label="موبایل"><span dir="ltr">{{ emp.mobile|default:"--" }}</span></td>
+                <td class="px-4 py-3 text-right" data-label="وظایف باز">
                     {% if emp.open_tasks_count > 0 %}
                         <span class="px-2.5 py-1 rounded-full text-xs bg-blue-100 text-blue-700">{{ emp.open_tasks_count }} وظیفه</span>
                     {% else %}
-                        <span class="text-xs text-gray-300">—</span>
+                        <span class="text-xs text-gray-300">--</span>
                     {% endif %}
                 </td>
-                <td class="px-4 py-3 text-right text-gray-500 text-xs" dir="ltr">{{ emp.hire_date|jdate:"Y/m/d" }}</td>
-                <td class="px-4 py-3 text-right">
+                <td class="px-4 py-3 text-right text-gray-500 text-xs" data-label="تاریخ استخدام" dir="ltr">{{ emp.hire_date|jdate:"Y/m/d" }}</td>
+                <td class="px-4 py-3 text-right" data-label="وضعیت">
                     {% if emp.is_active %}
                         <span class="px-2.5 py-1 rounded-full text-xs bg-green-100 text-green-700">فعال</span>
                     {% else %}
@@ -128,4 +131,14 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block fab %}
+{% if 'hr.manage_employees' in user_permissions %}
+<a href="{% url 'hr:employee_create' %}" class="app-fab" title="کارمند جدید" aria-label="کارمند جدید">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+    </svg>
+</a>
+{% endif %}
 {% endblock %}

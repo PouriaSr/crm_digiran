@@ -2,28 +2,30 @@
 {% load fa_numbers %}
 {% load query_helpers %}
 
+{% block mobile_title %}تبلیغات{% endblock %}
+
 {% block content %}
 <div class="p-4 md:p-6" dir="rtl">
 
-  <!-- هدر صفحه -->
-  <div class="flex items-center justify-between mb-6">
+  <div class="page-header">
     <div>
-      <h1 class="text-2xl font-bold text-gray-800">📢 مدیریت تبلیغات</h1>
+      <h1 class="text-2xl font-bold text-gray-800">مدیریت تبلیغات</h1>
       <p class="text-sm text-gray-500 mt-1">ثبت و پیگیری تبلیغات در پلتفرم‌های مختلف</p>
     </div>
     {% if can_create %}
-    <a href="{% url 'ads:create' %}"
-       class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-      </svg>
-      ثبت تبلیغ جدید
-    </a>
+    <div class="action-buttons action-buttons-hidden-mobile flex gap-2">
+      <a href="{% url 'ads:create' %}"
+         class="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+        </svg>
+        ثبت تبلیغ جدید
+      </a>
+    </div>
     {% endif %}
   </div>
 
-  <!-- کارت‌های آمار -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="stats-grid stats-grid-4">
     <div class="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
       <div>
         <p class="text-xs text-gray-500 mb-1">کل تبلیغات</p>
@@ -73,10 +75,9 @@
     </div>
   </div>
 
-  <!-- سرچ + فیلتر -->
   <form method="get" class="bg-white rounded-xl shadow-sm p-4 mb-6">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-      <div class="md:col-span-2">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:items-end">
+      <div class="sm:col-span-2">
         <input type="text" name="q" value="{{ q }}"
                placeholder="جستجو: شماره آگهی، عنوان، فرآیند، منبع، محصول..."
                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
@@ -91,7 +92,7 @@
         </select>
       </div>
       {% if is_admin %}
-      <div>
+      <div class="sm:col-span-2 md:col-span-1">
         <select name="user"
                 class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
           <option value="">همه کارشناسان</option>
@@ -102,21 +103,20 @@
       </div>
       {% endif %}
     </div>
-    <div class="flex gap-2 mt-3">
+    <div class="flex flex-col sm:flex-row gap-2 mt-3">
       <button type="submit"
-              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+              class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
         اعمال فیلتر
       </button>
       <a href="{% url 'ads:list' %}"
-         class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm">
+         class="w-full sm:w-auto text-center bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm">
         پاک کردن
       </a>
     </div>
   </form>
 
-  <!-- جدول اصلی تبلیغات -->
-  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-    <table class="w-full text-sm">
+  <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+    <table class="responsive-table w-full text-sm">
       <thead class="bg-gray-50 text-gray-600 border-b border-gray-100">
         <tr>
           <th class="px-4 py-3 text-center font-medium">#</th>
@@ -134,27 +134,23 @@
       <tbody class="divide-y divide-gray-100">
         {% for ad in page_obj %}
         <tr class="hover:bg-gray-50 transition">
-          <td class="px-4 py-3 text-center text-gray-500">{{ forloop.counter0|add:page_obj.start_index|fa_num }}</td>
-          <td class="px-4 py-3 text-center font-medium text-gray-800">{{ ad.platform.name }}</td>
-          <td class="px-4 py-3 text-center text-gray-600">{{ ad.process.name }}</td>
-          <td class="px-4 py-3 text-center text-gray-800 font-medium">{{ ad.cost|fa_num }} تومان</td>
-          <td class="px-4 py-3 text-center text-gray-600" dir="ltr">{{ ad.source.phone_number }}</td>
-          <td class="px-4 py-3 text-center text-gray-600">{% if ad.product %}{{ ad.product.name }}{% else %}—{% endif %}</td>
-          <td class="px-4 py-3 text-center text-gray-600" dir="ltr">{{ ad.ad_number }}</td>
-          <td class="px-4 py-3 text-center text-gray-600">{{ ad.created_by.username }}</td>
-          <td class="px-4 py-3 text-center text-gray-500 text-xs">{{ ad.created_at|jdate:"Y/m/d H:i" }}</td>
+          <td class="px-4 py-3 text-center text-gray-500" data-label="ردیف">{{ forloop.counter0|add:page_obj.start_index|fa_num }}</td>
+          <td class="px-4 py-3 text-center font-medium text-gray-800" data-label="عنوان">{{ ad.platform.name }}</td>
+          <td class="px-4 py-3 text-center text-gray-600" data-label="فرآیند">{{ ad.process.name }}</td>
+          <td class="px-4 py-3 text-center text-gray-800 font-medium" data-label="هزینه">{{ ad.cost|fa_num }} تومان</td>
+          <td class="px-4 py-3 text-center text-gray-600" data-label="منبع" dir="ltr">{{ ad.source.phone_number }}</td>
+          <td class="px-4 py-3 text-center text-gray-600" data-label="محصول">{% if ad.product %}{{ ad.product.name }}{% else %}--{% endif %}</td>
+          <td class="px-4 py-3 text-center text-gray-600" data-label="شماره آگهی" dir="ltr">{{ ad.ad_number }}</td>
+          <td class="px-4 py-3 text-center text-gray-600" data-label="کارشناس">{{ ad.created_by.username }}</td>
+          <td class="px-4 py-3 text-center text-gray-500 text-xs" data-label="تاریخ">{{ ad.created_at|jdate:"Y/m/d H:i" }}</td>
           <td class="px-4 py-3 text-center">
-            
-            <!-- دکمه ویرایش و جزئیات (آبی) -->
             {% if can_edit %}
-                <a href="{% url 'ads:edit' ad.pk %}" class="text-blue-600 hover:text-blue-800 text-xs font-medium mr-2">ویرایش و جزئیات</a>
+                <a href="{% url 'ads:edit' ad.pk %}" class="text-blue-600 hover:text-blue-800 text-xs font-medium">ویرایش</a>
             {% elif can_view %}
                 <a href="{% url 'ads:edit' ad.pk %}" class="text-blue-600 hover:text-blue-800 text-xs font-medium">مشاهده</a>
             {% endif %}
-
-            <!-- دکمه حذف (قرمز) -->
             {% if can_delete %}
-              <form method="post" action="{% url 'ads:delete' ad.pk %}" class="inline mr-2" onsubmit="return confirm('مطمئنید؟');">
+              <form method="post" action="{% url 'ads:delete' ad.pk %}" class="inline" onsubmit="return confirm('مطمئنید؟');">
                 {% csrf_token %}
                 <button type="submit" class="text-red-600 hover:text-red-800 text-xs font-medium">حذف</button>
               </form>
@@ -172,9 +168,8 @@
     </table>
   </div>
 
-  <!-- Pagination -->
   {% if page_obj.has_other_pages %}
-  <div class="flex items-center justify-center gap-1 mt-6">
+  <div class="flex items-center justify-center gap-1 mt-6 flex-wrap">
     {% if page_obj.has_previous %}
       <a href="?{% querystring page=page_obj.previous_page_number %}"
          class="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-sm hover:bg-gray-50">قبلی</a>
@@ -194,7 +189,6 @@
   </div>
   {% endif %}
 
-  <!-- لینک‌های مدیریت تعاریف -->
   {% if can_manage_definitions %}
   <div class="mt-6 bg-white rounded-xl shadow-sm p-4">
     <div class="flex items-center gap-2 mb-3">
@@ -212,17 +206,16 @@
   </div>
   {% endif %}
 
-  <!-- گزارش تفصیلی -->
   <div id="report" class="mt-8">
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
       <div>
-        <h2 class="text-xl font-bold text-gray-800">📊 گزارش تفصیلی</h2>
+        <h2 class="text-xl font-bold text-gray-800">گزارش تفصیلی</h2>
         <p class="text-sm text-gray-500 mt-1">
           {% if is_admin %}گزارش همه‌ی کارشناسان با فیلتر{% else %}گزارش عملکرد شما{% endif %}
         </p>
       </div>
       <a href="{% url 'ads:export_report' %}?{{ request.GET.urlencode }}"
-         class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+         class="inline-flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
         </svg>
@@ -230,10 +223,9 @@
       </a>
     </div>
 
-    <!-- فیلترهای گزارش -->
     <form method="get" action="{% url 'ads:list' %}#report"
           class="bg-white rounded-xl shadow-sm p-4 mb-4">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:items-end">
         <div>
           <label class="block text-xs font-medium text-gray-600 mb-1">از تاریخ</label>
           <input type="text" name="report_from" value="{{ report.from }}"
@@ -247,7 +239,7 @@
                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
         </div>
         {% if is_admin %}
-        <div>
+        <div class="sm:col-span-2 md:col-span-1">
           <label class="block text-xs font-medium text-gray-600 mb-1">کارشناس</label>
           <select name="report_user"
                   class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
@@ -258,21 +250,20 @@
           </select>
         </div>
         {% endif %}
-        <div class="flex gap-2">
+        <div class="flex gap-2 sm:col-span-2 md:col-span-1">
           <button type="submit"
-                  class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
-            اعمال فیلتر
+                  class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+            اعمال
           </button>
           <a href="{% url 'ads:list' %}#report"
-             class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm">
+             class="flex-1 text-center bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm">
             پاک کردن
           </a>
         </div>
       </div>
     </form>
 
-    <!-- کارت‌های خلاصه -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <div class="grid grid-cols-2 gap-4 mb-4">
       <div class="bg-white rounded-xl shadow-sm p-4">
         <p class="text-xs text-gray-500 mb-1">تعداد کل در بازه</p>
         <p class="text-2xl font-bold text-gray-800">{{ report.summary.count|fa_num }}</p>
@@ -283,7 +274,6 @@
       </div>
     </div>
 
-    <!-- نمودار -->
     {% if report.chart_values %}
     <div class="bg-white rounded-xl shadow-sm p-5 mb-4">
       <h3 class="text-sm font-medium text-gray-700 mb-4 text-center">هزینه بر اساس پلتفرم (تومان)</h3>
@@ -291,9 +281,8 @@
     </div>
     {% endif %}
 
-    <!-- جدول تفکیک پلتفرم -->
     {% if report.by_platform %}
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-4">
+    <div class="bg-white rounded-xl shadow-sm overflow-x-auto mb-4">
       <div class="px-4 py-3 border-b border-gray-100">
         <h3 class="text-sm font-medium text-gray-700 text-center">تفکیک بر اساس پلتفرم</h3>
       </div>
@@ -318,9 +307,8 @@
     </div>
     {% endif %}
 
-    <!-- جدول تفکیک کارشناس (ادمین) -->
     {% if is_admin and report.by_user %}
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
       <div class="px-4 py-3 border-b border-gray-100">
         <h3 class="text-sm font-medium text-gray-700 text-center">تفکیک بر اساس کارشناس</h3>
       </div>
@@ -347,7 +335,6 @@
 
   </div>
 
-  <!-- Chart Script -->
   {% if report.chart_values %}
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <script>
@@ -355,17 +342,9 @@
     const el = document.querySelector('#adsReportChart');
     if (!el || typeof ApexCharts === 'undefined') return;
 
-    new ApexCharts(el, {
-      chart: {
-        type: 'bar',
-        height: 300,
-        fontFamily: 'inherit',
-        toolbar: { show: false },
-      },
-      series: [{
-        name: 'هزینه (تومان)',
-        data: {{ report.chart_values|safe }},
-      }],
+    new ApexCharts(el, window.apexMobileMerge({
+      chart: { type: 'bar', height: 300, fontFamily: 'inherit', toolbar: { show: false } },
+      series: [{ name: 'هزینه (تومان)', data: {{ report.chart_values|safe }} }],
       xaxis: {
         categories: {{ report.chart_labels|safe }},
         labels: { style: { fontFamily: 'inherit' } },
@@ -377,17 +356,23 @@
         },
       },
       colors: ['#2563EB'],
-      plotOptions: {
-        bar: { borderRadius: 6, columnWidth: '50%' },
-      },
+      plotOptions: { bar: { borderRadius: 6, columnWidth: '50%' } },
       dataLabels: { enabled: false },
-      tooltip: {
-        y: { formatter: v => v.toLocaleString('fa-IR') + ' تومان' },
-      },
-    }).render();
+      tooltip: { y: { formatter: v => v.toLocaleString('fa-IR') + ' تومان' } },
+    })).render();
   });
   </script>
   {% endif %}
 
 </div>
-{% endblock %}  
+{% endblock %}
+
+{% block fab %}
+{% if can_create %}
+<a href="{% url 'ads:create' %}" class="app-fab" title="تبلیغ جدید" aria-label="تبلیغ جدید">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+    </svg>
+</a>
+{% endif %}
+{% endblock %}

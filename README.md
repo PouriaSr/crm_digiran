@@ -510,3 +510,9 @@ DEBUG=False SECRET_KEY='<real-key>' python manage.py check --deploy
 ## مجوز
 
 این پروژه اختصاصی است. تمامی حقوق محفوظ است.
+## قبل از Production
+
+1. `.env` را روی سرور با `DEBUG=False` و `SECRET_KEY` واقعی تنظیم کنید.
+2. `python manage.py check --deploy` باید `0 issues` بدهد.
+3. `python manage.py backup_db` قبل از هر migration.
+4. HTTPS واقعی (Let's Encrypt) قبل از `SECURE_SSL_REDIRECT=True`.
