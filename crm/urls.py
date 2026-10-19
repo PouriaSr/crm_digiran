@@ -1,7 +1,10 @@
 from django.contrib import admin
 from django.urls import path, include
 
+from crm.duplicate_api import check_duplicate
+
 urlpatterns = [
+    path('api/check-duplicate/', check_duplicate, name='check_duplicate'),
     path('admin/', admin.site.urls),
     path('', include('dashboard.urls')),
     path('accounts/', include('accounts.urls')),

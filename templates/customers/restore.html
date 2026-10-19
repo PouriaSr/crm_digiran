@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}بازگردانی مشتری{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto">
+    <div class="bg-white rounded-xl shadow-sm p-8 text-center">
+        <div class="w-16 h-16 bg-green-100 rounded-full mx-auto flex items-center justify-center mb-4">
+            <span class="text-3xl">♻️</span>
+        </div>
+        <h1 class="text-xl font-bold text-gray-800 mb-2">بازگردانی مشتری؟</h1>
+        <p class="text-gray-500 text-sm mb-6">
+            آیا می‌خواهید «<strong>{{ customer.name }}</strong>» را به لیست فعال بازگردانید؟
+        </p>
+        <div class="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded-lg my-4 text-xs text-right">
+            پس از بازگردانی، مشتری در لیست اصلی نمایش داده می‌شود.
+        </div>
+        <form method="post" class="flex justify-center gap-3 mt-6">
+            {% csrf_token %}
+            <button type="submit" class="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">
+                بله، بازگردان
+            </button>
+            <a href="{% url 'customers:inactive_list' %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+                انصراف
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

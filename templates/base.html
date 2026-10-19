@@ -779,7 +779,109 @@ window.apexMobileMerge = function (options) {
             }
         }
 
+    
+        /* ============================================================
+           ADVANCED PERMISSIONS TABLE — Mobile Card Layout
+           ============================================================ */
+        @media (max-width: 767px) {
+            .perm-table,
+            .perm-table tbody {
+                display: block;
+                width: 100%;
+                background: transparent !important;
+                box-shadow: none !important;
+            }
+
+            .perm-table thead {
+                display: none !important;
+            }
+
+            .perm-table tr {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr;
+                grid-template-areas:
+                    "label label"
+                    "role effective"
+                    "override override";
+                gap: 0.5rem 0.75rem;
+                background: #ffffff !important;
+                border: 1px solid #e5e7eb !important;
+                border-radius: 0.75rem !important;
+                padding: 0.875rem !important;
+                margin-bottom: 0.625rem !important;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+            }
+
+            .perm-table td {
+                display: block !important;
+                border: none !important;
+                padding: 0 !important;
+                text-align: right !important;
+            }
+
+            .perm-table td:nth-child(1) {
+                grid-area: label;
+                padding-bottom: 0.5rem !important;
+                border-bottom: 1px solid #f3f4f6 !important;
+            }
+            .perm-table td:nth-child(2) { grid-area: role; }
+            .perm-table td:nth-child(3) { grid-area: override; }
+            .perm-table td:nth-child(4) { grid-area: effective; }
+
+            .perm-table td:nth-child(1) > div:first-child,
+            .perm-table td:nth-child(1) .text-gray-700 {
+                font-weight: 600 !important;
+                font-size: 0.9375rem !important;
+                color: #111827 !important;
+                line-height: 1.35 !important;
+            }
+
+            .perm-table td:nth-child(1) .text-gray-400,
+            .perm-table td:nth-child(1) > div + div {
+                font-size: 0.75rem !important;
+                color: #6b7280 !important;
+                margin-top: 0.25rem !important;
+                line-height: 1.4 !important;
+            }
+
+            .perm-table td:nth-child(2),
+            .perm-table td:nth-child(4) {
+                display: flex !important;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 0.375rem;
+                padding: 0.375rem 0.5rem !important;
+                border-radius: 0.5rem;
+                background: #f9fafb;
+                font-size: 0.75rem;
+                font-weight: 500;
+                color: #4b5563;
+                min-height: 32px;
+            }
+
+            .perm-table td:nth-child(2)::before {
+                content: "نقش";
+                color: #9ca3af;
+                font-weight: 400;
+            }
+            .perm-table td:nth-child(4)::before {
+                content: "موثر";
+                color: #9ca3af;
+                font-weight: 400;
+            }
+
+            .perm-table td:nth-child(3) select,
+            .perm-table td:nth-child(3) > select {
+                width: 100% !important;
+                min-height: 44px !important;
+                font-size: 16px !important;
+                padding: 0.625rem 0.75rem !important;
+                border-radius: 0.625rem !important;
+            }
+        }
+
     </style>
+
 
     {% block extra_head %}{% endblock %}
 </head>
@@ -1341,6 +1443,153 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {% block extra_js %}{% endblock %}
 
+
+
+
+<!-- DuplicateCheck v2 -->
+<script>
+(function () {
+    'use strict';
+    var CHECK_URL = '{% url "check_duplicate" %}';
+    var inputErrors = new WeakMap();
+    var dirtyInputs = new WeakSet();
+    var attached = new WeakSet();
+
+    function getErrorEl(input) {
+        var el = inputErrors.get(input);
+        if (!el) {
+            el = document.createElement('div');
+            el.className = 'duplicate-error text-red-600 text-xs mt-1 font-medium flex items-start gap-1';
+            input.parentNode.appendChild(el);
+            inputErrors.set(input, el);
+        }
+        return el;
+    }
+
+    function setSubmitState(form) {
+        if (!form) return;
+        var hasErr = false;
+        form.querySelectorAll('input[data-check-duplicate]').forEach(function (i) {
+            if (dirtyInputs.has(i)) hasErr = true;
+        });
+        form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (btn) {
+            btn.disabled = hasErr;
+            btn.classList.toggle('opacity-50', hasErr);
+            btn.classList.toggle('cursor-not-allowed', hasErr);
+        });
+    }
+
+    function showError(input, msg) {
+        var el = getErrorEl(input);
+        el.innerHTML = '<span class="flex-shrink-0">&#9888;</span><span>' + msg + '</span>';
+        input.classList.add('border-red-400', 'ring-2', 'ring-red-200');
+        input.classList.remove('border-gray-300');
+        dirtyInputs.add(input);
+        setSubmitState(input.closest('form'));
+    }
+
+    function clearError(input) {
+        var el = inputErrors.get(input);
+        if (el) el.remove();
+        inputErrors.delete(input);
+        input.classList.remove('border-red-400', 'ring-2', 'ring-red-200');
+        input.classList.add('border-gray-300');
+        dirtyInputs.delete(input);
+        setSubmitState(input.closest('form'));
+    }
+
+    function attach(input) {
+        if (attached.has(input)) return;
+        if (!input.dataset || input.dataset.checkDuplicate !== '1') return;
+        attached.add(input);
+
+        var debounceId = null;
+        var lastChecked = '';
+
+        function check() {
+            var value = input.value.trim();
+            if (!value) { clearError(input); lastChecked = ''; return; }
+            if (value === lastChecked) return;
+            lastChecked = value;
+
+            var model = input.dataset.duplicateModel || '';
+            var field = input.dataset.duplicateField || input.name;
+            var excludePk = input.dataset.excludePk || '';
+
+            if (!model || !field) return;
+
+            var url = CHECK_URL
+                + '?model=' + encodeURIComponent(model)
+                + '&field=' + encodeURIComponent(field)
+                + '&value=' + encodeURIComponent(value)
+                + '&exclude_pk=' + encodeURIComponent(excludePk);
+
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (res) { return res.ok ? res.json() : null; })
+                .then(function (data) {
+                    if (!data || data.error) return;
+                    if (data.exists) {
+                        var msg = (data.label || field) + ' «' + value + '» قبلاً برای «' + data.display + '» ثبت شده';
+                        if (data.is_deleted) {
+                            msg += ' ولی آن رکورد غیرفعال است — ابتدا بازگردانی کنید.';
+                        } else {
+                            msg += ' است.';
+                        }
+                        showError(input, msg);
+                    } else {
+                        clearError(input);
+                    }
+                })
+                .catch(function () {});
+        }
+
+        input.addEventListener('input', function () {
+            clearTimeout(debounceId);
+            debounceId = setTimeout(check, 500);
+        });
+        input.addEventListener('blur', function () {
+            clearTimeout(debounceId);
+            check();
+        });
+    }
+
+    function scan(root) {
+        if (!root || root.nodeType !== 1) return;
+        if (root.matches && root.matches('input[data-check-duplicate]')) attach(root);
+        if (root.querySelectorAll) {
+            root.querySelectorAll('input[data-check-duplicate]').forEach(attach);
+        }
+    }
+
+    scan(document.body);
+
+    if (typeof MutationObserver !== 'undefined') {
+        new MutationObserver(function (mutations) {
+            mutations.forEach(function (m) {
+                m.addedNodes.forEach(function (node) {
+                    if (node.nodeType === 1) scan(node);
+                });
+            });
+        }).observe(document.body, { childList: true, subtree: true });
+    }
+
+    document.body.addEventListener('htmx:afterSwap', function (e) {
+        if (e.detail && e.detail.target) scan(e.detail.target);
+    });
+
+    document.addEventListener('submit', function (e) {
+        var form = e.target;
+        var hasErr = false;
+        form.querySelectorAll('input[data-check-duplicate]').forEach(function (i) {
+            if (dirtyInputs.has(i)) hasErr = true;
+        });
+        if (hasErr) {
+            e.preventDefault();
+            alert('لطفاً ابتدا مقادیر تکراری را اصلاح کنید.');
+        }
+    }, true);
+})();
+</script>
 
 
 </body>

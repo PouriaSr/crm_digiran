@@ -5,11 +5,17 @@ from crm.duplicate_check import (
     find_exact_match, find_similar_matches,
     normalize_digits, normalize_email, normalize_phone, normalize_text,
 )
+from crm.form_mixins import DuplicateCheckMixin
 from .models import Customer, CustomerNote
 
 
-class CustomerForm(forms.ModelForm):
+class CustomerForm(DuplicateCheckMixin, forms.ModelForm):
     """فرم مشتری — با سیستم جامع تشخیص تکراری"""
+    duplicate_model = 'customer'
+    duplicate_fields = {
+        'mobile': 'شماره تماس',
+        'national_id': 'کد ملی',
+    }
 
     birth_date = forms.CharField(
         required=False, label='تاریخ تولد',
@@ -85,18 +91,38 @@ class CustomerForm(forms.ModelForm):
 
         exclude_pk = self.instance.pk if self.instance and self.instance.pk else None
 
-        # ─── Exact blocks ───
+        # ─── Exact blocks (چک روی فعال + غیرفعال) ───
         mobile = cleaned.get('mobile')
         if mobile:
-            existing = find_exact_match(Customer, 'mobile', mobile, normalize_phone, exclude_pk)
+            existing = find_exact_match(
+                Customer, 'mobile', mobile, normalize_phone, exclude_pk,
+                manager=Customer.all_objects,
+            )
             if existing:
-                self.add_error('mobile', f'⛔ شماره تماس «{mobile}» قبلاً برای «{existing.name}» ثبت شده است.')
+                if existing.is_deleted:
+                    self.add_error(
+                        'mobile',
+                        f'⛔ شماره تماس «{mobile}» قبلاً برای «{existing.name}» ثبت شده '
+                        f'ولی آن مشتری غیرفعال شده — ابتدا از صفحه‌ی «مشتریان غیرفعال» بازگردانی کنید.'
+                    )
+                else:
+                    self.add_error(
+                        'mobile',
+                        f'⛔ شماره تماس «{mobile}» قبلاً برای «{existing.name}» ثبت شده است.'
+                    )
 
         nid = cleaned.get('national_id')
         if nid:
-            existing = find_exact_match(Customer, 'national_id', nid, normalize_digits, exclude_pk)
+            existing = find_exact_match(
+                Customer, 'national_id', nid, normalize_digits, exclude_pk,
+                manager=Customer.all_objects,
+            )
             if existing:
-                self.add_error('national_id', f'⛔ کد ملی «{nid}» قبلاً برای «{existing.name}» ثبت شده است.')
+                tag = ' (غیرفعال)' if existing.is_deleted else ''
+                self.add_error(
+                    'national_id',
+                    f'⛔ کد ملی «{nid}» قبلاً برای «{existing.name}»{tag} ثبت شده است.'
+                )
 
         # ─── Similar warnings ───
         name = cleaned.get('name')

@@ -44,6 +44,13 @@
         <a href="{% url 'customers:edit' customer.pk %}"
            class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm">✏️ ویرایش</a>
         {% endif %}
+        {% if 'customers.delete' in user_permissions %}
+        <form method="post" action="{% url 'customers:deactivate' customer.pk %}" class="inline"
+              onsubmit="return confirm('مشتری «{{ customer.name }}» غیرفعال شود؟');">
+            {% csrf_token %}
+            <button type="submit" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm">🗑 غیرفعال‌سازی</button>
+        </form>
+        {% endif %}
     </div>
 </div>
 

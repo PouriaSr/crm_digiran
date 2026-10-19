@@ -161,7 +161,15 @@ def task_list(request):
     # ⭐ متغیر today به بالای تابع منتقل شد تا در فیلترها قابل استفاده باشد
     today = timezone.now().date()
 
-    tasks = Task.objects.select_related('assigned_to', 'created_by').all()
+    can_manage = has_permission(request.user, 'hr.manage_tasks')
+    base_qs = Task.objects.all()
+    if not can_manage:
+        if hasattr(request.user, 'employee_profile'):
+            base_qs = base_qs.filter(assigned_to=request.user.employee_profile)
+        else:
+            base_qs = base_qs.none()
+
+    tasks = base_qs.select_related('assigned_to', 'created_by')
 
     search = request.GET.get('q', '').strip()
     if search:
@@ -188,10 +196,10 @@ def task_list(request):
         tasks = tasks.filter(due_date__lt=today).exclude(status__in=['done', 'cancelled'])
 
     stats = {
-        'total': Task.objects.count(),
-        'pending': Task.objects.filter(status='pending').count(),
-        'in_progress': Task.objects.filter(status='in_progress').count(),
-        'overdue': Task.objects.filter(
+        'total': base_qs.count(),
+        'pending': base_qs.filter(status='pending').count(),
+        'in_progress': base_qs.filter(status='in_progress').count(),
+        'overdue': base_qs.filter(
             due_date__lt=today
         ).exclude(status__in=['done', 'cancelled']).count(),
     }
@@ -219,6 +227,11 @@ def task_list(request):
 @require_permission('hr.view_tasks')
 def task_detail(request, pk):
     task = get_object_or_404(Task, pk=pk)
+    if not has_permission(request.user, 'hr.manage_tasks'):
+        if (not hasattr(request.user, 'employee_profile')
+                or task.assigned_to_id != request.user.employee_profile.pk):
+            messages.error(request, 'شما به این وظیفه دسترسی ندارید.')
+            return redirect('hr:task_list')
     return render(request, 'hr/task_detail.html', {'task': task})
 
 

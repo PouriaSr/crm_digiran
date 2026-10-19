@@ -116,6 +116,23 @@
             </p>
         </div>
 
+        <div class="flex flex-wrap items-center gap-2 mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div class="relative flex-1 min-w-[150px]">
+                <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input type="text" id="perm-search" placeholder="جستجوی دسترسی..."
+                       class="w-full pr-9 pl-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <button type="button" id="reset-all-btn"
+                    class="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-xs hover:bg-gray-100 font-medium whitespace-nowrap">
+                &#8634; بازنشانی همه
+            </button>
+            <span class="text-xs text-gray-400 w-full sm:w-auto">
+                نتیجه: <span id="perm-visible-count"></span>
+            </span>
+        </div>
+
         <div class="space-y-4">
             {% for category, items in form.permission_groups.items %}
             <div class="border border-gray-200 rounded-lg overflow-hidden">
@@ -123,42 +140,31 @@
                     <h4 class="text-sm font-bold text-gray-700">{{ category }}</h4>
                     <span class="text-xs text-gray-400">{{ items|length }} مورد</span>
                 </div>
-                <table class="w-full text-sm">
-                    <thead class="text-xs text-gray-500 bg-white">
-                        <tr>
-                            <th class="px-4 py-2 text-right font-medium">دسترسی</th>
-                            <th class="px-4 py-2 text-center font-medium w-32">وضعیت نقش</th>
-                            <th class="px-4 py-2 text-center font-medium w-52">بازنویسی</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        {% for item in items %}
-                        <tr class="hover:bg-gray-50/50" data-perm-key="{{ item.key }}">
-                            <td class="px-4 py-2 text-gray-700">{{ item.label }}</td>
-                            <td class="px-4 py-2 text-center" data-role-status-cell>
-                                {% if item.role_status %}
-                                    <span class="inline-flex items-center gap-1 text-xs text-green-600">
-                                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                        </svg>
-                                        دارد
-                                    </span>
-                                {% else %}
-                                    <span class="inline-flex items-center gap-1 text-xs text-gray-400">
-                                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                                        </svg>
-                                        ندارد
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <td class="px-4 py-2">
-                                {{ item.field }}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <table class="w-full text-sm perm-table">
+    <thead class="text-xs text-gray-500 bg-white border-b border-gray-100">
+        <tr>
+            <th class="px-4 py-2 text-right font-medium">دسترسی</th>
+            <th class="px-4 py-2 text-center font-medium w-20">نقش</th>
+            <th class="px-4 py-2 text-center font-medium w-44">بازنویسی</th>
+            <th class="px-4 py-2 text-center font-medium w-24">موثر</th>
+        </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+        {% for item in items %}
+        <tr class="hover:bg-gray-50/50" data-perm-key="{{ item.key }}">
+            <td class="px-4 py-2">
+                <div class="text-gray-700">{{ item.label }}</div>
+                {% if item.description %}<div class="text-xs text-gray-400 mt-0.5">{{ item.description }}</div>{% endif %}
+            </td>
+            <td class="px-4 py-2 text-center" data-role-status-cell>
+                {% if item.role_status %}<span class="text-xs text-green-600 font-bold">✓</span>{% else %}<span class="text-xs text-gray-300">✗</span>{% endif %}
+            </td>
+            <td class="px-4 py-2 text-center">{{ item.field }}</td>
+            <td class="px-4 py-2 text-center" data-effective-cell></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
             </div>
             {% endfor %}
         </div>
@@ -234,34 +240,81 @@ document.addEventListener('DOMContentLoaded', function() {
     const dataEl = document.getElementById('permissions-data');
     const roleSelect = document.querySelector('select[name="role"]');
     if (!dataEl || !roleSelect) return;
-
     const permissions = JSON.parse(dataEl.textContent);
 
-    const checkIcon = '<span class="inline-flex items-center gap-1 text-xs text-green-600">'
-        + '<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">'
-        + '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>'
-        + '</svg>دارد</span>';
+    const visibleCounter = document.getElementById('perm-visible-count');
 
-    const crossIcon = '<span class="inline-flex items-center gap-1 text-xs text-gray-400">'
-        + '<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">'
-        + '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>'
-        + '</svg>ندارد</span>';
-
-    function updateRoleStatus() {
+    function updateRow(row) {
+        const key = row.dataset.permKey;
         const role = roleSelect.value;
-        document.querySelectorAll('tr[data-perm-key]').forEach(function(row) {
-            const key = row.dataset.permKey;
-            const roles = permissions[key] || [];
-            const has = (role === 'admin') || roles.includes(role);
-            const cell = row.querySelector('[data-role-status-cell]');
-            if (cell) {
-                cell.innerHTML = has ? checkIcon : crossIcon;
-            }
+        const roles = permissions[key] || [];
+        const hasRole = (role === 'admin') || roles.includes(role);
+        const roleCell = row.querySelector('[data-role-status-cell]');
+        const effCell = row.querySelector('[data-effective-cell]');
+        const sel = row.querySelector('select[name^="perm__"]');
+        if (roleCell) {
+            roleCell.innerHTML = hasRole
+                ? '<span class="text-xs text-green-600 font-bold">\u2713 دارد</span>'
+                : '<span class="text-xs text-gray-400 font-bold">\u2717 ندارد</span>';
+        }
+        if (sel && effCell) {
+            const v = sel.value;
+            const effective = (v === 'allow') ? true : (v === 'deny') ? false : hasRole;
+            effCell.innerHTML = effective
+                ? '<span class="text-xs text-green-700 font-bold">\u2713 فعال</span>'
+                : '<span class="text-xs text-red-500 font-bold">\u2717 غیرفعال</span>';
+        }
+    }
+
+    function updateAll() {
+        document.querySelectorAll('tr[data-perm-key]').forEach(updateRow);
+    }
+
+    function updateVisibleCount() {
+        if (!visibleCounter) return;
+        const all = document.querySelectorAll('tr[data-perm-key]');
+        const visible = Array.from(all).filter(function(r) {
+            return r.style.display !== 'none';
+        });
+        visibleCounter.textContent = visible.length + ' از ' + all.length;
+    }
+
+    roleSelect.addEventListener('change', updateAll);
+
+    document.querySelectorAll('select[name^="perm__"]').forEach(function(s) {
+        s.addEventListener('change', function() {
+            updateRow(this.closest('tr'));
+        });
+    });
+
+    updateAll();
+    updateVisibleCount();
+
+    // ═══ Search ═══
+    const searchInput = document.getElementById('perm-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const q = this.value.trim().toLowerCase();
+            document.querySelectorAll('tr[data-perm-key]').forEach(function(row) {
+                if (!q) { row.style.display = ''; return; }
+                const label = (row.cells[0] && row.cells[0].textContent || '').toLowerCase();
+                row.style.display = label.includes(q) ? '' : 'none';
+            });
+            updateVisibleCount();
         });
     }
 
-    roleSelect.addEventListener('change', updateRoleStatus);
-});
-</script>
+    // ═══ Reset all ═══
+    const resetBtn = document.getElementById('reset-all-btn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            if (!confirm('همه‌ی بازنویسی‌ها به حالت «خودکار» برگردند؟')) return;
+            document.querySelectorAll('select[name^="perm__"]').forEach(function(s) {
+                s.value = 'inherit';
+                updateRow(s.closest('tr'));
+            });
+        });
+    }
+});</script>
 
 {% endblock %}

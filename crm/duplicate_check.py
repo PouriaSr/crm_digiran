@@ -98,15 +98,16 @@ def is_similar(a, b, threshold=DEFAULT_SIMILARITY_THRESHOLD):
 # ═══════════════════════════════════════════════════
 # جستجو در دیتابیس
 # ═══════════════════════════════════════════════════
-def _qs_for_field(model, field_name, exclude_pk=None):
-    qs = model.objects.all()
+def _qs_for_field(model, field_name, exclude_pk=None, manager=None):
+    m = manager if manager is not None else model.objects
+    qs = m.all()
     if exclude_pk:
         qs = qs.exclude(pk=exclude_pk)
     return qs.only('pk', field_name)
 
 
 def find_exact_match(model, field_name, value, normalize_func,
-                     exclude_pk=None, extra_filter=None):
+                     exclude_pk=None, extra_filter=None, manager=None):
     """پیدا کردن رکوردی که مقدار نرمال‌شده‌اش دقیقاً برابر باشه."""
     if not value:
         return None
@@ -114,7 +115,7 @@ def find_exact_match(model, field_name, value, normalize_func,
     if not target:
         return None
 
-    qs = _qs_for_field(model, field_name, exclude_pk)
+    qs = _qs_for_field(model, field_name, exclude_pk, manager=manager)
     if extra_filter:
         qs = qs.filter(**extra_filter)
 

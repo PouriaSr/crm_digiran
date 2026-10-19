@@ -113,6 +113,7 @@ def customer_list(request):
         'total': total,
         'leads': leads,
         'actives': actives,
+        'inactive_count': Customer.all_objects.filter(is_deleted=True).count(),
         'search': search,
         'current_status': status,
         'current_source': source,
@@ -211,6 +212,57 @@ def customer_edit(request, pk):
         'title': f'ویرایش مشتری: {customer.name}',
         'submit_label': 'ذخیره تغییرات',
         'customer': customer,
+    })
+
+
+# ═══════════════════════════════════════════════════════════════
+# غیرفعال‌سازی و بازگردانی مشتری
+# ═══════════════════════════════════════════════════════════════
+
+@login_required
+@require_permission('customers.delete')
+@require_POST
+def customer_deactivate(request, pk):
+    customer = get_object_or_404(Customer.objects, pk=pk)
+    name = customer.name
+    customer.delete()
+    messages.success(request, f'مشتری «{name}» غیرفعال شد و به لیست غیرفعال‌ها منتقل شد.')
+    return redirect('customers:list')
+
+
+@login_required
+@require_permission('customers.delete')
+def customer_restore(request, pk):
+    customer = get_object_or_404(Customer.all_objects, pk=pk, is_deleted=True)
+    if request.method == 'POST':
+        customer.restore()
+        messages.success(request, f'مشتری «{customer.name}» با موفقیت بازگردانی شد.')
+        return redirect('customers:inactive_list')
+    return render(request, 'customers/restore.html', {'customer': customer})
+
+
+@login_required
+@require_permission('customers.delete')
+def customer_inactive_list(request):
+    customers = (
+        Customer.all_objects
+        .filter(is_deleted=True)
+        .select_related('assigned_to', 'created_by')
+    )
+    search = request.GET.get('q', '').strip()
+    if search:
+        customers = customers.filter(
+            Q(name__icontains=search) |
+            Q(mobile__icontains=search) |
+            Q(email__icontains=search) |
+            Q(national_id__icontains=search)
+        )
+    paginator = Paginator(customers, 20)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+    return render(request, 'customers/inactive_list.html', {
+        'page_obj': page_obj,
+        'search': search,
+        'total_inactive': Customer.all_objects.filter(is_deleted=True).count(),
     })
 
 

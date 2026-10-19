@@ -47,54 +47,45 @@ ROLE_TO_GROUP = {
 # تعریف دسترسی‌ها
 # ═══════════════════════════════════════════════════════════
 PERMISSIONS = {
-    # ─── مشتریان ───
     'customers.view':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
-    'customers.add':    [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
-    'customers.edit':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
+    'customers.add':    [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR],
+    'customers.edit':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR],
     'customers.delete': [ROLE_ADMIN, ROLE_SALES_MANAGER],
 
-    # ─── تماس‌ها ───
     'calls.view':       [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
-    'calls.add':        [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
-    'calls.edit':       [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
+    'calls.add':        [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR],
+    'calls.edit':       [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT],
     'calls.delete':     [ROLE_ADMIN, ROLE_SALES_MANAGER],
-    'calls.reassign':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ADS_MANAGER],
+    'calls.reassign':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT],
 
-    # ─── کالاها ───
     'products.view':    [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
     'products.add':     [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'products.edit':    [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'products.delete':  [ROLE_ADMIN],
 
-    # ─── دسته‌بندی‌ها ───
     'categories.view':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
     'categories.manage': [ROLE_ADMIN, ROLE_SALES_MANAGER],
 
-    # ─── فاکتورها ───
     'invoices.view':    [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_ADS_MANAGER],
-    'invoices.add':     [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_ACCOUNTANT, ROLE_ADS_MANAGER],
-    'invoices.edit':    [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_ACCOUNTANT, ROLE_ADS_MANAGER],
+    'invoices.add':     [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_ACCOUNTANT],
+    'invoices.edit':    [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_ACCOUNTANT],
     'invoices.delete':  [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_ACCOUNTANT],
     'invoices.print':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_ADS_MANAGER],
 
-    # ─── منابع انسانی ───
     'hr.view_employees':    [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'hr.manage_employees':  [ROLE_ADMIN],
-    'hr.view_tasks':        [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ADS_MANAGER],
-    'hr.manage_tasks':      [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ADS_MANAGER],
+    'hr.view_tasks':        [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
+    'hr.manage_tasks':      [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES],
     'hr.review_leaves':     [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'hr.attendance':        [ROLE_ADMIN, ROLE_SALES_MANAGER],
 
-    # ─── داشبورد و گزارش ───
     'dashboard.view':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
     'dashboard.export': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_ACCOUNTANT],
     'dashboard.bi':     [ROLE_ADMIN, ROLE_SALES_MANAGER],
 
-    # ─── سیستم ───
     'accounts.manage_users': [ROLE_ADMIN],
     'audit.view':            [ROLE_ADMIN],
 
-    # ─── تبلیغات ───
     'ads.view':        [ROLE_ADMIN, ROLE_ADS_MANAGER],
     'ads.add':         [ROLE_ADMIN, ROLE_ADS_MANAGER],
     'ads.edit':        [ROLE_ADMIN, ROLE_ADS_MANAGER],
@@ -105,50 +96,50 @@ PERMISSIONS = {
 
 # ─── متادیتای نمایش دسترسی‌ها ───
 PERMISSION_META = {
-    'customers.view':   ('مشتریان', 'مشاهده'),
-    'customers.add':    ('مشتریان', 'ایجاد'),
-    'customers.edit':   ('مشتریان', 'ویرایش'),
-    'customers.delete': ('مشتریان', 'حذف'),
+    'customers.view':   ('مشتریان', 'مشاهده', 'مشاهده‌ی لیست و جزئیات مشتریان'),
+    'customers.add':    ('مشتریان', 'ایجاد', 'افزودن مشتری جدید'),
+    'customers.edit':   ('مشتریان', 'ویرایش', 'ویرایش اطلاعات مشتریان'),
+    'customers.delete': ('مشتریان', 'حذف', 'غیرفعال‌سازی و بازگردانی مشتریان'),
 
-    'calls.view':     ('تماس‌ها', 'مشاهده'),
-    'calls.add':      ('تماس‌ها', 'ایجاد'),
-    'calls.edit':     ('تماس‌ها', 'ویرایش'),
-    'calls.delete':   ('تماس‌ها', 'حذف'),
-    'calls.reassign': ('تماس‌ها', 'ارجاع'),
+    'calls.view':     ('تماس‌ها', 'مشاهده', 'مشاهده‌ی لیست و جزئیات تماس‌ها'),
+    'calls.add':      ('تماس‌ها', 'ایجاد', 'ثبت تماس جدید'),
+    'calls.edit':     ('تماس‌ها', 'ویرایش', 'ویرایش تماس‌ها'),
+    'calls.delete':   ('تماس‌ها', 'حذف', 'حذف تماس'),
+    'calls.reassign': ('تماس‌ها', 'ارجاع', 'ارجاع تماس به کارمند دیگر'),
 
-    'products.view':   ('کالاها', 'مشاهده'),
-    'products.add':    ('کالاها', 'ایجاد'),
-    'products.edit':   ('کالاها', 'ویرایش'),
-    'products.delete': ('کالاها', 'حذف'),
+    'products.view':   ('کالاها', 'مشاهده', 'مشاهده‌ی لیست و جزئیات کالاها'),
+    'products.add':    ('کالاها', 'ایجاد', 'افزودن کالای جدید'),
+    'products.edit':   ('کالاها', 'ویرایش', 'ویرایش اطلاعات کالاها'),
+    'products.delete': ('کالاها', 'حذف', 'حذف نرم کالاها'),
 
-    'categories.view':   ('دسته‌بندی‌ها', 'مشاهده'),
-    'categories.manage': ('دسته‌بندی‌ها', 'مدیریت'),
+    'categories.view':   ('دسته‌بندی‌ها', 'مشاهده', 'مشاهده‌ی دسته‌بندی‌ها'),
+    'categories.manage': ('دسته‌بندی‌ها', 'مدیریت', 'ایجاد، ویرایش و حذف دسته‌بندی'),
 
-    'invoices.view':   ('فاکتورها', 'مشاهده'),
-    'invoices.add':    ('فاکتورها', 'ایجاد'),
-    'invoices.edit':   ('فاکتورها', 'ویرایش'),
-    'invoices.delete': ('فاکتورها', 'حذف'),
-    'invoices.print':  ('فاکتورها', 'چاپ'),
+    'invoices.view':   ('فاکتورها', 'مشاهده', 'مشاهده‌ی لیست و جزئیات فاکتورها'),
+    'invoices.add':    ('فاکتورها', 'ایجاد', 'صدور فاکتور جدید'),
+    'invoices.edit':   ('فاکتورها', 'ویرایش', 'ویرایش فاکتورها'),
+    'invoices.delete': ('فاکتورها', 'حذف', 'حذف فاکتورها'),
+    'invoices.print':  ('فاکتورها', 'چاپ', 'چاپ فاکتور'),
 
-    'hr.view_employees':   ('منابع انسانی', 'مشاهده پرسنل'),
-    'hr.manage_employees': ('منابع انسانی', 'مدیریت پرسنل'),
-    'hr.view_tasks':       ('منابع انسانی', 'مشاهده وظایف'),
-    'hr.manage_tasks':     ('منابع انسانی', 'مدیریت وظایف'),
-    'hr.review_leaves':    ('منابع انسانی', 'بررسی مرخصی'),
-    'hr.attendance':       ('منابع انسانی', 'حضور و غیاب'),
+    'hr.view_employees':   ('منابع انسانی', 'مشاهده پرسنل', 'مشاهده‌ی لیست و جزئیات پرسنل'),
+    'hr.manage_employees': ('منابع انسانی', 'مدیریت پرسنل', 'افزودن، ویرایش و حذف پرسنل'),
+    'hr.view_tasks':       ('منابع انسانی', 'مشاهده وظایف', 'مشاهده‌ی وظایف (غیرمدیر فقط وظایف خودش)'),
+    'hr.manage_tasks':     ('منابع انسانی', 'مدیریت وظایف', 'افزودن، ویرایش و حذف وظایف همه‌ی کارمندان'),
+    'hr.review_leaves':    ('منابع انسانی', 'بررسی مرخصی', 'تایید یا رد درخواست‌های مرخصی'),
+    'hr.attendance':       ('منابع انسانی', 'حضور و غیاب', 'ثبت و گزارش حضور و غیاب'),
 
-    'dashboard.view':   ('داشبورد و گزارش', 'مشاهده داشبورد'),
-    'dashboard.export': ('داشبورد و گزارش', 'خروجی Excel'),
-    'dashboard.bi':     ('داشبورد و گزارش', 'گزارش‌های BI'),
+    'dashboard.view':   ('داشبورد و گزارش', 'مشاهده داشبورد', 'دسترسی به صفحه‌ی اصلی داشبورد'),
+    'dashboard.export': ('داشبورد و گزارش', 'خروجی Excel', 'دانلود گزارش به فرمت Excel'),
+    'dashboard.bi':     ('داشبورد و گزارش', 'گزارش‌های BI', 'گزارش‌های تحلیلی پیشرفته'),
 
-    'accounts.manage_users': ('سیستم', 'مدیریت کاربران'),
-    'audit.view':            ('سیستم', 'لاگ سیستم'),
+    'accounts.manage_users': ('سیستم', 'مدیریت کاربران', 'افزودن، ویرایش و حذف کاربران و تعیین نقش'),
+    'audit.view':            ('سیستم', 'لاگ سیستم', 'مشاهده‌ی لاگ تغییرات مدل‌های حساس'),
 
-    'ads.view':        ('تبلیغات', 'مشاهده'),
-    'ads.add':         ('تبلیغات', 'ایجاد'),
-    'ads.edit':        ('تبلیغات', 'ویرایش'),
-    'ads.delete':      ('تبلیغات', 'حذف'),
-    'ads.manage_defs': ('تبلیغات', 'مدیریت تعاریف'),
+    'ads.view':        ('تبلیغات', 'مشاهده', 'مشاهده‌ی تبلیغات (غیرمدیر فقط تبلیغات خودش)'),
+    'ads.add':         ('تبلیغات', 'ایجاد', 'ثبت تبلیغ جدید'),
+    'ads.edit':        ('تبلیغات', 'ویرایش', 'ویرایش تبلیغات'),
+    'ads.delete':      ('تبلیغات', 'حذف', 'حذف تبلیغات'),
+    'ads.manage_defs': ('تبلیغات', 'مدیریت تعاریف', 'مدیریت پلتفرم‌ها، فرآیندها و منابع'),
 }
 
 
