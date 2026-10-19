@@ -3,10 +3,17 @@ from django import forms
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import User
+from crm.form_mixins import DuplicateCheckMixin
 from .models import Employee, Task, LeaveRequest, Attendance
 
 
-class EmployeeForm(forms.ModelForm):
+class EmployeeForm(DuplicateCheckMixin, forms.ModelForm):
+    duplicate_model = 'employee'
+    duplicate_fields = {
+        'mobile': 'شماره تماس',
+        'national_id': 'کد ملی',
+    }
+
     birth_date = forms.CharField(
         required=False, label='تاریخ تولد',
         widget=forms.TextInput(attrs={

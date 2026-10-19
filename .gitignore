@@ -51,3 +51,21 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+# ═══ Local patch/backup artifacts ═══
+.patch_backup/
+.rbac_fix_backup/
+.mobile_fix_backup/
+.mobile_fix_backup_2/
+.duplicate_fix_backup/
+
+# ═══ One-off scripts (safe to ignore) ═══
+apply_patch.py
+fix_*.py
+generate_dump.py
+generate_context.py
+measure_queries.py
+project_dump.txt
+project_context_for_ai.txt
+*.txt
+!requirements.txt
+!README.md

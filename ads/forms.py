@@ -2,6 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import CheckboxInput
 
+from crm.form_mixins import DuplicateCheckMixin
 from .models import Ad, AdPlatform, AdProcess, AdSource
 
 
@@ -24,7 +25,10 @@ class StyledFormMixin:
 # ─────────────────────────────────────────────
 # فرم تبلیغ اصلی
 # ─────────────────────────────────────────────
-class AdForm(StyledFormMixin, forms.ModelForm):
+class AdForm(DuplicateCheckMixin, StyledFormMixin, forms.ModelForm):
+    duplicate_model = 'ad'
+    duplicate_fields = {'ad_number': 'شماره آگهی'}
+
     class Meta:
         model = Ad
         fields = [
@@ -114,7 +118,10 @@ class AdForm(StyledFormMixin, forms.ModelForm):
 # ─────────────────────────────────────────────
 # فرم‌های مدیریت (فقط ادمین)
 # ─────────────────────────────────────────────
-class AdPlatformForm(StyledFormMixin, forms.ModelForm):
+class AdPlatformForm(DuplicateCheckMixin, StyledFormMixin, forms.ModelForm):
+    duplicate_model = 'adplatform'
+    duplicate_fields = {'name': 'نام عنوان'}
+
     class Meta:
         model = AdPlatform
         fields = ['name', 'ad_number_start', 'is_active']
@@ -139,7 +146,10 @@ class AdProcessForm(StyledFormMixin, forms.ModelForm):
         }
 
 
-class AdSourceForm(StyledFormMixin, forms.ModelForm):
+class AdSourceForm(DuplicateCheckMixin, StyledFormMixin, forms.ModelForm):
+    duplicate_model = 'adsource'
+    duplicate_fields = {'phone_number': 'شماره تماس'}
+
     class Meta:
         model = AdSource
         fields = ['phone_number', 'label', 'is_active']

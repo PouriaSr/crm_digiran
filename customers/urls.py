@@ -8,6 +8,9 @@ urlpatterns = [
     path('new/', views.customer_create, name='create'),
     path('<int:pk>/', views.customer_detail, name='detail'),
     path('<int:pk>/edit/', views.customer_edit, name='edit'),
+    path('<int:pk>/deactivate/', views.customer_deactivate, name='deactivate'),
+    path('<int:pk>/restore/', views.customer_restore, name='restore'),
+    path('inactive/', views.customer_inactive_list, name='inactive_list'),
 
     # یادداشت‌ها
     path('<int:pk>/notes/add/', views.note_create, name='note_create'),

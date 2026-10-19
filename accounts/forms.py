@@ -2,6 +2,7 @@ from collections import OrderedDict
 
 from django import forms
 from django.contrib.auth.models import User, Group
+from crm.form_mixins import DuplicateCheckMixin
 
 
 ROLE_CHOICES = [
@@ -47,7 +48,13 @@ class StyledMixin:
 # ═══════════════════════════════════════════════════════════
 # UserCreateForm
 # ═══════════════════════════════════════════════════════════
-class UserCreateForm(forms.ModelForm):
+class UserCreateForm(DuplicateCheckMixin, forms.ModelForm):
+    duplicate_model = 'user'
+    duplicate_fields = {
+        'username': 'نام کاربری',
+        'email': 'ایمیل',
+    }
+
     password1 = forms.CharField(
         label='رمز عبور',
         widget=forms.PasswordInput(attrs={'class': StyledMixin.input_class, 'dir': 'ltr'}),
@@ -131,7 +138,13 @@ class UserCreateForm(forms.ModelForm):
 # ═══════════════════════════════════════════════════════════
 # UserEditForm
 # ═══════════════════════════════════════════════════════════
-class UserEditForm(forms.ModelForm):
+class UserEditForm(DuplicateCheckMixin, forms.ModelForm):
+    duplicate_model = 'user'
+    duplicate_fields = {
+        'username': 'نام کاربری',
+        'email': 'ایمیل',
+    }
+
     role = forms.ChoiceField(
         label='نقش', choices=ROLE_CHOICES,
         widget=forms.Select(attrs={'class': StyledMixin.input_class}),
@@ -173,7 +186,9 @@ class UserEditForm(forms.ModelForm):
             pk: (user_role in roles) for pk, roles in PERMISSIONS.items()
         }
 
-        for perm_key, (cat, label) in PERMISSION_META.items():
+        for perm_key, meta in PERMISSION_META.items():
+            cat, label = meta[0], meta[1]
+            description = meta[2] if len(meta) > 2 else ''
             field_name = 'perm__' + perm_key.replace('.', '_')
 
             if perm_key in existing:
@@ -198,6 +213,7 @@ class UserEditForm(forms.ModelForm):
                 'key': perm_key,
                 'field': self[field_name],
                 'label': label,
+                'description': description,
                 'role_status': role_effective.get(perm_key, False),
             })
 

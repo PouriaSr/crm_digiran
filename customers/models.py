@@ -3,6 +3,12 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 
 
+class CustomerManager(models.Manager):
+    """مدیر پیش‌فرض — فقط مشتریان فعال"""
+    def get_queryset(self):
+        return super().get_queryset().filter(is_deleted=False)
+
+
 class Customer(models.Model):
     STATUS_CHOICES = [
         ('lead', 'بالقوه (لید)'),
@@ -48,10 +54,19 @@ class Customer(models.Model):
     created_at = models.DateTimeField('تاریخ ایجاد', auto_now_add=True)
     updated_at = models.DateTimeField('آخرین ویرایش', auto_now=True)
 
+    # ═══ Soft Delete (غیرفعال‌سازی) ═══
+    is_deleted = models.BooleanField('غیرفعال‌شده', default=False, db_index=True)
+    deleted_at = models.DateTimeField('تاریخ غیرفعال‌سازی', null=True, blank=True)
+
+    objects = CustomerManager()
+    all_objects = models.Manager()
+
     class Meta:
         verbose_name = 'مشتری'
         verbose_name_plural = 'مشتریان'
         ordering = ['-created_at']
+        base_manager_name = 'all_objects'
+        default_manager_name = 'objects'
         indexes = [
             models.Index(fields=['-created_at']),
             models.Index(fields=['status']),
@@ -75,6 +90,22 @@ class Customer(models.Model):
     def last_note(self):
         """آخرین یادداشت"""
         return self.notes_new.first()
+
+    def delete(self, using=None, keep_parents=False):
+        """غیرفعال‌سازی (Soft Delete)"""
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.save(update_fields=['is_deleted', 'deleted_at', 'updated_at'])
+
+    def hard_delete(self):
+        """حذف کامل — با احتیاط"""
+        return super().delete()
+
+    def restore(self):
+        """بازگردانی به لیست فعال"""
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save(update_fields=['is_deleted', 'deleted_at', 'updated_at'])
 
 
 class CustomerNote(models.Model):

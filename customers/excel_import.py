@@ -95,8 +95,8 @@ def _validate_customer_row(raw, seen_mobiles, seen_nids):
         errors.append(f'شماره تماس تکراری در فایل (ردیف {seen_mobiles[mobile]})')
     else:
         seen_mobiles[mobile] = raw['_row_num']
-        if Customer.objects.filter(mobile=mobile).exists():
-            errors.append('شماره تماس قبلاً در سیستم ثبت شده')
+        if Customer.all_objects.filter(mobile=mobile).exists():
+            errors.append('شماره تماس قبلاً در سیستم ثبت شده (شامل مشتریان غیرفعال)')
     cleaned['mobile'] = mobile
 
     # ─── ایمیل ───
@@ -120,8 +120,8 @@ def _validate_customer_row(raw, seen_mobiles, seen_nids):
             errors.append(f'کد ملی تکراری در فایل (ردیف {seen_nids[nid]})')
         else:
             seen_nids[nid] = raw['_row_num']
-            if Customer.objects.filter(national_id=nid).exists():
-                errors.append('کد ملی قبلاً در سیستم ثبت شده')
+            if Customer.all_objects.filter(national_id=nid).exists():
+                errors.append('کد ملی قبلاً در سیستم ثبت شده (شامل مشتریان غیرفعال)')
     cleaned['national_id'] = nid or None
 
     # ─── تاریخ تولد ───

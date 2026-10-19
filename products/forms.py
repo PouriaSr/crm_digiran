@@ -5,11 +5,14 @@ from crm.duplicate_check import (
     find_similar_matches,
     normalize_code, normalize_text,
 )
+from crm.form_mixins import DuplicateCheckMixin
 from .models import Product, Category
 
 
-class ProductForm(forms.ModelForm):
+class ProductForm(DuplicateCheckMixin, forms.ModelForm):
     """فرم کالا — با سیستم جامع تشخیص تکراری"""
+    duplicate_model = 'product'
+    duplicate_fields = {'code': 'کد کالا'}
 
     class Meta:
         model = Product
@@ -73,8 +76,13 @@ class ProductForm(forms.ModelForm):
         return cleaned
 
 
-class CategoryForm(forms.ModelForm):
+class CategoryForm(DuplicateCheckMixin, forms.ModelForm):
     """فرم دسته‌بندی — با سیستم جامع تشخیص تکراری"""
+    duplicate_model = 'category'
+    duplicate_fields = {
+        'name': 'نام دسته',
+        'slug': 'نام کوتاه',
+    }
 
     class Meta:
         model = Category
