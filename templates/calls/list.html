@@ -110,7 +110,7 @@
                 اعمال فیلتر
             </button>
             {% if search or current_status or current_call_type or current_purpose or current_employee or current_followup %}
-            <a href="{% url 'calls:list' %}" class="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 transition text-center flex items-center justify-center">
+            <a href="{% url 'customers:hub' %}?tab=followup" class="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 transition text-center flex items-center justify-center">
                 پاک کردن
             </a>
             {% endif %}

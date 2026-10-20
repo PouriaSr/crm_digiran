@@ -10,6 +10,16 @@ class CustomerManager(models.Manager):
 
 
 class Customer(models.Model):
+    CUSTOMER_TYPE_CHOICES = [
+        ('none', 'فاقد شرایط'),
+        ('cash', 'نقدی'),
+        ('cheque', 'چک'),
+        ('installment', 'قسطی'),
+    ]
+    customer_type = models.CharField('نوع مشتری', max_length=20, choices=CUSTOMER_TYPE_CHOICES, default='none')
+    cheques_count = models.PositiveSmallIntegerField('تعداد چک', null=True, blank=True)
+    installments_count = models.PositiveSmallIntegerField('تعداد اقساط', null=True, blank=True)
+
     STATUS_CHOICES = [
         ('lead', 'بالقوه (لید)'),
         ('active', 'بالفعل (مشتری)'),
@@ -18,13 +28,13 @@ class Customer(models.Model):
     ]
 
     SOURCE_CHOICES = [
-        ('website', 'وبسایت'),
-        ('referral', 'معرفی مشتریان'),
+        ('website', 'سایت'),
         ('social', 'شبکه‌های اجتماعی'),
+        ('referral', 'معرفی مشتریان'),
+        ('ads', 'تماس از طریق تبلیغات'),
         ('direct', 'تماس مستقیم'),
-        ('ads', 'تبلیغات'),
         ('other', 'سایر'),
-    ]
+]
 
     name = models.CharField('نام مشتری', max_length=200, db_index=True)
     mobile = models.CharField('شماره تماس', max_length=15, db_index=True)
@@ -33,7 +43,8 @@ class Customer(models.Model):
     status = models.CharField('وضعیت', max_length=20,
                               choices=STATUS_CHOICES, default='lead', db_index=True)
     source = models.CharField('منبع جذب', max_length=20,
-                              choices=SOURCE_CHOICES, default='direct')
+                              choices=SOURCE_CHOICES, default='website')
+    ad_source = models.ForeignKey('ads.AdSource', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='منبع آگهی')
 
     assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL,
                                     null=True, blank=True,
@@ -151,3 +162,19 @@ class CustomerNote(models.Model):
         if user.is_superuser:
             return True
         return self.created_by_id == user.id
+
+class Visit(models.Model):
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='visits', verbose_name='مشتری')
+    visit_date = models.DateTimeField('تاریخ مراجعه', default=timezone.now)
+    is_successful = models.BooleanField('مراحل با موفقیت طی شد؟', default=False)
+    notes = models.TextField('یادداشت', blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='ثبت‌کننده')
+    created_at = models.DateTimeField('تاریخ ثبت', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'مراجعه حضوری'
+        verbose_name_plural = 'مراجعات حضوری'
+        ordering = ['-visit_date']
+
+    def __str__(self):
+        return f"{self.customer.name} - {self.visit_date.strftime('%Y/%m/%d')}"

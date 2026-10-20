@@ -92,7 +92,9 @@ def register_audit(model, tracked_fields):
     def capture_old(sender, instance, **kwargs):
         update_fields = kwargs.get('update_fields')
         # partial save که فقط فیلدهای غیر-tracked رو داره → skip
-        if update_fields and not any(f in tracked_fields for f in update_fields):
+        if (update_fields
+                and not any(f in tracked_fields for f in update_fields)
+                and 'is_deleted' not in update_fields):
             instance._audit_old = None
             return
         if not instance.pk:
@@ -127,6 +129,26 @@ def register_audit(model, tracked_fields):
                     'old': _to_comparable(old_val),
                     'new': _to_comparable(new_val),
                 }
+        # ⭐ soft-delete check (پچ v7)
+        old_is_del = getattr(old, 'is_deleted', False)
+        new_is_del = getattr(instance, 'is_deleted', False)
+        if not old_is_del and new_is_del:
+            _create_log(
+                instance,
+                AuditLog.ACTION_DELETED,
+                changes={},
+                description=f'{sender._meta.verbose_name} «{instance}» غیرفعال شد.',
+            )
+            return
+        if old_is_del and not new_is_del:
+            _create_log(
+                instance,
+                AuditLog.ACTION_CREATED,
+                changes={},
+                description=f'{sender._meta.verbose_name} «{instance}» بازگردانی شد.',
+            )
+            return
+
 
         if not changes:
             return

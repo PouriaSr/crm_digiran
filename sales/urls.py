@@ -1,9 +1,11 @@
 from django.urls import path
+from django.shortcuts import redirect
 from . import views
 
 app_name = 'sales'
 
 urlpatterns = [
+    # List مستقل (جدول + فیلتر پیشرفته)
     path('', views.invoice_list, name='list'),
     path('new/', views.invoice_create, name='create'),
     path('<int:pk>/', views.invoice_detail, name='detail'),

@@ -79,7 +79,7 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:items-end">
       <div class="sm:col-span-2">
         <input type="text" name="q" value="{{ q }}"
-               placeholder="جستجو: شماره آگهی، عنوان، فرآیند، منبع، محصول..."
+               placeholder="جستجو: شناسه آگهی، عنوان، فرآیند، منبع، محصول..."
                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
       </div>
       <div>
@@ -125,7 +125,7 @@
           <th class="px-4 py-3 text-center font-medium">هزینه</th>
           <th class="px-4 py-3 text-center font-medium">منبع</th>
           <th class="px-4 py-3 text-center font-medium">محصول</th>
-          <th class="px-4 py-3 text-center font-medium">شماره آگهی</th>
+          <th class="px-4 py-3 text-center font-medium">شناسه آگهی</th>
           <th class="px-4 py-3 text-center font-medium">کارشناس</th>
           <th class="px-4 py-3 text-center font-medium">تاریخ</th>
           <th class="px-4 py-3 text-center font-medium">عملیات</th>
@@ -140,7 +140,7 @@
           <td class="px-4 py-3 text-center text-gray-800 font-medium" data-label="هزینه">{{ ad.cost|fa_num }} تومان</td>
           <td class="px-4 py-3 text-center text-gray-600" data-label="منبع" dir="ltr">{{ ad.source.phone_number }}</td>
           <td class="px-4 py-3 text-center text-gray-600" data-label="محصول">{% if ad.product %}{{ ad.product.name }}{% else %}--{% endif %}</td>
-          <td class="px-4 py-3 text-center text-gray-600" data-label="شماره آگهی" dir="ltr">{{ ad.ad_number }}</td>
+          <td class="px-4 py-3 text-center text-gray-600" data-label="شناسه آگهی" dir="ltr">{{ ad.ad_number }}</td>
           <td class="px-4 py-3 text-center text-gray-600" data-label="کارشناس">{{ ad.created_by.username }}</td>
           <td class="px-4 py-3 text-center text-gray-500 text-xs" data-label="تاریخ">{{ ad.created_at|jdate:"Y/m/d H:i" }}</td>
           <td class="px-4 py-3 text-center">

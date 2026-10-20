@@ -52,7 +52,7 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">شماره آگهی <span class="text-red-500">*</span></label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">شناسه آگهی <span class="text-red-500">*</span></label>
         {{ form.ad_number }}
         <p class="text-xs text-gray-400 mt-1">خودکار بر اساس پلتفرم پر می‌شود.</p>
         {% if form.ad_number.errors %}<p class="text-red-500 text-xs mt-1">{{ form.ad_number.errors.0 }}</p>{% endif %}
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   if (!platformSelect || !processSelect) return;
 
-  // 🔄 فیلتر پویای فرآیندها + شماره آگهی بعدی
+  // 🔄 فیلتر پویای فرآیندها + شناسه آگهی بعدی
   platformSelect.addEventListener('change', function() {
     const pid = this.value;
     processSelect.innerHTML = '<option value="">---------</option>';
@@ -144,14 +144,14 @@ document.addEventListener('DOMContentLoaded', function() {
       })
       .catch(err => console.error('خطا در بارگذاری فرآیندها:', err));
 
-    // ۲. شماره آگهی بعدی (فقط توی create)
+    // ۲. شناسه آگهی بعدی (فقط توی create)
     if (adNumberInput && !isEdit) {
       fetch(`/ads/api/platform/${pid}/next-ad-number/`)
         .then(r => r.json())
         .then(data => {
           adNumberInput.value = data.ad_number;
         })
-        .catch(err => console.error('خطا در گرفتن شماره آگهی:', err));
+        .catch(err => console.error('خطا در گرفتن شناسه آگهی:', err));
     }
   });
 

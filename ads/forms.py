@@ -27,7 +27,7 @@ class StyledFormMixin:
 # ─────────────────────────────────────────────
 class AdForm(DuplicateCheckMixin, StyledFormMixin, forms.ModelForm):
     duplicate_model = 'ad'
-    duplicate_fields = {'ad_number': 'شماره آگهی'}
+    duplicate_fields = {'ad_number': 'شناسه آگهی'}
 
     class Meta:
         model = Ad
@@ -48,7 +48,7 @@ class AdForm(DuplicateCheckMixin, StyledFormMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # شماره آگهی اختیاری — اگه خالی بمونه، خودکار پر می‌شه
+        # شناسه آگهی اختیاری — اگه خالی بمونه، خودکار پر می‌شه
         self.fields['ad_number'].required = False
 
         self.fields['platform'].queryset = AdPlatform.objects.filter(is_active=True)
@@ -85,15 +85,15 @@ class AdForm(DuplicateCheckMixin, StyledFormMixin, forms.ModelForm):
                 ad_number = platform.get_next_ad_number()
 
         if not ad_number:
-            raise ValidationError('شماره آگهی الزامی است.')
+            raise ValidationError('شناسه آگهی الزامی است.')
 
         qs = Ad.objects.filter(ad_number=ad_number)
         if self.instance.pk:
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
             raise ValidationError(
-                f'شماره آگهی «{ad_number}» قبلاً ثبت شده است. '
-                'شماره آگهی باید یونیک باشد.'
+                f'شناسه آگهی «{ad_number}» قبلاً ثبت شده است. '
+                'شناسه آگهی باید یونیک باشد.'
             )
         return ad_number
 

@@ -42,7 +42,7 @@ _FIELD_MAP = {
     "slug": ("slug", "نام کوتاه"),
     "username": ("username", "نام کاربری"),
     "email": ("email", "ایمیل"),
-    "ad_number": ("ad_number", "شماره آگهی"),
+    "ad_number": ("ad_number", "شناسه آگهی"),
     "name": ("name", "نام"),
 }
 

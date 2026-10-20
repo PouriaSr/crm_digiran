@@ -1,0 +1,629 @@
+{% extends 'base.html' %}
+{% load fa_numbers %}
+
+{% block title %}مرکز مشتریان{% endblock %}
+{% block mobile_title %}مرکز مشتریان{% endblock %}
+
+{% block content %}
+<div x-data="{ 
+        tab: new URLSearchParams(window.location.search).get('tab') || 'info',
+        customerType: 'none',
+        customerStatus: 'lead',
+        mobile: '',
+        existingCustomer: null,
+        checking: false,
+        checkMobile() {
+            if(this.mobile.length >= 10) {
+                this.checking = true;
+                fetch('{% url "customers:hub_check_api" %}?mobile=' + this.mobile)
+                    .then(r => r.json())
+                    .then(data => {
+                        this.existingCustomer = data.exists ? data : null;
+                        this.checking = false;
+                        if(data.exists) {
+                            document.getElementById('hub_call_name').value = data.name;
+                        }
+                    });
+            } else {
+                this.existingCustomer = null;
+            }
+        }
+     }" class="w-full max-w-7xl mx-auto pb-10 overflow-x-hidden">
+    
+    <!-- Premium KPI Cards -->
+    <div x-show="tab === 'info'" class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
+            <div class="absolute right-0 top-0 w-1 h-full bg-blue-500"></div>
+            <div class="text-gray-500 text-xs font-medium mb-1">کل مشتریان</div>
+            <div class="text-xl md:text-2xl font-bold text-gray-800">{{ stats.total_customers|fa_num }}</div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
+            <div class="absolute right-0 top-0 w-1 h-full bg-purple-500"></div>
+            <div class="text-gray-500 text-xs font-medium mb-1">سرنخ‌ها</div>
+            <div class="text-xl md:text-2xl font-bold text-gray-800">{{ stats.total_leads|fa_num }}</div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
+            <div class="absolute right-0 top-0 w-1 h-full bg-orange-500"></div>
+            <div class="text-gray-500 text-xs font-medium mb-1">در انتظار پیگیری</div>
+            <div class="text-xl md:text-2xl font-bold text-gray-800">{{ stats.pending_followups|fa_num }}</div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden col-span-2 md:col-span-1">
+            <div class="absolute right-0 top-0 w-1 h-full bg-emerald-500"></div>
+            <div class="text-gray-500 text-xs font-medium mb-1">درآمد وصول شده</div>
+            <div class="text-lg font-bold text-gray-800" dir="ltr">{{ stats.recent_revenue|floatformat:0|fa_num }} <span class="text-xs font-normal text-gray-400">تومان</span></div>
+        </div>
+    </div>
+
+    <!-- Premium Segmented Tabs (Scrollable on Mobile) -->
+    <div class="bg-gray-100/80 p-1.5 rounded-2xl border border-gray-200/60 shadow-inner mb-6 w-full overflow-hidden">
+        <div class="flex flex-nowrap overflow-x-auto hide-scrollbar gap-2 pt-4 pb-2 px-2">
+            <button @click="tab = 'info'; window.history.replaceState(null, '', '?tab=info')" 
+                    :class="tab === 'info' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/50'"
+                    class="flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+                <span class="text-lg opacity-80">👥</span> اطلاعات
+            </button>
+            <button @click="tab = 'call'; window.history.replaceState(null, '', '?tab=call')" 
+                    :class="tab === 'call' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/50'"
+                    class="flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+                <span class="text-lg opacity-80">📞</span> تماس
+            </button>
+            <button @click="tab = 'followup'; window.history.replaceState(null, '', '?tab=followup')" 
+                    :class="tab === 'followup' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/50'"
+                    class="flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 relative">
+                <span class="text-lg opacity-80">⏰</span> پیگیری
+                {% if stats.pending_followups > 0 %}
+                <span class="absolute -top-1.5 -right-1.5 flex h-[18px] min-w-[18px] px-1 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white z-10">{{ stats.pending_followups|fa_num }}</span>
+                {% endif %}
+            </button>
+            <button @click="tab = 'visit'; window.history.replaceState(null, '', '?tab=visit')" 
+                    :class="tab === 'visit' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/50'"
+                    class="flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+                <span class="text-lg opacity-80">🏢</span> مراجعه
+            </button>
+            <button @click="tab = 'invoice'; window.history.replaceState(null, '', '?tab=invoice')" 
+                    :class="tab === 'invoice' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/50'"
+                    class="flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+                <span class="text-lg opacity-80">📄</span> فاکتورها
+            </button>
+        </div>
+    </div>
+
+    <!-- TAB 1: INFO -->
+    <div x-show="tab === 'info'" x-transition.opacity class="space-y-4">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-3">
+            <form method="get" class="w-full md:w-1/2 relative group" hx-get="{% url 'customers:hub' %}" hx-target="#customer-table-container" hx-select="#customer-table-container" hx-swap="outerHTML" hx-trigger="submit, keyup changed delay:500ms from:find input[name='q']" hx-push-url="true" hx-indicator="#search-spinner">
+                <input type="hidden" name="tab" value="info">
+                <input type="text" name="q" value="{{ request.GET.q }}" placeholder="جستجوی نام یا شماره..." 
+                       class="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm shadow-sm group-hover:border-gray-300">
+                <button type="submit" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-400 rounded-lg group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </button>
+            </form>
+            {% if 'customers.add' in user_permissions %}
+            <a href="{% url 'customers:create' %}" class="w-full md:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl shadow-md shadow-blue-200 font-medium flex items-center justify-center gap-2 hover:bg-blue-700 hover:shadow-lg transition-all active:scale-95">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                مشتری جدید
+            </a>
+            {% endif %}
+        </div>
+        
+        <!-- Desktop Table -->
+        <div id="customer-table-container" class="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <table class="w-full text-sm text-right">
+                <thead class="bg-gray-50/50 border-b border-gray-100 text-gray-500 text-xs">
+                    <tr>
+                        <th class="p-4 font-semibold">مشتری</th>
+                        <th class="p-4 font-semibold">شماره تماس</th>
+                        <th class="p-4 font-semibold text-center">وضعیت</th>
+                        <th class="p-4 font-semibold text-center">نوع</th>
+                        <th class="p-4 font-semibold text-left">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for c in customers %}
+                    <tr class="hover:bg-blue-50/30 transition-colors group">
+                        <td class="p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">{{ c.name|first|upper }}</div>
+                                <div>
+                                    <div class="font-bold text-gray-800">{{ c.name }}</div>
+                                    <div class="text-xs text-gray-500 mt-0.5">
+                                        مسئول: {% if c.assigned_to %}{{ c.assigned_to.get_full_name|default:c.assigned_to.username }}{% else %}<span class="text-gray-400">بدون مسئول</span>{% endif %}
+                                    </div>
+                                    <div class="text-xs text-gray-400 mt-0.5" dir="ltr">{{ c.created_at|jdate:"Y/m/d H:i" }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="p-4 font-mono text-gray-600 bg-gray-50/50 rounded-lg inline-block mt-2" dir="ltr">{{ c.mobile }}</td>
+                        <td class="p-4 text-center">
+                            {% if c.status == 'active' %}
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>{{ c.get_status_display }}
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 border border-gray-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>{{ c.get_status_display }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="p-4 text-center text-gray-600 text-xs font-medium">{{ c.get_customer_type_display }}</td>
+                        <td class="p-4 text-left whitespace-nowrap">
+                            <a href="{% url 'customers:detail' c.pk %}" class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50">جزئیات</a>
+                            {% if 'calls.reassign' in user_permissions %}
+                            <button type="button" onclick="openCustomerReassign({{ c.pk }}, '{{ c.name|escapejs }}')" class="text-yellow-600 hover:text-yellow-800 text-xs px-2 py-1 rounded hover:bg-yellow-50">ارجاع</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="p-12 text-center text-gray-400">مشتری یافت نشد.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile Cards -->
+        <div class="md:hidden space-y-3">
+            {% for c in customers %}
+            <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
+                <div class="absolute right-0 top-0 w-1 h-full {% if c.status == 'active' %}bg-emerald-500{% else %}bg-gray-300{% endif %}"></div>
+                <div class="flex justify-between items-start mb-2">
+                    <div class="font-bold text-gray-800 flex items-center gap-2 pr-2">
+                        {{ c.name }}
+                        {% if c.is_lead %}<span class="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[10px] font-bold">سرنخ</span>{% endif %}
+                    </div>
+                    <div class="text-[10px] text-gray-500 mt-0.5">
+                        مسئول: {% if c.assigned_to %}{{ c.assigned_to.get_full_name|default:c.assigned_to.username }}{% else %}—{% endif %}
+                    </div>
+                    <span class="text-[10px] text-gray-400" dir="ltr">{{ c.created_at|jdate:"Y/m/d H:i" }}</span>
+                </div>
+                <div class="font-mono text-gray-600 text-sm mb-3 pr-2" dir="ltr">{{ c.mobile }}</div>
+                <div class="flex gap-2 mb-4 pr-2 flex-wrap">
+                    <span class="text-[11px] font-medium bg-gray-50 text-gray-600 px-2 py-1 rounded-lg border border-gray-100">{{ c.get_status_display }}</span>
+                    <span class="text-[11px] font-medium bg-gray-50 text-gray-600 px-2 py-1 rounded-lg border border-gray-100">{{ c.get_customer_type_display }}</span>
+                </div>
+                <div class="flex gap-2">
+                    <a href="{% url 'customers:detail' c.pk %}" class="flex-1 text-center py-2.5 bg-blue-50 text-blue-700 rounded-xl text-sm font-bold active:bg-blue-100 transition">جزئیات</a>
+                    {% if 'calls.reassign' in user_permissions %}
+                    <button type="button" onclick="openCustomerReassign({{ c.pk }}, '{{ c.name|escapejs }}')" class="flex-1 text-center py-2.5 bg-yellow-50 text-yellow-700 rounded-xl text-sm font-bold active:bg-yellow-100 transition">ارجاع</button>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="bg-white p-8 rounded-2xl text-center text-gray-400 border border-gray-100">مشتری یافت نشد.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- TAB 2: CALL -->
+    <div x-show="tab === 'call'" x-transition.opacity style="display: none;">
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden w-full max-w-3xl mx-auto">
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 md:p-8 text-white">
+                <h2 class="text-xl md:text-2xl font-bold flex items-center gap-2">
+                    <svg class="w-6 h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                    ثبت تماس / سرنخ جدید
+                </h2>
+                <p class="text-blue-100 text-sm mt-2">اطلاعات مکالمه را وارد کنید تا سیستم به‌روزرسانی شود.</p>
+            </div>
+            
+            <form method="post" action="{% url 'customers:hub_submit_call' %}" class="p-4 md:p-8 space-y-5 md:space-y-6">
+                {% csrf_token %}
+                
+                <!-- Smart Phone Check -->
+                <div class="bg-gray-50/80 p-4 md:p-5 rounded-2xl border border-gray-200">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">شماره تماس <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        <input type="text" name="mobile" x-model="mobile" @input.debounce.500ms="checkMobile()" required 
+                               class="w-full px-4 py-3 md:py-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-lg md:text-xl font-mono tracking-widest transition-all bg-white" dir="ltr" placeholder="09123456789">
+                        <div x-show="checking" class="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500">
+                            <svg class="animate-spin h-5 w-5 md:h-6 md:w-6" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        </div>
+                    </div>
+                    
+                    <div x-show="existingCustomer" x-cloak x-transition class="mt-3 bg-amber-50 border border-amber-200 p-3 md:p-4 rounded-xl flex items-start gap-3">
+                        <span class="text-xl">⚠️</span>
+                        <div>
+                            <p class="text-sm font-bold text-amber-800">این شماره در سیستم موجود است!</p>
+                            <p class="text-xs text-amber-700 mt-1">مشتری: <strong x-text="existingCustomer?.name"></strong></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">نام و نام خانوادگی</label>
+                        <input type="text" name="name" id="hub_call_name" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">نوع تماس</label>
+                        {{ call_form.call_type }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">منبع تماس</label>
+                        <select name="source" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all">
+                            {% for src in call_form.source.field.queryset %}
+                            <option value="{{ src.id }}">{{ src.label|default:src.phone_number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">نوع مشتری</label>
+                        <select name="customer_type" x-model="customerType" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all">
+                            <option value="none">فاقد شرایط</option>
+                            <option value="cash">نقدی</option>
+                            <option value="cheque">چک</option>
+                            <option value="installment">قسطی</option>
+                        </select>
+                    </div>
+                    
+                    <div x-show="customerType === 'installment'" x-transition x-cloak class="md:col-span-2 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+                        <label class="text-sm font-bold text-indigo-800 whitespace-nowrap">تعداد اقساط:</label>
+                        <input type="number" name="installments_count" min="1" class="w-full md:flex-1 px-4 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white" placeholder="مثلاً 12">
+                    </div>
+                    <div x-show="customerType === 'cheque'" x-transition x-cloak class="md:col-span-2 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+                        <label class="text-sm font-bold text-indigo-800 whitespace-nowrap">تعداد چک:</label>
+                        <input type="number" name="cheques_count" min="1" max="5" class="w-full md:flex-1 px-4 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white" placeholder="بین 1 تا 5">
+                    </div>
+
+                    <div class="md:col-span-2 border-t border-gray-100 pt-5 mt-2">
+                        <label class="block text-sm font-bold text-gray-700 mb-3">وضعیت نهایی مشتری</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                            <label class="relative cursor-pointer">
+                                <input type="radio" name="status" value="lead" x-model="customerStatus" class="peer sr-only">
+                                <div class="p-3 md:p-4 rounded-xl border-2 border-gray-200 bg-white flex items-center gap-3 peer-checked:border-orange-500 peer-checked:bg-orange-50 transition-all">
+                                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-lg md:text-xl">⏰</div>
+                                    <div>
+                                        <div class="font-bold text-gray-800 text-sm md:text-base">بالقوه (نیازمند پیگیری)</div>
+                                    </div>
+                                </div>
+                            </label>
+                            <label class="relative cursor-pointer">
+                                <input type="radio" name="status" value="active" x-model="customerStatus" class="peer sr-only">
+                                <div class="p-3 md:p-4 rounded-xl border-2 border-gray-200 bg-white flex items-center gap-3 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition-all">
+                                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg md:text-xl">⭐</div>
+                                    <div>
+                                        <div class="font-bold text-gray-800 text-sm md:text-base">بالفعل (سرنخ)</div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div x-show="customerStatus === 'lead'" x-transition x-cloak class="md:col-span-2 bg-orange-50 p-4 md:p-5 rounded-xl border border-orange-200">
+                        <label class="block text-sm font-bold text-orange-800 mb-2">تاریخ پیگیری <span class="text-red-500">*</span></label>
+                        <input type="text" name="follow_up_date" data-jdp placeholder="۱۴۰۵/۰۱/۱۵" class="w-full px-4 py-3 border border-orange-300 rounded-xl focus:ring-4 focus:ring-orange-500/10 bg-white text-center font-bold text-lg text-orange-900">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">توضیحات مکالمه <span class="text-red-500">*</span></label>
+                    <textarea name="notes" rows="3" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all resize-none" placeholder="خلاصه صحبت، نیازها و ..."></textarea>
+                </div>
+
+                <div class="pt-2 md:pt-4">
+                    <button type="submit" class="w-full py-3.5 md:py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold text-base md:text-lg shadow-lg shadow-blue-200 hover:from-blue-700 hover:to-indigo-700 transition-all transform active:scale-[0.99] flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                        ثبت نهایی تماس
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TAB 3: FOLLOWUP -->
+    <div x-show="tab === 'followup'" x-transition.opacity style="display: none;">
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-5 md:p-6 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-white flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                <div>
+                    <h2 class="font-bold text-gray-800 text-lg md:text-xl flex items-center gap-2">
+                        <span class="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center text-sm">⏰</span>
+                        پیگیری‌های در انتظار
+                    </h2>
+                    <p class="text-xs text-gray-500 mt-1">مشتریانی که وضعیت بالقوه دارند.</p>
+                </div>
+                <div class="bg-orange-100 text-orange-700 px-4 py-1.5 rounded-xl font-bold text-sm shadow-sm">{{ followups.count }} مورد</div>
+            </div>
+            
+            <div class="p-4 md:p-6 space-y-3 md:space-y-4">
+                {% for f in followups %}
+                <div class="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-1.5 h-full bg-orange-400"></div>
+                    <div class="flex flex-col gap-4">
+                        <div class="flex items-start gap-3 pr-2">
+                            <div class="w-10 h-10 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center font-bold flex-shrink-0">
+                                {{ f.customer.name|first|upper }}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap mb-1">
+                                    <span class="font-bold text-gray-800">{{ f.customer.name }}</span>
+                                    <span class="text-[11px] font-mono bg-gray-100 text-gray-600 px-2 py-0.5 rounded" dir="ltr">{{ f.customer.mobile }}</span>
+                                </div>
+                                <div class="text-sm text-gray-600 line-clamp-2 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                                    {{ f.notes }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between gap-3 pt-3 border-t border-gray-100 pr-2">
+                            <div class="flex flex-col">
+                                <span class="text-[10px] text-gray-400 mb-1">تاریخ مقرر</span>
+                                <span class="font-bold text-orange-600 text-sm bg-orange-50 px-2 py-1 rounded-lg border border-orange-100">{{ f.follow_up_date|jdate:"Y/m/d" }}</span>
+                            </div>
+                            <a href="{% url 'calls:edit' f.pk %}" class="px-4 md:px-5 py-2 md:py-2.5 bg-gray-900 text-white hover:bg-gray-800 rounded-xl text-sm font-bold shadow-sm transition-colors whitespace-nowrap">
+                                ثبت نتیجه
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-16 flex flex-col items-center">
+                    <div class="w-20 h-20 bg-green-50 text-green-500 rounded-full flex items-center justify-center text-4xl mb-4">🎉</div>
+                    <h3 class="text-lg font-bold text-gray-800">عالی!</h3>
+                    <p class="text-gray-500 mt-1">هیچ پیگیری عقب‌افتاده‌ای وجود ندارد.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: VISIT -->
+    <div x-show="tab === 'visit'" x-transition.opacity style="display: none;">
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden w-full max-w-3xl mx-auto">
+            <div class="bg-gradient-to-r from-emerald-500 to-teal-600 p-6 md:p-8 text-white">
+                <h2 class="text-xl md:text-2xl font-bold flex items-center gap-2">
+                    <svg class="w-6 h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                    ثبت مراجعه حضوری
+                </h2>
+                <p class="text-emerald-50 text-sm mt-2">اگر مشتری به دفتر آمده است، اطلاعات مراجعه را ثبت کنید.</p>
+            </div>
+            
+            <form method="post" action="{% url 'customers:hub_submit_visit' %}" class="p-4 md:p-8 space-y-5 md:space-y-6">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">انتخاب مشتری <span class="text-red-500">*</span></label>
+                    <select name="customer" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all">
+                        <option value="">-- جستجو و انتخاب کنید --</option>
+                        {% for c in customers %}
+                        <option value="{{ c.id }}">{{ c.name }} ({{ c.mobile }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="bg-emerald-50 p-4 md:p-5 rounded-2xl border border-emerald-200">
+                    <label class="flex items-start gap-3 md:gap-4 cursor-pointer">
+                        <input type="checkbox" name="is_successful" class="w-5 h-5 md:w-6 md:h-6 text-emerald-600 rounded-lg border-emerald-300 focus:ring-emerald-500 mt-0.5">
+                        <div>
+                            <div class="font-bold text-emerald-900 text-sm md:text-base">مراحل با موفقیت طی شد</div>
+                            <div class="text-xs md:text-sm text-emerald-700 mt-1">با تیک زدن این گزینه، پرونده مشتری تشکیل شده و به صفحه «پرونده» منتقل می‌شود.</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">یادداشت مراجعه <span class="text-red-500">*</span></label>
+                    <textarea name="notes" rows="4" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all resize-none" placeholder="نتیجه مراجعه، مدارک تحویل داده شده و ..."></textarea>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full py-3.5 md:py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-bold text-base md:text-lg shadow-lg shadow-emerald-200 hover:from-emerald-700 hover:to-teal-700 transition-all transform active:scale-[0.99]">
+                        ثبت مراجعه
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TAB 5: INVOICE -->
+    <div x-show="tab === 'invoice'" x-transition.opacity style="display: none;">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 md:mb-6">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800">مدیریت فاکتورها</h2>
+                <p class="text-sm text-gray-500 mt-1">لیست آخرین فاکتورهای صادر شده در سیستم</p>
+            </div>
+            {% if 'invoices.add' in user_permissions %}
+            <a href="{% url 'sales:create' %}" class="w-full md:w-auto px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-sm font-bold shadow-md transition flex items-center justify-center gap-2">
+                <span>+</span> صدور فاکتور جدید
+            </a>
+            {% endif %}
+        </div>
+        
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+            <table class="w-full text-sm hidden md:table text-right">
+                <thead class="bg-gray-50/50 border-b border-gray-100 text-gray-500 text-xs">
+                    <tr>
+                        <th class="p-4 font-semibold">شماره فاکتور</th>
+                        <th class="p-4 font-semibold">مشتری</th>
+                        <th class="p-4 font-semibold">مبلغ</th>
+                        <th class="p-4 font-semibold text-center">وضعیت</th>
+                        <th class="p-4 font-semibold">تاریخ</th>
+                        <th class="p-4 font-semibold text-left">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for inv in invoices %}
+                    <tr class="hover:bg-blue-50/30 transition-colors group">
+                        <td class="p-4 font-mono text-xs font-bold text-blue-600" dir="ltr">{{ inv.number }}</td>
+                        <td class="p-4">
+                            <div class="font-bold text-gray-800">{{ inv.customer.name }}</div>
+                            <div class="text-xs text-gray-500 font-mono mt-0.5" dir="ltr">{{ inv.customer.mobile }}</div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                مسئول: {% if inv.created_by %}{{ inv.created_by.get_full_name|default:inv.created_by.username }}{% else %}—{% endif %}
+                            </div>
+                            <div class="text-xs text-gray-400 mt-0.5" dir="ltr">{{ inv.created_at|jdate:"Y/m/d H:i" }}</div>
+                        </td>
+                        <td class="p-4 font-bold text-gray-800" dir="ltr">{{ inv.total|floatformat:0 }} <span class="text-xs font-normal text-gray-400">تومان</span></td>
+                        <td class="p-4 text-center">
+                            {% if inv.status == 'paid' %}<span class="px-3 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">{{ inv.get_status_display }}</span>
+                            {% elif inv.status == 'issued' %}<span class="px-3 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100">{{ inv.get_status_display }}</span>
+                            {% else %}<span class="px-3 py-1 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 border border-gray-200">{{ inv.get_status_display }}</span>{% endif %}
+                        </td>
+                        <td class="p-4 text-xs text-gray-500">{{ inv.issue_date|jdate:"Y/m/d" }}</td>
+                        <td class="p-4 text-left">
+                            <a href="{% url 'sales:detail' inv.pk %}" class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50">جزئیات</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="p-12 text-center text-gray-400">هیچ فاکتوری یافت نشد.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Mobile -->
+            <div class="md:hidden divide-y divide-gray-100">
+                {% for inv in invoices %}
+                <div class="p-4 md:p-5 flex flex-col gap-2 hover:bg-gray-50 transition">
+                    <div class="flex justify-between items-center">
+                        <span class="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md" dir="ltr">{{ inv.number }}</span>
+                        <span class="text-xs text-gray-400">{{ inv.issue_date|jdate:"Y/m/d" }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <div class="font-bold text-gray-800">{{ inv.customer.name }}</div>
+                        <span class="text-xs {% if inv.status == 'paid' %}text-emerald-600 font-bold{% else %}text-gray-500{% endif %}">{{ inv.get_status_display }}</span>
+                    </div>
+                    <div class="flex justify-between items-center mt-1">
+                        <div class="text-lg font-bold text-gray-900" dir="ltr">{{ inv.total|floatformat:0 }} <span class="text-xs font-normal text-gray-500">تومان</span></div>
+                        <a href="{% url 'sales:detail' inv.pk %}" class="text-sm text-blue-600 font-bold">جزئیات ←</a>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="p-8 text-center text-gray-400">فاکتوری یافت نشد.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
+
+
+<!-- ═══ Customer Reassign Modal ═══ -->
+{% if 'customers.edit' in user_permissions %}
+<div id="reassign-customer-modal"
+     class="hidden fixed inset-0 bg-black/50 z-50 items-center justify-center p-4"
+     style="display:none;">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between p-5 border-b border-gray-100">
+            <div class="flex items-center gap-2">
+                <div class="w-9 h-9 bg-yellow-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                    </svg>
+                </div>
+                <h3 class="font-bold text-gray-800">ارجاع مشتری</h3>
+            </div>
+            <button type="button" onclick="closeCustomerReassign()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <form id="reassign-customer-form" onsubmit="submitCustomerReassign(event)" class="p-5">
+            {% csrf_token %}
+            <input type="hidden" id="reassign-customer-id">
+
+            <p class="text-sm text-gray-600 mb-4">
+                مشتری <strong id="reassign-customer-name" class="text-gray-800"></strong>
+                به کدام کارمند ارجاع شود؟
+            </p>
+
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                کارمند جدید <span class="text-red-500">*</span>
+            </label>
+            <select name="assigned_to" id="reassign-customer-select" required
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                <option value="">-- انتخاب کنید --</option>
+                {% for emp in reassign_users %}
+                    <option value="{{ emp.id }}">{{ emp.get_full_name|default:emp.username }}</option>
+                {% endfor %}
+            </select>
+
+            <div id="reassign-customer-message" class="hidden mt-3 text-sm p-3 rounded-lg"></div>
+
+            <div class="flex gap-2 mt-5">
+                <button type="submit" id="reassign-customer-submit"
+                        class="flex-1 px-4 py-2.5 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm font-medium">
+                    ارجاع کن
+                </button>
+                <button type="button" onclick="closeCustomerReassign()"
+                        class="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+                    انصراف
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openCustomerReassign(customerId, customerName) {
+        document.getElementById('reassign-customer-id').value = customerId;
+        document.getElementById('reassign-customer-name').textContent = customerName;
+        document.getElementById('reassign-customer-select').value = '';
+        var msg = document.getElementById('reassign-customer-message');
+        msg.className = 'hidden mt-3 text-sm p-3 rounded-lg';
+        msg.textContent = '';
+        var modal = document.getElementById('reassign-customer-modal');
+        modal.style.display = 'flex';
+        modal.classList.remove('hidden');
+    }
+
+    function closeCustomerReassign() {
+        var modal = document.getElementById('reassign-customer-modal');
+        if (!modal) return;
+        modal.style.display = 'none';
+        modal.classList.add('hidden');
+    }
+
+    async function submitCustomerReassign(e) {
+        e.preventDefault();
+        var customerId = document.getElementById('reassign-customer-id').value;
+        var userId = document.getElementById('reassign-customer-select').value;
+        var msgEl = document.getElementById('reassign-customer-message');
+        var btn = document.getElementById('reassign-customer-submit');
+
+        if (!userId) {
+            msgEl.className = 'mt-3 text-sm p-3 rounded-lg bg-red-50 text-red-700';
+            msgEl.textContent = 'لطفاً یک کارمند انتخاب کنید';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'در حال ارجاع...';
+
+        try {
+            var res = await fetch('/customers/' + customerId + '/reassign/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'assigned_to=' + encodeURIComponent(userId)
+            });
+            var data = await res.json();
+            if (data.success) {
+                msgEl.className = 'mt-3 text-sm p-3 rounded-lg bg-green-50 text-green-700';
+                msgEl.textContent = data.message;
+                setTimeout(function() { window.location.reload(); }, 900);
+            } else {
+                msgEl.className = 'mt-3 text-sm p-3 rounded-lg bg-red-50 text-red-700';
+                msgEl.textContent = data.error || 'خطا در ارجاع';
+                btn.disabled = false;
+                btn.textContent = 'ارجاع کن';
+            }
+        } catch (err) {
+            msgEl.className = 'mt-3 text-sm p-3 rounded-lg bg-red-50 text-red-700';
+            msgEl.textContent = 'خطای شبکه: ' + err.message;
+            btn.disabled = false;
+            btn.textContent = 'ارجاع کن';
+        }
+    }
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeCustomerReassign();
+    });
+</script>
+{% endif %}
+
+{% endblock %}

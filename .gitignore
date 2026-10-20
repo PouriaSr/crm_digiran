@@ -69,3 +69,87 @@ project_context_for_ai.txt
 *.txt
 !requirements.txt
 !README.md
+
+# ═══════════════════════════════════════════
+# Backup artifacts (auto-added by fix_all_issues.py)
+# ═══════════════════════════════════════════
+.*_backup*/
+.*_fix_backup*/
+.hotfix_*/
+.final_hub_*/
+.customer_reassign_*/
+.system_fix_*/
+.label_fix_*/
+.duplicate_fix_*/
+.premium_hub_*/
+.upgrade_hub_*/
+.rbac_fix_*/
+.mobile_fix_*/
+.hub_v2_*/
+.live_search_*/
+.htmx_live_search_*/
+.ajax_live_search_*/
+.patch_backup/
+.master_fix_backup_*/
+
+# ═══════════════════════════════════════════
+# One-off scripts (safe to ignore)
+# ═══════════════════════════════════════════
+apply_*.py
+fix_*.py
+generate_*.py
+force_fix_*.py
+system_audit.py
+measure_queries.py
+premium_hub_upgrade.py
+upgrade_customer_hub*.py
+add_auto_time.py
+
+# ═══════════════════════════════════════════
+# Local backups
+# ═══════════════════════════════════════════
+*.bak
+*.bak_*
+*.fix_ops.bak
+*.form_fix.bak
+*.basic_beauty.bak
+*.before_new_ui.bak
+*.mobile_fix.bak
+
+# ═══════════════════════════════════════════
+# Secrets (v12)
+# ═══════════════════════════════════════════
+.env
+.env.*
+!.env.example
+
+# ═══════════════════════════════════════════
+# One-off fix scripts (v12)
+# ═══════════════════════════════════════════
+final_fix*.py
+_archived_scripts/
+
+# ═══════════════════════════════════════════
+# Backup folders (v12)
+# ═══════════════════════════════════════════
+.final_fix_v*_backup_*/
+.hotfix_backup_*/
+.hotfix_v2_backup_*/
+.fix_v2_backup_*/
+.fix_v3_backup_*/
+.master_fix_backup_*/
+.final_hub_fix_backup_*/
+.premium_hub_backup_*/
+.upgrade_hub_backup_*/
+.customer_reassign_*/
+.system_fix_backup_*/
+.label_fix_backup/
+.duplicate_fix_backup/
+.rbac_fix_backup/
+.mobile_fix_backup*/
+.hub_v2_backup_*/
+.live_search_backup/
+.htmx_live_search_backup/
+.ajax_live_search_backup/
+.patch_backup/
+.perm_fix_backup/

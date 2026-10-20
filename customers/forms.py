@@ -29,7 +29,7 @@ class CustomerForm(DuplicateCheckMixin, forms.ModelForm):
         model = Customer
         fields = [
             'name', 'mobile', 'email', 'national_id', 'birth_date',
-            'status', 'source', 'assigned_to', 'address', 'notes',
+            'status', 'source', 'ad_source', 'assigned_to', 'address', 'notes',
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': 'نام و نام خانوادگی یا نام شرکت'}),
@@ -37,6 +37,7 @@ class CustomerForm(DuplicateCheckMixin, forms.ModelForm):
             'email': forms.EmailInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': 'email@example.com', 'dir': 'ltr'}),
             'national_id': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': '۱۲۳۴۵۶۷۸۹۰', 'dir': 'ltr'}),
             'status': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
+            'ad_source': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
             'source': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
             'assigned_to': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
             'address': forms.Textarea(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'rows': 3, 'placeholder': 'آدرس کامل'}),
@@ -46,6 +47,14 @@ class CustomerForm(DuplicateCheckMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.duplicate_warnings = []
+        self.fields['status'].choices = [
+            ('lead', 'بالقوه (لید)'),
+            ('active', 'بالفعل (مشتری)'),
+        ]
+        from ads.models import AdSource
+        self.fields['ad_source'].queryset = AdSource.objects.filter(is_active=True)
+        self.fields['ad_source'].required = False
+        self.fields['notes'].required = True
         if self.instance and self.instance.pk and self.instance.birth_date:
             g = self.instance.birth_date
             j = jdatetime.date.fromgregorian(date=g)
@@ -160,3 +169,41 @@ class CustomerNoteForm(forms.ModelForm):
         if not text:
             raise forms.ValidationError('متن یادداشت نمی‌تواند خالی باشد.')
         return text
+
+class HubCallForm(forms.Form):
+    mobile = forms.CharField(label='شماره تماس', max_length=15, required=True,
+        widget=forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'dir': 'ltr', 'placeholder': '09123456789', 'id': 'hub_call_mobile'}))
+    name = forms.CharField(label='نام و نام خانوادگی', max_length=200, required=False,
+        widget=forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'id': 'hub_call_name'}))
+    call_type = forms.ChoiceField(label='نوع تماس', choices=[
+        ('incoming_customer', 'تماس مشتری (ورودی)'),
+        ('incoming_missed', 'از دست رفته (ورودی)'),
+        ('incoming_chat', 'چت دیوار (ورودی)'),
+        ('outgoing', 'تماس خروجی'),
+    ], widget=forms.Select(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all'}))
+    source = forms.ModelChoiceField(label='منبع', queryset=__import__('ads.models', fromlist=['AdSource']).AdSource.objects.filter(is_active=True),
+        widget=forms.Select(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg'}))
+    customer_type = forms.ChoiceField(label='نوع مشتری', choices=__import__('customers.models', fromlist=['Customer']).Customer.CUSTOMER_TYPE_CHOICES,
+        widget=forms.Select(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'id': 'hub_customer_type'}))
+    installments_count = forms.IntegerField(label='تعداد اقساط', required=False, min_value=1,
+        widget=forms.NumberInput(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'id': 'hub_installments'}))
+    cheques_count = forms.IntegerField(label='تعداد چک', required=False, min_value=1, max_value=5,
+        widget=forms.NumberInput(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'id': 'hub_cheques'}))
+    notes = forms.CharField(label='توضیحات (الزامی)', required=True,
+        widget=forms.Textarea(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'rows': 3, 'placeholder': 'شرح مکالمه...'}))
+    status = forms.ChoiceField(label='وضعیت مشتری', choices=[('lead', 'بالقوه (نیازمند پیگیری)'), ('active', 'بالفعل (سرنخ)')],
+        widget=forms.Select(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'id': 'hub_status'}))
+    follow_up_date = forms.CharField(label='تاریخ پیگیری', required=False,
+        widget=forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'data-jdp': '', 'id': 'hub_followup', 'placeholder': '1405/01/01'}))
+
+class HubVisitForm(forms.ModelForm):
+    class Meta:
+        model = __import__('customers.models', fromlist=['Visit']).Visit
+        fields = ['customer', 'is_successful', 'notes']
+
+    customer = forms.ModelChoiceField(label='مشتری', queryset=__import__('customers.models', fromlist=['Customer']).Customer.objects.all(),
+        widget=forms.Select(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg'}))
+    is_successful = forms.BooleanField(label='مراحل با موفقیت طی شد؟ (انتقال به پرونده)', required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'w-5 h-5 text-blue-600 rounded'}))
+    notes = forms.CharField(label='یادداشت مراجعه', required=True,
+        widget=forms.Textarea(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'rows': 3}))

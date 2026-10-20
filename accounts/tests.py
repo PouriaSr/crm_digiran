@@ -462,8 +462,10 @@ class RBACOnViewsTest(TestCase):
         ])
 
     def test_hr_tasks_list_access(self):
+        # operator دسترسی default دارد (قابل override)
         self._check_url('hr:task_list', [
             ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT,
+            ROLE_OPERATOR,
         ])
 
     def test_hr_leaves_list_is_open_for_all(self):
@@ -1019,7 +1021,7 @@ class NotificationIntegrationTest(TestCase):
         self.assertIsNotNone(call_notif, "اعلان تماس ساخته نشد!")
         
         # ۳. چک می‌کنیم لینک اعلان، تماس را به درستی نشان دهد
-        response = self.client.get(call_notif['url'])
+        response = self.client.get(call_notif['url'], follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'علی')
         self.assertEqual(len(response.context['page_obj']), 1)

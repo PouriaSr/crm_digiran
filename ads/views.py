@@ -73,6 +73,7 @@ def _apply_report_filters(request, qs):
 # ─────────────────────────────────────────────
 # لیست تبلیغات + گزارش
 # ─────────────────────────────────────────────
+@login_required
 @perm_required('ads.view')
 def ad_list(request):
     qs = Ad.objects.select_related(
@@ -181,6 +182,7 @@ def ad_list(request):
 # ─────────────────────────────────────────────
 # خروجی Excel گزارش
 # ─────────────────────────────────────────────
+@login_required
 @perm_required('ads.view')
 def ad_export_report(request):
     import openpyxl
@@ -203,7 +205,7 @@ def ad_export_report(request):
 
     headers = [
         'ردیف', 'عنوان', 'فرآیند', 'هزینه (تومان)', 'منبع',
-        'محصول', 'شماره آگهی', 'کارشناس', 'تاریخ ثبت', 'توضیحات',
+        'محصول', 'شناسه آگهی', 'کارشناس', 'تاریخ ثبت', 'توضیحات',
     ]
     ws.append(headers)
 
@@ -282,6 +284,7 @@ def ad_export_report(request):
 # ─────────────────────────────────────────────
 # ایجاد تبلیغ
 # ─────────────────────────────────────────────
+@login_required
 @perm_required('ads.add')
 @require_http_methods(['GET', 'POST'])
 def ad_create(request):
@@ -395,6 +398,7 @@ def ad_edit(request, pk):
 # ─────────────────────────────────────────────
 # حذف تبلیغ
 # ─────────────────────────────────────────────
+@login_required
 @perm_required('ads.delete')
 @require_http_methods(['POST'])
 def ad_delete(request, pk):
@@ -417,6 +421,7 @@ def ad_delete(request, pk):
 # ─────────────────────────────────────────────
 # مدیریت عنوان‌ها، فرآیندها و منابع
 # ─────────────────────────────────────────────
+@login_required
 @perm_required('ads.manage_defs')
 def platform_list(request):
     if request.method == 'POST':
@@ -432,6 +437,9 @@ def platform_list(request):
     })
 
 
+@login_required
+
+
 @perm_required('ads.manage_defs')
 @require_http_methods(['POST'])
 def platform_delete(request, pk):
@@ -442,6 +450,9 @@ def platform_delete(request, pk):
         obj.delete()
         messages.success(request, 'عنوان حذف شد.')
     return redirect('ads:platform_list')
+
+
+@login_required
 
 
 @perm_required('ads.manage_defs')
@@ -460,6 +471,9 @@ def process_list(request):
     })
 
 
+@login_required
+
+
 @perm_required('ads.manage_defs')
 @require_http_methods(['POST'])
 def process_delete(request, pk):
@@ -470,6 +484,9 @@ def process_delete(request, pk):
         obj.delete()
         messages.success(request, 'فرآیند حذف شد.')
     return redirect('ads:process_list')
+
+
+@login_required
 
 
 @perm_required('ads.manage_defs')
@@ -487,6 +504,9 @@ def source_list(request):
     })
 
 
+@login_required
+
+
 @perm_required('ads.manage_defs')
 @require_http_methods(['POST'])
 def source_delete(request, pk):
@@ -502,12 +522,16 @@ def source_delete(request, pk):
 # ─────────────────────────────────────────────
 # API ها
 # ─────────────────────────────────────────────
+@login_required
 @perm_required('ads.view')
 def platform_processes_api(request, pk):
     processes = AdProcess.objects.filter(
         platform_id=pk, is_active=True,
     ).values('id', 'name', 'default_cost')
     return JsonResponse({'processes': list(processes)})
+
+
+@login_required
 
 
 @perm_required('ads.view')
@@ -518,6 +542,9 @@ def process_cost_api(request, pk):
         'name': process.name,
         'platform_id': process.platform_id,
     })
+
+
+@login_required
 
 
 @perm_required('ads.view')

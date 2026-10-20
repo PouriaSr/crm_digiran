@@ -1,0 +1,100 @@
+{% load fa_numbers %}
+<div id="customer-table-container">
+    <div class="hidden md:block bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50/80 border-b border-gray-100">
+                <tr class="text-gray-600">
+                    <th class="p-4 text-right font-medium">مشتری</th>
+                    <th class="p-4 text-right font-medium">شماره تماس</th>
+                    <th class="p-4 text-center font-medium">وضعیت</th>
+                    <th class="p-4 text-center font-medium">نوع</th>
+                    <th class="p-4 text-center font-medium">سرنخ</th>
+                    <th class="p-4 text-left font-medium">عملیات</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+                {% for c in customers %}
+                <tr class="hover:bg-blue-50/30 transition group">
+                    <td class="p-4 text-right">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 flex items-center justify-center font-bold text-lg">
+                                {{ c.name|first|upper }}
+                            </div>
+                            <div>
+                                <div class="font-bold text-gray-800 group-hover:text-blue-600 transition">{{ c.name }}</div>
+                                <div class="text-xs text-gray-500 mt-0.5">
+                                    مسئول: {% if c.assigned_to %}{{ c.assigned_to.get_full_name|default:c.assigned_to.username }}{% else %}<span class="text-gray-400">بدون مسئول</span>{% endif %}
+                                </div>
+                                <div class="text-xs text-gray-400 mt-0.5" dir="ltr">{{ c.created_at|jdate:"Y/m/d H:i" }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-4 text-right font-mono text-gray-600" dir="ltr">{{ c.mobile }}</td>
+                    <td class="p-4 text-center">
+                        {% if c.status == 'active' %}
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-100"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>{{ c.get_status_display }}</span>
+                        {% else %}
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200"><span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>{{ c.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-4 text-center text-gray-600 text-xs">{{ c.get_customer_type_display }}</td>
+                    <td class="p-4 text-center">
+                        {% if c.is_lead %}
+                            <span class="bg-purple-100 text-purple-700 px-2 py-1 rounded-md text-[11px] font-bold">سرنخ</span>
+                        {% else %}
+                            <span class="text-gray-300">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-4 text-left">
+                        <div class="flex items-center justify-end gap-2">
+                            <a href="{% url 'customers:detail' c.pk %}" class="text-xs px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition">
+                                جزئیات
+                            </a>
+                            {% if 'customers.edit' in user_permissions %}
+                            <button type="button" onclick="openCustomerReassign({{ c.pk }}, '{{ c.name|escapejs }}')"
+                                    class="text-xs px-3 py-1.5 bg-yellow-50 text-yellow-600 rounded-lg hover:bg-yellow-100 transition">
+                                ارجاع
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="p-12 text-center text-gray-400">هیچ مشتری یافت نشد.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Mobile Cards -->
+    <div class="md:hidden space-y-3">
+        {% for c in customers %}
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-1 h-full {% if c.status == 'active' %}bg-green-500{% else %}bg-gray-300{% endif %}"></div>
+            <div class="flex justify-between items-start mb-2">
+                <div class="flex items-center gap-2">
+                    <div class="font-bold text-gray-800">{{ c.name }}</div>
+                    {% if c.is_lead %}<span class="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[10px] font-bold">سرنخ</span>{% endif %}
+                </div>
+                <span class="text-[10px] text-gray-400">{{ c.created_at|jdate:"Y/m/d" }}</span>
+            </div>
+            <div class="text-[10px] text-gray-500 mt-0.5">
+                مسئول: {% if c.assigned_to %}{{ c.assigned_to.get_full_name|default:c.assigned_to.username }}{% else %}—{% endif %}
+            </div>
+            <div class="font-mono text-gray-600 text-sm mb-3 mt-2" dir="ltr">{{ c.mobile }}</div>
+            <div class="flex gap-2 mb-4">
+                <span class="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded-md border border-gray-100">{{ c.get_status_display }}</span>
+                <span class="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded-md border border-gray-100">{{ c.get_customer_type_display }}</span>
+            </div>
+            <div class="flex gap-2">
+                <a href="{% url 'customers:detail' c.pk %}" class="flex-1 text-center py-2.5 bg-blue-50 text-blue-700 rounded-xl text-sm font-bold active:bg-blue-100 transition">جزئیات</a>
+                {% if 'customers.edit' in user_permissions %}
+                <button type="button" onclick="openCustomerReassign({{ c.pk }}, '{{ c.name|escapejs }}')" class="flex-1 text-center py-2.5 bg-yellow-50 text-yellow-700 rounded-xl text-sm font-bold active:bg-yellow-100 transition">ارجاع</button>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="bg-white p-8 rounded-2xl text-center text-gray-400 border border-gray-100">مشتری یافت نشد.</div>
+        {% endfor %}
+    </div>
+</div>

@@ -1,9 +1,11 @@
 from django.urls import path
+from django.shortcuts import redirect
 from . import views
 
 app_name = 'calls'
 
 urlpatterns = [
+    # List مستقل (جدول + فیلتر پیشرفته)
     path('', views.call_list, name='list'),
     path('new/', views.call_create, name='create'),
     path('<int:pk>/', views.call_detail, name='detail'),

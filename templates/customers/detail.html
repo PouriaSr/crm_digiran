@@ -3,7 +3,7 @@
 {% block title %}{{ customer.name }}{% endblock %}
 
 {% block mobile_leading %}
-<a href="{% url 'customers:list' %}" class="app-topbar-btn" aria-label="بازگشت">
+<a href="{% url 'customers:hub' %}?tab=info" class="app-topbar-btn" aria-label="بازگشت">
     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>
@@ -18,7 +18,7 @@
 
 <!-- ═══ سربرگ با دکمه‌ها ═══ -->
 <div class="flex justify-between items-center mb-6">
-    <a href="{% url 'customers:list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست</a>
+    <a href="{% url 'customers:hub' %}?tab=info" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست</a>
     <div class="flex gap-2 flex-wrap">
         {% if 'calls.add' in user_permissions %}
         <a href="{% url 'calls:create' %}?customer={{ customer.pk }}"

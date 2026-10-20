@@ -179,6 +179,8 @@ def customer_create(request):
         if form.is_valid():
             customer = form.save(commit=False)
             customer.created_by = request.user
+            if not customer.assigned_to_id:
+                customer.assigned_to = request.user
             customer.save()
             messages.success(request, f'مشتری «{customer.name}» با موفقیت اضافه شد.')
             _add_duplicate_warnings(request, form)

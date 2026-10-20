@@ -5,7 +5,7 @@
 {% block content %}
 
 <div class="mb-6">
-    <a href="{% url 'sales:list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست</a>
+    <a href="{% url 'customers:hub' %}?tab=invoice" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست</a>
 </div>
 
 <h1 class="text-2xl font-bold text-gray-800 mb-6">{{ title }}</h1>
@@ -228,7 +228,7 @@
         <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
             {{ submit_label }}
         </button>
-        <a href="{% url 'sales:list' %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+        <a href="{% url 'customers:hub' %}?tab=invoice" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
             انصراف
         </a>
     </div>

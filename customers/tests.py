@@ -33,6 +33,7 @@ class CustomerFormDuplicateTest(TestCase):
             'mobile': '09129999999',
             'status': 'lead',
             'source': 'direct',
+            'notes': 'تست',
         })
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.duplicate_warnings, [])
@@ -44,6 +45,7 @@ class CustomerFormDuplicateTest(TestCase):
             'mobile': '09120000001',
             'status': 'lead',
             'source': 'direct',
+            'notes': 'تست',
         })
         self.assertFalse(form.is_valid())
         self.assertIn('mobile', form.errors)
@@ -56,6 +58,7 @@ class CustomerFormDuplicateTest(TestCase):
             'mobile': ' 0912 000 0001 ',
             'status': 'lead',
             'source': 'direct',
+            'notes': 'تست',
         })
         self.assertFalse(form.is_valid())
         self.assertIn('mobile', form.errors)
@@ -68,6 +71,7 @@ class CustomerFormDuplicateTest(TestCase):
             'mobile': ' 0912 000 0002 ',   # متفاوت از existing
             'status': 'lead',
             'source': 'direct',
+            'notes': 'تست',
         })
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.cleaned_data.get('mobile'), '09120000002')
@@ -78,6 +82,7 @@ class CustomerFormDuplicateTest(TestCase):
             'mobile': '۰۹۱۲۰۰۰۰۰۰۱',
             'status': 'lead',
             'source': 'direct',
+            'notes': 'تست',
         })
         self.assertFalse(form.is_valid())
         self.assertIn('mobile', form.errors)
@@ -89,6 +94,7 @@ class CustomerFormDuplicateTest(TestCase):
             'mobile': '۰۹۱۲۰۰۰۰۰۰۲',   # متفاوت
             'status': 'lead',
             'source': 'direct',
+            'notes': 'تست',
         })
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.cleaned_data.get('mobile'), '09120000002')
@@ -99,6 +105,7 @@ class CustomerFormDuplicateTest(TestCase):
             'mobile': '0912-000-0001',
             'status': 'lead',
             'source': 'direct',
+            'notes': 'تست',
         })
         self.assertFalse(form.is_valid())
         self.assertIn('mobile', form.errors)
@@ -111,6 +118,7 @@ class CustomerFormDuplicateTest(TestCase):
             'national_id': '9999999999',
             'status': 'lead',
             'source': 'direct',
+            'notes': 'تست',
         })
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.duplicate_warnings, [])
@@ -123,6 +131,7 @@ class CustomerFormDuplicateTest(TestCase):
             'national_id': '1234567890',
             'status': 'lead',
             'source': 'direct',
+            'notes': 'تست',
         })
         self.assertFalse(form.is_valid())
         self.assertIn('national_id', form.errors)
@@ -136,6 +145,7 @@ class CustomerFormDuplicateTest(TestCase):
             'national_id': '',
             'status': 'lead',
             'source': 'direct',
+            'notes': 'تست',
         })
         self.assertTrue(form.is_valid(), form.errors)
 
@@ -147,6 +157,7 @@ class CustomerFormDuplicateTest(TestCase):
             'national_id': '1234567890',
             'status': 'lead',
             'source': 'direct',
+            'notes': 'تست',
         })
         self.assertFalse(form.is_valid())
         self.assertIn('mobile', form.errors)
@@ -161,6 +172,7 @@ class CustomerFormDuplicateTest(TestCase):
                 'national_id': '1234567890',
                 'status': 'active',
                 'source': 'direct',
+                'notes': 'تست',
             },
             instance=self.existing,
         )
@@ -179,6 +191,7 @@ class CustomerFormDuplicateTest(TestCase):
                 'mobile': '09120000001',  # موبایل مشتری اول
                 'status': 'lead',
                 'source': 'direct',
+                'notes': 'تست',
             },
             instance=other,
         )
@@ -193,6 +206,7 @@ class CustomerFormDuplicateTest(TestCase):
             'mobile': '09129999999',
             'status': 'lead',
             'source': 'direct',
+            'notes': 'تست',
         })
         self.assertTrue(form.is_valid(), form.errors)
         # باید حداقل یه warning برای name داشته باشه
@@ -226,6 +240,7 @@ class CustomerDuplicateViewWarningTest(TestCase):
             'status': 'lead',
             'source': 'direct',
             'assigned_to': self.user.pk,
+            'notes': 'تست',
         }
         data.update(overrides)
         return data

@@ -257,19 +257,24 @@ class UserEditForm(DuplicateCheckMixin, forms.ModelForm):
             from accounts.permissions import PERMISSION_META
             from accounts.models import UserPermissionOverride
 
+            # ⭐ Fix v12: always clear overrides
+            user.permission_overrides.all().delete()
+
             if not user.is_superuser:
-                user.permission_overrides.all().delete()
+                to_create = []
                 for perm_key in PERMISSION_META.keys():
                     field_name = 'perm__' + perm_key.replace('.', '_')
-                    val = self.cleaned_data.get(field_name, 'inherit')
+                    val = self.cleaned_data.get(field_name) or 'inherit'
                     if val == 'allow':
-                        UserPermissionOverride.objects.create(
+                        to_create.append(UserPermissionOverride(
                             user=user, permission_key=perm_key, granted=True,
-                        )
+                        ))
                     elif val == 'deny':
-                        UserPermissionOverride.objects.create(
+                        to_create.append(UserPermissionOverride(
                             user=user, permission_key=perm_key, granted=False,
-                        )
+                        ))
+                if to_create:
+                    UserPermissionOverride.objects.bulk_create(to_create)
         return user
 
 

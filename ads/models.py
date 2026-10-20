@@ -9,7 +9,7 @@ class AdPlatform(models.Model):
     ad_number_start = models.PositiveIntegerField(
         'شماره شروع آگهی',
         default=1000,
-        help_text='اولین شماره آگهی این پلتفرم — بعدی‌ها خودکار ادامه می‌یابند.',
+        help_text='اولین شناسه آگهی این پلتفرم — بعدی‌ها خودکار ادامه می‌یابند.',
     )
     is_active = models.BooleanField('فعال', default=True)
     created_at = models.DateTimeField('تاریخ ایجاد', auto_now_add=True)
@@ -130,7 +130,7 @@ class Ad(models.Model):
         blank=True,
     )
     ad_number = models.CharField(
-        'شماره آگهی',
+        'شناسه آگهی',
         max_length=100,
         unique=True,
         help_text='شماره یونیک آگهی در پلتفرم',
@@ -184,7 +184,7 @@ class AdLog(models.Model):
     )
     # ⭐ اسنپ‌شات شناسه برای حفظ قابلیت audit پس از حذف Ad
     ad_number_snapshot = models.CharField(
-        'شماره آگهی (اسنپ‌شات)',
+        'شناسه آگهی (اسنپ‌شات)',
         max_length=100,
         blank=True,
         db_index=True,
