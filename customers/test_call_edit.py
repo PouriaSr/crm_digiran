@@ -79,7 +79,7 @@ class CallEditTest(TestCase):
     def test_edit_followup_closes_open_followup(self):
         FollowUp.objects.create(customer=self.customer, due_date=timezone.localdate())
         self.client.post(reverse('customers:hub_call_edit', args=[self.follow.pk]), {
-            'notes': 'نتیجه', 'follow_up_date': jdate(timezone.localdate()),
+            'notes': 'نتیجه', 'follow_up_time': '10:30', 'follow_up_date': jdate(timezone.localdate()),
             'is_followed_up': '1',
         })
         self.follow.refresh_from_db()

@@ -78,8 +78,8 @@ class PermissionsHelpersTest(TestCase):
     def test_has_permission_sales_cannot_delete_customers(self):
         self.assertFalse(has_permission(self.sales, 'customers.delete'))
 
-    def test_has_permission_support_can_reassign(self):
-        self.assertTrue(has_permission(self.support, 'calls.reassign'))
+    def test_has_permission_support_cannot_reassign(self):
+        self.assertFalse(has_permission(self.support, 'calls.reassign'))
 
     def test_has_permission_support_cannot_delete_calls(self):
         self.assertFalse(has_permission(self.support, 'calls.delete'))
@@ -103,7 +103,7 @@ class PermissionsHelpersTest(TestCase):
 
     def test_get_user_permissions_support(self):
         perms = get_user_permissions(self.support)
-        self.assertIn('calls.reassign', perms)
+        self.assertNotIn('calls.reassign', perms)
         self.assertNotIn('calls.delete', perms)
         self.assertNotIn('invoices.add', perms)
 
@@ -446,7 +446,7 @@ class RBACOnViewsTest(TestCase):
     def test_calls_create_access(self):
         self._check_url('calls:create', [
             ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES,
-            ROLE_SUPPORT, ROLE_OPERATOR,
+            ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR,
         ])
 
     # ─── داشبورد ───

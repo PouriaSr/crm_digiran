@@ -29,10 +29,12 @@ def permissions_context(request):
             'notifications_count': 0,
         }
 
+    from customers.access import card_manager_for_request
     role = get_user_role(user)
     notifications = get_notifications(user)
 
     return {
+        'can_transfer_calls': card_manager_for_request(request),
         'user_permissions': get_user_permissions(user),
         'user_role': role,
         'user_role_display': get_user_role_display(user),

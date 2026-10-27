@@ -53,13 +53,10 @@ class CallFollowUpDateDisplayTest(TestCase):
         self.assertIn('تاریخ پیگیری', self.detail)
         self.assertIn(self.fu_fa, self.detail)
 
-    def test_detail_column_order(self):
-        theads = re.findall(r'<thead[^>]*>.*?</thead>', self.detail, re.S)
-        head = next((t for t in theads if 'تاریخ پیگیری' in t), '')
-        labels = [re.sub(r'<[^>]+>', '', x).strip()
-                  for x in re.findall(r'<th[ >][^>]*>(.*?)</th>', head, re.S)]
-        labels = [l for l in labels if l]
-        self.assertEqual(labels[:4], ['تاریخ', 'تاریخ پیگیری', 'نوع', 'هدف'])
+    def test_detail_cards_show_followup_date_and_registration_context(self):
+        self.assertIn('title="تاریخ پیگیری"', self.detail)
+        self.assertIn('title="تاریخ و ساعت ثبت"', self.detail)
+        self.assertIn('data-call-fu-date=', self.detail)
 
     def test_empty_followup_date_shows_dash(self):
         self.assertIn('text-gray-300', self.detail)

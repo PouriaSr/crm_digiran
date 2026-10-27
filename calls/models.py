@@ -93,6 +93,7 @@ class Call(models.Model):
 
     # ═══ پیگیری ═══
     follow_up_date = models.DateField('تاریخ پیگیری', null=True, blank=True)
+    follow_up_time = models.TimeField('ساعت پیگیری', null=True, blank=True)
     is_followed_up = models.BooleanField('پیگیری شد؟', default=False)
 
     # ═══ توضیحات ═══

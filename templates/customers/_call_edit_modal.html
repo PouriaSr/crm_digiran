@@ -63,7 +63,7 @@
                 <label class="flex items-center gap-2 text-sm font-bold text-orange-700 cursor-pointer">
                     <input type="checkbox" name="needs_followup" id="ce-needs-followup" value="1"
                            class="w-4 h-4 rounded text-orange-600 border-gray-300"
-                           onchange="document.getElementById('ce-need-date-row').classList.toggle('hidden', !this.checked)">
+                           onchange="document.getElementById('ce-need-date-row').classList.toggle('hidden', !this.checked); document.getElementById('ce-need-time').required = this.checked; document.getElementById('ce-need-date').required = this.checked">
                     نیاز به پیگیری (تبدیل به تماس پیگیری)
                 </label>
                 <div id="ce-need-date-row" class="hidden mt-3">
@@ -73,6 +73,8 @@
                     <input type="text" name="needs_followup_date" id="ce-need-date" data-jdp data-jdp-time="false"
                            placeholder="۱۴۰۵/۰۸/۱۵"
                            class="w-full px-3 py-2 text-sm bg-orange-50/50 border border-orange-200 rounded-xl focus:bg-white focus:border-orange-500 focus:outline-none">
+                    <label for="ce-need-time" class="block text-xs font-bold mt-3">ساعت پیگیری *</label>
+                    <input type="time" name="needs_followup_time" id="ce-need-time" class="w-full px-3 py-2 border rounded-xl" dir="ltr">
                 </div>
             </div>
 
@@ -84,6 +86,8 @@
                            placeholder="۱۴۰۵/۰۸/۱۵"
                            class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-slate-500 focus:outline-none">
                 </div>
+                <label for="ce-fu-time" class="block text-sm font-bold">ساعت پیگیری *</label>
+                <input type="time" name="follow_up_time" id="ce-fu-time" class="w-full px-3 py-2 border rounded-xl" dir="ltr">
                 <label class="flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer">
                     <input type="checkbox" name="is_followed_up" id="ce-fu-done" value="1"
                            class="w-4 h-4 rounded text-emerald-600 border-gray-300">
@@ -121,10 +125,11 @@ function openCallEdit(btn) {
     var row = btn.closest('[data-call-id]');
     if (!row) return;
 
+    document.getElementById('ce-form').reset();
     var d = row.dataset;
     var isFu = (d.callType === 'followup');
 
-    document.getElementById('ce-form').action = '/customers/hub/calls/' + d.callId + '/edit/';
+    document.getElementById('ce-form').action = "{% url 'customers:hub_call_edit' 0 %}".replace('/0/', '/' + d.callId + '/');
     document.getElementById('ce-kind').value = isFu ? 'followup' : 'new';
     document.getElementById('ce-customer').textContent = d.callCustomer || '—';
     document.getElementById('ce-type').textContent = d.callTypeLabel || '—';
@@ -142,6 +147,11 @@ function openCallEdit(btn) {
     var needDate = document.getElementById('ce-need-date');
     if (needDate) needDate.value = '';
 
+    document.getElementById('ce-fu-date').required = isFu;
+    document.getElementById('ce-fu-time').required = isFu;
+    document.getElementById('ce-need-time').required = false;
+    document.getElementById('ce-need-date').required = false;
+    document.getElementById('ce-fu-time').value = d.callFuTime || '';
     if (isFu) {
         document.getElementById('ce-fu-date').value = d.callFuDate || '';
         document.getElementById('ce-fu-done').checked = (d.callFuDone === '1');

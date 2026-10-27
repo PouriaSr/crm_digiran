@@ -34,20 +34,17 @@ class DetailNotesColumnTest(TestCase):
     def test_notes_column_present(self):
         self.assertIn('شرح مکالمه', self.section)
 
-    def test_column_order(self):
-        ths = re.findall(r'<th[ >][^>]*>(.*?)</th>', self.section, re.S)
-        labels = [re.sub(r'<[^>]+>', '', t).strip() for t in ths]
-        self.assertEqual(labels[:7],
-                         ['تاریخ', 'تاریخ پیگیری', 'نوع', 'هدف',
-                          'وضعیت', 'شرح مکالمه', 'کارمند'])
-        # ستون آخر (ویرایش) بدون عنوان است
-        self.assertLessEqual(len(labels), 8)
+    def test_history_cards_have_call_context(self):
+        self.assertEqual(self.section.count('<article '), 2)
+        for text in ('هدف:', 'وضعیت:', 'ثبت‌کننده:', 'تماس مشتری', 'پیگیری'):
+            self.assertIn(text, self.section)
+        self.assertIn('title="تاریخ و ساعت ثبت"', self.section)
 
     def test_notes_value_rendered(self):
         self.assertIn('مشتری درباره گارانتی سوال داشت', self.section)
 
     def test_empty_notes_show_dash(self):
-        self.assertIn('—', self.section)
+        self.assertIn('شرحی ثبت نشده است.', self.section)
 
     def test_still_no_details_link(self):
         self.assertNotIn('/calls/', self.section)

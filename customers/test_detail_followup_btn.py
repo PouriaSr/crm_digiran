@@ -51,7 +51,7 @@ class DetailFollowUpButtonTest(TestCase):
                                      due_date=timezone.localdate())
         r = self.client.post(reverse('customers:quick_call', args=[self.with_fu.pk]), {
             'kind': 'followup', 'notes': 'پیگیری انجام شد',
-            'follow_up_date': jdatetime.date.fromgregorian(date=timezone.localdate()).strftime('%Y/%m/%d'),
+            'follow_up_time': '10:30', 'follow_up_date': jdatetime.date.fromgregorian(date=timezone.localdate()).strftime('%Y/%m/%d'),
             'next': f'/customers/{self.with_fu.pk}/',
         })
         fu.refresh_from_db()

@@ -68,7 +68,7 @@ class DetailCallButtonParityTest(TestCase):
         self.client.post(reverse('customers:hub_submit_call'), {
             'mobile': mobile, 'name': 'با پیگیری', 'call_type': 'incoming',
             'notes': 'نیاز به پیگیری', 'needs_followup': 'on',
-            'follow_up_date': '1405/08/20', 'next': f'/customers/{self.customer.pk}/',
+            'follow_up_time': '10:30', 'follow_up_date': '1405/08/20', 'next': f'/customers/{self.customer.pk}/',
         })
         c = Customer.objects.filter(mobile=mobile).first()
         self.assertIsNotNone(c)

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load fa_numbers card_access %}
 
 {% block title %}{{ customer.name }}{% endblock %}
 
@@ -13,12 +14,14 @@
 {% block mobile_title %}{{ customer.name }}{% endblock %}
 
 {% block content %}
+{% can_edit_card customer as card_editable %}
+
 
 {% include "customers/_call_modal.html" %}
 {% include "customers/_quick_call_modal.html" %}
 {% include "customers/_call_edit_modal.html" %}
 
-{% load fa_numbers %}
+{% load fa_numbers card_access %}
 
 <!-- ═══ سربرگ با دکمه‌ها ═══ -->
 <div class="flex justify-between items-center mb-6">
@@ -80,9 +83,9 @@
             صدور فاکتور
         </a>
         {% endif %}
-        {% if 'customers.edit' in user_permissions %}
+        {% if card_editable %}
         <button type="button"
-                onclick="openCustomerModal('/customers/{{ customer.pk }}/edit/?is_modal=1')"
+                onclick="openCustomerModal('{% url 'customers:edit' customer.pk %}?is_modal=1')"
            class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm">✏️ ویرایش</button>
         {% endif %}
         {% if 'customers.delete' in user_permissions %}
@@ -193,7 +196,7 @@
         <h2 class="font-bold text-gray-700 mb-4">اطلاعات داخلی</h2>
         <dl class="space-y-3 text-sm">
             <div class="flex justify-between">
-                <dt class="text-gray-500">کارمند مسئول:</dt>
+                <dt class="text-gray-500">کارشناس تماس:</dt>
                 <dd class="text-gray-800">
                     {% if customer.assigned_to %}
                         {{ customer.assigned_to.get_full_name|default:customer.assigned_to.username }}
@@ -268,81 +271,7 @@
     </div>
 
     {% if calls %}
-    <table class="w-full text-sm">
-        <thead class="bg-gray-50">
-            <tr class="text-gray-600">
-                <th class="text-right px-6 py-2.5 font-medium">تاریخ</th>
-                <th class="text-right px-6 py-2.5 font-medium">تاریخ پیگیری</th>
-                <th class="text-right px-6 py-2.5 font-medium">نوع</th>
-                <th class="text-right px-6 py-2.5 font-medium">هدف</th>
-                <th class="text-right px-6 py-2.5 font-medium">وضعیت</th>
-                <th class="text-right px-6 py-2.5 font-medium">شرح مکالمه</th>
-                <th class="text-right px-6 py-2.5 font-medium">کارمند</th>
-                {% if 'calls.edit' in user_permissions %}
-                <th class="px-6 py-2.5"></th>
-                {% endif %}
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-            {% for call in calls %}
-            <tr class="hover:bg-gray-50"
-                data-call-id="{{ call.pk }}"
-                data-call-type="{{ call.contact_type }}"
-                data-call-type-label="{{ call.get_contact_type_display }}"
-                data-call-customer="{{ call.customer.name }}"
-                data-call-notes="{{ call.notes|default:'' }}"
-                data-call-status="{{ call.status }}"
-                data-call-purpose="{{ call.purpose }}"
-                data-call-date-jalali="{{ call.call_date|jdate:'Y/m/d' }}"
-                data-call-fu-date="{% if call.follow_up_date %}{{ call.follow_up_date|jdate:'Y/m/d' }}{% endif %}"
-                data-call-fu-done="{% if call.is_followed_up %}1{% else %}0{% endif %}">
-                <td class="px-6 py-3 text-right text-xs text-gray-500" dir="ltr">{{ call.call_date|jdate:"Y/m/d H:i" }}</td>
-                <td class="px-6 py-3 text-right text-xs">
-                    {% if call.follow_up_date %}
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 font-bold"
-                              dir="ltr">{{ call.follow_up_date|jdate:"Y/m/d" }}</span>
-                    {% else %}
-                        <span class="text-gray-300">—</span>
-                    {% endif %}
-                </td>
-                <td class="px-6 py-3 text-right text-xs">{{ call.get_call_type_display }}</td>
-                <td class="px-6 py-3 text-right text-xs">{{ call.get_purpose_display }}</td>
-                <td class="px-6 py-3 text-right">
-                    {% if call.status == 'answered' %}
-                        <span class="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">{{ call.get_status_display }}</span>
-                    {% elif call.status == 'followup' %}
-                        <span class="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700">{{ call.get_status_display }}</span>
-                    {% else %}
-                        <span class="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700">{{ call.get_status_display }}</span>
-                    {% endif %}
-                </td>
-                <td class="px-6 py-3 text-right text-xs text-gray-700 max-w-[280px]">
-                    {% if call.notes %}
-                        <div class="truncate" title="{{ call.notes }}">{{ call.notes|truncatechars:80 }}</div>
-                    {% else %}
-                        <span class="text-gray-400">—</span>
-                    {% endif %}
-                </td>
-                <td class="px-6 py-3 text-right text-xs text-gray-600">
-                    {% if call.called_by %}
-                        {{ call.called_by.get_full_name|default:call.called_by.username }}
-                    {% else %}
-                        —
-                    {% endif %}
-                </td>
-                {% if 'calls.edit' in user_permissions %}
-                <td class="px-6 py-3 text-left">
-                    <button type="button" title="ویرایش این تماس" aria-label="ویرایش تماس"
-                            onclick="openCallEdit(this)"
-                            class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 border border-transparent hover:border-slate-200 transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                    </button>
-                </td>
-                {% endif %}
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="p-4 sm:p-6">{% include 'customers/_call_history_items.html' with history_calls=calls can_edit_history=card_editable %}</div>
     {% else %}
     <div class="text-center py-8 text-gray-400 text-sm">
         هنوز تماسی با این مشتری ثبت نشده
@@ -419,7 +348,7 @@
     </div>
 
     <!-- فرم ثبت یادداشت جدید -->
-    {% if 'customers.edit' in user_permissions %}
+    {% if card_editable %}
     <div class="px-6 py-4 bg-gray-50 border-b border-gray-100">
         <form id="note-form" onsubmit="submitNote(event, {{ customer.pk }})">
             {% csrf_token %}

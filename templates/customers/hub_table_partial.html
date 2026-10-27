@@ -1,5 +1,15 @@
-{% load fa_numbers %}
+{% load fa_numbers card_access %}
 <div id="customer-table-container">
+<form method="get" id="hub-filter-form" class="bg-white rounded-2xl border border-slate-200 p-4 mb-4 grid grid-cols-2 lg:grid-cols-6 gap-3 text-xs">
+ <input type="hidden" name="tab" value="info"><input type="hidden" name="q" value="{{ search }}">
+ <label>بازه بر اساس<select name="date_field" class="w-full mt-1 border rounded-lg p-2 no-search"><option value="followup" {% if table_filters.date_field != 'created' %}selected{% endif %}>نزدیک‌ترین پیگیری</option><option value="created" {% if table_filters.date_field == 'created' %}selected{% endif %}>تاریخ ثبت مشتری</option></select></label>
+ <label>از تاریخ<input type="text" name="date_from" value="{{ table_filters.date_from }}" data-jdp data-jdp-time="false" placeholder="۱۴۰۵/۰۸/۰۱" autocomplete="off" class="w-full mt-1 border rounded-lg p-2"></label>
+ <label>تا تاریخ<input type="text" name="date_to" value="{{ table_filters.date_to }}" data-jdp data-jdp-time="false" placeholder="۱۴۰۵/۰۸/۳۰" autocomplete="off" class="w-full mt-1 border rounded-lg p-2"></label>
+ <label>وضعیت تسک<select name="priority" class="w-full mt-1 border rounded-lg p-2 no-search"><option value="">همه</option><option value="overdue" {% if table_filters.priority == 'overdue' %}selected{% endif %}>عقب‌افتاده</option><option value="today" {% if table_filters.priority == 'today' %}selected{% endif %}>سررسید امروز</option><option value="upcoming" {% if table_filters.priority == 'upcoming' %}selected{% endif %}>آینده</option><option value="none" {% if table_filters.priority == 'none' %}selected{% endif %}>بدون پیگیری باز</option></select></label>
+ <label>مرتب‌سازی<select name="sort" class="w-full mt-1 border rounded-lg p-2 no-search"><option value="priority" {% if table_filters.sort == 'priority' %}selected{% endif %}>اولویت پیگیری</option><option value="recent" {% if table_filters.sort == 'recent' %}selected{% endif %}>جدیدترین مشتری</option><option value="oldest" {% if table_filters.sort == 'oldest' %}selected{% endif %}>قدیمی‌ترین مشتری</option></select></label>
+ <div class="flex items-end gap-2"><button type="submit" class="bg-blue-600 text-white font-bold rounded-lg p-2 flex-1">اعمال فیلتر</button><a href="{% url 'customers:hub' %}?tab=info" class="rounded-lg p-2 border text-slate-500">پاک‌کردن</a></div>
+</form>
+
     <div class="hidden md:block bg-white rounded-2xl shadow-sm overflow-x-auto border border-gray-100">
         <table class="w-full text-sm text-center">
             <thead class="bg-gray-50/80 border-b border-gray-100">
@@ -8,13 +18,14 @@
                     <th class="p-3 font-medium">شماره تماس</th>
                     <th class="p-3 font-medium">منبع جذب</th>
                     <th class="p-3 font-medium">وضعیت پیگیری</th>
-                    <th class="p-3 font-medium">کارمند مسئول</th>
+                    <th class="p-3 font-medium">کارشناس تماس</th>
                     <th class="p-3 font-medium">تاریخ ثبت</th>
                     <th class="p-3 font-medium">عملیات</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
                 {% for c in customers %}
+                {% can_edit_card c as card_editable %}
                 <tr class="hover:bg-blue-50/30 transition group {% if c.is_deleted %}opacity-60 bg-gray-50/50{% endif %}">
                     <td class="p-3 text-center">
                         <div class="flex items-center justify-center gap-2">
@@ -45,7 +56,7 @@
                     <td class="p-3 text-center">
                         {% if c.open_fu_due %}
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-orange-50 text-orange-700 text-[11px] font-bold">● باز</span>
-                        <div class="text-[11px] text-orange-600 mt-1" dir="ltr">{{ c.open_fu_due|jdate:"Y/m/d" }}</div>
+                        <div class="text-[11px] text-orange-600 mt-1" dir="ltr">{{ c.open_fu_due|jdate:"Y/m/d" }} {{ c.open_fu_time|time:"H:i" }}</div>
                         {% elif c.last_fu_done %}
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-bold">✓ انجام شد</span>
                         <div class="text-[11px] text-gray-400 mt-1" dir="ltr">{{ c.last_fu_done|jdate:"Y/m/d" }}</div>
@@ -78,7 +89,7 @@
 
                         {% else %}
                             {# ── گروه اصلی: تماس ── #}
-                            {% if c.needs_followup %}
+                            {% if 'customers.followup' in user_permissions %}
                             <button type="button" title="ثبت تماس پیگیری"
                                     onclick="openQuickCall('followup', {{ c.pk }}, '{{ c.name|escapejs }}', '{{ c.mobile|escapejs }}')"
                                     class="hub-act hub-act-primary">
@@ -104,15 +115,17 @@
                             <span class="w-px h-5 bg-gray-200 mx-0.5"></span>
 
                             {# ── گروه ثانویه: آیکن‌محور ── #}
-                            {% if 'customers.edit' in user_permissions %}
+                            {% if can_transfer_calls %}
                             <button type="button" title="انتقال به کارمند دیگر" aria-label="انتقال"
                                     onclick="openReassignModal({{ c.pk }}, '{{ c.name|escapejs }}')"
                                     class="hub-act-icon hub-act-violet">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
                             </button>
 
+                            {% else %}<button type="button" disabled title="انتقال فقط برای سرپرست و ادمین مجاز است" aria-label="انتقال غیرفعال" class="hub-act-icon opacity-40 cursor-not-allowed">⇄</button>{% endif %}
+                            {% if card_editable %}
                             <button type="button" title="ویرایش اطلاعات" aria-label="ویرایش"
-                                    onclick="openCustomerModal('/customers/{{ c.pk }}/edit/?is_modal=1')"
+                                    onclick="openCustomerModal('{% url 'customers:edit' c.pk %}?is_modal=1')"
                                     class="hub-act-icon hub-act-amber">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                             </button>
@@ -141,61 +154,7 @@
                             <div class="text-xs font-bold text-gray-600 mb-2">
                                 تاریخچه تماس‌ها ({{ c.history_calls|length|fa_num }} مورد)
                             </div>
-                            <div class="space-y-1.5">
-                                {% for call in c.history_calls %}
-                                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 bg-white rounded-xl border border-gray-100 px-3 py-2 text-xs"
-                                     data-call-id="{{ call.pk }}"
-                                     data-call-type="{{ call.contact_type }}"
-                                     data-call-type-label="{{ call.get_contact_type_display }}"
-                                     data-call-customer="{{ call.customer.name }}"
-                                     data-call-notes="{{ call.notes|default:'' }}"
-                                     data-call-status="{{ call.status }}"
-                                     data-call-purpose="{{ call.purpose }}"
-                                     data-call-date-jalali="{{ call.call_date|jdate:'Y/m/d' }}"
-                                     data-call-fu-date="{% if call.follow_up_date %}{{ call.follow_up_date|jdate:'Y/m/d' }}{% endif %}"
-                                     data-call-fu-done="{% if call.is_followed_up %}1{% else %}0{% endif %}">
-                                    <span class="font-mono text-gray-500" dir="ltr">{{ call.call_date|jdate:"Y/m/d H:i" }}</span>
-                                    <span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-bold">{{ call.get_contact_type_display }}</span>
-
-                                    {% if call.contact_type != 'followup' %}
-                                    {# تماس جدید (نه پیگیری) → هدف و وضعیت هم نمایش داده شود #}
-                                    {% if call.purpose %}
-                                    <span class="px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 font-bold" title="هدف تماس">
-                                        {{ call.get_purpose_display }}
-                                    </span>
-                                    {% endif %}
-                                    {% if call.status %}
-                                    <span class="px-1.5 py-0.5 rounded font-bold
-                                        {% if call.status == 'answered' %}bg-emerald-50 text-emerald-700
-                                        {% elif call.status == 'busy' %}bg-amber-50 text-amber-700
-                                        {% elif call.status == 'missed' or call.status == 'no_answer' %}bg-rose-50 text-rose-600
-                                        {% else %}bg-gray-100 text-gray-600{% endif %}" title="وضعیت تماس">
-                                        {{ call.get_status_display }}
-                                    </span>
-                                    {% endif %}
-                                    {% endif %}
-
-                                    <span class="text-gray-700 flex-1 min-w-[180px]">{{ call.notes|default:"—" }}</span>
-                                    {% if call.follow_up_date %}
-                                    <span class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-bold" title="تاریخ پیگیری">
-                                        پیگیری: {{ call.follow_up_date|jdate:"Y/m/d" }}
-                                    </span>
-                                    {% endif %}
-                                    {% if call.is_followed_up %}
-                                    <span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold">پیگیری انجام شد</span>
-                                    {% endif %}
-                                    <span class="text-gray-400">{{ call.called_by.get_full_name|default:call.called_by.username|default:"—" }}</span>
-
-                                    {% if 'calls.edit' in user_permissions %}
-                                    <button type="button" title="ویرایش این تماس" aria-label="ویرایش تماس"
-                                            onclick="openCallEdit(this)"
-                                            class="inline-flex items-center justify-center w-6 h-6 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                    </button>
-                                    {% endif %}
-                                </div>
-                                {% endfor %}
-                            </div>
+                            {% include 'customers/_call_history_items.html' with history_calls=c.history_calls can_edit_history=card_editable %}
                             {% else %}
                             <div class="text-xs text-gray-400">هنوز تماسی برای این مشتری ثبت نشده است.</div>
                             {% endif %}
@@ -218,6 +177,7 @@
 
     <div id="hub-mobile-list" class="md:hidden space-y-3">
         {% for c in customers %}
+                {% can_edit_card c as card_editable %}
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 {% if c.is_deleted %}opacity-60{% endif %}">
             <a href="{% url 'customers:detail' c.pk %}" class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold shrink-0">{{ c.name|first|upper }}</div>
@@ -230,9 +190,10 @@
                 </div>
             </a>
             <div class="mt-2 flex items-center justify-between gap-2 text-xs text-gray-400">
-                <span>مسئول: {% if c.assigned_to %}{{ c.assigned_to.get_full_name|default:c.assigned_to.username }}{% else %}بدون مسئول{% endif %}</span>
+                <span>کارشناس تماس: {% if c.assigned_to %}{{ c.assigned_to.get_full_name|default:c.assigned_to.username }}{% else %}بدون مسئول{% endif %}</span>
                 <span>{{ c.created_at|jdate:"Y/m/d" }}</span>
             </div>
+            {% if c.history_calls %}<details class="mt-3"><summary class="text-xs text-blue-600 cursor-pointer mb-3">تاریخچه تماس‌ها ({{ c.history_calls|length|fa_num }} مورد)</summary>{% include 'customers/_call_history_items.html' with history_calls=c.history_calls can_edit_history=card_editable %}</details>{% endif %}
             <div class="mt-2 flex items-center gap-2 flex-wrap">
                 {% if c.is_deleted %}
                     {% if 'customers.delete' in user_permissions %}
@@ -242,14 +203,14 @@
                     </form>
                     {% endif %}
                 {% else %}
-                    {% if c.needs_followup %}
+                    {% if 'customers.followup' in user_permissions %}
                     <button type="button" onclick="openQuickCall('followup', {{ c.pk }}, '{{ c.name|escapejs }}', '{{ c.mobile|escapejs }}')"
                             class="text-xs px-2 py-1 bg-emerald-50 text-emerald-700 rounded-lg">تماس پیگیری</button>
                     {% endif %}
                     <button type="button" onclick="openQuickCall('new', {{ c.pk }}, '{{ c.name|escapejs }}', '{{ c.mobile|escapejs }}')"
                             class="text-xs px-2 py-1 bg-sky-50 text-sky-700 rounded-lg">تماس جدید</button>
-                    {% if 'customers.edit' in user_permissions %}
-                    <button type="button" onclick="openCustomerModal('/customers/{{ c.pk }}/edit/?is_modal=1')"
+                    {% if card_editable %}
+                    <button type="button" onclick="openCustomerModal('{% url 'customers:edit' c.pk %}?is_modal=1')"
                             class="text-xs px-2 py-1 bg-amber-50 text-amber-700 rounded-lg">ویرایش</button>
                     {% endif %}
                 {% endif %}

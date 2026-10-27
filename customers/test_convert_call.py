@@ -50,7 +50,7 @@ class ConvertCallToFollowUpTest(TestCase):
         r = self.client.post(reverse('customers:hub_call_edit', args=[self.call.pk]), {
             'notes': 'تستی - با خط تیره',
             'needs_followup': '1',
-            'needs_followup_date': jdate(due),
+            'needs_followup_time': '10:30', 'needs_followup_date': jdate(due),
         })
         self.call.refresh_from_db()
         self.customer.refresh_from_db()
@@ -67,7 +67,7 @@ class ConvertCallToFollowUpTest(TestCase):
 
     def test_convert_requires_date(self):
         r = self.client.post(reverse('customers:hub_call_edit', args=[self.call.pk]), {
-            'notes': 'بدون تاریخ', 'needs_followup': '1', 'needs_followup_date': '',
+            'notes': 'بدون تاریخ', 'needs_followup': '1', 'needs_followup_time': '10:30', 'needs_followup_date': '',
         })
         self.call.refresh_from_db()
         self.assertEqual(self.call.contact_type, 'incoming')

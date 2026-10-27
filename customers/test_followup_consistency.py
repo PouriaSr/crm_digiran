@@ -32,7 +32,7 @@ class FollowUpConsistencyTest(TestCase):
         due = timezone.localdate() + timedelta(days=days)
         self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {
             'kind': 'followup', 'notes': 'نتیجه پیگیری',
-            'follow_up_date': jdate(timezone.localdate()),
+            'follow_up_time': '10:30', 'follow_up_date': jdate(timezone.localdate()),
         })
         return Call.objects.filter(customer=self.customer, contact_type='followup').order_by('-id').first()
 
@@ -64,7 +64,7 @@ class FollowUpConsistencyTest(TestCase):
         self.assertFalse(self.customer.needs_followup)
 
         self.client.post(reverse('customers:hub_call_edit', args=[call.pk]), {
-            'notes': 'اصلاح شد', 'follow_up_date': jdate(timezone.localdate()),
+            'notes': 'اصلاح شد', 'follow_up_time': '10:30', 'follow_up_date': jdate(timezone.localdate()),
             # بدون is_followed_up
         })
         call.refresh_from_db()
@@ -77,7 +77,7 @@ class FollowUpConsistencyTest(TestCase):
         call = self._followup_call()
         FollowUp.objects.create(customer=self.customer, due_date=timezone.localdate())
         self.client.post(reverse('customers:hub_call_edit', args=[call.pk]), {
-            'notes': 'انجام شد', 'follow_up_date': jdate(timezone.localdate()),
+            'notes': 'انجام شد', 'follow_up_time': '10:30', 'follow_up_date': jdate(timezone.localdate()),
             'is_followed_up': '1',
         })
         call.refresh_from_db()

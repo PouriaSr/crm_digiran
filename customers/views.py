@@ -9,6 +9,8 @@ from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from accounts.permissions import require_permission, get_user_role, ROLE_ADMIN, has_permission
+from .access import can_edit_card, is_card_manager
+from django.core.exceptions import PermissionDenied
 from .models import Customer, CustomerNote
 from .forms import CustomerForm, CustomerNoteForm, HubCallForm
 
@@ -150,14 +152,13 @@ def customer_create(request):
 @login_required
 def customer_edit(request, pk):
     full = has_permission(request.user, 'customers.profile_full')
-    if not (has_permission(request.user, 'customers.edit')
-            or has_permission(request.user, 'customers.add')):
-        from django.core.exceptions import PermissionDenied
-        raise PermissionDenied('دسترسی ویرایش مشتری ندارید.')
-
     customer = get_object_or_404(Customer, pk=pk)
+    if not can_edit_card(request.user, customer):
+        raise PermissionDenied('ویرایش فقط برای کارشناس مسئول کارت، سرپرست و ادمین مجاز است.')
     if request.method == 'POST':
         form = CustomerForm(request.POST, instance=customer, limited=not full)
+        if not is_card_manager(request.user):
+            form.fields.pop('assigned_to', None)
         if form.is_valid():
             form.save()
             messages.success(request, 'اطلاعات مشتری به‌روزرسانی شد.')
@@ -173,6 +174,8 @@ def customer_edit(request, pk):
             return redirect('customers:detail', pk=customer.pk)
     else:
         form = CustomerForm(instance=customer, limited=not full)
+        if not is_card_manager(request.user):
+            form.fields.pop('assigned_to', None)
 
     is_modal = request.headers.get('HX-Request') or request.GET.get('is_modal') == '1'
     return render(request, 'customers/form_modal.html' if is_modal else 'customers/form.html', {

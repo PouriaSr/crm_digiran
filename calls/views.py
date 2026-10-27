@@ -1,3 +1,4 @@
+from accounts.permissions import require_roles, ROLE_ADMIN, ROLE_SALES_MANAGER
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -8,6 +9,8 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 from datetime import timedelta
 from accounts.permissions import require_permission
+from customers.access import can_edit_call, is_card_manager
+from django.core.exceptions import PermissionDenied
 from .models import Call
 from .forms import CallForm
 
@@ -148,17 +151,24 @@ def call_create(request):
 
 
 @login_required
-@require_permission('calls.edit')
 def call_edit(request, pk):
-    call = get_object_or_404(Call, pk=pk)
+    call = get_object_or_404(Call.objects.select_related('customer'), pk=pk)
+    if not can_edit_call(request.user, call):
+        raise PermissionDenied('ویرایش تماس فقط برای مسئول کارت، سرپرست و ادمین مجاز است.')
     if request.method == 'POST':
         form = CallForm(request.POST, instance=call)
+        if not is_card_manager(request.user):
+            for field in ('customer', 'called_by'):
+                form.fields.pop(field, None)
         if form.is_valid():
             form.save()
             messages.success(request, 'اطلاعات تماس به‌روزرسانی شد.')
             return redirect('calls:detail', pk=call.pk)
     else:
         form = CallForm(instance=call)
+        if not is_card_manager(request.user):
+            for field in ('customer', 'called_by'):
+                form.fields.pop(field, None)
 
     return render(request, 'calls/form.html', {
         'form': form,
@@ -181,10 +191,12 @@ def call_delete(request, pk):
 
 
 @login_required
-@require_permission('calls.reassign')
+@require_roles(ROLE_ADMIN, ROLE_SALES_MANAGER)
 def call_reassign(request, pk):
     """ارجاع تماس به کارمند دیگر — پشتیبانی از AJAX و فرم معمولی"""
     call = get_object_or_404(Call, pk=pk)
+    if not is_card_manager(request.user):
+        raise PermissionDenied('انتقال فقط برای سرپرست و ادمین مجاز است.')
 
     if request.method == 'POST':
         new_user_id = request.POST.get('called_by')

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load fa_numbers %}
+{% load fa_numbers card_access %}
 {% block title %}تماس‌ها{% endblock %}
 {% block mobile_title %}تماس‌ها{% endblock %}
 
@@ -135,7 +135,7 @@
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
-            {% for call in page_obj %}
+            {% for call in page_obj %}{% can_edit_call call as call_editable %}
             <tr class="hover:bg-gray-50 transition">
                 <td class="px-3 py-3 text-right">
                     <div class="font-medium text-gray-800">{{ call.caller_name }}</div>
@@ -204,7 +204,7 @@
                            title="جزئیات">
                             جزئیات
                         </a>
-                        {% if 'calls.reassign' in user_permissions %}
+                        {% if can_transfer_calls %}
                         <button type="button"
                                 onclick="openReassign({{ call.pk }}, '{{ call.caller_name|escapejs }}')"
                                 class="text-yellow-600 hover:text-yellow-800 text-xs px-2 py-1 rounded hover:bg-yellow-50 flex items-center gap-1"
@@ -230,7 +230,7 @@
 
 <!-- ===== MOBILE CARDS START ===== -->
 <div class="md:hidden space-y-3">
-    {% for call in page_obj %}
+    {% for call in page_obj %}{% can_edit_call call as call_editable %}
     <article class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <!-- Header -->
         <header class="px-4 py-3 flex items-start gap-3 border-b border-gray-100">
@@ -287,7 +287,7 @@
         <!-- Actions -->
         <div class="px-4 py-3 border-t border-gray-100 flex gap-2">
             <a href="{% url 'calls:detail' call.pk %}" class="flex-1 text-center py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium active:bg-blue-700 transition">جزئیات</a>
-            {% if 'calls.reassign' in user_permissions %}
+            {% if can_transfer_calls %}
             <button type="button" onclick="openReassign({{ call.pk }}, '{{ call.caller_name|escapejs }}')"
                     class="flex-1 text-center py-2.5 bg-yellow-50 text-yellow-700 rounded-xl text-sm font-medium active:bg-yellow-100 transition">
                 ارجاع
@@ -319,7 +319,7 @@
 {% endif %}
 
 <!-- Reassign modal -->
-{% if 'calls.reassign' in user_permissions %}
+{% if can_transfer_calls %}
 <div id="reassign-modal"
      class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 items-center justify-center p-4"
      style="display: none;">
@@ -429,7 +429,7 @@
         try {
             const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-            const response = await fetch('/calls/' + callId + '/reassign/', {
+            const response = await fetch("{% url 'calls:reassign' 0 %}".replace('/0/', '/' + callId + '/'), {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': csrfToken,

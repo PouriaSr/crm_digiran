@@ -279,6 +279,7 @@ class FollowUp(models.Model):
         verbose_name='مشتری',
     )
     due_date = models.DateField('تاریخ پیگیری')
+    due_time = models.TimeField('ساعت پیگیری', null=True, blank=True)
     note = models.TextField('شرح پیگیری', blank=True)
     is_done = models.BooleanField('انجام شد', default=False, db_index=True)
     done_at = models.DateTimeField('زمان ثبت نتیجه', null=True, blank=True)

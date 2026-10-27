@@ -117,6 +117,8 @@
                             <div x-show="needsFollowup" x-cloak class="mt-3 pt-3 border-t border-orange-100">
                                 <label for="hub_followup_date" class="block text-xs font-bold text-orange-800 mb-2">تاریخ پیگیری <span class="text-red-500">*</span></label>
                                 {{ call_form.follow_up_date }}
+                                <label for="hub_followup_time" class="block text-xs font-bold text-orange-800 mt-3 mb-2">ساعت پیگیری <span class="text-red-500">*</span></label>
+                                {{ call_form.follow_up_time }}
                                 {% if call_form.follow_up_date.errors %}<p class="text-xs text-red-600 mt-1">{{ call_form.follow_up_date.errors.0 }}</p>{% endif %}
                             </div>
                         </div>

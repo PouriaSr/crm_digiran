@@ -113,7 +113,7 @@ class FollowUpStatusConsistencyTest(TestCase):
         """اگر پیگیری بازی نبود (داده قدیمی)، تماس پیگیری باز هم رکورد می‌سازد"""
         r = self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {
             'kind': 'followup', 'notes': 'نتیجه ثبت شد',
-            'follow_up_date': jdate(timezone.localdate()),
+            'follow_up_time': '10:30', 'follow_up_date': jdate(timezone.localdate()),
         })
         self.assertEqual(r.status_code, 302)
         fu = FollowUp.objects.filter(customer=self.customer).first()
@@ -134,7 +134,7 @@ class FollowUpStatusConsistencyTest(TestCase):
                                 due_date=timezone.localdate())
         self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {
             'kind': 'followup', 'notes': 'بسته شد',
-            'follow_up_date': jdate(timezone.localdate()),
+            'follow_up_time': '10:30', 'follow_up_date': jdate(timezone.localdate()),
         })
         self.customer.refresh_from_db()
         self.assertFalse(self.customer.needs_followup)

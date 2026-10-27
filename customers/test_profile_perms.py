@@ -38,6 +38,8 @@ class CustomerProfilePermissionTest(TestCase):
             self.assertIn(name, f.fields)
 
     def test_limited_form_saves_without_touching_other_fields(self):
+        self.customer.assigned_to = self.operator
+        self.customer.save(update_fields=["assigned_to"])
         self.client.force_login(self.operator)
         r = self.client.post(f'/customers/{self.customer.pk}/edit/?is_modal=1', {
             'name': 'ویرایش‌شده', 'mobile': self.customer.mobile,

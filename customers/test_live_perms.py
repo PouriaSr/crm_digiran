@@ -56,6 +56,7 @@ class LivePermissionTest(TestCase):
 
     # ── انتقال ──
     def test_transfer_visible_immediately(self):
+        self.client.force_login(self.admin)
         self.client.post(reverse('customers:reassign', args=[self.customer.pk]),
                          {'assigned_to': self.other.pk, 'next': 'hub'})
         self.customer.refresh_from_db()

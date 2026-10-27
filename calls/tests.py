@@ -40,7 +40,7 @@ class CallViewTest(TestCase):
         r = self.client.get(reverse('calls:list'))
         self.assertEqual(r.status_code, 200)
 
-    def test_reassign_call_ajax(self):
+    def test_support_cannot_reassign_call_ajax(self):
         self.client.force_login(self.support)
         url = reverse('calls:reassign', args=[self.call.pk])
         response = self.client.post(
@@ -48,5 +48,5 @@ class CallViewTest(TestCase):
             {'called_by': self.support.pk}, 
             HTTP_X_REQUESTED_WITH='XMLHttpRequest'
         )
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.json()['success'])
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(response.json()['success'])

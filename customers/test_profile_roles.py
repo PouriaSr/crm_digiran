@@ -34,6 +34,8 @@ class ProfileFullRoleTest(TestCase):
         self.assertIn('name="national_id"', body)
 
     def test_sales_is_limited(self):
+        self.customer.assigned_to = self.users[ROLE_SALES]
+        self.customer.save(update_fields=["assigned_to"])
         self.client.force_login(self.users[ROLE_SALES])
         self.assertFalse(has_permission(self.users[ROLE_SALES], 'customers.profile_full'))
         body = self.client.get(f'/customers/{self.customer.pk}/edit/?is_modal=1').content.decode('utf-8')

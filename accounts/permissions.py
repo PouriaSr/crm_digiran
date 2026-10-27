@@ -52,17 +52,17 @@ PERMISSIONS = {
     'customers.edit':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR],
     'customers.profile_full': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'customers.delete': [ROLE_ADMIN, ROLE_SALES_MANAGER],
-    'customers.followup': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT],
+    'customers.followup': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
     'customers.reception': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SUPPORT],
     'customers.case': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'customers.recruitment': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'customers.history': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT],
 
     'calls.view':       [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
-    'calls.add':        [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR],
+    'calls.add':        [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
     'calls.edit':       [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT],
     'calls.delete':     [ROLE_ADMIN, ROLE_SALES_MANAGER],
-    'calls.reassign':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT],
+    'calls.reassign':   [ROLE_ADMIN, ROLE_SALES_MANAGER],
 
     'products.view':    [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
     'products.add':     [ROLE_ADMIN, ROLE_SALES_MANAGER],
@@ -173,6 +173,9 @@ def get_user_role(user):
         return None
     if user.is_superuser:
         return ROLE_ADMIN
+
+    if user.groups.filter(name__in=['سرپرست', 'supervisor']).exists():
+        return ROLE_SALES_MANAGER
 
     # ─── چک گروه فارسی ───
     for role_key, group_name in ROLE_TO_GROUP.items():

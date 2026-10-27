@@ -1,3 +1,4 @@
+from accounts.permissions import require_roles, ROLE_ADMIN, ROLE_SALES_MANAGER
 import jdatetime
 from datetime import timedelta
 
@@ -5,6 +6,9 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
+from django.core.exceptions import PermissionDenied
+from .access import can_edit_card, can_edit_call, is_card_manager
+from .scheduling import parse_followup_time
 from django.db.models import Q, Sum, Count, OuterRef, Subquery, IntegerField
 from django.db.models.functions import Coalesce
 from django.contrib.auth.models import User
@@ -44,7 +48,7 @@ def _followup_annotation():
     """زیرکوئری تاریخ پیگیری باز / آخرین پیگیری انجام‌شده"""
     open_due = Subquery(
         FollowUp.objects.filter(customer=OuterRef('pk'), is_done=False)
-        .order_by('due_date').values('due_date')[:1]
+        .order_by('due_date', 'due_time', 'pk').values('due_date')[:1]
     )
     last_done = Subquery(
         FollowUp.objects.filter(customer=OuterRef('pk'), is_done=True)
@@ -56,7 +60,7 @@ def _followup_annotation():
 def _quick_call_redirect(request, default_back):
     """بازگشت به همان صفحه‌ای که مودال از آن باز شد (فقط مسیرهای امن داخلی)"""
     nxt = (request.POST.get('next') or '').strip()
-    if nxt.startswith('/customers/') and '//' not in nxt:
+    if nxt.startswith(reverse('customers:hub').split('/customers/')[0] + '/customers/') and '//' not in nxt:
         return redirect(nxt)
     return redirect(default_back)
 
@@ -173,6 +177,50 @@ def customer_hub(request):
         customers = customers.filter(Q(name__icontains=search) | Q(mobile__icontains=search))
 
     today = timezone.localdate()
+    from django.db.models import Case, When, Value, F, TimeField
+    due_time_sq = Subquery(
+        FollowUp.objects.filter(customer=OuterRef('pk'), is_done=False)
+        .order_by('due_date', 'due_time', 'pk').values('due_time')[:1],
+        output_field=TimeField(),
+    )
+    now_time = timezone.localtime().time().replace(tzinfo=None)
+    customers = customers.annotate(open_fu_time=due_time_sq)
+    overdue = Q(open_fu_due__lt=today) | (Q(open_fu_due=today) & Q(open_fu_time__lt=now_time))
+    customers = customers.annotate(followup_priority=Case(
+        When(overdue, then=Value(0)),
+        When(open_fu_due=today, then=Value(1)),
+        When(open_fu_due__gt=today, then=Value(2)),
+        default=Value(3), output_field=IntegerField(),
+    ))
+    priority = request.GET.get('priority', '')
+    if priority == 'overdue':
+        customers = customers.filter(overdue)
+    elif priority == 'today':
+        customers = customers.filter(open_fu_due=today)
+    elif priority == 'upcoming':
+        customers = customers.filter(open_fu_due__gt=today)
+    elif priority == 'none':
+        customers = customers.filter(open_fu_due__isnull=True)
+    date_field = request.GET.get('date_field', 'followup')
+    field = 'created_at__date' if date_field == 'created' else 'open_fu_due'
+    date_from, date_to = request.GET.get('date_from', ''), request.GET.get('date_to', '')
+    start, end = parse_jalali(date_from), parse_jalali(date_to)
+    if (date_from and not start) or (date_to and not end) or (start and end and start > end):
+        messages.error(request, 'بازه تاریخ معتبر نیست؛ تاریخ شمسی شروع و پایان را بررسی کنید.')
+        customers = customers.none()
+    else:
+        if start:
+            customers = customers.filter(**{field + '__gte': start})
+        if end:
+            customers = customers.filter(**{field + '__lte': end})
+    sort = request.GET.get('sort', 'priority')
+    if sort == 'oldest':
+        customers = customers.order_by('created_at', 'pk')
+    elif sort == 'recent':
+        customers = customers.order_by('-created_at', '-pk')
+    else:
+        sort = 'priority'
+        customers = customers.order_by('followup_priority', F('open_fu_due').asc(nulls_last=True), F('open_fu_time').asc(nulls_first=True), '-created_at', '-pk')
 
     def _range_filter(field, value, datetime_field=False):
         """
@@ -310,21 +358,22 @@ def customer_hub(request):
 
     # ═══ پیگیری‌ها: یک تعریف واحد از «در انتظار» ═══
     # در انتظار = تیک نخورده + تاریخ دارد + تاریخش رسیده (امروز یا گذشته)
-    open_followups = (Call.objects
-                      .filter(is_followed_up=False, follow_up_date__isnull=False)
-                      .select_related('customer', 'customer__ad_source',
-                                      'customer__assigned_to', 'called_by'))
-    due_followups = open_followups.filter(follow_up_date__lte=today)
+    open_followups = FollowUp.objects.filter(
+        is_done=False, customer__is_deleted=False, customer__is_interviewer=False,
+    )
+    due_followups = open_followups.filter(due_date__lte=today)
 
     
     total_customers = Customer.objects.filter(is_interviewer=False).count()
     total_leads = Customer.objects.filter(stage='lead', is_interviewer=False).count()
     pending_followups = due_followups.count()
-    upcoming_followups_count = open_followups.filter(follow_up_date__gt=today).count()
+    upcoming_followups_count = open_followups.filter(due_date__gt=today).count()
     recent_revenue = Invoice.objects.filter(status='paid').aggregate(total=Sum('total'))['total'] or 0
 
     context = {
         'active_tab': tab,
+        'search': search,
+        'table_filters': {'priority': priority, 'date_field': date_field, 'date_from': date_from, 'date_to': date_to, 'sort': sort},
         'stats': {
             'total_customers': total_customers,
             'total_leads': total_leads,
@@ -358,7 +407,9 @@ def customer_hub(request):
     
     # دکمه «ثبت تماس جدید»:
     #   جستجو خالی → غیرفعال · مشتری موجود → غیرفعال · مشتری ناموجود → فعال
-    show_new = bool(search) and not customers.exists()
+    show_new = bool(search) and not Customer.all_objects.filter(is_interviewer=False).filter(
+        Q(name__icontains=search) | Q(mobile__icontains=search)
+    ).exists()
     context['show_new'] = show_new
 
     is_partial = (
@@ -406,8 +457,9 @@ def hub_submit_call(request):
                 assigned_to=request.user, created_by=request.user, status='lead',
             )
         else:
-            customer.name = data['name']
-            if source:
+            if can_edit_card(request.user, customer):
+                customer.name = data['name']
+            if source and can_edit_card(request.user, customer):
                 customer.ad_source = source
         customer.stage = stage
         customer.needs_followup = needs_followup or customer.followups.filter(is_done=False).exists()
@@ -424,11 +476,12 @@ def hub_submit_call(request):
             declared_customer_status='lead' if stage == 'potential' else 'none',
             requested_condition=data.get('requested_condition') or '',
             send_address=data['send_address'], follow_up_date=due,
+            follow_up_time=data.get('follow_up_time') if needs_followup else None,
             notes=data['notes'], called_by=request.user, created_by=request.user,
         )
         if needs_followup:
             FollowUp.objects.create(
-                customer=customer, due_date=due,
+                customer=customer, due_date=due, due_time=data.get('follow_up_time'),
                 note=data['notes'], created_by=request.user,
             )
 
@@ -465,9 +518,11 @@ def hub_check_customer(request):
     return JsonResponse({'exists': False})
 
 @login_required
-@require_permission('customers.edit')
+@require_roles(ROLE_ADMIN, ROLE_SALES_MANAGER)
 @require_POST
 def customer_reassign(request, pk):
+    if not is_card_manager(request.user):
+        raise PermissionDenied('انتقال فقط برای سرپرست و ادمین مجاز است.')
     customer = get_object_or_404(Customer, pk=pk)
     new_user_id = request.POST.get('assigned_to')
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -500,8 +555,8 @@ def customer_reassign(request, pk):
     return redirect('customers:detail', pk=customer.pk)
 
 @login_required
-@require_permission('calls.edit')
 @require_POST
+@transaction.atomic
 def hub_call_edit(request, pk):
     """
     ویرایش اطلاعات یک تماس گذشته از تاریخچه.
@@ -512,9 +567,11 @@ def hub_call_edit(request, pk):
 
     call = get_object_or_404(Call.objects.select_related('customer'), pk=pk)
     customer = call.customer
+    if not can_edit_call(request.user, call):
+        raise PermissionDenied('ویرایش تماس فقط برای مسئول کارت، سرپرست و ادمین مجاز است.')
     back = f"{reverse('customers:hub')}?tab=info"
     nxt = (request.POST.get('next') or '').strip()
-    if nxt.startswith('/customers/') and '//' not in nxt:
+    if nxt.startswith(reverse('customers:hub').split('/customers/')[0] + '/customers/') and '//' not in nxt:
         back = nxt
 
     is_followup = (call.contact_type == 'followup')
@@ -536,7 +593,12 @@ def hub_call_edit(request, pk):
 
     if is_followup:
         fu_date = parse_jalali(request.POST.get('follow_up_date'))
-        call.follow_up_date = fu_date or call.follow_up_date
+        fu_time = parse_followup_time(request.POST.get('follow_up_time'))
+        if fu_date is None or fu_time is None:
+            messages.error(request, 'تاریخ و ساعت معتبر پیگیری الزامی است.')
+            return redirect(back)
+        call.follow_up_date = fu_date
+        call.follow_up_time = fu_time
         call.is_followed_up = bool(request.POST.get('is_followed_up'))
 
         # همگام‌سازی با پیگیری باز/بسته
@@ -549,6 +611,7 @@ def hub_call_edit(request, pk):
                 FollowUp.objects.create(
                     customer=customer,
                     due_date=call.follow_up_date or timezone.localdate(),
+                    due_time=call.follow_up_time,
                     note=notes,
                     created_by=request.user,
                 )
@@ -557,7 +620,8 @@ def hub_call_edit(request, pk):
         # تبدیل به تماس پیگیری در صورت درخواست
         if request.POST.get('needs_followup'):
             need_due = parse_jalali(request.POST.get('needs_followup_date'))
-            if need_due is None:
+            need_time = parse_followup_time(request.POST.get('needs_followup_time'))
+            if need_due is None or need_time is None:
                 messages.error(request, 'برای «نیاز به پیگیری»، تاریخ پیگیری را وارد کنید.')
                 return redirect(back)
 
@@ -566,12 +630,14 @@ def hub_call_edit(request, pk):
             call.purpose = 'followup'
             call.status = 'followup'
             call.follow_up_date = need_due
+            call.follow_up_time = need_time
             call.is_followed_up = False
             call.save()
 
             FollowUp.objects.create(
                 customer=customer,
                 due_date=need_due,
+                due_time=need_time,
                 note=notes,
                 created_by=request.user,
             )
@@ -616,7 +682,9 @@ def hub_followup_done(request, pk):
     تیک is_followed_up را دوباره False می‌کند؛ پس وضعیت هم به
     «پاسخ داده شده» منتقل می‌شود تا رکورد واقعاً از لیست خارج شود.
     """
-    call = get_object_or_404(Call, pk=pk)
+    call = get_object_or_404(Call.objects.select_related('customer'), pk=pk)
+    if not can_edit_call(request.user, call):
+        raise PermissionDenied('ویرایش پیگیری فقط برای مسئول کارت، سرپرست و ادمین مجاز است.')
     note = (request.POST.get('note') or '').strip()
 
     if not call.is_followed_up:
@@ -641,6 +709,7 @@ def hub_followup_done(request, pk):
 
 @login_required
 @require_POST
+@transaction.atomic
 def hub_quick_call(request, pk):
     """
     «تماس پیگیری» و «تماس جدید» از لیست مشتریان.
@@ -653,7 +722,7 @@ def hub_quick_call(request, pk):
     notes = (request.POST.get('notes') or '').strip()
     back = f"{reverse('customers:hub')}?tab=info"
 
-    needed = 'customers.followup' if kind == 'followup' else 'customers.edit'
+    needed = 'customers.followup' if kind == 'followup' else 'calls.add'
     if not has_permission(request.user, needed):
         messages.error(request, 'دسترسی لازم برای این عملیات را ندارید.')
         return redirect(back)
@@ -664,18 +733,20 @@ def hub_quick_call(request, pk):
 
     if kind == 'followup':
         source_id = request.POST.get('source') or ''
-        if source_id.isdigit():
+        if source_id.isdigit() and can_edit_card(request.user, customer):
             customer.ad_source_id = int(source_id)
 
         done_due = parse_jalali(request.POST.get('follow_up_date'))
         needs_next = bool(request.POST.get('needs_next'))
         next_due = parse_jalali(request.POST.get('next_follow_up_date'))
 
-        if done_due is None:
-            messages.error(request, 'برای تماس پیگیری، تاریخ پیگیری اجباری است.')
+        done_time = parse_followup_time(request.POST.get('follow_up_time'))
+        next_time = parse_followup_time(request.POST.get('next_follow_up_time'))
+        if done_due is None or done_time is None:
+            messages.error(request, 'برای تماس پیگیری، تاریخ و ساعت معتبر اجباری است.')
             return redirect(back)
-        if needs_next and next_due is None:
-            messages.error(request, 'تاریخ پیگیری بعدی را وارد کنید.')
+        if needs_next and (next_due is None or next_time is None):
+            messages.error(request, 'تاریخ و ساعت پیگیری بعدی را وارد کنید.')
             return redirect(back)
 
         customer.notes = notes
@@ -697,6 +768,7 @@ def hub_quick_call(request, pk):
             # همین تماس نتیجه‌ی پیگیری را ثبت کرده است
             is_followed_up=True,
             follow_up_date=done_due,
+            follow_up_time=done_time,
         )
 
         closed = _close_open_followups(customer, note=notes)
@@ -708,6 +780,7 @@ def hub_quick_call(request, pk):
             FollowUp.objects.create(
                 customer=customer,
                 due_date=done_due,
+                due_time=done_time,
                 note=notes,
                 is_done=True,
                 done_at=_tz.now(),
@@ -719,6 +792,7 @@ def hub_quick_call(request, pk):
             FollowUp.objects.create(
                 customer=customer,
                 due_date=next_due,
+                due_time=next_time,
                 note=notes,
                 created_by=request.user,
             )
@@ -743,12 +817,15 @@ def hub_quick_call(request, pk):
         if new_purpose not in allowed_purposes:
             new_purpose = 'sale'
 
+        contact_type = request.POST.get('contact_type') or 'incoming'
+        if contact_type not in dict(Call.CONTACT_TYPE_CHOICES) or contact_type == 'followup':
+            contact_type = 'incoming'
         Call.objects.create(
             customer=customer,
             caller_name=customer.name,
             call_number=customer.mobile,
             call_type='incoming',
-            contact_type='incoming',
+            contact_type=contact_type,
             purpose=new_purpose,
             status=new_status,
             notes=notes,

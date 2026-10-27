@@ -38,7 +38,7 @@ class NotesColumnRemovedTest(TestCase):
 
     def test_expected_columns(self):
         for col in ('نام مشتری', 'شماره تماس', 'منبع جذب', 'وضعیت پیگیری',
-                    'کارمند مسئول', 'تاریخ ثبت', 'عملیات'):
+                    'کارشناس تماس', 'تاریخ ثبت', 'عملیات'):
             self.assertIn(col, self.header)
 
     # ── تاریخچه ──

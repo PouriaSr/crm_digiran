@@ -36,7 +36,7 @@ class CallHistoryReportOnlyTest(TestCase):
     def test_report_columns_present(self):
         start = self.body.find('آخرین تماس‌ها')
         section = self.body[start:self.body.find('آخرین فاکتورها')]
-        for col in ('تاریخ', 'هدف', 'وضعیت', 'کارمند'):
+        for col in ('تاریخ', 'هدف', 'وضعیت', 'ثبت‌کننده'):
             self.assertIn(col, section)
 
     def test_call_action_button_still_present(self):

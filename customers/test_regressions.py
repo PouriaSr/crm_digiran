@@ -44,7 +44,7 @@ class HubSubmitCallAdSourceTest(TestCase):
             'customer_type': 'none',
             'status': 'active',
             'notes': 'تست',
-            'follow_up_date': '',
+            'follow_up_time': '10:30', 'follow_up_date': '',
             'installments_count': '',
             'cheques_count': '',
         })

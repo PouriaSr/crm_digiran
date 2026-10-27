@@ -29,7 +29,7 @@ class FollowUpCycleTest(TestCase):
         self.client.post(reverse('customers:hub_submit_call'), {
             'mobile': mobile, 'name': 'مشتری پیگیری', 'call_type': 'incoming',
             'notes': 'نیاز به پیگیری', 'needs_followup': 'on',
-            'follow_up_date': jdate(due),
+            'follow_up_time': '10:30', 'follow_up_date': jdate(due),
         })
         customer = Customer.objects.filter(mobile=mobile).first()
         return customer, due
@@ -46,7 +46,7 @@ class FollowUpCycleTest(TestCase):
         mobile = '09121350009'
         self.client.post(reverse('customers:hub_submit_call'), {
             'mobile': mobile, 'name': 'بدون تاریخ', 'call_type': 'incoming',
-            'notes': 'تست', 'needs_followup': 'on', 'follow_up_date': '',
+            'notes': 'تست', 'needs_followup': 'on', 'follow_up_time': '10:30', 'follow_up_date': '',
         })
         self.assertFalse(FollowUp.objects.filter(customer__mobile=mobile).exists())
 
@@ -68,7 +68,7 @@ class FollowUpCycleTest(TestCase):
         customer, _ = self._create_with_followup()
         self.client.post(reverse('customers:quick_call', args=[customer.pk]), {
             'kind': 'followup', 'notes': 'نتیجه ثبت شد',
-            'follow_up_date': jdate(timezone.localdate()),
+            'follow_up_time': '10:30', 'follow_up_date': jdate(timezone.localdate()),
         })
         customer.refresh_from_db()
         fu = FollowUp.objects.get(customer=customer)
@@ -84,8 +84,8 @@ class FollowUpCycleTest(TestCase):
         next_due = timezone.localdate() + timedelta(days=10)
         self.client.post(reverse('customers:quick_call', args=[customer.pk]), {
             'kind': 'followup', 'notes': 'پیگیری بعدی',
-            'follow_up_date': jdate(timezone.localdate()),
-            'needs_next': '1', 'next_follow_up_date': jdate(next_due),
+            'follow_up_time': '10:30', 'follow_up_date': jdate(timezone.localdate()),
+            'needs_next': '1', 'next_follow_up_time': '10:30', 'next_follow_up_date': jdate(next_due),
         })
         customer.refresh_from_db()
         open_fu = FollowUp.objects.filter(customer=customer, is_done=False).first()
@@ -98,8 +98,8 @@ class FollowUpCycleTest(TestCase):
         before = FollowUp.objects.filter(customer=customer, is_done=False).count()
         self.client.post(reverse('customers:quick_call', args=[customer.pk]), {
             'kind': 'followup', 'notes': 'بدون تاریخ بعدی',
-            'follow_up_date': jdate(timezone.localdate()),
-            'needs_next': '1', 'next_follow_up_date': '',
+            'follow_up_time': '10:30', 'follow_up_date': jdate(timezone.localdate()),
+            'needs_next': '1', 'next_follow_up_time': '10:30', 'next_follow_up_date': '',
         })
         # چون تاریخ بعدی نداشت، عملیات رد شد و پیگیری باز قبلی دست‌نخورده ماند
         self.assertEqual(FollowUp.objects.filter(customer=customer, is_done=False).count(), before)

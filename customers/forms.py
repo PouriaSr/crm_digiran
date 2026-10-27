@@ -326,6 +326,12 @@ class HubCallForm(forms.Form):
             'data-jdp': '', 'data-jdp-time': 'false', ':required': 'needsFollowup',
         }))
 
+    follow_up_time = forms.CharField(label='ساعت پیگیری', required=False,
+        widget=forms.TimeInput(attrs={
+            'type': 'time', 'id': 'hub_followup_time', ':required': 'needsFollowup',
+            'class': 'w-full px-4 py-3 bg-white border border-orange-200 rounded-xl',
+        }))
+
     notes = forms.CharField(label='شرح مکالمه', required=True,
         widget=forms.Textarea(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all resize-none', 'rows': 3, 'placeholder': 'شرح مکالمه...'}))
 
@@ -346,6 +352,12 @@ class HubCallForm(forms.Form):
         if data.get('customer_analysis') == 'potential':
             data['needs_followup'] = True
         if data.get('needs_followup'):
+            from .scheduling import parse_followup_time
+            due_time = parse_followup_time(data.get('follow_up_time'))
+            if due_time is None:
+                self.add_error('follow_up_time', 'ساعت پیگیری را به شکل ۱۴:۳۰ وارد کنید.')
+            else:
+                data['follow_up_time'] = due_time
             value = normalize_digits(data.get('follow_up_date') or '').replace('-', '/')
             try:
                 year, month, day = map(int, value.split('/'))

@@ -59,7 +59,7 @@ class HubCallFormTest(TestCase):
             'customer_type': 'none',
             'status': 'active',
             'notes': 'تماس خروجی تست',
-            'follow_up_date': '',
+            'follow_up_time': '10:30', 'follow_up_date': '',
             'installments_count': '',
             'cheques_count': '',
         })
@@ -77,7 +77,7 @@ class HubCallFormTest(TestCase):
             'source': str(self.ad_source.pk),  # ⭐ source صحیح
             'customer_type': 'none',
             'status': 'lead',
-            'follow_up_date': '1405/01/01',
+            'follow_up_time': '10:30', 'follow_up_date': '1405/01/01',
             'notes': 'تماس از دست رفته تست',
             'installments_count': '',
             'cheques_count': '',

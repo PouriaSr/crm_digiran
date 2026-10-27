@@ -26,7 +26,9 @@
         caseUnlocked: {{ case_unlocked|yesno:'true,false' }},
         
         searchCustomers() {
-            fetch(`?tab=info&partial=1&q=${encodeURIComponent(this.searchQuery)}`, {
+            const params = new URLSearchParams(window.location.search);
+            params.set('tab', 'info'); params.set('partial', '1'); params.set('q', this.searchQuery);
+            fetch('?' + params.toString(), {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     'HX-Request': 'true'
@@ -285,7 +287,7 @@ function openReassignModal(pk, name) {
     if (!box) return;
     document.getElementById('reassign-name').textContent = name || '';
     document.getElementById('reassign-user').value = '';
-    document.getElementById('reassign-form').action = '/customers/' + pk + '/reassign/';
+    document.getElementById('reassign-form').action = "{% url 'customers:reassign' 0 %}".replace('/0/', '/' + pk + '/');
     box.classList.remove('hidden');
     box.classList.add('flex');
 }
@@ -339,7 +341,7 @@ function openNewCustomerModal(q) {
     window.__newCustomerMobile = '';
     window.__newCustomerName = '';
     var digits = (q.match(/[0-9]/g) || []).join('');
-    var url = '/customers/new/?is_modal=1';
+    var url = "{% url 'customers:create' %}?is_modal=1";
     if (digits.length >= 10) {
         url += '&mobile=' + encodeURIComponent(q);
         window.__newCustomerMobile = q;
@@ -405,7 +407,6 @@ function getCsrfToken() {
 }
 
 
-async 
 </script>
 
 
@@ -428,7 +429,7 @@ async
     if (params.get('open_edit')) {
         var pk = params.get('open_edit');
         setTimeout(function () {
-            openCustomerModal('/customers/' + pk + '/edit/?is_modal=1');
+            openCustomerModal("{% url 'customers:edit' 0 %}".replace('/0/', '/' + pk + '/') + '?is_modal=1');
         }, 300);
     }
 

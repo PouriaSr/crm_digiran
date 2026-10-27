@@ -26,7 +26,7 @@ class CallRegistrationTest(TestCase):
             'mobile': '09123456789', 'name': 'مشتری جدید', 'call_type': 'incoming',
             'notes': 'توضیحات تماس', 'purpose': 'sale', 'call_status': 'answered',
             'customer_analysis': 'lead', 'requested_condition': 'cheque',
-            'follow_up_date': '1405/09/15',
+            'follow_up_time': '10:30', 'follow_up_date': '1405/09/15',
         }
 
     def submit(self, **updates):

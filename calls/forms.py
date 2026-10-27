@@ -6,6 +6,19 @@ from .models import Call
 
 
 class CallForm(forms.ModelForm):
+    follow_up_time = forms.CharField(label='ساعت پیگیری', required=False,
+        widget=forms.TimeInput(attrs={'type': 'time', 'class': 'w-full px-4 py-2.5 border rounded-lg', 'dir': 'ltr'}))
+
+    def clean_follow_up_time(self):
+        from customers.scheduling import parse_followup_time
+        value = self.cleaned_data.get('follow_up_time')
+        if not value:
+            return None
+        parsed = parse_followup_time(value)
+        if parsed is None:
+            raise forms.ValidationError('ساعت پیگیری معتبر نیست.')
+        return parsed
+
     # ⭐ تعریف صریح به‌عنوان CharField تا Django اون‌ها رو تاریخ میلادی نگیره
     follow_up_date = forms.CharField(
         required=False,
@@ -25,7 +38,7 @@ class CallForm(forms.ModelForm):
             'customer', 'caller_name', 'call_number',
             'call_type', 'status', 'purpose',
             'duration',
-            'follow_up_date', 'is_followed_up',
+            'follow_up_date', 'follow_up_time', 'is_followed_up',
             'notes', 'called_by',
         ]
         widgets = {
@@ -114,6 +127,11 @@ class CallForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         status = cleaned_data.get('status')
+        if status == 'followup' or cleaned_data.get('follow_up_date'):
+            if not cleaned_data.get('follow_up_date'):
+                self.add_error('follow_up_date', 'تاریخ پیگیری الزامی است.')
+            if not cleaned_data.get('follow_up_time'):
+                self.add_error('follow_up_time', 'ساعت پیگیری الزامی است.')
         is_followed_up = cleaned_data.get('is_followed_up')
 
         # اگه وضعیت «نیاز به پیگیری» ولی تیک «انجام شده» خورده، تناقض رو حل کن
