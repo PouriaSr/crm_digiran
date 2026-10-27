@@ -23,6 +23,7 @@ class CallRegistrationTest(TestCase):
             'mobile': '09123456789', 'name': 'مشتری جدید', 'call_type': 'incoming',
             'notes': 'توضیحات تماس', 'purpose': 'sale', 'call_status': 'answered',
             'customer_analysis': 'lead', 'requested_condition': 'cheque',
+            'follow_up_date': '1405/09/15',
         }
 
     def submit(self, **updates):
@@ -75,15 +76,29 @@ class CallRegistrationTest(TestCase):
                 self.assertFalse(Call.objects.exists())
                 self.assertFalse(Customer.objects.exists())
 
-    def test_analysis_potential_does_not_require_followup_or_send_sms(self):
+    def test_purchase_intent_enables_followup_without_automatically_sending_sms(self):
         with patch('customers.hub_views.send_address_sms') as sms:
             self.submit(customer_analysis='potential')
         customer = Customer.objects.get()
         self.assertEqual(customer.stage, 'potential')
-        self.assertFalse(customer.needs_followup)
-        self.assertFalse(FollowUp.objects.exists())
+        self.assertTrue(customer.needs_followup)
+        self.assertEqual(FollowUp.objects.filter(customer=customer, is_done=False).count(), 1)
         self.assertEqual(Call.objects.get().declared_customer_status, 'lead')
         sms.assert_not_called()
+
+    def test_purchase_intent_without_a_date_creates_no_partial_records(self):
+        for value in ('', 'invalid', '1405/99/01'):
+            with self.subTest(date=value):
+                self.submit(customer_analysis='potential', needs_followup='', follow_up_date=value)
+                self.assertFalse(Customer.objects.exists())
+                self.assertFalse(Call.objects.exists())
+                self.assertFalse(FollowUp.objects.exists())
+
+    def test_not_qualified_defaults_to_no_followup(self):
+        self.submit(customer_analysis='lead')
+        self.assertEqual(Customer.objects.get().stage, 'lead')
+        self.assertFalse(Customer.objects.get().needs_followup)
+        self.assertFalse(FollowUp.objects.exists())
 
     def test_followup_does_not_override_explicit_lead_analysis_or_trigger_sms(self):
         with patch('customers.hub_views.send_address_sms') as sms:

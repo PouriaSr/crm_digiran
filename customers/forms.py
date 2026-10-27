@@ -282,7 +282,7 @@ class HubCallForm(forms.Form):
     customer_analysis = forms.ChoiceField(
         label='تحلیل مشتری', required=False,
         choices=[('lead', 'فاقد شرایط'), ('potential', 'قصد خرید دارد')],
-        widget=forms.Select(attrs={'x-model': 'customerAnalysis'}))
+        widget=forms.Select(attrs={'x-model': 'customerAnalysis', '@change': 'applyCustomerAnalysis($el.value)'}))
     requested_condition = forms.ChoiceField(
         label='شرایط درخواستی', required=False,
         choices=[('', 'انتخاب شرایط…')] + CustomerCase.CONDITION_CHOICES)
@@ -314,6 +314,7 @@ class HubCallForm(forms.Form):
         widget=forms.CheckboxInput(attrs={
             'class': 'w-5 h-5 rounded text-orange-600 border-gray-300 focus:ring-orange-500',
             'x-model': 'needsFollowup',
+            ':disabled': "customerAnalysis === 'potential'",
             '@change': 'sendAddress = $el.checked',
             'id': 'hub_needs_followup',
         }))
@@ -322,7 +323,7 @@ class HubCallForm(forms.Form):
         widget=forms.TextInput(attrs={
             'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all',
             'placeholder': '۱۴۰۵/۰۸/۱۵', 'autocomplete': 'off', 'id': 'hub_followup_date',
-            'data-jdp': '', 'data-jdp-time': 'false',
+            'data-jdp': '', 'data-jdp-time': 'false', ':required': 'needsFollowup',
         }))
 
     notes = forms.CharField(label='شرح مکالمه', required=True,
@@ -342,6 +343,8 @@ class HubCallForm(forms.Form):
 
     def clean(self):
         data = super().clean()
+        if data.get('customer_analysis') == 'potential':
+            data['needs_followup'] = True
         if data.get('needs_followup'):
             value = normalize_digits(data.get('follow_up_date') or '').replace('-', '/')
             try:
