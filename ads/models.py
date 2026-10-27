@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 
 
@@ -48,6 +49,7 @@ class AdProcess(models.Model):
         'هزینه پیش‌فرض (تومان)',
         max_digits=15,
         decimal_places=0,
+        validators=[MinValueValidator(0)],
     )
     is_active = models.BooleanField('فعال', default=True)
     created_at = models.DateTimeField('تاریخ ایجاد', auto_now_add=True)

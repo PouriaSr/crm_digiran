@@ -1,35 +1,314 @@
-from django.contrib.auth.models import User
 import jdatetime
+from datetime import timedelta
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, Sum, Count, OuterRef, Subquery, IntegerField
+from django.db.models.functions import Coalesce
+from django.contrib.auth.models import User
+from django.http import JsonResponse
+from django.urls import reverse
 from django.utils import timezone
-from accounts.permissions import require_permission
-from .models import Customer, Visit
-from .forms import HubCallForm, HubVisitForm
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_POST, require_GET
+from accounts.permissions import has_permission, require_permission
+from .models import (Customer, CustomerCase, FollowUp, RecordUpdate, Reception,
+                     Visit)
+from .sms import send_followup_sms
+from .forms import CustomerCaseForm, HubCallForm
 from calls.models import Call
 from sales.models import Invoice
+from ads.models import AdSource
 
+def parse_jalali(value):
+    """«۱۴۰۵/۰۸/۰۳» یا «1405/08/03» → date (یا None)"""
+    import jdatetime
+    value = (value or '').strip()
+    if not value:
+        return None
+    fa = str.maketrans('۰۱۲۳۴۵۶۷۸۹', '0123456789')
+    value = value.translate(fa).replace('-', '/')
+    parts = [p for p in value.split('/') if p.strip()]
+    if len(parts) != 3:
+        return None
+    try:
+        y, m, d = (int(p) for p in parts)
+        return jdatetime.date(y, m, d).togregorian()
+    except Exception:
+        return None
+
+
+def _followup_annotation():
+    """زیرکوئری تاریخ پیگیری باز / آخرین پیگیری انجام‌شده"""
+    open_due = Subquery(
+        FollowUp.objects.filter(customer=OuterRef('pk'), is_done=False)
+        .order_by('due_date').values('due_date')[:1]
+    )
+    last_done = Subquery(
+        FollowUp.objects.filter(customer=OuterRef('pk'), is_done=True)
+        .order_by('-done_at', '-id').values('due_date')[:1]
+    )
+    return open_due, last_done
+
+
+def _quick_call_redirect(request, default_back):
+    """بازگشت به همان صفحه‌ای که مودال از آن باز شد (فقط مسیرهای امن داخلی)"""
+    nxt = (request.POST.get('next') or '').strip()
+    if nxt.startswith('/customers/') and '//' not in nxt:
+        return redirect(nxt)
+    return redirect(default_back)
+
+
+def _close_open_followups(customer, note=''):
+    """بستن پیگیری‌های باز با ثبت نتیجه"""
+    from django.utils import timezone as _tz
+    now = _tz.now()
+    n = 0
+    for fu in FollowUp.objects.filter(customer=customer, is_done=False):
+        fu.is_done = True
+        fu.done_at = now
+        fu.done_note = note
+        fu.save(update_fields=['is_done', 'done_at', 'done_note'])
+        n += 1
+    return n
+
+
+def _sync_needs_followup(customer):
+    """همگام‌سازی پرچم مشتری با وجود پیگیری باز"""
+    has_open = FollowUp.objects.filter(customer=customer, is_done=False).exists()
+    if customer.needs_followup != has_open:
+        customer.needs_followup = has_open
+        customer.save(update_fields=['needs_followup', 'updated_at'])
+    return has_open
+
+
+RECEPTION_LABELS = {
+    'person_type': 'فرد مورد نظر',
+    'has_visit': 'مراجعه حضوری',
+    'wait_choice': 'مدت انتظار',
+    'info_submitted': 'ثبت اطلاعات',
+}
+
+CASE_LABELS = {
+    'condition': 'شرایط',
+    'cheque_owner': 'مالک چک',
+    'cheque_other_name': 'نام صاحب چک',
+    'cheque_other_phone': 'شماره صاحب چک',
+    'job': 'شغل',
+    'credit_rank': 'رتبه اعتباری',
+    'active_loans': 'وام‌های فعال',
+    'product': 'کالا',
+    'quantity': 'تعداد',
+    'visit_result': 'نتیجه مراجعه',
+}
+
+
+def _display(value):
+    """نمایش خوانا برای مقایسه/لاگ"""
+    if value is None or value == '':
+        return '—'
+    if isinstance(value, bool):
+        return 'بله' if value else 'خیر'
+    if isinstance(value, (list, tuple)):
+        return '، '.join(str(v) for v in value) if value else '—'
+    return str(value)
+
+
+def _build_changes(old, new, labels):
+    """فهرست تغییرات: [{'label','old','new'}]"""
+    out = []
+    for key, label in labels.items():
+        if key not in old and key not in new:
+            continue
+        a, b = _display(old.get(key)), _display(new.get(key))
+        if a != b:
+            out.append({'label': label, 'old': a, 'new': b})
+    return out
+
+
+def _log_record_update(customer, scope, old, new, labels, user):
+    from .models import RecordUpdate
+    changes = _build_changes(old, new, labels)
+    if not changes:
+        return None
+    return RecordUpdate.objects.create(
+        customer=customer, scope=scope, changes=changes, edited_by=user,
+    )
+
+
+def _calls_count_subquery():
+    """تعداد تماس‌های هر مشتری — با Subquery تا join به جدول customers نزند"""
+    sq = (Call.objects
+          .filter(customer=OuterRef('customer_id'))
+          .values('customer')
+          .annotate(n=Count('id'))
+          .values('n'))
+    return Coalesce(Subquery(sq, output_field=IntegerField()), 0)
+
+
+@never_cache
 @login_required
 @require_permission('customers.view')
 def customer_hub(request):
     tab = request.GET.get('tab', 'info')
-    
-    customers = Customer.objects.all().order_by('-created_at')
     search = request.GET.get('q', '').strip()
+    
+    from django.db.models import Prefetch
+    open_due_sq, last_done_sq = _followup_annotation()
+    customers = (Customer.all_objects
+                 .filter(is_interviewer=False)
+                 .select_related('assigned_to', 'created_by', 'ad_source')
+                 .prefetch_related(Prefetch(
+                     'calls',
+                     queryset=Call.objects.select_related('called_by')
+                                         .order_by('-call_date'),
+                     to_attr='history_calls',
+                 ))
+                 .annotate(open_fu_due=open_due_sq, last_fu_done=last_done_sq)
+                 .order_by('-created_at'))
+
     if search:
         customers = customers.filter(Q(name__icontains=search) | Q(mobile__icontains=search))
+
+    today = timezone.localdate()
+
+    def _range_filter(field, value, datetime_field=False):
+        """
+        بازه‌ی آماده روی یک فیلد تاریخ.
+
+        ⚠️ روی DateTimeField باید __date بگذاریم، ولی روی DateField نه
+        (وگرنه «Unsupported lookup 'date'» می‌دهد).
+        """
+        suffix = '__date' if datetime_field else ''
+        if value == 'today':
+            return Q(**{f'{field}{suffix}': today})
+        if value == 'yesterday':
+            return Q(**{f'{field}{suffix}': today - timedelta(days=1)})
+        if value == '7':
+            return Q(**{f'{field}{suffix}__gte': today - timedelta(days=6)})
+        if value == '30':
+            return Q(**{f'{field}{suffix}__gte': today - timedelta(days=29)})
+        if value == '90':
+            return Q(**{f'{field}{suffix}__gte': today - timedelta(days=89)})
+        return Q()
+
+
+    # ═══ تب پذیرش ═══
+    reception_customer = None
+    reception = None
+    reception_customers = []
+    if has_permission(request.user, 'customers.reception'):
+        reception_customers = Customer.objects.order_by('name')[:500]
+        cid = request.GET.get('c', '')
+        if cid.isdigit():
+            reception_customer = Customer.objects.filter(pk=int(cid)).first()
+            if reception_customer:
+                reception = (Reception.objects
+                             .filter(customer=reception_customer)
+                             .order_by('-created_at').first())
+
+    # ═══ تاریخچه تب‌های پذیرش و پرونده ═══
+    reception_history = []
+    case_history = []
+
+    if has_permission(request.user, 'customers.history'):
+        seen = set()
+        for r in (Reception.objects.select_related('customer', 'created_by')
+                  .order_by('-created_at')[:200]):
+            if r.customer_id in seen:
+                continue
+            seen.add(r.customer_id)
+            reception_history.append(r)
+        reception_history = reception_history[:50]
+
+    if has_permission(request.user, 'customers.history'):
+        seen = set()
+        for k in (CustomerCase.objects.select_related('customer', 'created_by', 'product')
+                  .order_by('-created_at')[:200]):
+            if k.customer_id in seen:
+                continue
+            seen.add(k.customer_id)
+            case_history.append(k)
+        case_history = case_history[:50]
+
+    hist_ids = [r.customer_id for r in reception_history] + [k.customer_id for k in case_history]
+    updates_map = {}
+    if hist_ids:
+        for u in (RecordUpdate.objects.filter(customer_id__in=hist_ids)
+                  .select_related('edited_by').order_by('created_at')):
+            updates_map.setdefault((u.scope, u.customer_id), []).append(u)
+
+    # هر ردیف تاریخچه، تغییرات خودش را همراه دارد
+    for r in reception_history:
+        r.updates = updates_map.get(('reception', r.customer_id), [])
+    for k in case_history:
+        k.updates = updates_map.get(('case', k.customer_id), [])
+
+    # ═══ تب واحد استخدام (مصاحبه‌کننده‌ها) ═══
+    recruiter_rows = []
+    recruiter_customer = None
+    if has_permission(request.user, 'customers.recruitment'):
+        rid = request.GET.get('c', '')
+        if rid.isdigit():
+            recruiter_customer = Customer.objects.filter(pk=int(rid),
+                                                         is_interviewer=True).first()
+        qs = (Reception.objects
+              .filter(person_type='interviewer')
+              .select_related('customer', 'created_by')
+              .order_by('-created_at'))
+        seen = set()
+        for r in qs:
+            if r.customer_id in seen:
+                continue
+            seen.add(r.customer_id)
+            recruiter_rows.append(r)
+
+    # ═══ تب پرونده — فقط بعد از تکمیل پذیرش باز است ═══
+    case_unlocked = False
+    case_customer = None
+    customer_case = None
+    case_customers = []
+    if has_permission(request.user, 'customers.case'):
+        case_customers = (Customer.objects.filter(is_interviewer=False)
+                          .order_by('name')[:500])
+        ccid = request.GET.get('c', '')
+        if ccid.isdigit():
+            # مصاحبه‌کننده پرونده ندارد → تب پرونده برایش قفل می‌ماند
+            case_customer = Customer.objects.filter(
+                pk=int(ccid), is_interviewer=False).first()
+            if case_customer:
+                customer_case = CustomerCase.objects.filter(customer=case_customer).first()
+                last_rec = (Reception.objects
+                            .filter(customer=case_customer)
+                            .order_by('-created_at').first())
+                case_unlocked = bool(
+                    last_rec and last_rec.info_submitted
+                    and case_customer.stage == 'potential'
+                )
+
+    # گزینه‌های لیست‌ها
+    filter_customers = (Customer.all_objects
+                        .filter(is_interviewer=False)
+                        .annotate(n_calls=Count('calls'))
+                        .order_by('name', 'id')[:1000])
+    filter_sources = AdSource.objects.order_by('phone_number')
+    reassign_users = (User.objects.filter(is_active=True)
+                      .order_by('first_name', 'username'))
+
+    # ═══ پیگیری‌ها: یک تعریف واحد از «در انتظار» ═══
+    # در انتظار = تیک نخورده + تاریخ دارد + تاریخش رسیده (امروز یا گذشته)
+    open_followups = (Call.objects
+                      .filter(is_followed_up=False, follow_up_date__isnull=False)
+                      .select_related('customer', 'customer__ad_source',
+                                      'customer__assigned_to', 'called_by'))
+    due_followups = open_followups.filter(follow_up_date__lte=today)
+
     
-    followups = Call.objects.filter(is_followed_up=False, follow_up_date__isnull=False).order_by('follow_up_date')
-    
-    from django.db.models import Sum
-    from datetime import date
-    
-    total_customers = Customer.objects.count()
-    total_leads = Customer.objects.filter(status='lead').count()
-    pending_followups = followups.count()
-    total_invoices = Invoice.objects.count()
+    total_customers = Customer.objects.filter(is_interviewer=False).count()
+    total_leads = Customer.objects.filter(stage='lead', is_interviewer=False).count()
+    pending_followups = due_followups.count()
+    upcoming_followups_count = open_followups.filter(follow_up_date__gt=today).count()
     recent_revenue = Invoice.objects.filter(status='paid').aggregate(total=Sum('total'))['total'] or 0
 
     context = {
@@ -38,23 +317,50 @@ def customer_hub(request):
             'total_customers': total_customers,
             'total_leads': total_leads,
             'pending_followups': pending_followups,
-            'total_invoices': total_invoices,
             'recent_revenue': recent_revenue,
         },
         'customers': customers[:50],
-        'followups': followups,
-        'invoices': Invoice.objects.all().order_by('-created_at')[:20],
-        'reassign_users': User.objects.filter(
-            is_active=True, is_staff=True,
-        ).order_by('first_name', 'last_name', 'username'),
+        'today': today,
+        'filter_customers': filter_customers,
+        'reception_customers': reception_customers,
+        'reception_customer': reception_customer,
+        'reception': reception,
+        'wait_choices': Reception.WAIT_CHOICES,
+        'case_unlocked': case_unlocked,
+        'reception_history': reception_history,
+        'case_history': case_history,
+        'updates_map': updates_map,
+        'recruiter_rows': recruiter_rows,
+        'recruiter_customer': recruiter_customer,
+        'case_customers': case_customers,
+        'case_customer': case_customer,
+        'customer_case': customer_case,
+        'case_form': CustomerCaseForm(instance=customer_case) if case_customer else None,
+        'filter_sources': filter_sources,
+        'reassign_users': reassign_users,
+        'contact_type_choices': Call.CONTACT_TYPE_CHOICES,
+        'type_choices': Call.CALL_TYPE_CHOICES,
+        'invoices': (Invoice.objects.select_related('customer', 'created_by').order_by('-created_at')[:20]),
         'call_form': HubCallForm(),
-        'visit_form': HubVisitForm(),
     }
     
-    # ═══ AJAX Live Search Support ═══
-    if request.headers.get('HX-Request') and tab == 'info':
-        return render(request, 'customers/hub_table_partial.html', context)
+    # دکمه «ثبت تماس جدید»:
+    #   جستجو خالی → غیرفعال · مشتری موجود → غیرفعال · مشتری ناموجود → فعال
+    show_new = bool(search) and not customers.exists()
+    context['show_new'] = show_new
+
+    is_partial = (
+        request.headers.get('HX-Request')
+        or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or request.GET.get('partial') == '1'
+    )
+    if is_partial and tab == 'info':
+        response = render(request, 'customers/hub_table_partial.html', context)
+        response['X-Show-New-Customer'] = 'true' if show_new else 'false'
+        return response
+        
     return render(request, 'customers/hub.html', context)
+
 
 @login_required
 @require_permission('customers.add')
@@ -63,99 +369,94 @@ def hub_submit_call(request):
         form = HubCallForm(request.POST)
         if form.is_valid():
             mobile = form.cleaned_data['mobile']
+            name = (form.cleaned_data.get('name') or '').strip()
+            explanation = (form.cleaned_data.get('notes') or '').strip()
+            call_type = form.cleaned_data.get('call_type') or 'incoming'
+            needs_followup = bool(form.cleaned_data.get('needs_followup'))
+            source = form.cleaned_data.get('source')
+
             customer = Customer.objects.filter(mobile=mobile).first()
-            is_new = False
-            
-            if not customer:
-                is_new = True
+
+            # ═══ مرحله‌ی ۱: پروفایل حداقلی ═══
+            # اگر مشتری با این شماره نبود، همین‌جا ساخته می‌شود (بدون ریدایرکت)
+            if customer is None:
+                if not name:
+                    messages.error(request, 'برای ثبت مشتری جدید، نام الزامی است.')
+                    return redirect('/customers/hub/?tab=call')
                 customer = Customer.objects.create(
-                    mobile=mobile, 
-                    name=form.cleaned_data['name'] or 'ناشناس',
+                    name=name,
+                    mobile=mobile,
+                    source='ads' if source else 'website',
+                    ad_source=source,
+                    assigned_to=request.user,
+                    created_by=request.user,
                     status='lead',
-                    created_by=request.user
                 )
-            
-            # Update customer details based on call
-            customer.customer_type = form.cleaned_data['customer_type']
-            customer.installments_count = form.cleaned_data['installments_count']
-            customer.cheques_count = form.cleaned_data['cheques_count']
-
-            # ⭐ Save AdSource (fix v12)
-            ad_source = form.cleaned_data.get('source')
-            if ad_source:
-                customer.ad_source = ad_source
-            
-            if form.cleaned_data['status'] == 'active':
-                customer.status = 'active'
-                follow_up = None
             else:
-                customer.status = 'lead'
-                follow_up = form.cleaned_data['follow_up_date']
-                
+                if name:
+                    customer.name = name
+                if source:
+                    customer.ad_source = source
+
+            # ═══ برچسب مرحله: بالقوه با تیک پیگیری، وگرنه سرنخ ═══
+            customer.needs_followup = needs_followup
+            customer.stage = 'potential' if needs_followup else 'lead'
+            if explanation:
+                customer.notes = explanation
             customer.save()
-            
-            # Map custom call types to Call model
-            custom_type = form.cleaned_data['call_type']
-            if custom_type == 'outgoing':
-                c_type, c_status = 'outgoing', 'answered'
-            elif custom_type == 'incoming_missed':
-                c_type, c_status = 'incoming', 'missed'
-            else:
-                c_type, c_status = 'incoming', 'answered'
 
-            # Convert Jalali date to Gregorian
-            follow_up = None
-            if form.cleaned_data['status'] == 'lead':
-                raw_date = form.cleaned_data['follow_up_date']
-                if raw_date:
-                    try:
-                        raw_date = str(raw_date).replace('-', '/')
-                        y, m, d = map(int, raw_date.split('/'))
-                        follow_up = jdatetime.date(y, m, d).togregorian()
-                    except Exception:
-                        pass
+            c_type = 'outgoing' if call_type in ('followup',) else 'incoming'
+            # وضعیت متناسب با نوع تماس انتخاب‌شده
+            c_status = {
+                'missed': 'missed',
+                'busy': 'busy',
+            }.get(call_type, 'answered')
 
-            # Create Call Record
             Call.objects.create(
                 customer=customer,
                 caller_name=customer.name,
                 call_number=mobile,
                 call_type=c_type,
-                purpose='sale',
+                purpose='followup' if call_type == 'followup' else 'sale',
+                contact_type=call_type,
+                declared_customer_status='lead' if needs_followup else 'none',
                 status=c_status,
                 notes=form.cleaned_data['notes'],
                 called_by=request.user,
                 created_by=request.user,
-                follow_up_date=follow_up
             )
+            if needs_followup:
+                due = parse_jalali(form.cleaned_data.get('follow_up_date'))
+                if due is None:
+                    due = timezone.localdate()
+                FollowUp.objects.create(
+                    customer=customer,
+                    due_date=due,
+                    note=explanation,
+                    created_by=request.user,
+                )
+                sms_sent = send_followup_sms(customer)
+                messages.info(request, (
+                    'برچسب «بالقوه» ثبت شد و پیامک برای مشتری ارسال شد.'
+                    if sms_sent else
+                    'برچسب «بالقوه» ثبت شد. ارسال پیامک پس از اتصال پنل پیامکی انجام می‌شود.'
+                ))
+            else:
+                messages.info(request, 'مشتری با برچسب «سرنخ» ثبت شد.')
             messages.success(request, 'تماس با موفقیت ثبت شد.')
-            return redirect(f"{request.path_info}?tab=followup" if follow_up else f"{request.path_info}?tab=info")
+
+            # بازگشت به همان صفحه‌ای که مودال از آن باز شد (فقط مسیرهای امن)
+            nxt = (request.POST.get('next') or '').strip()
+            if nxt.startswith('/customers/') and '//' not in nxt:
+                return redirect(nxt)
+            return redirect(f"/customers/hub/?tab=call")
     messages.error(request, 'خطا در ثبت تماس.')
-    return redirect('customers:hub')
+    return redirect('/customers/hub/?tab=call')
+
+
 
 @login_required
-@require_permission('customers.add')
-def hub_submit_visit(request):
-    if request.method == 'POST':
-        form = HubVisitForm(request.POST)
-        if form.is_valid():
-            visit = form.save(commit=False)
-            visit.created_by = request.user
-            visit.save()
-            visit.customer.status = 'active'
-            visit.customer.save()
-            if visit.is_successful:
-                messages.success(request, 'مراجعه ثبت شد. انتقال به پرونده...')
-                return redirect('customers:hub') # Replace with actual file page later
-            messages.success(request, 'مراجعه ثبت شد.')
-            return redirect(f"{request.path_info}?tab=visit")
-    return redirect('customers:hub')
-
-
-from django.http import JsonResponse
-from django.views.decorators.http import require_GET
-
-@login_required
+@require_permission('customers.view')
 @require_GET
 def hub_check_customer(request):
     mobile = request.GET.get('mobile', '').strip()
@@ -171,29 +472,17 @@ def hub_check_customer(request):
         })
     return JsonResponse({'exists': False})
 
-
-# ═══════════════════════════════════════════════════════════
-# ارجاع مشتری به کارمند دیگر (Customer Reassign)
-# ═══════════════════════════════════════════════════════════
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-from django.contrib.auth.models import User
-from django.shortcuts import get_object_or_404
-
-
 @login_required
 @require_permission('customers.edit')
 @require_POST
 def customer_reassign(request, pk):
-    """ارجاع مشتری به کارمند دیگر — پشتیبانی از AJAX"""
     customer = get_object_or_404(Customer, pk=pk)
     new_user_id = request.POST.get('assigned_to')
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     if not new_user_id:
         if is_ajax:
-            return JsonResponse({'success': False, 'error': 'کارمند جدید انتخاب نشده'}, status=400)
-        messages.error(request, 'لطفاً یک کارمند انتخاب کنید.')
+            return JsonResponse({'success': False, 'error': 'کارمند انتخاب نشده'}, status=400)
         return redirect('customers:detail', pk=customer.pk)
 
     try:
@@ -201,25 +490,421 @@ def customer_reassign(request, pk):
     except User.DoesNotExist:
         if is_ajax:
             return JsonResponse({'success': False, 'error': 'کارمند یافت نشد'}, status=404)
-        messages.error(request, 'کارمند انتخابی یافت نشد.')
         return redirect('customers:detail', pk=customer.pk)
 
     old_user = customer.assigned_to
     customer.assigned_to = new_user
     customer.save(update_fields=['assigned_to', 'updated_at'])
 
-    old_name = '—'
-    if old_user:
-        old_name = old_user.get_full_name() or old_user.username
+    old_name = old_user.get_full_name() or old_user.username if old_user else '—'
     new_name = new_user.get_full_name() or new_user.username
 
     if is_ajax:
-        return JsonResponse({
-            'success': True,
-            'new_user_name': new_name,
-            'old_user_name': old_name,
-            'message': f'مشتری از «{old_name}» به «{new_name}» ارجاع شد.'
-        })
+        return JsonResponse({'success': True, 'message': f'مشتری از «{old_name}» به «{new_name}» ارجاع شد.'})
 
-    messages.success(request, f'مشتری از «{old_name}» به «{new_name}» ارجاع شد.')
+    messages.success(request, f'مشتری به «{new_name}» منتقل شد.')
+    if request.POST.get('next') == 'hub':
+        return redirect(f"{reverse('customers:hub')}?tab=info")
     return redirect('customers:detail', pk=customer.pk)
+
+@login_required
+@require_permission('calls.edit')
+@require_POST
+def hub_call_edit(request, pk):
+    """
+    ویرایش اطلاعات یک تماس گذشته از تاریخچه.
+      • تماس عادی: وضعیت، هدف تماس، شرح مکالمه، تاریخ تماس
+      • تماس پیگیری: تاریخ پیگیری، وضعیت پیگیری (انجام شد)، شرح مکالمه، تاریخ تماس
+    """
+    from calls.models import Call
+
+    call = get_object_or_404(Call.objects.select_related('customer'), pk=pk)
+    customer = call.customer
+    back = f"{reverse('customers:hub')}?tab=info"
+    nxt = (request.POST.get('next') or '').strip()
+    if nxt.startswith('/customers/') and '//' not in nxt:
+        back = nxt
+
+    is_followup = (call.contact_type == 'followup')
+
+    notes = (request.POST.get('notes') or '').strip()
+    if not notes:
+        messages.error(request, 'شرح مکالمه اجباری است.')
+        return redirect(back)
+
+    # تاریخ تماس (شمسی → میلادی)؛ اگر خالی بود، قبلی حفظ می‌شود
+    new_date = parse_jalali(request.POST.get('call_date'))
+    if new_date:
+        from datetime import datetime, time
+        old = timezone.localtime(call.call_date) if call.call_date else timezone.localtime()
+        naive = datetime.combine(new_date, old.time())
+        call.call_date = timezone.make_aware(naive) if timezone.is_naive(naive) else naive
+
+    call.notes = notes
+
+    if is_followup:
+        fu_date = parse_jalali(request.POST.get('follow_up_date'))
+        call.follow_up_date = fu_date or call.follow_up_date
+        call.is_followed_up = bool(request.POST.get('is_followed_up'))
+
+        # همگام‌سازی با پیگیری باز/بسته
+        if call.is_followed_up:
+            _close_open_followups(customer, note=notes)
+        else:
+            # تیک برداشته شد → پیگیری دوباره باز می‌شود
+            has_open = FollowUp.objects.filter(customer=customer, is_done=False).exists()
+            if not has_open:
+                FollowUp.objects.create(
+                    customer=customer,
+                    due_date=call.follow_up_date or timezone.localdate(),
+                    note=notes,
+                    created_by=request.user,
+                )
+        _sync_needs_followup(customer)
+    else:
+        # تبدیل به تماس پیگیری در صورت درخواست
+        if request.POST.get('needs_followup'):
+            need_due = parse_jalali(request.POST.get('needs_followup_date'))
+            if need_due is None:
+                messages.error(request, 'برای «نیاز به پیگیری»، تاریخ پیگیری را وارد کنید.')
+                return redirect(back)
+
+            call.contact_type = 'followup'
+            call.call_type = 'outgoing'
+            call.purpose = 'followup'
+            call.status = 'followup'
+            call.follow_up_date = need_due
+            call.is_followed_up = False
+            call.save()
+
+            FollowUp.objects.create(
+                customer=customer,
+                due_date=need_due,
+                note=notes,
+                created_by=request.user,
+            )
+            customer.needs_followup = True
+            if customer.stage != 'potential':
+                customer.stage = 'potential'
+            customer.save(update_fields=['needs_followup', 'stage', 'notes', 'updated_at'])
+            messages.success(request, 'تماس به «پیگیری» تبدیل شد و پیگیری باز ثبت شد.')
+            return redirect(back)
+
+        status = request.POST.get('status') or call.status
+        if status not in ('answered', 'missed', 'busy', 'no_answer'):
+            status = call.status
+        call.status = status
+
+        allowed = ['sale', 'support', 'complaint']
+        if has_permission(request.user, 'customers.case'):
+            allowed.append('info')
+        purpose = request.POST.get('purpose') or call.purpose
+        if purpose not in allowed:
+            purpose = call.purpose
+        call.purpose = purpose
+
+        # شرح مشتری هم با آخرین تماس هم‌خوان بماند
+        if customer.notes != notes:
+            customer.notes = notes
+            customer.save(update_fields=['notes', 'updated_at'])
+
+    call.save()
+    messages.success(request, 'اطلاعات تماس ویرایش شد.')
+    return redirect(back)
+
+
+@login_required
+@require_permission('calls.edit')
+@require_POST
+def hub_followup_done(request, pk):
+    """
+    بستن یک‌کلیکی پیگیری — دکمه‌ی «انجام شد».
+
+    ⚠️ اگر وضعیت روی «نیاز به پیگیری» (followup) بماند، Call.save()
+    تیک is_followed_up را دوباره False می‌کند؛ پس وضعیت هم به
+    «پاسخ داده شده» منتقل می‌شود تا رکورد واقعاً از لیست خارج شود.
+    """
+    call = get_object_or_404(Call, pk=pk)
+    note = (request.POST.get('note') or '').strip()
+
+    if not call.is_followed_up:
+        call.is_followed_up = True
+        if call.status == 'followup':
+            call.status = 'answered'
+
+        update_fields = ['is_followed_up', 'status', 'updated_at']
+        if note:
+            today_j = jdatetime.date.fromgregorian(date=timezone.localdate())
+            line = f'نتیجه پیگیری ({today_j.strftime("%Y/%m/%d")}): {note}'
+            call.notes = f'{call.notes}\n{line}'.strip() if call.notes else line
+            update_fields.append('notes')
+
+        call.save(update_fields=update_fields)
+        messages.success(request, f'پیگیری «{call.caller_name}» ثبت و بسته شد.')
+    else:
+        messages.info(request, 'این پیگیری قبلاً بسته شده بود.')
+
+    return redirect(f"{reverse('customers:hub')}?tab=followup")
+
+
+@login_required
+@require_POST
+def hub_quick_call(request, pk):
+    """
+    «تماس پیگیری» و «تماس جدید» از لیست مشتریان.
+
+    kind=followup : تماس پیگیری (شرح اجباری) + منبع تماس → مشتری بالقوه می‌ماند
+    kind=new      : فقط شرح مکالمه‌ی تازه؛ تاریخ تماس = همین حالا
+    """
+    customer = get_object_or_404(Customer.all_objects, pk=pk)
+    kind = request.POST.get('kind') or 'new'
+    notes = (request.POST.get('notes') or '').strip()
+    back = f"{reverse('customers:hub')}?tab=info"
+
+    needed = 'customers.followup' if kind == 'followup' else 'customers.edit'
+    if not has_permission(request.user, needed):
+        messages.error(request, 'دسترسی لازم برای این عملیات را ندارید.')
+        return redirect(back)
+
+    if not notes:
+        messages.error(request, 'شرح مکالمه اجباری است؛ ثبت انجام نشد.')
+        return redirect(back)
+
+    if kind == 'followup':
+        source_id = request.POST.get('source') or ''
+        if source_id.isdigit():
+            customer.ad_source_id = int(source_id)
+
+        done_due = parse_jalali(request.POST.get('follow_up_date'))
+        needs_next = bool(request.POST.get('needs_next'))
+        next_due = parse_jalali(request.POST.get('next_follow_up_date'))
+
+        if done_due is None:
+            messages.error(request, 'برای تماس پیگیری، تاریخ پیگیری اجباری است.')
+            return redirect(back)
+        if needs_next and next_due is None:
+            messages.error(request, 'تاریخ پیگیری بعدی را وارد کنید.')
+            return redirect(back)
+
+        customer.notes = notes
+        customer.stage = 'potential'
+        customer.save(update_fields=['notes', 'stage', 'ad_source', 'updated_at'])
+
+        Call.objects.create(
+            customer=customer,
+            caller_name=customer.name,
+            call_number=customer.mobile,
+            call_type='outgoing',
+            contact_type='followup',
+            purpose='followup',
+            status='followup',
+            notes=notes,
+            called_by=request.user,
+            created_by=request.user,
+            declared_customer_status='lead',
+            # همین تماس نتیجه‌ی پیگیری را ثبت کرده است
+            is_followed_up=True,
+            follow_up_date=done_due,
+        )
+
+        closed = _close_open_followups(customer, note=notes)
+
+        # اگر پیگیری بازی وجود نداشت (داده‌ی قدیمی)، همین تماس را به‌عنوان
+        # یک پیگیری «انجام‌شده» ثبت می‌کنیم تا وضعیت و تاریخ در لیست درست باشد
+        if not closed:
+            from django.utils import timezone as _tz
+            FollowUp.objects.create(
+                customer=customer,
+                due_date=done_due,
+                note=notes,
+                is_done=True,
+                done_at=_tz.now(),
+                done_note=notes,
+                created_by=request.user,
+            )
+
+        if needs_next:
+            FollowUp.objects.create(
+                customer=customer,
+                due_date=next_due,
+                note=notes,
+                created_by=request.user,
+            )
+
+        _sync_needs_followup(customer)
+        messages.success(request, f'پیگیری برای «{customer.name}» ثبت شد.')
+        return _quick_call_redirect(request, back)
+
+    else:
+        customer.notes = notes
+        customer.save(update_fields=['notes', 'updated_at'])
+
+        # وضعیت و هدف تماس (فقط مقادیر مجاز)
+        new_status = request.POST.get('status') or 'answered'
+        if new_status not in ('answered', 'missed', 'busy', 'no_answer'):
+            new_status = 'answered'
+
+        allowed_purposes = ['sale', 'support', 'complaint']
+        if has_permission(request.user, 'customers.case'):
+            allowed_purposes.append('info')
+        new_purpose = request.POST.get('purpose') or 'sale'
+        if new_purpose not in allowed_purposes:
+            new_purpose = 'sale'
+
+        Call.objects.create(
+            customer=customer,
+            caller_name=customer.name,
+            call_number=customer.mobile,
+            call_type='incoming',
+            contact_type='incoming',
+            purpose=new_purpose,
+            status=new_status,
+            notes=notes,
+            called_by=request.user,
+            created_by=request.user,
+        )
+        messages.success(request, f'تماس جدید برای «{customer.name}» ثبت شد.')
+
+    return _quick_call_redirect(request, back)
+
+
+@login_required
+@require_permission('customers.reception')
+@require_POST
+def hub_reception_action(request):
+    """
+    عملیات تب پذیرش:
+      answer      → ثبت ۳ پاسخ + شروع تایمر از ادامه‌ی گزینه
+      end_wait    → پایان انتظار و محاسبه‌ی مجموع دقیقه
+      submit_info → اجازه/ثبت «اطلاعات مشتری» و انتقال به فرم ویرایش
+    """
+    customer_id = request.POST.get('customer') or ''
+    action = request.POST.get('action') or ''
+    customer = get_object_or_404(Customer.objects, pk=customer_id)
+    back = f"{reverse('customers:hub')}?tab=reception&c={customer.pk}"
+
+    rec = (Reception.objects.filter(customer=customer).order_by('-created_at').first())
+    if rec is None:
+        rec = Reception.objects.create(customer=customer, created_by=request.user)
+
+    # عکس وضعیت قبلی برای ثبت تغییرات
+    before = {
+        'person_type': rec.get_person_type_display() if rec.person_type else '',
+        'has_visit': rec.get_has_visit_display() if rec.has_visit else '',
+        'wait_choice': rec.get_wait_choice_display() if rec.wait_choice else '',
+        'info_submitted': rec.info_submitted,
+    }
+
+    if action == 'answer':
+        rec.person_type = request.POST.get('person_type') or rec.person_type
+        rec.has_visit = request.POST.get('has_visit') or rec.has_visit
+
+        # مصاحبه‌کننده یا مشتری؟ → پرچم روی مشتری (قابل بازگشت)
+        customer.is_interviewer = (rec.person_type == 'interviewer')
+        customer.save(update_fields=['is_interviewer', 'updated_at'])
+
+        wc = request.POST.get('wait_choice') or ''
+        if wc in Reception.WAIT_OFFSET_MINUTES:
+            rec.wait_choice = wc
+            offset = Reception.WAIT_OFFSET_MINUTES[wc]
+            rec.wait_started_at = timezone.now() - timedelta(minutes=offset)
+            rec.wait_ended_at = None
+            rec.wait_minutes_total = None
+            rec.is_waiting = True
+        rec.save()
+        messages.success(request, 'پاسخ‌ها ثبت شد.')
+
+    elif action == 'end_wait':
+        if rec.is_waiting:
+            rec.wait_ended_at = timezone.now()
+            rec.is_waiting = False
+            if rec.wait_started_at:
+                rec.wait_minutes_total = int(
+                    (rec.wait_ended_at - rec.wait_started_at).total_seconds() // 60
+                )
+            rec.save()
+            messages.success(
+                request,
+                f'انتظار پایان یافت — مجموع {rec.wait_minutes_total} دقیقه.'
+            )
+
+    elif action == 'submit_info':
+        if not rec.can_submit_info:
+            messages.error(
+                request,
+                'ثبت اطلاعات نیازمند برچسب «بالقوه» و پاسخ کامل به سؤالات است.'
+            )
+            return redirect(back)
+        rec.info_submitted = True
+        rec.save(update_fields=['info_submitted', 'updated_at'])
+        messages.info(request, 'اطلاعات مشتری را تکمیل و ذخیره کنید.')
+        return redirect(f"{reverse('customers:hub')}?tab=info&open_edit={customer.pk}")
+
+    # ثبت تغییرات تب پذیرش (خط جدید در تاریخچه)
+    rec.refresh_from_db()
+    after = {
+        'person_type': rec.get_person_type_display() if rec.person_type else '',
+        'has_visit': rec.get_has_visit_display() if rec.has_visit else '',
+        'wait_choice': rec.get_wait_choice_display() if rec.wait_choice else '',
+        'info_submitted': rec.info_submitted,
+    }
+    _log_record_update(customer, 'reception', before, after, RECEPTION_LABELS, request.user)
+
+    return redirect(back)
+
+
+@login_required
+@require_permission('customers.case')
+@require_POST
+def hub_case_save(request):
+    """ثبت/به‌روزرسانی پرونده‌ی مشتری از تب پرونده"""
+    customer_id = request.POST.get('customer') or ''
+    customer = get_object_or_404(Customer.objects, pk=customer_id)
+    back = f"{reverse('customers:hub')}?tab=case&c={customer.pk}"
+
+    # پرونده فقط برای مشتری «بالقوه» که پذیرشش تکمیل شده مجاز است
+    last_rec = (Reception.objects.filter(customer=customer)
+                .order_by('-created_at').first())
+    if customer.stage != 'potential' or not (last_rec and last_rec.info_submitted):
+        messages.error(request, 'ثبت پرونده نیازمند برچسب «بالقوه» و تکمیل پذیرش است.')
+        return redirect(back)
+
+    case = CustomerCase.objects.filter(customer=customer).first()
+    is_new = case is None
+    if is_new:
+        case = CustomerCase(customer=customer)
+
+    # عکس وضعیت قبلی برای ثبت تغییرات
+    def _snap(obj):
+        if obj is None or not obj.pk:
+            return {}
+        return {
+            'condition': obj.get_condition_display() if obj.condition else '',
+            'cheque_owner': obj.get_cheque_owner_display() if obj.cheque_owner else '',
+            'cheque_other_name': obj.cheque_other_name or '',
+            'cheque_other_phone': obj.cheque_other_phone or '',
+            'job': obj.get_job_display() if obj.job else '',
+            'credit_rank': obj.credit_rank or '',
+            'active_loans': obj.active_loans or [],
+            'product': str(obj.product) if obj.product_id else '',
+            'quantity': obj.quantity,
+            'visit_result': obj.get_visit_result_display() if obj.visit_result else '',
+        }
+
+    before_case = _snap(case)
+
+    form = CustomerCaseForm(request.POST, instance=case)
+    if form.is_valid():
+        obj = form.save(commit=False)
+        if not obj.created_by_id:
+            obj.created_by = request.user
+        obj.save()
+
+        # خط جدید در تاریخچه (فقط اگر تغییری واقعاً رخ داده باشد)
+        _log_record_update(customer, 'case', before_case, _snap(obj), CASE_LABELS, request.user)
+        messages.success(request, 'پرونده مشتری ثبت شد.' if is_new else 'پرونده مشتری به‌روزرسانی شد.')
+    else:
+        errs = '، '.join(f'{f}: {", ".join(m)}' for f, m in form.errors.items())
+        messages.error(request, f'خطا در ثبت پرونده — {errs}')
+
+    return redirect(back)

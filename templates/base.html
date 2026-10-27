@@ -1240,7 +1240,8 @@ window.apexMobileMerge = function (options) {
         {% endif %}
 
         {% if 'hr.view_employees' in user_permissions or 'hr.view_tasks' in user_permissions or 'hr.attendance' in user_permissions or 'hr.review_leaves' in user_permissions %}
-        <a href="{% url 'hr:employee_list' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]">
+        <a href="{% if 'hr.view_employees' in user_permissions %}{% url 'hr:employee_list' %}{% elif 'hr.view_tasks' in user_permissions %}{% url 'hr:task_list' %}{% elif 'hr.review_leaves' in user_permissions %}{% url 'hr:leave_list' %}{% else %}{% url 'hr:attendance_list' %}{% endif %}"
+           class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]">
             <div class="w-11 h-11 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
             </div>
@@ -1346,19 +1347,106 @@ window.apexMobileMerge = function (options) {
      SCRIPTS
      ============================================ -->
 <script>
+    // هر بار محتوای تازه (مودال/HTMX) آمد، تقویم دوباره وصل شود
+    document.addEventListener('htmx:afterSwap', function () {
+        if (window.jalaliDatepicker) {
+            try { jalaliDatepicker.startWatch(); } catch (e) {}
+        }
+    });
+
     window.addEventListener('load', function () {
         if (typeof jalaliDatepicker !== 'undefined') {
             jalaliDatepicker.startWatch({
                 selector: '[data-jdp]:not([data-jdp-only-month])',
                 time: false, hasSecond: false,
                 showTodayBtn: true, showEmptyBtn: true,
-                zIndex: 9999, autoShow: true, autoHide: true,
+                zIndex: 99999, autoShow: true, autoHide: true,
+                // فقط انتخاب از تقویم — تایپ دستی اعداد غیرفعال می‌شود
+                autoReadOnlyInput: true,
                 persianDigits: false, dateFormat: 'YYYY-MM-DD', timeFormat: 'HH:mm'
             });
         }
     });
 </script>
 
+<style>
+    /* × کوچک داخل هر فیلتر برای پاک‌کردن فقط همان فیلتر */
+    .ts-control .filter-clear-btn {
+        display: none; align-items: center; justify-content: center;
+        width: 18px; height: 18px; border-radius: 9999px;
+        background: #e5e7eb; color: #4b5563;
+        font-size: 13px; line-height: 1; cursor: pointer;
+        flex: 0 0 auto; margin-inline-start: .35rem;
+        transition: background .15s, color .15s;
+    }
+    .ts-control .filter-clear-btn:hover { background: #ef4444; color: #fff; }
+</style>
+<script>
+    // مودال مشتری (جدید/ویرایش) — برای همه‌ی صفحات
+    function closeNewCustomerModal() {
+        var m = document.getElementById('new-customer-modal-backdrop');
+        if (m) m.remove();
+    }
+    function openCustomerModal(url) {
+        var old = document.getElementById('new-customer-modal-backdrop');
+        if (old) old.remove();
+        var div = document.createElement('div');
+        div.id = 'new-customer-modal-backdrop';
+        document.body.appendChild(div);
+        if (window.htmx) {
+            htmx.ajax('GET', url, { target: '#new-customer-modal-backdrop', swap: 'outerHTML' });
+        } else {
+            fetch(url, { headers: { 'HX-Request': 'true' } })
+                .then(function (r) { return r.text(); })
+                .then(function (html) { div.outerHTML = html; });
+        }
+    }
+    // باز کردن پاپ‌آپ ثبت تماس با اطلاعات از پیش پر
+    // مقدار یک <select> را طوری ست می‌کند که TomSelect هم نمایشش را به‌روز کند
+    function setSelectValue(el, value) {
+        if (!el) return;
+        el.value = value;
+        if (el.tomselect && typeof el.tomselect.setValue === 'function') {
+            try { el.tomselect.setValue(value, true); } catch (e) {}
+        }
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function openCallModalFor(name, mobile, status) {
+        // همان مودال «ثبت تماس» تب اطلاعات: پیش‌پر + قفل نام/شماره + بازگشت به همین صفحه
+        var detail = {
+            name: name || '',
+            mobile: mobile || '',
+            status: status || '',
+            lock: true,
+            next: window.location.pathname + window.location.search
+        };
+        if (typeof openNewCall === 'function') {
+            openNewCall(detail);
+            return;
+        }
+        window.dispatchEvent(new CustomEvent('open-call-modal', { detail: detail }));
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        document.body.addEventListener('closeModal', closeNewCustomerModal);
+    });
+</script>
+<script>
+    // کلیک روی این عناصر نباید «کلیک بیرون از مودال» محسوب شود،
+    // چون بیرون از مودال در body رندر می‌شوند:
+    //   .ts-dropdown   → دراپ‌داون TomSelect
+    //   jdp-container  → تقویم شمسی (jalalidatepicker)
+    //   jdp-overlay    → لایه‌ی تمام‌صفحه‌ی تقویم در موبایل
+    window.POPUP_OVERLAY_SELECTOR = '.ts-dropdown, jdp-container, jdp-overlay, .jdp-container';
+
+    window.popupOverlayClick = function (ev) {
+        var t = ev && ev.target;
+        return !!(t && t.closest && t.closest(window.POPUP_OVERLAY_SELECTOR));
+    };
+
+    // سازگاری با کدهای قبلی
+    window.tsDropdownClick = window.popupOverlayClick;
+</script>
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -1367,7 +1455,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let processTomSelect = null;
 
     selects.forEach(function(el) {
-        let labelText = "انتخاب کنید...";
+        // اگر خودِ select عنوانش را داده باشد (data-placeholder)، همان ملاک است
+        let labelText = el.dataset.placeholder || "انتخاب کنید...";
         if (el.id) {
             const label = document.querySelector('label[for="' + el.id + '"]');
             if (label) labelText = label.innerText.replace(/[\*\:]/g, '').trim();
@@ -1380,14 +1469,47 @@ document.addEventListener('DOMContentLoaded', function() {
             const nameMap = { 'customer': 'مشتری', 'status': 'وضعیت', 'user': 'کارمند', 'platform': 'عنوان', 'process': 'فرآیند', 'source': 'منبع', 'product': 'محصول', 'employee': 'پرسنل' };
             if (nameMap[el.name]) labelText = nameMap[el.name];
         }
-        if (el.options.length > 0 && (el.options[0].value === "" || el.options[0].text.includes('---------'))) {
+        if (!el.dataset.placeholder && el.options.length > 0 && (el.options[0].value === "" || el.options[0].text.includes('---------'))) {
             el.options[0].text = labelText === "انتخاب کنید..." ? "همه موارد" : "همه " + labelText;
         }
-        const ts = new TomSelect(el, {
+        // فیلترهایی که عنوان خودشان را دارند (data-placeholder)
+        const hasOwnTitle = !!el.dataset.placeholder;
+
+        const tsConfig = {
             create: false, plugins: ['dropdown_input'], placeholder: labelText,
             maxOptions: 1000, dropdownParent: 'body',
             render: { no_results: () => '<div class="p-3 text-gray-500 text-center text-sm">موردی یافت نشد</div>' }
-        });
+        };
+        // ⚠️ allowEmptyOption را عمداً true نمی‌کنیم: اگر true باشد، TomSelect
+        // گزینه‌ی خالی را انتخاب‌شده می‌گیرد و متنش («همه …») جای placeholder می‌نشیند.
+
+        const ts = new TomSelect(el, tsConfig);
+
+        // × اختصاصی: فقط برای همان فیلتر، فقط وقتی مقدار دارد
+        if (hasOwnTitle) {
+            const clearBtn = document.createElement('div');
+            clearBtn.className = 'filter-clear-btn';
+            clearBtn.title = 'پاک کردن این فیلتر';
+            clearBtn.textContent = '\u00d7';
+            clearBtn.style.display = 'none';
+
+            clearBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                ts.clear(true);                 // بدون شلیک change
+                clearBtn.style.display = 'none';
+                if (el.form) el.form.submit();  // فقط همین فیلتر حذف می‌شود
+            });
+
+            ts.control.appendChild(clearBtn);
+
+            const syncClear = function () {
+                const has = ts.getValue() !== '' && ts.getValue() !== null;
+                clearBtn.style.display = has ? 'flex' : 'none';
+            };
+            ts.on('change', syncClear);
+            syncClear();
+        }
         if (el.name === 'platform') platformTomSelect = ts;
         if (el.name === 'process') processTomSelect = ts;
     });

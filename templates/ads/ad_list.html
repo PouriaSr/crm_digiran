@@ -344,9 +344,9 @@
 
     new ApexCharts(el, window.apexMobileMerge({
       chart: { type: 'bar', height: 300, fontFamily: 'inherit', toolbar: { show: false } },
-      series: [{ name: 'هزینه (تومان)', data: {{ report.chart_values|safe }} }],
+      series: [{ name: 'هزینه (تومان)', data: {{ report.chart_values_json|safe }} }],
       xaxis: {
-        categories: {{ report.chart_labels|safe }},
+        categories: {{ report.chart_labels_json|safe }},
         labels: { style: { fontFamily: 'inherit' } },
       },
       yaxis: {

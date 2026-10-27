@@ -1,0 +1,60 @@
+{% load fa_numbers %}
+{# ═══ تاریخچه‌ی پرونده‌های مشتری ═══ #}
+<div class="mt-4 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
+        <h3 class="font-bold text-gray-800">تاریخچه پرونده‌ها</h3>
+        <span class="text-xs text-gray-400">برای {{ case_history|length|fa_num }} مشتری پرونده ثبت شده است</span>
+    </div>
+
+    <div class="divide-y divide-gray-50">
+        {% for k in case_history %}
+        <div class="p-4" x-data="{ open: false }">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
+                <a href="{% url 'customers:hub' %}?tab=case&c={{ k.customer_id }}"
+                   class="font-bold text-gray-800 hover:text-indigo-600 transition">{{ k.customer.name }}</a>
+                <span class="text-xs text-gray-500 font-mono" dir="ltr">{{ k.customer.mobile }}</span>
+
+                <span class="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[11px] font-bold">{{ k.get_condition_display|default:"—" }}</span>
+                {% if k.job %}<span class="text-[11px] text-gray-500">{{ k.get_job_display }}</span>{% endif %}
+                {% if k.credit_rank %}<span class="text-[11px] text-gray-600">رتبه {{ k.credit_rank }}</span>{% endif %}
+                {% if k.product %}<span class="text-[11px] text-gray-500">{{ k.product }} × {{ k.quantity|fa_num }}</span>{% endif %}
+                {% if k.visit_result %}<span class="text-[11px] text-emerald-700">{{ k.get_visit_result_display }}</span>{% endif %}
+                <span class="text-[11px] text-gray-400">{{ k.created_at|jdate:"Y/m/d H:i" }}</span>
+
+                {% if k.updates %}
+                <button type="button" @click="open = !open"
+                        class="text-[11px] font-bold text-blue-600 hover:underline">
+                    به‌روزرسانی‌ها ({{ k.updates|length|fa_num }})
+                </button>
+                {% endif %}
+                <a href="{% url 'customers:hub' %}?tab=case&c={{ k.customer_id }}"
+                   class="text-[11px] text-indigo-600 hover:underline">ویرایش</a>
+            </div>
+
+            {% if k.updates %}
+            <div x-show="open" x-cloak class="mt-3 pr-3 border-r-2 border-indigo-200 space-y-2">
+                {% for u in k.updates %}
+                <div class="text-xs bg-indigo-50/60 rounded-lg px-3 py-2">
+                    <span class="text-gray-400">{{ u.created_at|jdate:"Y/m/d H:i" }}</span>
+                    <span class="font-bold text-indigo-700 mx-1">به‌روزرسانی</span>
+                    {% if u.edited_by %}<span class="text-gray-500">توسط {{ u.edited_by.get_full_name|default:u.edited_by.username }}</span>{% endif %}
+                    <div class="mt-1 space-y-0.5">
+                        {% for ch in u.changes %}
+                        <div>
+                            <span class="text-gray-600">{{ ch.label }}:</span>
+                            <span class="text-rose-600 line-through">{{ ch.old }}</span>
+                            <span class="text-gray-400 mx-1">→</span>
+                            <span class="text-indigo-700 font-bold">{{ ch.new }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="p-10 text-center text-gray-400 text-sm">هنوز پرونده‌ای ثبت نشده است.</div>
+        {% endfor %}
+    </div>
+</div>

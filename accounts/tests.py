@@ -382,7 +382,8 @@ class RBACOnViewsTest(TestCase):
         for role, user in self.users.items():
             with self.subTest(role=role, url=url_name):
                 self.client.force_login(user)
-                response = self.client.get(url)
+                # بعضی URLهای قدیمی به مسیر جدید ریدایرکت می‌شوند
+                response = self.client.get(url, follow=True)
 
                 if role in allowed_roles:
                     self.assertEqual(
@@ -1007,24 +1008,24 @@ class NotificationIntegrationTest(TestCase):
         self.client.force_login(self.admin)
 
     def test_call_notification_and_link(self):
-        """تست اعلان تماس پیگیری و لینک آن"""
-        # ۱. یک تماس با تاریخ دیروز و تیک نخورده می‌سازیم
-        call = Call.objects.create(
-            caller_name='علی', call_number='09120000000',
-            follow_up_date=self.yesterday, is_followed_up=False,
-            called_by=self.admin, status='answered'
+        """اعلان پیگیری: بر اساس پرچم «نیاز به پیگیری» مشتری"""
+        from customers.models import Customer
+        # ۱. مشتری نیازمند پیگیری
+        Customer.objects.create(
+            name='علی', mobile='09120000000', needs_followup=True,
+            stage='potential', assigned_to=self.admin, created_by=self.admin,
         )
-        
+
         # ۲. چک می‌کنیم اعلان داده شود
         notifs = get_notifications(self.admin)
         call_notif = next((n for n in notifs if 'تماس نیازمند پیگیری' in n['title']), None)
         self.assertIsNotNone(call_notif, "اعلان تماس ساخته نشد!")
         
-        # ۳. چک می‌کنیم لینک اعلان، تماس را به درستی نشان دهد
+        # ۳. اعلان باید به تب «تماس و پیگیری» مرکز مشتریان برود
+        self.assertEqual(call_notif['url'], '/customers/hub/?tab=info')
         response = self.client.get(call_notif['url'], follow=True)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'علی')
-        self.assertEqual(len(response.context['page_obj']), 1)
+        self.assertContains(response, 'مرکز مشتریان')
 
     def test_task_notification_and_link(self):
         """تست اعلان وظایف عقب‌افتاده و لینک آن"""

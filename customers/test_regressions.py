@@ -39,7 +39,7 @@ class HubSubmitCallAdSourceTest(TestCase):
         self.client.post(reverse('customers:hub_submit_call'), {
             'mobile': '09129999002',
             'name': 'مشتری از آگهی',
-            'call_type': 'outgoing',
+            'call_type': 'incoming',
             'source': str(self.source.pk),
             'customer_type': 'none',
             'status': 'active',

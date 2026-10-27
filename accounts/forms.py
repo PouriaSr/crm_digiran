@@ -45,6 +45,87 @@ class StyledMixin:
     input_class = 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'
 
 
+
+# ═══════════════════════════════════════════════════════════
+# دسترسی‌های پیشرفته (مشترک بین ساخت و ویرایش کاربر)
+# ═══════════════════════════════════════════════════════════
+def build_permission_fields(form):
+    """فیلدهای perm__ را روی فرم می‌سازد (برای کاربر جدید و موجود)"""
+    from accounts.permissions import PERMISSIONS, PERMISSION_META
+
+    if getattr(form, '_perm_fields_built', False):
+        return
+    form._perm_fields_built = True
+
+    if form.instance and form.instance.pk:
+        existing = {
+            o.permission_key: o.granted
+            for o in form.instance.permission_overrides.all()
+        }
+    else:
+        existing = {}
+
+    user_role = get_user_role(form.instance) if (form.instance and form.instance.pk) else 'none'
+    role_effective = {
+        pk: (user_role in roles) for pk, roles in PERMISSIONS.items()
+    }
+
+    for perm_key, meta in PERMISSION_META.items():
+        cat, label = meta[0], meta[1]
+        description = meta[2] if len(meta) > 2 else ''
+        field_name = 'perm__' + perm_key.replace('.', '_')
+
+        if perm_key in existing:
+            initial = 'allow' if existing[perm_key] else 'deny'
+        else:
+            initial = 'inherit'
+
+        form.fields[field_name] = forms.ChoiceField(
+            choices=[
+                ('inherit', 'خودکار (از نقش)'),
+                ('allow', '✓ دسترسی'),
+                ('deny', '✗ بدون دسترسی'),
+            ],
+            initial=initial,
+            required=False,
+            widget=forms.Select(attrs={
+                'class': 'w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-500'
+            }),
+        )
+
+        form.permission_groups.setdefault(cat, []).append({
+            'key': perm_key,
+            'field': form[field_name],
+            'label': label,
+            'description': description,
+            'role_status': role_effective.get(perm_key, False),
+        })
+
+
+def save_permission_overrides(user, cleaned_data):
+    """overrideهای perm__ را ذخیره می‌کند (سوپریوزر: هیچ)"""
+    from accounts.models import UserPermissionOverride
+    from accounts.permissions import PERMISSION_META
+
+    user.permission_overrides.all().delete()
+    if user.is_superuser:
+        return
+
+    to_create = []
+    for perm_key in PERMISSION_META.keys():
+        field_name = 'perm__' + perm_key.replace('.', '_')
+        val = cleaned_data.get(field_name) or 'inherit'
+        if val == 'allow':
+            to_create.append(UserPermissionOverride(
+                user=user, permission_key=perm_key, granted=True))
+        elif val == 'deny':
+            to_create.append(UserPermissionOverride(
+                user=user, permission_key=perm_key, granted=False))
+
+    if to_create:
+        UserPermissionOverride.objects.bulk_create(to_create)
+
+
 # ═══════════════════════════════════════════════════════════
 # UserCreateForm
 # ═══════════════════════════════════════════════════════════
@@ -86,6 +167,10 @@ class UserCreateForm(DuplicateCheckMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.duplicate_warnings = []
         self.permission_groups = OrderedDict()
+        self._build_permission_fields()
+
+    def _build_permission_fields(self):
+        build_permission_fields(self)
 
     def clean_username(self):
         from crm.duplicate_check import find_exact_match, normalize_code
@@ -132,6 +217,7 @@ class UserCreateForm(DuplicateCheckMixin, forms.ModelForm):
             if role in ROLE_GROUP_MAP:
                 group, _ = Group.objects.get_or_create(name=ROLE_GROUP_MAP[role])
                 user.groups.add(group)
+            save_permission_overrides(user, self.cleaned_data)
         return user
 
 
@@ -171,51 +257,11 @@ class UserEditForm(DuplicateCheckMixin, forms.ModelForm):
 
         if self.instance and self.instance.pk:
             self.fields['role'].initial = get_user_role(self.instance)
-            self._build_permission_fields()
+        # جدول دسترسی‌ها برای کاربر جدید هم نمایش داده می‌شود
+        self._build_permission_fields()
 
     def _build_permission_fields(self):
-        from accounts.permissions import PERMISSIONS, PERMISSION_META
-
-        existing = {
-            o.permission_key: o.granted
-            for o in self.instance.permission_overrides.all()
-        }
-
-        user_role = get_user_role(self.instance)
-        role_effective = {
-            pk: (user_role in roles) for pk, roles in PERMISSIONS.items()
-        }
-
-        for perm_key, meta in PERMISSION_META.items():
-            cat, label = meta[0], meta[1]
-            description = meta[2] if len(meta) > 2 else ''
-            field_name = 'perm__' + perm_key.replace('.', '_')
-
-            if perm_key in existing:
-                initial = 'allow' if existing[perm_key] else 'deny'
-            else:
-                initial = 'inherit'
-
-            self.fields[field_name] = forms.ChoiceField(
-                choices=[
-                    ('inherit', 'خودکار (از نقش)'),
-                    ('allow', '✓ دسترسی'),
-                    ('deny', '✗ بدون دسترسی'),
-                ],
-                initial=initial,
-                required=False,
-                widget=forms.Select(attrs={
-                    'class': 'w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-500'
-                }),
-            )
-
-            self.permission_groups.setdefault(cat, []).append({
-                'key': perm_key,
-                'field': self[field_name],
-                'label': label,
-                'description': description,
-                'role_status': role_effective.get(perm_key, False),
-            })
+        build_permission_fields(self)
 
     def clean_username(self):
         from crm.duplicate_check import find_exact_match, normalize_code
@@ -253,28 +299,8 @@ class UserEditForm(DuplicateCheckMixin, forms.ModelForm):
                 group, _ = Group.objects.get_or_create(name=ROLE_GROUP_MAP[role])
                 user.groups.add(group)
 
-            # ذخیره overrideها (فقط برای غیر سوپریوزر)
-            from accounts.permissions import PERMISSION_META
-            from accounts.models import UserPermissionOverride
-
-            # ⭐ Fix v12: always clear overrides
-            user.permission_overrides.all().delete()
-
-            if not user.is_superuser:
-                to_create = []
-                for perm_key in PERMISSION_META.keys():
-                    field_name = 'perm__' + perm_key.replace('.', '_')
-                    val = self.cleaned_data.get(field_name) or 'inherit'
-                    if val == 'allow':
-                        to_create.append(UserPermissionOverride(
-                            user=user, permission_key=perm_key, granted=True,
-                        ))
-                    elif val == 'deny':
-                        to_create.append(UserPermissionOverride(
-                            user=user, permission_key=perm_key, granted=False,
-                        ))
-                if to_create:
-                    UserPermissionOverride.objects.bulk_create(to_create)
+            # ذخیره overrideها از طریق تابع مشترک
+            save_permission_overrides(user, self.cleaned_data)
         return user
 
 

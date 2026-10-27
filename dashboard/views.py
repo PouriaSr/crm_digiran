@@ -144,12 +144,12 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
     customers_qs = _filtered_customers(owner)
 
     if from_date:
-        invoices_qs = invoices_qs.filter(issue_date__gte=from_date)
+        invoices_qs = invoices_qs.filter(issue_date__date__gte=from_date)
         calls_qs = calls_qs.filter(call_date__date__gte=from_date)
         customers_qs = customers_qs.filter(created_at__date__gte=from_date)
 
     if to_date:
-        invoices_qs = invoices_qs.filter(issue_date__lte=to_date)
+        invoices_qs = invoices_qs.filter(issue_date__date__lte=to_date)
         calls_qs = calls_qs.filter(call_date__date__lte=to_date)
         customers_qs = customers_qs.filter(created_at__date__lte=to_date)
 
@@ -175,15 +175,15 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
 
     comp = _filtered_invoices(owner).aggregate(
         this_m=Sum(Case(
-            When(issue_date__gte=month_start, issue_date__lte=month_end, then=F('total')),
+            When(issue_date__date__gte=month_start, issue_date__date__lte=month_end, then=F('total')),
             default=Value(ZERO), output_field=DEC_FIELD,
         )),
         last_m=Sum(Case(
-            When(issue_date__gte=prev_start, issue_date__lte=prev_end, then=F('total')),
+            When(issue_date__date__gte=prev_start, issue_date__date__lte=prev_end, then=F('total')),
             default=Value(ZERO), output_field=DEC_FIELD,
         )),
         last_y=Sum(Case(
-            When(issue_date__gte=last_year_start, issue_date__lte=last_year_end, then=F('total')),
+            When(issue_date__date__gte=last_year_start, issue_date__date__lte=last_year_end, then=F('total')),
             default=Value(ZERO), output_field=DEC_FIELD,
         )),
     )
@@ -232,7 +232,7 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
         when_kwargs = {}
         for idx, (_, _, s_start, s_end) in enumerate(month_ranges):
             when_kwargs[f'm{idx}'] = Sum(Case(
-                When(issue_date__gte=s_start, issue_date__lte=s_end, then=F('total')),
+                When(issue_date__date__gte=s_start, issue_date__date__lte=s_end, then=F('total')),
                 default=Value(ZERO), output_field=DEC_FIELD,
             ))
         result = _filtered_invoices(owner).aggregate(**when_kwargs)
@@ -334,8 +334,8 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
             prev_range_end = from_date - timedelta(days=1)
             prev_range_start = prev_range_end - timedelta(days=range_days - 1)
             prev_sales = _filtered_invoices(owner).filter(
-                issue_date__gte=prev_range_start,
-                issue_date__lte=prev_range_end,
+                issue_date__date__gte=prev_range_start,
+                issue_date__date__lte=prev_range_end,
             ).aggregate(s=Sum('total'))['s'] or 0
             compare_data = {
                 'labels': ['بازه قبل', 'بازه انتخابی'],
@@ -369,7 +369,10 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
     filter_users_list = _get_employee_choices() if is_mgr else []
 
     def _json(obj):
-        return json.dumps(obj, ensure_ascii=False)
+        s = json.dumps(obj, ensure_ascii=False)
+        return (s.replace('<', '\\u003C')
+                 .replace('>', '\\u003E')
+                 .replace('&', '\\u0026'))
 
     return {
         'today': now_j.strftime('%Y/%m/%d'),
@@ -721,7 +724,7 @@ def _get_bi_data(user, filter_user_id=None):
             continue
 
         cur = invoices_qs.filter(
-            issue_date__gte=s_start, issue_date__lte=s_end
+            issue_date__date__gte=s_start, issue_date__date__lte=s_end
         ).aggregate(s=Sum('total'))['s'] or 0
         trend_current.append(float(cur))
         trend_labels.append(f'{y}/{m:02d}')
@@ -729,7 +732,7 @@ def _get_bi_data(user, filter_user_id=None):
         prev_start, prev_end = _get_month_range(y - 1, m)
         if prev_start:
             prev = invoices_qs.filter(
-                issue_date__gte=prev_start, issue_date__lte=prev_end
+                issue_date__date__gte=prev_start, issue_date__date__lte=prev_end
             ).aggregate(s=Sum('total'))['s'] or 0
             trend_previous.append(float(prev))
         else:
@@ -823,7 +826,7 @@ def _get_bi_data(user, filter_user_id=None):
             })
 
     # ═══ مشتریان غیرفعال ═══
-    cutoff = today - timedelta(days=90)
+    cutoff = timezone.now() - timedelta(days=90)   # DateTimeField → aware
     inactive_customers = (
         customers_qs
         .annotate(
@@ -843,7 +846,10 @@ def _get_bi_data(user, filter_user_id=None):
     filter_users_list = _get_employee_choices() if is_mgr else []
 
     def _json(obj):
-        return json.dumps(obj, ensure_ascii=False)
+        s = json.dumps(obj, ensure_ascii=False)
+        return (s.replace('<', '\\u003C')
+                 .replace('>', '\\u003E')
+                 .replace('&', '\\u0026'))
 
     return {
         'today': now_j.strftime('%Y/%m/%d'),

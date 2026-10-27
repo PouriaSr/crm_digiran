@@ -54,7 +54,7 @@ class HubCallFormTest(TestCase):
         response = self.client.post(reverse('customers:hub_submit_call'), {
             'mobile': '09123333333',
             'name': 'مشتری خروجی',
-            'call_type': 'outgoing',
+            'call_type': 'followup',
             'source': str(self.ad_source.pk),  # ⭐ source صحیح
             'customer_type': 'none',
             'status': 'active',
@@ -73,7 +73,7 @@ class HubCallFormTest(TestCase):
         response = self.client.post(reverse('customers:hub_submit_call'), {
             'mobile': '09124444444',
             'name': 'مشتری از دست رفته',
-            'call_type': 'incoming_missed',
+            'call_type': 'missed',
             'source': str(self.ad_source.pk),  # ⭐ source صحیح
             'customer_type': 'none',
             'status': 'lead',

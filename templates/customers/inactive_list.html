@@ -21,8 +21,8 @@
     <form method="get" class="flex flex-wrap gap-3 items-center">
         <div class="flex-1 min-w-[200px]">
             <input type="text" name="q" value="{{ search }}"
-                   placeholder="جستجو نام، موبایل، ایمیل یا کد ملی..."
-                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                   placeholder="جستجو نام، موبایل یا کد ملی..."
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-center">
         </div>
         <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
             جستجو
@@ -34,45 +34,42 @@
 </div>
 
 <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
-    <table class="w-full text-sm">
+    <table class="w-full text-sm text-center">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr class="text-gray-600">
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">مشتری</th>
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">شماره تماس</th>
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">تاریخ غیرفعال‌سازی</th>
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">کارمند مسئول</th>
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">عملیات</th>
+                <th class="text-center px-4 py-3 font-medium whitespace-nowrap">مشتری</th>
+                <th class="text-center px-4 py-3 font-medium whitespace-nowrap">شماره تماس</th>
+                <th class="text-center px-4 py-3 font-medium whitespace-nowrap">تاریخ غیرفعال‌سازی</th>
+                <th class="text-center px-4 py-3 font-medium whitespace-nowrap">کارمند مسئول</th>
+                <th class="text-center px-4 py-3 font-medium whitespace-nowrap">عملیات</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for customer in page_obj %}
             <tr class="hover:bg-gray-50 transition opacity-75">
-                <td class="px-4 py-3 text-right">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">
+                <td class="px-4 py-3 text-center">
+                    <div class="flex items-center justify-center gap-3">
+                        <div class="w-9 h-9 bg-red-100 text-red-600 rounded-full flex items-center justify-center font-bold text-sm shrink-0">
                             {{ customer.name|first|upper }}
                         </div>
-                        <div>
-                            <div class="font-medium text-gray-800 line-through">{{ customer.name }}</div>
-                            {% if customer.email %}
-                            <div class="text-xs text-gray-400" dir="ltr">{{ customer.email }}</div>
-                            {% endif %}
+                        <div class="text-center">
+                            <div class="font-bold text-gray-800">{{ customer.name }}</div>
                         </div>
                     </div>
                 </td>
-                <td class="px-4 py-3 text-right text-gray-600 font-mono"><span dir="ltr">{{ customer.mobile }}</span></td>
-                <td class="px-4 py-3 text-right text-xs text-gray-500">
+                <td class="px-4 py-3 text-center font-mono" dir="ltr">{{ customer.mobile }}</td>
+                <td class="px-4 py-3 text-center text-gray-600" dir="ltr">
                     {% if customer.deleted_at %}{{ customer.deleted_at|jdate:"Y/m/d H:i" }}{% else %}—{% endif %}
                 </td>
-                <td class="px-4 py-3 text-right text-xs">
+                <td class="px-4 py-3 text-center text-gray-600">
                     {% if customer.assigned_to %}
                         {{ customer.assigned_to.get_full_name|default:customer.assigned_to.username }}
                     {% else %}—{% endif %}
                 </td>
-                <td class="px-4 py-3 text-right">
+                <td class="px-4 py-3 text-center">
                     <a href="{% url 'customers:restore' customer.pk %}"
                        class="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs font-medium inline-block">
-                        ♻️ بازگردانی
+                        بازگردانی
                     </a>
                 </td>
             </tr>

@@ -1,3 +1,4 @@
+import json
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -156,6 +157,16 @@ def ad_list(request):
         'chart_labels': [item['platform__name'] for item in by_platform],
         'chart_values': [float(item['total']) for item in by_platform],
     }
+
+    # JSON ایمن برای بلوک <script> (جلوگیری از XSS نام پلتفرم/فرآیند)
+    def _json(obj):
+        s = json.dumps(obj, ensure_ascii=False)
+        return (s.replace('<', '\\u003C')
+                 .replace('>', '\\u003E')
+                 .replace('&', '\\u0026'))
+
+    report['chart_labels_json'] = _json(report.get('chart_labels') or [])
+    report['chart_values_json'] = _json(report.get('chart_values') or [])
 
     context = {
         'page_obj': page_obj,

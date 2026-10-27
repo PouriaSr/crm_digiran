@@ -180,7 +180,10 @@ def audit_log_list(request):
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
     def _json(obj):
-        return json.dumps(obj, ensure_ascii=False)
+        s = json.dumps(obj, ensure_ascii=False)
+        return (s.replace('<', '\\u003C')
+                 .replace('>', '\\u003E')
+                 .replace('&', '\\u0026'))
 
     context = {
         'page_obj': page_obj,

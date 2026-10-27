@@ -155,3 +155,35 @@ class PersianDigitsMiddleware:
         # به‌روزرسانی محتوای محافظت‌شده‌ی پاسخ
         response.content = parser.get_html().encode('utf-8')
         return response
+
+
+# ═══════════════════════════════════════════════════════════
+# بدون کش برای کاربران واردشده — دسترسی‌ها همین لحظه اعمال شوند
+# ═══════════════════════════════════════════════════════════
+class NoStoreForAuthenticatedMiddleware:
+    """
+    پاسخ‌های HTML کاربران واردشده با no-store فرستاده می‌شوند تا:
+      • پس از «انتقال مشتری» یا تغییر سطح دسترسی، صفحه‌ی قدیمی از کش میانی/مرورگر
+        نمایش داده نشود و کاربر مجبور به رفرش دستی نباشد.
+      • دکمه‌ی Back مرورگر (bfcache) نسخه‌ی قدیمی را نشان ندهد.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+
+        user = getattr(request, 'user', None)
+        if not (user and user.is_authenticated):
+            return response
+
+        content_type = (response.get('Content-Type') or '').lower()
+        if 'text/html' not in content_type:
+            return response
+
+        response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0, private'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
+        response['Vary'] = 'Cookie'
+        return response

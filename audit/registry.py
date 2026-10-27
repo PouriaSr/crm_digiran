@@ -33,6 +33,22 @@ AUDIT_MODELS = {
         'status', 'leave_type',
     ],
 
+    # ─── تماس‌ها ───
+    'calls.Call': [
+        'contact_type', 'status', 'notes', 'follow_up_date',
+        'is_followed_up', 'called_by', 'declared_customer_status',
+    ],
+
+    # ─── مرکز مشتریان: پذیرش و پرونده ───
+    'customers.Reception': [
+        'person_type', 'has_visit', 'wait_choice',
+        'wait_minutes_total', 'is_waiting', 'info_submitted',
+    ],
+    'customers.CustomerCase': [
+        'condition', 'cheque_owner', 'cheque_other_name', 'cheque_other_phone',
+        'job', 'credit_rank', 'active_loans', 'product', 'quantity', 'visit_result',
+    ],
+
     # ─── کاربران ───
     'auth.User': [
         'username', 'email', 'first_name', 'last_name',

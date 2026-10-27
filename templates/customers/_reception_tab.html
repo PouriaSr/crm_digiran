@@ -1,0 +1,193 @@
+{% load fa_numbers %}
+{# ═══ تب پذیرش حضوری ═══ #}
+<div x-show="tab === 'reception'" x-transition.opacity style="display: none;"
+     x-data="{ person: '{{ reception.person_type|default:'' }}' }">
+
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
+        <form method="get" class="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="tab" value="reception">
+            <div class="flex-1 min-w-[220px]">
+                <label class="block text-xs font-bold text-gray-600 mb-1">مشتری حاضر در سالن</label>
+                <select name="c" onchange="this.form.submit()" autocomplete="off"
+                        class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl">
+                    <option value="">انتخاب کنید...</option>
+                    {% for cu in reception_customers %}
+                    <option value="{{ cu.pk }}" {% if reception_customer and reception_customer.pk == cu.pk %}selected{% endif %}>
+                        {{ cu.name }} — {{ cu.mobile }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+
+    {% if reception_customer %}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+        <!-- سؤالات -->
+        <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h3 class="font-bold text-gray-800 mb-4">سؤالات پذیرش</h3>
+
+            <form method="post" action="{% url 'customers:reception_action' %}" class="space-y-5"
+                  autocomplete="off">
+                {% csrf_token %}
+                <input type="hidden" name="customer" value="{{ reception_customer.pk }}">
+                <input type="hidden" name="action" value="answer">
+
+                <div>
+                    <div class="text-sm font-bold text-gray-700 mb-2">۱. فرد مورد نظر، مشتری است یا مصاحبه‌کننده؟</div>
+                    <div class="flex gap-3">
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm cursor-pointer">
+                            <input type="radio" name="person_type" value="customer" required
+                                   x-model="person"
+                                   {% if reception and reception.person_type == 'customer' %}checked{% endif %}>
+                            مشتری
+                        </label>
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm cursor-pointer">
+                            <input type="radio" name="person_type" value="interviewer"
+                                   x-model="person"
+                                   {% if reception and reception.person_type == 'interviewer' %}checked{% endif %}>
+                            مصاحبه‌کننده
+                        </label>
+                    </div>
+                </div>
+
+                <div x-show="person !== 'interviewer'" x-cloak>
+                    <div class="text-sm font-bold text-gray-700 mb-2">۲. مشتری، مراجعه حضوری دارد؟</div>
+                    <div class="flex gap-3">
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm cursor-pointer">
+                            <input type="radio" name="has_visit" value="yes" :required="person !== 'interviewer'"
+                                   {% if reception and reception.has_visit == 'yes' %}checked{% endif %}>
+                            بله
+                        </label>
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm cursor-pointer">
+                            <input type="radio" name="has_visit" value="no"
+                                   {% if reception and reception.has_visit == 'no' %}checked{% endif %}>
+                            خیر
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-sm font-bold text-gray-700 mb-2">
+                        <span x-show="person !== 'interviewer'">۳. مشتری چند دقیقه در سالن منتظر است؟</span>
+                        <span x-show="person === 'interviewer'" x-cloak>۲. مصاحبه‌کننده چند دقیقه در سالن منتظر است؟</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        {% for value, label in wait_choices %}
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm cursor-pointer">
+                            <input type="radio" name="wait_choice" value="{{ value }}" required
+                                   {% if reception and reception.wait_choice == value %}checked{% endif %}>
+                            {{ label }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <p class="text-[11px] text-gray-400 mt-2">
+                        با انتخاب هر گزینه، تایمر از ادامه‌ی همان زمان شروع به شمارش می‌کند.
+                    </p>
+                </div>
+
+                <button type="submit"
+                        class="w-full py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition">
+                    ثبت پاسخ‌ها
+                </button>
+            </form>
+        </div>
+
+        <!-- وضعیت و دکمه‌ها -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+            <h3 class="font-bold text-gray-800">وضعیت انتظار</h3>
+
+            {% if reception and reception.is_waiting and reception.wait_started_at %}
+            <div class="text-center">
+                <div id="wait-timer"
+                     data-start="{{ reception.wait_started_at|date:'c' }}"
+                     class="text-3xl font-mono font-bold text-emerald-700"
+                     dir="ltr">--:--:--</div>
+                <p class="text-[11px] text-gray-400 mt-1">شمارش از: {{ reception.get_wait_choice_display }}</p>
+            </div>
+            {% elif reception and reception.wait_ended_at %}
+            <div class="text-center">
+                <div class="text-2xl font-bold text-emerald-700">{{ reception.wait_minutes_total|fa_num }} دقیقه</div>
+                <p class="text-[11px] text-gray-400 mt-1">انتظار پایان یافت</p>
+            </div>
+            {% else %}
+            <p class="text-sm text-gray-400">هنوز انتظاری شروع نشده است.</p>
+            {% endif %}
+
+            <div class="pt-3 border-t border-gray-100 space-y-2">
+                <form method="post" action="{% url 'customers:reception_action' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="customer" value="{{ reception_customer.pk }}">
+                    <input type="hidden" name="action" value="end_wait">
+                    <button type="submit"
+                            {% if not reception or not reception.is_waiting %}disabled{% endif %}
+                            class="w-full py-2.5 rounded-xl text-sm font-bold transition
+                                   {% if reception and reception.is_waiting %}bg-amber-500 text-white hover:bg-amber-600{% else %}bg-gray-100 text-gray-400 cursor-not-allowed{% endif %}">
+                        پایان انتظار
+                    </button>
+                </form>
+
+                <form method="post" action="{% url 'customers:reception_action' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="customer" value="{{ reception_customer.pk }}">
+                    <input type="hidden" name="action" value="submit_info">
+                    <button type="submit" x-show="person !== 'interviewer'"
+                            {% if not reception or not reception.can_submit_info or not reception.wait_ended_at %}disabled{% endif %}
+                            class="w-full py-2.5 rounded-xl text-sm font-bold transition
+                                   {% if reception and reception.can_submit_info and reception.wait_ended_at %}bg-blue-600 text-white hover:bg-blue-700{% else %}bg-gray-100 text-gray-400 cursor-not-allowed{% endif %}">
+                        ثبت اطلاعات مشتری
+                    </button>
+                </form>
+
+                {% if reception and reception.info_submitted and reception_customer.stage == 'potential' %}
+                <a href="{% url 'customers:hub' %}?tab=case&c={{ reception_customer.pk }}"
+                   x-show="person !== 'interviewer'" x-cloak
+                   class="block text-center w-full py-2.5 rounded-xl text-sm font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition">
+                    پرونده مشتری
+                </a>
+                {% endif %}
+
+                {% if 'customers.recruitment' in user_permissions %}
+                <a href="{% url 'customers:hub' %}?tab=recruitment&c={{ reception_customer.pk }}"
+                   x-show="person === 'interviewer'" x-cloak
+                   class="block text-center w-full py-2.5 rounded-xl text-sm font-bold bg-teal-50 text-teal-700 hover:bg-teal-100 transition">
+                    پرونده مصاحبه‌کننده
+                </a>
+                {% endif %}
+            </div>
+
+            <div class="text-[11px] text-gray-400 leading-5" x-show="person !== 'interviewer'" x-cloak>
+                {% if not reception or not reception.can_submit_info %}
+                «ثبت اطلاعات مشتری» وقتی فعال می‌شود که مشتری برچسب «بالقوه» داشته باشد و هر ۳ پاسخ ثبت شده باشد.
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        var el = document.getElementById('wait-timer');
+        if (!el || !el.dataset.start) return;
+        var start = new Date(el.dataset.start).getTime();
+        if (isNaN(start)) return;
+        function pad(n) { return (n < 10 ? '0' : '') + n; }
+        function tick() {
+            var s = Math.max(0, Math.floor((Date.now() - start) / 1000));
+            el.textContent = pad(Math.floor(s / 3600)) + ':' + pad(Math.floor((s % 3600) / 60)) + ':' + pad(s % 60);
+        }
+        tick();
+        setInterval(tick, 1000);
+    })();
+    </script>
+
+    {% else %}
+    <div class="bg-white rounded-2xl border border-gray-100 p-10 text-center text-gray-400 text-sm">
+        برای شروع پذیرش، مشتری حاضر در سالن را از بالا انتخاب کنید.
+    </div>
+    {% endif %}
+
+    {% if 'customers.history' in user_permissions %}
+    {% include "customers/_reception_history.html" %}
+    {% endif %}
+</div>

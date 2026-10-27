@@ -23,7 +23,7 @@ class CustomerFormDuplicateTest(TestCase):
         self.existing = Customer.objects.create(
             name='مشتری موجود',
             mobile='09120000001',
-            national_id='1234567890',
+            national_id='0012345679',
         )
 
     # ─── موبایل یکتا ───
@@ -115,7 +115,7 @@ class CustomerFormDuplicateTest(TestCase):
         form = CustomerForm(data={
             'name': 'م',
             'mobile': '09129999999',
-            'national_id': '9999999999',
+            'national_id': '0022962840',
             'status': 'lead',
             'source': 'direct',
             'notes': 'تست',
@@ -128,7 +128,7 @@ class CustomerFormDuplicateTest(TestCase):
         form = CustomerForm(data={
             'name': 'م',
             'mobile': '09129999999',
-            'national_id': '1234567890',
+            'national_id': '0012345679',
             'status': 'lead',
             'source': 'direct',
             'notes': 'تست',
@@ -154,7 +154,7 @@ class CustomerFormDuplicateTest(TestCase):
         form = CustomerForm(data={
             'name': 'م',
             'mobile': '09120000001',
-            'national_id': '1234567890',
+            'national_id': '0012345679',
             'status': 'lead',
             'source': 'direct',
             'notes': 'تست',
@@ -169,7 +169,7 @@ class CustomerFormDuplicateTest(TestCase):
             data={
                 'name': 'مشتری موجود ویرایش',
                 'mobile': '09120000001',
-                'national_id': '1234567890',
+                'national_id': '0012345679',
                 'status': 'active',
                 'source': 'direct',
                 'notes': 'تست',

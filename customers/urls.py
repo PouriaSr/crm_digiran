@@ -1,22 +1,37 @@
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect
 from django.urls import path
+
+from accounts.permissions import require_permission
 from . import views, hub_views
 
 app_name = 'customers'
 
+
+@login_required
+@require_permission('customers.view')
+def to_hub(request):
+    return redirect('/customers/hub/?tab=info')
+
+
 urlpatterns = [
     # Redirect old list to new Hub
-    path('', views.customer_list, name='list'),
+    path('', to_hub, name='list'),
     
     # New Hub Routes
     path('hub/', hub_views.customer_hub, name='hub'),
     path('hub/call/', hub_views.hub_submit_call, name='hub_submit_call'),
-    path('hub/visit/', hub_views.hub_submit_visit, name='hub_submit_visit'),
     path('hub/api/check/', hub_views.hub_check_customer, name='hub_check_api'),
+    path('hub/followup/<int:pk>/done/', hub_views.hub_followup_done, name='hub_followup_done'),
 
     # Original CRUD Routes (Crucial for detail.html and forms to work)
     path('new/', views.customer_create, name='create'),
     path('<int:pk>/', views.customer_detail, name='detail'),
     path('<int:pk>/edit/', views.customer_edit, name='edit'),
+    path('hub/case/save/', hub_views.hub_case_save, name='case_save'),
+    path('hub/reception/action/', hub_views.hub_reception_action, name='reception_action'),
+    path('<int:pk>/quick-call/', hub_views.hub_quick_call, name='quick_call'),
+    path('hub/calls/<int:pk>/edit/', hub_views.hub_call_edit, name='hub_call_edit'),
     path('<int:pk>/reassign/', hub_views.customer_reassign, name='reassign'),
     path('<int:pk>/deactivate/', views.customer_deactivate, name='deactivate'),
     path('<int:pk>/restore/', views.customer_restore, name='restore'),

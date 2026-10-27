@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('ads', '0005_alter_ad_ad_number_alter_adlog_ad_number_snapshot_and_more'),
-        ('customers', '0010_fix_is_lead_manually'),
+        ('customers', '0006_customer_cheques_count_customer_customer_type_and_more'),
     ]
 
     operations = [

@@ -6,7 +6,9 @@ from crm.duplicate_check import (
     normalize_digits, normalize_email, normalize_phone, normalize_text,
 )
 from crm.form_mixins import DuplicateCheckMixin
-from .models import Customer, CustomerNote
+from .models import Customer, CustomerCase, CustomerNote
+from products.models import Product
+from calls.models import DECLARED_CUSTOMER_STATUS_CHOICES
 
 
 class CustomerForm(DuplicateCheckMixin, forms.ModelForm):
@@ -29,14 +31,14 @@ class CustomerForm(DuplicateCheckMixin, forms.ModelForm):
         model = Customer
         fields = [
             'name', 'mobile', 'email', 'national_id', 'birth_date',
-            'status', 'source', 'ad_source', 'assigned_to', 'address', 'notes',
+            'stage', 'source', 'ad_source', 'assigned_to', 'address', 'notes',
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': 'نام و نام خانوادگی یا نام شرکت'}),
             'mobile': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': '۰۹۱۲۱۲۳۴۵۶۷', 'dir': 'ltr'}),
             'email': forms.EmailInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': 'email@example.com', 'dir': 'ltr'}),
             'national_id': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': '۱۲۳۴۵۶۷۸۹۰', 'dir': 'ltr'}),
-            'status': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
+            'stage': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
             'ad_source': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
             'source': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
             'assigned_to': forms.Select(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'}),
@@ -44,16 +46,36 @@ class CustomerForm(DuplicateCheckMixin, forms.ModelForm):
             'notes': forms.Textarea(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'rows': 3, 'placeholder': 'یادداشت‌ها'}),
         }
 
-    def __init__(self, *args, **kwargs):
+    BASIC_FIELDS = ('name', 'mobile', 'source', 'ad_source', 'notes')
+
+    def __init__(self, *args, for_create=False, limited=False, **kwargs):
         super().__init__(*args, **kwargs)
+        self.for_create = for_create
+        self.limited = limited
         self.duplicate_warnings = []
-        self.fields['status'].choices = [
-            ('lead', 'بالقوه (لید)'),
-            ('active', 'بالفعل (مشتری)'),
-        ]
+        # «وضعیت» فقط دو حالت دارد
+        if 'stage' in self.fields:
+            self.fields['stage'].label = 'وضعیت'
+            self.fields['stage'].choices = [
+                ('potential', 'بالقوه'),
+                ('lead', 'فاقد شرایط'),
+            ]
+            self.fields['stage'].required = False
         from ads.models import AdSource
         self.fields['ad_source'].queryset = AdSource.objects.filter(is_active=True)
         self.fields['ad_source'].required = False
+        if limited:
+            for fname in list(self.fields):
+                if fname not in self.BASIC_FIELDS:
+                    self.fields.pop(fname, None)
+
+        if for_create:
+            for fname in ('email', 'stage'):
+                self.fields.pop(fname, None)
+            # همه‌ی منبع‌های معتبر مدل (وگرنه «تماس مستقیم» رد می‌شد)
+            self.fields['source'].choices = self._meta.model.SOURCE_CHOICES
+            attrs = self.fields['source'].widget.attrs
+            attrs['x-model'] = 'sourceVal'
         self.fields['notes'].required = True
         if self.instance and self.instance.pk and self.instance.birth_date:
             g = self.instance.birth_date
@@ -63,11 +85,84 @@ class CustomerForm(DuplicateCheckMixin, forms.ModelForm):
     # ═══════════════════════════════════════════════════════════
     # نرمال‌سازی ورودی‌ها
     # ═══════════════════════════════════════════════════════════
+    def save(self, commit=True):
+        customer = super().save(commit=False)
+
+        # «وضعیت» تعیین‌کننده‌ی برچسب، تیک پیگیری، پیامک و دسترسی‌هاست
+        new_stage = self.cleaned_data.get('stage')
+        if new_stage in ('potential', 'lead'):
+            was_potential = bool(
+                self.instance and self.instance.pk and self.instance.stage == 'potential'
+            )
+            customer.stage = new_stage
+            customer.needs_followup = (new_stage == 'potential')
+
+            if commit and new_stage == 'potential' and not was_potential:
+                # تغییر به «بالقوه» → پیامک خودکار (هوک؛ با اتصال API ارسال می‌شود)
+                try:
+                    from .sms import send_followup_sms
+                    customer.save()
+                    send_followup_sms(customer)
+                except Exception:
+                    pass
+
+        if commit:
+            customer.save()
+        return customer
+
     def clean_mobile(self):
-        return normalize_phone(self.cleaned_data.get('mobile'))
+        mobile = normalize_phone(self.cleaned_data.get('mobile'))
+        if mobile:
+            if not (mobile.isdigit() and len(mobile) == 11 and mobile.startswith('09')):
+                raise forms.ValidationError(
+                    'شماره تماس باید ۱۱ رقم و با ۰۹ شروع شود (مثال: ۰۹۱۲۱۲۳۴۵۶۷).'
+                )
+        if mobile:
+            qs = Customer.objects.filter(mobile=mobile)
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            other = qs.first()
+            if other:
+                raise forms.ValidationError(
+                    f'مشتری فعال «{other.name}» با این شماره از قبل ثبت شده است.'
+                )
+        return mobile
+
+    def clean_name(self):
+        name = (self.cleaned_data.get('name') or '').strip()
+        if name:
+            qs = Customer.objects.filter(name__iexact=name)
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            other = qs.first()
+            if other:
+                raise forms.ValidationError(
+                    f'مشتری فعال «{other.name}» با این نام از قبل ثبت شده است.'
+                )
+        return name
 
     def clean_national_id(self):
-        return normalize_digits(self.cleaned_data.get('national_id', '')).replace(' ', '').replace('-', '')
+        value = normalize_digits(self.cleaned_data.get('national_id', '') or '')
+        value = value.replace(' ', '').replace('-', '').strip()
+        if not value:
+            return ''
+
+        if not value.isdigit() or len(value) != 10:
+            raise forms.ValidationError('کد ملی باید دقیقاً ۱۰ رقم باشد.')
+
+        # ارقام تکراری (مثل ۱۱۱۱۱۱۱۱۱۱) معتبر نیست
+        if len(set(value)) == 1:
+            raise forms.ValidationError('کد ملی وارد شده معتبر نیست.')
+
+        # الگوریتم رسمی کد ملی ایران
+        check = int(value[9])
+        total = sum(int(value[i]) * (10 - i) for i in range(9))
+        remainder = total % 11
+        if not ((remainder < 2 and check == remainder)
+                or (remainder >= 2 and check == 11 - remainder)):
+            raise forms.ValidationError('کد ملی وارد شده معتبر نیست.')
+
+        return value
 
     def clean_email(self):
         email = self.cleaned_data.get('email', '')
@@ -170,40 +265,123 @@ class CustomerNoteForm(forms.ModelForm):
             raise forms.ValidationError('متن یادداشت نمی‌تواند خالی باشد.')
         return text
 
+# وضعیت مشتری در فرم ثبت تماس — از مدل Call می‌آید (تک‌منبع حقیقت)
+CUSTOMER_STATUS_CHOICES = DECLARED_CUSTOMER_STATUS_CHOICES
+
+
 class HubCallForm(forms.Form):
     mobile = forms.CharField(label='شماره تماس', max_length=15, required=True,
-        widget=forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'dir': 'ltr', 'placeholder': '09123456789', 'id': 'hub_call_mobile'}))
+        widget=forms.TextInput(attrs={'class': 'w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-lg font-mono tracking-widest bg-white', 'dir': 'ltr', 'placeholder': '09123456789', 'id': 'hub_call_mobile', '@input.debounce.500ms': 'checkMobile()'}))
     name = forms.CharField(label='نام و نام خانوادگی', max_length=200, required=False,
-        widget=forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'id': 'hub_call_name'}))
+        widget=forms.TextInput(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all', 'id': 'hub_call_name'}))
+    
     call_type = forms.ChoiceField(label='نوع تماس', choices=[
-        ('incoming_customer', 'تماس مشتری (ورودی)'),
-        ('incoming_missed', 'از دست رفته (ورودی)'),
-        ('incoming_chat', 'چت دیوار (ورودی)'),
-        ('outgoing', 'تماس خروجی'),
-    ], widget=forms.Select(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all'}))
-    source = forms.ModelChoiceField(label='منبع', queryset=__import__('ads.models', fromlist=['AdSource']).AdSource.objects.filter(is_active=True),
-        widget=forms.Select(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg'}))
-    customer_type = forms.ChoiceField(label='نوع مشتری', choices=__import__('customers.models', fromlist=['Customer']).Customer.CUSTOMER_TYPE_CHOICES,
-        widget=forms.Select(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'id': 'hub_customer_type'}))
-    installments_count = forms.IntegerField(label='تعداد اقساط', required=False, min_value=1,
-        widget=forms.NumberInput(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'id': 'hub_installments'}))
-    cheques_count = forms.IntegerField(label='تعداد چک', required=False, min_value=1, max_value=5,
-        widget=forms.NumberInput(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'id': 'hub_cheques'}))
-    notes = forms.CharField(label='توضیحات (الزامی)', required=True,
-        widget=forms.Textarea(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'rows': 3, 'placeholder': 'شرح مکالمه...'}))
-    status = forms.ChoiceField(label='وضعیت مشتری', choices=[('lead', 'بالقوه (نیازمند پیگیری)'), ('active', 'بالفعل (سرنخ)')],
-        widget=forms.Select(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'id': 'hub_status'}))
+        ('incoming', 'تماس مشتری'),
+        ('missed', 'از دست رفته'),
+        ('divar', 'چت دیوار'),
+        ('ads', 'تبلیغات'),
+        ('followup', 'پیگیری'),
+        ('busy', 'مشغول'),
+    ], widget=forms.Select(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all', 'x-model': 'callType'}))
+    
+    source = forms.ModelChoiceField(label='منبع تماس', queryset=__import__('ads.models', fromlist=['AdSource']).AdSource.objects.filter(is_active=True), required=False,
+        widget=forms.Select(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all'}))
+    
+    needs_followup = forms.BooleanField(label='نیاز به پیگیری', required=False,
+        widget=forms.CheckboxInput(attrs={
+            'class': 'w-5 h-5 rounded text-orange-600 border-gray-300 focus:ring-orange-500',
+            'x-model': 'needsFollowup',
+            'id': 'hub_needs_followup',
+        }))
+    
     follow_up_date = forms.CharField(label='تاریخ پیگیری', required=False,
-        widget=forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'data-jdp': '', 'id': 'hub_followup', 'placeholder': '1405/01/01'}))
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all',
+            'placeholder': '۱۴۰۵/۰۸/۱۵', 'autocomplete': 'off', 'id': 'hub_followup_date',
+            'data-jdp': '', 'data-jdp-time': 'false',
+        }))
 
-class HubVisitForm(forms.ModelForm):
+    notes = forms.CharField(label='شرح مکالمه', required=True,
+        widget=forms.Textarea(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all resize-none', 'rows': 3, 'placeholder': 'شرح مکالمه...'}))
+
+    def clean(self):
+        data = super().clean()
+        if data.get('needs_followup') and not (data.get('follow_up_date') or '').strip():
+            self.add_error('follow_up_date', 'وقتی «نیاز به پیگیری» را می‌زنید، تاریخ پیگیری الزامی است.')
+        return data
+
+
+
+class CustomerCaseForm(forms.ModelForm):
+    """فرم پرونده‌ی مشتری — تب سوم مرکز مشتریان"""
+
+    active_loans = forms.MultipleChoiceField(
+        label='وام‌های فعال',
+        choices=CustomerCase.LOAN_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={
+            'class': 'w-4 h-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500',
+        }),
+    )
+
     class Meta:
-        model = __import__('customers.models', fromlist=['Visit']).Visit
-        fields = ['customer', 'is_successful', 'notes']
+        model = CustomerCase
+        fields = [
+            'condition', 'cheque_owner', 'cheque_other_name', 'cheque_other_phone',
+            'job', 'credit_rank', 'active_loans', 'product', 'quantity', 'visit_result',
+        ]
+        widgets = {
+            'condition': forms.Select(attrs={
+                'class': 'w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none',
+                'x-model': 'cond',
+            }),
+            'cheque_owner': forms.Select(attrs={
+                'class': 'w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none',
+                'x-model': 'owner',
+            }),
+            'cheque_other_name': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none',
+                'placeholder': 'نام صاحب چک',
+            }),
+            'cheque_other_phone': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none',
+                'placeholder': '۰۹۱۲...', 'dir': 'ltr',
+            }),
+            'job': forms.Select(attrs={
+                'class': 'w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none',
+            }),
+            'credit_rank': forms.Select(attrs={
+                'class': 'w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none',
+            }),
+            'product': forms.Select(attrs={
+                'class': 'w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none',
+            }),
+            'quantity': forms.NumberInput(attrs={
+                'class': 'w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none',
+                'min': 1,
+            }),
+            'visit_result': forms.Select(attrs={
+                'class': 'w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none',
+            }),
+        }
 
-    customer = forms.ModelChoiceField(label='مشتری', queryset=__import__('customers.models', fromlist=['Customer']).Customer.objects.all(),
-        widget=forms.Select(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg'}))
-    is_successful = forms.BooleanField(label='مراحل با موفقیت طی شد؟ (انتقال به پرونده)', required=False,
-        widget=forms.CheckboxInput(attrs={'class': 'w-5 h-5 text-blue-600 rounded'}))
-    notes = forms.CharField(label='یادداشت مراجعه', required=True,
-        widget=forms.Textarea(attrs={'class': 'w-full px-4 py-2.5 border rounded-lg', 'rows': 3}))
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['product'].queryset = Product.objects.filter(is_active=True).order_by('name')
+        self.fields['product'].empty_label = 'انتخاب کالا...'
+        self.fields['condition'].required = True
+        self.fields['job'].required = True
+        self.fields['credit_rank'].required = True
+        self.fields['visit_result'].required = True
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('condition') == 'cheque':
+            if not cleaned.get('cheque_owner'):
+                self.add_error('cheque_owner', 'برای چک، «برای خودش / برای دیگری» را انتخاب کنید.')
+            elif cleaned.get('cheque_owner') == 'other':
+                if not cleaned.get('cheque_other_name'):
+                    self.add_error('cheque_other_name', 'نام صاحب چک الزامی است.')
+                if not cleaned.get('cheque_other_phone'):
+                    self.add_error('cheque_other_phone', 'شماره تماس صاحب چک الزامی است.')
+        return cleaned

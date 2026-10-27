@@ -41,20 +41,21 @@ def get_notifications(user):
                 'bg': 'bg-blue-50'
             })
 
-    # ۳. تماس‌های پیگیری امروز و گذشته
-    if has_permission(user, 'calls.view'):
-        from calls.models import Call
-        followups = Call.objects.filter(follow_up_date__lte=today, is_followed_up=False)
-        
+    # ۳. مشتریان نیازمند پیگیری
+    if has_permission(user, 'customers.view'):
+        from customers.models import Customer
+        # در سیستم جدید «نیاز به پیگیری» یک پرچم روی مشتری است (تاریخ جمع نمی‌شود)
+        followups = Customer.objects.filter(needs_followup=True)
+
         if not user.is_superuser:
-            followups = followups.filter(called_by=user)
+            followups = followups.filter(assigned_to=user)
             
         count_followups = followups.count()
         if count_followups > 0:
             notifications.append({
                 'icon': '📞',
                 'title': f'{count_followups} تماس نیازمند پیگیری دارید.',
-                'url': '/calls/?followup=pending',
+                'url': '/customers/hub/?tab=info',   # لیست مشتریان (تب تماس و پیگیری حذف شد)
                 'color': 'text-green-600',
                 'bg': 'bg-green-50'
             })

@@ -1,5 +1,6 @@
 import jdatetime
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
@@ -7,9 +8,9 @@ from django.db.models import Q, Sum
 from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
-from accounts.permissions import require_permission, has_permission
+from accounts.permissions import require_permission, get_user_role, ROLE_ADMIN, has_permission
 from .models import Customer, CustomerNote
-from .forms import CustomerForm, CustomerNoteForm
+from .forms import CustomerForm, CustomerNoteForm, HubCallForm
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -51,84 +52,6 @@ def _add_duplicate_warnings(request, form):
 # مشتریان
 # ═══════════════════════════════════════════════════════════════
 
-@login_required
-@require_permission('customers.view')
-def customer_list(request):
-    customers = Customer.objects.select_related('assigned_to', 'created_by').all()
-
-    search = request.GET.get('q', '').strip()
-    if search:
-        customers = customers.filter(
-            Q(name__icontains=search) |
-            Q(mobile__icontains=search) |
-            Q(email__icontains=search) |
-            Q(national_id__icontains=search)
-        )
-
-    status = request.GET.get('status', '').strip()
-    if status:
-        customers = customers.filter(status=status)
-
-    source = request.GET.get('source', '').strip()
-    if source:
-        customers = customers.filter(source=source)
-
-    employee = request.GET.get('employee', '').strip()
-    if employee:
-        customers = customers.filter(assigned_to_id=employee)
-
-    # ⭐ ۷.۶ — بازه‌ی تاریخ ثبت
-    from_date_str = request.GET.get('from_date', '').strip()
-    to_date_str = request.GET.get('to_date', '').strip()
-    from_date = _parse_jalali_date(from_date_str)
-    to_date = _parse_jalali_date(to_date_str)
-    if from_date:
-        customers = customers.filter(created_at__date__gte=from_date)
-    if to_date:
-        customers = customers.filter(created_at__date__lte=to_date)
-
-    # ⭐ ۷.۶ — فیلتر داشتن/نداشتن فاکتور
-    has_invoice = request.GET.get('has_invoice', '').strip()
-    if has_invoice == 'yes':
-        customers = customers.filter(invoices__isnull=False).distinct()
-    elif has_invoice == 'no':
-        customers = customers.filter(invoices__isnull=True)
-
-    has_filters = any([
-        search, status, source, employee,
-        from_date_str, to_date_str, has_invoice,
-    ])
-
-    total = Customer.objects.count()
-    leads = Customer.objects.filter(status='lead').count()
-    actives = Customer.objects.filter(status='active').count()
-
-    paginator = Paginator(customers, 20)
-    page_obj = paginator.get_page(request.GET.get('page', 1))
-
-    employees = User.objects.filter(customers__isnull=False).distinct()
-
-    context = {
-        'page_obj': page_obj,
-        'total': total,
-        'leads': leads,
-        'actives': actives,
-        'inactive_count': Customer.all_objects.filter(is_deleted=True).count(),
-        'search': search,
-        'current_status': status,
-        'current_source': source,
-        'current_employee': employee,
-        'from_date': from_date_str,
-        'to_date': to_date_str,
-        'current_has_invoice': has_invoice,
-        'has_filters': has_filters,
-        'filtered_count': customers.count() if has_filters else None,
-        'employees': employees,
-        'status_choices': Customer.STATUS_CHOICES,
-        'source_choices': Customer.SOURCE_CHOICES,
-    }
-    return render(request, 'customers/list.html', context)
-
 
 @login_required
 @require_permission('customers.view')
@@ -167,6 +90,8 @@ def customer_detail(request, pk):
         'issued_count': issued_count,
         'total_purchase': total_purchase,
         'can_view_invoices': can_view_invoices,
+        'show_full_profile': has_permission(request.user, 'customers.profile_full'),
+        'call_form': HubCallForm(),
     }
     return render(request, 'customers/detail.html', context)
 
@@ -175,18 +100,46 @@ def customer_detail(request, pk):
 @require_permission('customers.add')
 def customer_create(request):
     if request.method == 'POST':
-        form = CustomerForm(request.POST)
+        form = CustomerForm(request.POST, for_create=True)
         if form.is_valid():
             customer = form.save(commit=False)
             customer.created_by = request.user
+            if not getattr(customer, 'status', None):
+                customer.status = 'lead'
             if not customer.assigned_to_id:
                 customer.assigned_to = request.user
             customer.save()
             messages.success(request, f'مشتری «{customer.name}» با موفقیت اضافه شد.')
             _add_duplicate_warnings(request, form)
-            return redirect('customers:detail', pk=customer.pk)
+            
+            list_url = f"{reverse('customers:hub')}?tab=info"
+
+            if request.headers.get('HX-Request') or request.GET.get('is_modal') == '1':
+                from django.http import HttpResponse
+                # HX-Redirect: خود HTMX مرورگر را به لیست مشتریان می‌برد
+                # (به رویداد جاوااسکریپت وابسته نیست) و پیام موفقیت دیده می‌شود
+                return HttpResponse(status=204, headers={
+                    'HX-Redirect': list_url,
+                    'HX-Trigger': 'closeModal',
+                })
+
+            return redirect(list_url)
     else:
-        form = CustomerForm()
+        initial = {'assigned_to': request.user}
+        mobile_q = request.GET.get('mobile')
+        if mobile_q:
+            initial['mobile'] = mobile_q
+        name_q = request.GET.get('name')
+        if name_q:
+            initial['name'] = name_q
+        form = CustomerForm(initial=initial, for_create=True)
+
+    if request.headers.get('HX-Request') or request.GET.get('is_modal') == '1':
+        return render(request, 'customers/form_modal.html', {
+            'form': form,
+            'title': 'افزودن مشتری جدید',
+            'submit_label': 'ذخیره مشتری',
+        })
 
     return render(request, 'customers/form.html', {
         'form': form,
@@ -194,24 +147,37 @@ def customer_create(request):
         'submit_label': 'ذخیره مشتری',
     })
 
-
 @login_required
-@require_permission('customers.edit')
 def customer_edit(request, pk):
+    full = has_permission(request.user, 'customers.profile_full')
+    if not (has_permission(request.user, 'customers.edit')
+            or has_permission(request.user, 'customers.add')):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied('دسترسی ویرایش مشتری ندارید.')
+
     customer = get_object_or_404(Customer, pk=pk)
     if request.method == 'POST':
-        form = CustomerForm(request.POST, instance=customer)
+        form = CustomerForm(request.POST, instance=customer, limited=not full)
         if form.is_valid():
             form.save()
             messages.success(request, 'اطلاعات مشتری به‌روزرسانی شد.')
             _add_duplicate_warnings(request, form)
+
+            if request.headers.get('HX-Request') or request.GET.get('is_modal') == '1':
+                from django.http import HttpResponse
+                return HttpResponse(status=204, headers={
+                    'HX-Redirect': f"{reverse('customers:hub')}?tab=info",
+                    'HX-Trigger': 'closeModal',
+                })
+
             return redirect('customers:detail', pk=customer.pk)
     else:
-        form = CustomerForm(instance=customer)
+        form = CustomerForm(instance=customer, limited=not full)
 
-    return render(request, 'customers/form.html', {
+    is_modal = request.headers.get('HX-Request') or request.GET.get('is_modal') == '1'
+    return render(request, 'customers/form_modal.html' if is_modal else 'customers/form.html', {
         'form': form,
-        'title': f'ویرایش مشتری: {customer.name}',
+        'title': 'ویرایش مشتری',
         'submit_label': 'ذخیره تغییرات',
         'customer': customer,
     })
@@ -222,30 +188,71 @@ def customer_edit(request, pk):
 # ═══════════════════════════════════════════════════════════════
 
 @login_required
-@require_permission('customers.delete')
 @require_POST
 def customer_deactivate(request, pk):
+    # مجوز از ماتریس پیشرفته خوانده می‌شود (customers.delete)
+    if not has_permission(request.user, 'customers.delete'):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("برای غیرفعال‌سازی مشتری مجوز customers.delete لازم است.")
     customer = get_object_or_404(Customer.objects, pk=pk)
     name = customer.name
     customer.delete()
     messages.success(request, f'مشتری «{name}» غیرفعال شد و به لیست غیرفعال‌ها منتقل شد.')
-    return redirect('customers:list')
+    return redirect('/customers/hub/?tab=info')
 
 
 @login_required
-@require_permission('customers.delete')
 def customer_restore(request, pk):
+    if not has_permission(request.user, 'customers.delete'):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("برای بازگردانی مشتری مجوز customers.delete لازم است.")
+
     customer = get_object_or_404(Customer.all_objects, pk=pk, is_deleted=True)
+
+    def find_conflict(c):
+        if c.mobile:
+            other = (
+                Customer.objects.filter(mobile=c.mobile)
+                .exclude(pk=c.pk)
+                .first()
+            )
+            if other:
+                return other, "شماره تماس"
+        name = (c.name or "").strip()
+        if name:
+            other = (
+                Customer.objects.filter(name__iexact=name)
+                .exclude(pk=c.pk)
+                .first()
+            )
+            if other:
+                return other, "نام"
+        return None, None
+
+    conflict, reason = find_conflict(customer)
+
+    if conflict:
+        messages.warning(
+            request,
+            f'بازگردانی انجام نشد: مشتری فعال «{conflict.name}» با همین {reason} از قبل وجود دارد. صفحه ویرایش همان مشتری باز شد.'
+        )
+        return redirect('customers:edit', pk=conflict.pk)
+
     if request.method == 'POST':
         customer.restore()
         messages.success(request, f'مشتری «{customer.name}» با موفقیت بازگردانی شد.')
-        return redirect('customers:inactive_list')
+        return redirect('/customers/hub/?tab=info')
+
     return render(request, 'customers/restore.html', {'customer': customer})
 
 
+
 @login_required
-@require_permission('customers.delete')
 def customer_inactive_list(request):
+
+    if not has_permission(request.user, 'customers.view'):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("برای مشاهده لیست غیرفعال‌ها مجوز customers.view لازم است.")
     customers = (
         Customer.all_objects
         .filter(is_deleted=True)

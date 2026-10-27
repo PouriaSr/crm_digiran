@@ -1,4 +1,5 @@
 from django.db import models, transaction
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth.models import User
 from django.utils import timezone
 
@@ -76,14 +77,18 @@ class Product(models.Model):
                              choices=UNIT_CHOICES, default='عدد')
 
     # ═══ قیمت‌ها ═══
-    price = models.DecimalField('قیمت فروش (تومان)', max_digits=15, decimal_places=0, default=0)
+    price = models.DecimalField('قیمت فروش (تومان)', max_digits=15, decimal_places=0,
+                                default=0, validators=[MinValueValidator(0)])
     cost_price = models.DecimalField('قیمت خرید (تومان)', max_digits=15, decimal_places=0,
-                                      default=0, help_text='قیمت خرید از تامین‌کننده')
+                                      default=0, help_text='قیمت خرید از تامین‌کننده',
+                                      validators=[MinValueValidator(0)])
 
     # ═══ موجودی ═══
-    stock = models.IntegerField('موجودی فعلی', default=0)
+    stock = models.IntegerField('موجودی فعلی', default=0,
+                                validators=[MinValueValidator(0)])
     min_stock = models.IntegerField('حداقل موجودی (هشدار)', default=0,
-                                     help_text='اگه موجودی کمتر از این شد، هشدار بده')
+                                     help_text='اگه موجودی کمتر از این شد، هشدار بده',
+                                     validators=[MinValueValidator(0)])
 
     # ═══ اطلاعات تکمیلی ═══
     description = models.TextField('توضیحات', blank=True, null=True)

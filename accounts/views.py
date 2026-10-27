@@ -224,7 +224,7 @@ def user_delete(request, pk):
         messages.success(request, f'کاربر «{username}» حذف شد.')
         return redirect('accounts:user_list')
 
-    return render(request, 'accounts/confirm_delete.html', {'user_obj': user})
+    return render(request, 'accounts/user_confirm_delete.html', {'user_obj': user})
 
 
 @login_required

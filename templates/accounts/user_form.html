@@ -100,7 +100,7 @@
     {# ═══════════════════════════════════════ #}
     {# سطوح دسترسی پیشرفته (override) #}
     {# ═══════════════════════════════════════ #}
-    {% if not is_create and form.instance.pk and not form.instance.is_superuser %}
+    {% if not form.instance.is_superuser %}
     <div class="mt-8 border-t border-gray-100 pt-6">
         <div class="mb-4">
             <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">

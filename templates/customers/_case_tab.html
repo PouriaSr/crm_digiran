@@ -1,0 +1,170 @@
+{% load fa_numbers %}
+{# ═══ تب پرونده مشتری ═══ #}
+<div x-show="tab === 'case'" x-transition.opacity style="display: none;">
+
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
+        <form method="get" class="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="tab" value="case">
+            <div class="flex-1 min-w-[220px]">
+                <label class="block text-xs font-bold text-gray-600 mb-1">مشتری</label>
+                <select name="c" onchange="this.form.submit()"
+                        class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl">
+                    <option value="">انتخاب کنید...</option>
+                    {% for cu in case_customers %}
+                    <option value="{{ cu.pk }}" {% if case_customer and case_customer.pk == cu.pk %}selected{% endif %}>
+                        {{ cu.name }} — {{ cu.mobile }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+
+    {% if not case_unlocked %}
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center">
+        <div class="text-2xl mb-2">🔒</div>
+        <div class="font-bold text-amber-800 mb-1">تب پرونده هنوز فعال نیست</div>
+        <p class="text-sm text-amber-700">
+            ابتدا در تب «پذیرش»، مشتری را انتخاب کنید، سه سؤال را پاسخ دهید،
+            «پایان انتظار» را بزنید و «ثبت اطلاعات مشتری» را تکمیل کنید.
+        </p>
+        <a href="{% url 'customers:hub' %}?tab=reception"
+           class="inline-block mt-4 px-5 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-bold hover:bg-amber-600 transition">
+            رفتن به تب پذیرش
+        </a>
+    </div>
+    {% elif case_customer and case_form %}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+        <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-gray-800">پرونده مشتری — {{ case_customer.name }}</h3>
+                {% if case_customer.stage == 'potential' %}
+                <span class="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 font-bold">بالقوه</span>
+                {% else %}
+                <span class="text-[11px] px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 font-bold">سرنخ</span>
+                {% endif %}
+            </div>
+
+            <form method="post" action="{% url 'customers:case_save' %}"
+                  x-data="{ cond: '{{ customer_case.condition|default:'' }}', owner: '{{ customer_case.cheque_owner|default:'' }}' }"
+                  class="space-y-5">
+                {% csrf_token %}
+                <input type="hidden" name="customer" value="{{ case_customer.pk }}">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">شرایط <span class="text-red-500">*</span></label>
+                        {{ case_form.condition }}
+                        {% if case_form.condition.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.condition.errors.0 }}</p>{% endif %}
+                    </div>
+
+                    <div x-show="cond === 'cheque'" x-cloak>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">چک برای <span class="text-red-500">*</span></label>
+                        {{ case_form.cheque_owner }}
+                        {% if case_form.cheque_owner.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.cheque_owner.errors.0 }}</p>{% endif %}
+                    </div>
+
+                    <div x-show="cond === 'cheque' && owner === 'other'" x-cloak>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">نام صاحب چک <span class="text-red-500">*</span></label>
+                        {{ case_form.cheque_other_name }}
+                        {% if case_form.cheque_other_name.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.cheque_other_name.errors.0 }}</p>{% endif %}
+                    </div>
+
+                    <div x-show="cond === 'cheque' && owner === 'other'" x-cloak>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">شماره تماس صاحب چک <span class="text-red-500">*</span></label>
+                        {{ case_form.cheque_other_phone }}
+                        {% if case_form.cheque_other_phone.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.cheque_other_phone.errors.0 }}</p>{% endif %}
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">شغل <span class="text-red-500">*</span></label>
+                        {{ case_form.job }}
+                        {% if case_form.job.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.job.errors.0 }}</p>{% endif %}
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">رتبه اعتباری <span class="text-red-500">*</span></label>
+                        {{ case_form.credit_rank }}
+                        {% if case_form.credit_rank.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.credit_rank.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">وام‌های فعال</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {% for cb in case_form.active_loans %}
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm cursor-pointer hover:bg-gray-50">
+                            {{ cb.tag }}
+                            <span>{{ cb.choice_label }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-bold text-gray-700 mb-1">کالا</label>
+                        {{ case_form.product }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">تعداد</label>
+                        {{ case_form.quantity }}
+                        {% if case_form.quantity.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.quantity.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">نتیجه مراجعه <span class="text-red-500">*</span></label>
+                    {{ case_form.visit_result }}
+                    {% if case_form.visit_result.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.visit_result.errors.0 }}</p>{% endif %}
+                </div>
+
+                <button type="submit"
+                        class="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition">
+                    ثبت اطلاعات
+                </button>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+            <h3 class="font-bold text-gray-800">خلاصه پرونده</h3>
+            {% if customer_case %}
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between"><span class="text-gray-500">شرایط</span><span class="font-bold">{{ customer_case.get_condition_display|default:"—" }}</span></div>
+                {% if customer_case.condition == 'cheque' %}
+                <div class="flex justify-between"><span class="text-gray-500">چک برای</span><span class="font-bold">{{ customer_case.get_cheque_owner_display|default:"—" }}</span></div>
+                {% if customer_case.cheque_owner == 'other' %}
+                <div class="flex justify-between"><span class="text-gray-500">صاحب چک</span><span class="font-bold">{{ customer_case.cheque_other_name }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">شماره</span><span class="font-mono" dir="ltr">{{ customer_case.cheque_other_phone }}</span></div>
+                {% endif %}
+                {% endif %}
+                <div class="flex justify-between"><span class="text-gray-500">شغل</span><span class="font-bold">{{ customer_case.get_job_display|default:"—" }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">رتبه اعتباری</span><span class="font-bold">{{ customer_case.credit_rank|default:"—" }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">وام‌ها</span><span class="font-bold text-left">{{ customer_case.loans_display|default:"—" }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">کالا</span><span class="font-bold">{{ customer_case.product.name|default:"—" }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">تعداد</span><span class="font-bold">{{ customer_case.quantity|fa_num }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">نتیجه</span><span class="font-bold">{{ customer_case.get_visit_result_display|default:"—" }}</span></div>
+            </div>
+            <p class="text-[11px] text-gray-400 pt-2 border-t border-gray-100">
+                ثبت‌کننده:
+                {% if customer_case.created_by %}
+                    {{ customer_case.created_by.get_full_name|default:customer_case.created_by.username }}
+                {% else %}—{% endif %}
+            </p>
+            {% else %}
+            <p class="text-sm text-gray-400">هنوز پرونده‌ای برای این مشتری ثبت نشده است.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% else %}
+    <div class="bg-white rounded-2xl border border-gray-100 p-10 text-center text-gray-400 text-sm">
+        برای ثبت پرونده، مشتری را از بالا انتخاب کنید.
+    </div>
+    {% endif %}
+
+    {% if 'customers.history' in user_permissions %}
+    {% include "customers/_case_history.html" %}
+    {% endif %}
+</div>

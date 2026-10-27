@@ -1,0 +1,173 @@
+{% load fa_numbers %}
+{# پاپ‌آپ مشترک «تماس پیگیری» و «تماس جدید» #}
+<div id="qc-backdrop" class="fixed inset-0 z-[120] hidden items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div class="bg-gradient-to-r from-emerald-600 to-teal-600 p-5 text-white flex justify-between items-center">
+            <h2 id="qc-title" class="text-lg font-bold">ثبت پیگیری</h2>
+            <button type="button" onclick="closeQuickCall()" class="text-white/80 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form id="qc-form" method="post" action="" class="p-5 space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="kind" id="qc-kind" value="followup">
+            <input type="hidden" name="next" id="qc-next" value="">
+
+            <div class="bg-gray-50 rounded-xl p-3 space-y-1.5 text-sm">
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-500">نام مشتری</span>
+                    <span id="qc-name" class="font-bold text-gray-800"></span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-500">شماره تماس</span>
+                    <span id="qc-phone" class="font-mono text-gray-700" dir="ltr"></span>
+                </div>
+                <div class="flex items-center justify-between" id="qc-type-row">
+                    <span class="text-gray-500">نوع تماس</span>
+                    <span class="font-bold text-emerald-700">پیگیری</span>
+                </div>
+            </div>
+
+            <div id="qc-status-row" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">وضعیت تماس</label>
+                    <select name="status" id="qc-status"
+                            class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-emerald-500 focus:outline-none no-search">
+                        <option value="answered" selected>پاسخ داده شد</option>
+                        <option value="missed">بی‌پاسخ</option>
+                        <option value="busy">مشغول</option>
+                        <option value="no_answer">جواب نداد</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">هدف تماس</label>
+                    <select name="purpose" id="qc-purpose"
+                            class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-emerald-500 focus:outline-none no-search">
+                        <option value="sale" selected>فروش</option>
+                        <option value="support">پشتیبانی</option>
+                        <option value="complaint">شکایت</option>
+                        {% if 'customers.case' in user_permissions %}
+                        <option value="info">اطلاعات</option>
+                        {% endif %}
+                    </select>
+                </div>
+            </div>
+
+            <div id="qc-source-row">
+                <label class="block text-sm font-bold text-gray-700 mb-1">منبع تماس</label>
+                <select name="source"
+                        class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-emerald-500 focus:outline-none">
+                    <option value="">انتخاب کنید</option>
+                    {% for s in filter_sources %}
+                    <option value="{{ s.pk }}">{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div id="qc-date-row">
+                <label class="block text-sm font-bold text-gray-700 mb-1" id="qc-date-label">
+                    تاریخ پیگیری <span class="text-red-500">*</span>
+                </label>
+                <input type="text" name="follow_up_date" id="qc-date" autocomplete="off"
+                       data-jdp data-jdp-time="false"
+                       placeholder="۱۴۰۵/۰۸/۱۵"
+                       class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-emerald-500 focus:outline-none">
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1" id="qc-notes-label">
+                    شرح تماس پیگیری <span class="text-red-500">*</span>
+                </label>
+                <textarea name="notes" id="qc-notes" rows="3" required
+                          class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-emerald-500 focus:outline-none"
+                          placeholder="شرح مکالمه..."></textarea>
+            </div>
+
+            <div id="qc-next-box" class="border-t border-gray-100 pt-3">
+                <label class="flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer">
+                    <input type="checkbox" name="needs_next" id="qc-needs-next" value="1"
+                           class="w-4 h-4 rounded text-orange-600 border-gray-300"
+                           onchange="document.getElementById('qc-next-date-row').classList.toggle('hidden', !this.checked)">
+                    نیاز به پیگیری جدید
+                </label>
+                <div id="qc-next-date-row" class="hidden mt-3">
+                    <label class="block text-xs font-bold text-orange-700 mb-1">تاریخ پیگیری بعدی <span class="text-red-500">*</span></label>
+                    <input type="text" name="next_follow_up_date" id="qc-next-date" autocomplete="off"
+                           data-jdp data-jdp-time="false"
+                           placeholder="۱۴۰۵/۰۸/۲۰"
+                           class="w-full px-3 py-2 text-sm bg-orange-50/50 border border-orange-200 rounded-xl focus:bg-white focus:border-orange-500 focus:outline-none">
+                </div>
+            </div>
+
+            <div class="flex gap-2 pt-1">
+                <button type="submit" id="qc-submit"
+                        class="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition">ثبت پیگیری</button>
+                <button type="button" onclick="closeQuickCall()"
+                        class="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-200 transition">انصراف</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openQuickCall(kind, pk, name, mobile) {
+    var box = document.getElementById('qc-backdrop');
+    if (!box) return;
+    var isFu = (kind === 'followup');
+
+    document.getElementById('qc-kind').value = kind;
+    document.getElementById('qc-name').textContent = name || '—';
+    document.getElementById('qc-phone').textContent = mobile || '—';
+    document.getElementById('qc-form').action = '/customers/' + pk + '/quick-call/';
+    var nx = document.getElementById('qc-next');
+    if (nx) nx.value = window.location.pathname + window.location.search;
+    document.getElementById('qc-title').textContent = isFu ? 'ثبت پیگیری' : 'ثبت تماس جدید';
+
+    document.getElementById('qc-source-row').classList.toggle('hidden', !isFu);
+    document.getElementById('qc-type-row').classList.toggle('hidden', !isFu);
+    document.getElementById('qc-date-row').classList.toggle('hidden', !isFu);
+    document.getElementById('qc-next-box').classList.toggle('hidden', !isFu);
+    // وضعیت/هدف فقط برای «ثبت تماس جدید»
+    document.getElementById('qc-status-row').classList.toggle('hidden', isFu);
+
+    var st = document.getElementById('qc-status');
+    var pu = document.getElementById('qc-purpose');
+    if (st) st.value = 'answered';
+    if (pu) pu.value = 'sale';
+
+    // پاک‌سازی وضعیت پیگیری جدید
+    var chk = document.getElementById('qc-needs-next');
+    chk.checked = false;
+    document.getElementById('qc-next-date-row').classList.add('hidden');
+    document.getElementById('qc-next-date').value = '';
+    document.getElementById('qc-date').value = '';
+    document.getElementById('qc-date').required = isFu;
+
+    document.getElementById('qc-notes-label').innerHTML = isFu
+        ? 'شرح تماس پیگیری <span class="text-red-500">*</span>'
+        : 'شرح مکالمه جدید <span class="text-red-500">*</span>';
+    document.getElementById('qc-submit').textContent = isFu ? 'ثبت پیگیری' : 'ثبت تماس';
+
+    var notes = document.getElementById('qc-notes');
+    notes.value = '';
+    box.classList.remove('hidden');
+    box.classList.add('flex');
+
+    // تقویم شمسی برای فیلدهای تاریخ همین مودال
+    if (window.jalaliDatepicker) {
+        try { jalaliDatepicker.startWatch(); } catch (e) {}
+    }
+    setTimeout(function () { notes.focus(); }, 60);
+}
+
+function closeQuickCall() {
+    var box = document.getElementById('qc-backdrop');
+    if (!box) return;
+    box.classList.add('hidden');
+    box.classList.remove('flex');
+}
+
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeQuickCall();
+});
+</script>

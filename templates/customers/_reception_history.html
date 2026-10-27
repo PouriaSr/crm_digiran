@@ -1,0 +1,62 @@
+{% load fa_numbers %}
+{# ═══ تاریخچه‌ی تب پذیرش ═══ #}
+<div class="mt-4 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
+        <h3 class="font-bold text-gray-800">تاریخچه پذیرش‌ها</h3>
+        <span class="text-xs text-gray-400">برای {{ reception_history|length|fa_num }} مشتری ثبت شده است</span>
+    </div>
+
+    <div class="divide-y divide-gray-50">
+        {% for r in reception_history %}
+        <div class="p-4" x-data="{ open: false }">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
+                <a href="{% url 'customers:hub' %}?tab=reception&c={{ r.customer_id }}"
+                   class="font-bold text-gray-800 hover:text-emerald-600 transition">{{ r.customer.name }}</a>
+                <span class="text-xs text-gray-500 font-mono" dir="ltr">{{ r.customer.mobile }}</span>
+                <span class="px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-[11px] font-bold">{{ r.get_person_type_display|default:"—" }}</span>
+                {% if r.has_visit %}<span class="text-[11px] text-gray-500">{{ r.get_has_visit_display }}</span>{% endif %}
+                {% if r.wait_minutes_total %}
+                <span class="text-[11px] text-amber-700">انتظار {{ r.wait_minutes_total|fa_num }} دقیقه</span>
+                {% elif r.wait_choice %}
+                <span class="text-[11px] text-amber-700">انتظار {{ r.get_wait_choice_display }}</span>
+                {% endif %}
+                {% if r.info_submitted %}<span class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-bold">اطلاعات ثبت شد</span>{% endif %}
+                <span class="text-[11px] text-gray-400">{{ r.created_at|jdate:"Y/m/d H:i" }}</span>
+
+                {% if r.updates %}
+                <button type="button" @click="open = !open"
+                        class="text-[11px] font-bold text-blue-600 hover:underline">
+                    به‌روزرسانی‌ها ({{ r.updates|length|fa_num }})
+                </button>
+                {% endif %}
+                <a href="{% url 'customers:hub' %}?tab=reception&c={{ r.customer_id }}"
+                   class="text-[11px] text-emerald-600 hover:underline">ویرایش</a>
+            </div>
+
+            {% if r.updates %}
+            <div x-show="open" x-cloak class="mt-3 pr-3 border-r-2 border-emerald-200 space-y-2">
+                {% for u in r.updates %}
+                <div class="text-xs bg-emerald-50/60 rounded-lg px-3 py-2">
+                    <span class="text-gray-400">{{ u.created_at|jdate:"Y/m/d H:i" }}</span>
+                    <span class="font-bold text-emerald-700 mx-1">به‌روزرسانی</span>
+                    {% if u.edited_by %}<span class="text-gray-500">توسط {{ u.edited_by.get_full_name|default:u.edited_by.username }}</span>{% endif %}
+                    <div class="mt-1 space-y-0.5">
+                        {% for ch in u.changes %}
+                        <div>
+                            <span class="text-gray-600">{{ ch.label }}:</span>
+                            <span class="text-rose-600 line-through">{{ ch.old }}</span>
+                            <span class="text-gray-400 mx-1">→</span>
+                            <span class="text-emerald-700 font-bold">{{ ch.new }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="p-10 text-center text-gray-400 text-sm">هنوز پذیرشی ثبت نشده است.</div>
+        {% endfor %}
+    </div>
+</div>

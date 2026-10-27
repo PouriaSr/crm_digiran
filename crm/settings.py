@@ -105,6 +105,7 @@ MIDDLEWARE = [
 
     # ⚠️ CurrentUserMiddleware باید بعد از AuthenticationMiddleware باشه
     'crm.middleware.CurrentUserMiddleware',
+    'crm.middleware.NoStoreForAuthenticatedMiddleware',
     'accounts.twofa_middleware.TwoFactorEnforcementMiddleware',
 
     'django.contrib.messages.middleware.MessageMiddleware',

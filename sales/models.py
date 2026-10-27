@@ -1,6 +1,7 @@
 import jdatetime
 import time
 from django.db import models, transaction, IntegrityError
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth.models import User
 from django.utils import timezone
 from customers.models import Customer
@@ -43,10 +44,15 @@ class Invoice(models.Model):
     due_date = models.DateField('مهلت پرداخت', null=True, blank=True, db_index=True)
 
     # ═══ مالیات و تخفیف ═══
-    discount = models.DecimalField('تخفیف (تومان)', max_digits=15, decimal_places=0, default=0)
-    tax_percent = models.DecimalField('درصد مالیات', max_digits=5, decimal_places=2, default=9)
+    discount = models.DecimalField('تخفیف (تومان)', max_digits=15, decimal_places=0,
+                                   default=0, validators=[MinValueValidator(0)])
+    tax_percent = models.DecimalField('درصد مالیات', max_digits=5, decimal_places=2,
+                                      default=9, validators=[
+                                          MinValueValidator(0), MaxValueValidator(100),
+                                      ])
     tax_amount = models.DecimalField('مبلغ مالیات', max_digits=15, decimal_places=0, default=0)
-    subtotal = models.DecimalField('جمع اقلام', max_digits=15, decimal_places=0, default=0)
+    subtotal = models.DecimalField('جمع اقلام', max_digits=15, decimal_places=0,
+                                   default=0, validators=[MinValueValidator(0)])
     total = models.DecimalField('مبلغ نهایی', max_digits=15, decimal_places=0, default=0, db_index=True)
 
     # ═══ توضیحات ═══
@@ -81,8 +87,16 @@ class Invoice(models.Model):
         subtotal = sum(item.total_price for item in items)
 
         self.subtotal = subtotal
-        after_discount = subtotal - self.discount
-        self.tax_amount = int(after_discount * self.tax_percent / 100)
+        # تخفیف نباید بیشتر از جمع اقلام شود (وگرنه مبلغ نهایی منفی می‌شد)
+        after_discount = subtotal - (self.discount or 0)
+        if after_discount < 0:
+            after_discount = 0
+
+        tax = int(after_discount * (self.tax_percent or 0) / 100)
+        if tax < 0:
+            tax = 0
+
+        self.tax_amount = tax
         self.total = after_discount + self.tax_amount
         return self.total
 
@@ -141,7 +155,8 @@ class InvoiceItem(models.Model):
     )
 
     quantity = models.PositiveIntegerField('تعداد', default=1)
-    unit_price = models.DecimalField('قیمت واحد', max_digits=15, decimal_places=0, default=0)
+    unit_price = models.DecimalField('قیمت واحد', max_digits=15, decimal_places=0,
+                                     default=0, validators=[MinValueValidator(0)])
     total_price = models.DecimalField('جمع خط', max_digits=15, decimal_places=0, default=0)
 
     class Meta:

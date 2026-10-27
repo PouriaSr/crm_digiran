@@ -1,0 +1,172 @@
+{% load fa_numbers %}
+{# ═══ مودال ویرایش تماس گذشته ═══ #}
+<div id="ce-backdrop" class="fixed inset-0 z-[130] hidden items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div class="bg-gradient-to-r from-slate-700 to-slate-800 p-5 text-white flex justify-between items-center">
+            <h2 class="text-lg font-bold">ویرایش تماس</h2>
+            <button type="button" onclick="closeCallEdit()" class="text-white/80 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <form id="ce-form" method="post" action="" class="p-5 space-y-4" autocomplete="off">
+            {% csrf_token %}
+            <input type="hidden" name="next" id="ce-next" value="">
+            <input type="hidden" name="kind" id="ce-kind" value="new">
+
+            <div class="bg-gray-50 rounded-xl p-3 space-y-1.5 text-sm">
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-500">مشتری</span>
+                    <span id="ce-customer" class="font-bold text-gray-800"></span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-500">نوع تماس</span>
+                    <span id="ce-type" class="font-bold text-slate-700"></span>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">تاریخ تماس</label>
+                <input type="text" name="call_date" id="ce-date" data-jdp data-jdp-time="false"
+                       placeholder="۱۴۰۵/۰۸/۰۲"
+                       class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-slate-500 focus:outline-none">
+            </div>
+
+            {# فیلدهای تماس عادی #}
+            <div id="ce-normal" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">وضعیت</label>
+                    <select name="status" id="ce-status"
+                            class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-slate-500 focus:outline-none no-search">
+                        <option value="answered">پاسخ داده شد</option>
+                        <option value="missed">بی‌پاسخ</option>
+                        <option value="busy">مشغول</option>
+                        <option value="no_answer">جواب نداد</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">هدف تماس</label>
+                    <select name="purpose" id="ce-purpose"
+                            class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-slate-500 focus:outline-none no-search">
+                        <option value="sale">فروش</option>
+                        <option value="support">پشتیبانی</option>
+                        <option value="complaint">شکایت</option>
+                        {% if 'customers.case' in user_permissions %}
+                        <option value="info">اطلاعات</option>
+                        {% endif %}
+                    </select>
+                </div>
+            </div>
+
+            {# تبدیل تماس عادی به پیگیری #}
+            <div id="ce-need-box" class="border-t border-gray-100 pt-3">
+                <label class="flex items-center gap-2 text-sm font-bold text-orange-700 cursor-pointer">
+                    <input type="checkbox" name="needs_followup" id="ce-needs-followup" value="1"
+                           class="w-4 h-4 rounded text-orange-600 border-gray-300"
+                           onchange="document.getElementById('ce-need-date-row').classList.toggle('hidden', !this.checked)">
+                    نیاز به پیگیری (تبدیل به تماس پیگیری)
+                </label>
+                <div id="ce-need-date-row" class="hidden mt-3">
+                    <label class="block text-xs font-bold text-orange-700 mb-1">
+                        تاریخ پیگیری <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" name="needs_followup_date" id="ce-need-date" data-jdp data-jdp-time="false"
+                           placeholder="۱۴۰۵/۰۸/۱۵"
+                           class="w-full px-3 py-2 text-sm bg-orange-50/50 border border-orange-200 rounded-xl focus:bg-white focus:border-orange-500 focus:outline-none">
+                </div>
+            </div>
+
+            {# فیلدهای تماس پیگیری #}
+            <div id="ce-followup" class="space-y-3 hidden">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">تاریخ پیگیری</label>
+                    <input type="text" name="follow_up_date" id="ce-fu-date" data-jdp data-jdp-time="false"
+                           placeholder="۱۴۰۵/۰۸/۱۵"
+                           class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-slate-500 focus:outline-none">
+                </div>
+                <label class="flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer">
+                    <input type="checkbox" name="is_followed_up" id="ce-fu-done" value="1"
+                           class="w-4 h-4 rounded text-emerald-600 border-gray-300">
+                    پیگیری انجام شد
+                </label>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">
+                    شرح مکالمه <span class="text-red-500">*</span>
+                </label>
+                <textarea name="notes" id="ce-notes" rows="3" required
+                          class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-slate-500 focus:outline-none"
+                          placeholder="شرح مکالمه..."></textarea>
+            </div>
+
+            <div class="flex gap-2 pt-1">
+                <button type="submit"
+                        class="flex-1 py-2.5 bg-slate-700 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition">
+                    ذخیره تغییرات
+                </button>
+                <button type="button" onclick="closeCallEdit()"
+                        class="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-200 transition">
+                    انصراف
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openCallEdit(btn) {
+    var box = document.getElementById('ce-backdrop');
+    if (!box) return;
+    var row = btn.closest('[data-call-id]');
+    if (!row) return;
+
+    var d = row.dataset;
+    var isFu = (d.callType === 'followup');
+
+    document.getElementById('ce-form').action = '/customers/hub/calls/' + d.callId + '/edit/';
+    document.getElementById('ce-kind').value = isFu ? 'followup' : 'new';
+    document.getElementById('ce-customer').textContent = d.callCustomer || '—';
+    document.getElementById('ce-type').textContent = d.callTypeLabel || '—';
+    document.getElementById('ce-date').value = d.callDateJalali || '';
+    document.getElementById('ce-notes').value = d.callNotes || '';
+
+    document.getElementById('ce-normal').classList.toggle('hidden', isFu);
+    document.getElementById('ce-followup').classList.toggle('hidden', !isFu);
+    // تیک «نیاز به پیگیری» فقط برای تماس عادی
+    document.getElementById('ce-need-box').classList.toggle('hidden', isFu);
+    var needChk = document.getElementById('ce-needs-followup');
+    if (needChk) needChk.checked = false;
+    var needRow = document.getElementById('ce-need-date-row');
+    if (needRow) needRow.classList.add('hidden');
+    var needDate = document.getElementById('ce-need-date');
+    if (needDate) needDate.value = '';
+
+    if (isFu) {
+        document.getElementById('ce-fu-date').value = d.callFuDate || '';
+        document.getElementById('ce-fu-done').checked = (d.callFuDone === '1');
+    } else {
+        document.getElementById('ce-status').value = d.callStatus || 'answered';
+        var pu = document.getElementById('ce-purpose');
+        if (pu) pu.value = d.callPurpose || 'sale';
+    }
+
+    var nx = document.getElementById('ce-next');
+    if (nx) nx.value = window.location.pathname + window.location.search;
+
+    box.classList.remove('hidden');
+    box.classList.add('flex');
+    if (window.jalaliDatepicker) { try { jalaliDatepicker.startWatch(); } catch (e) {} }
+}
+
+function closeCallEdit() {
+    var box = document.getElementById('ce-backdrop');
+    if (!box) return;
+    box.classList.add('hidden');
+    box.classList.remove('flex');
+}
+
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeCallEdit();
+});
+</script>

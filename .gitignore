@@ -153,3 +153,41 @@ _archived_scripts/
 .ajax_live_search_backup/
 .patch_backup/
 .perm_fix_backup/
+
+# ═══════════════════════════════════════════
+# Generated project dumps
+# ═══════════════════════════════════════════
+FULL_PROJECT_EVERYTHING.md
+
+
+# ═══════════════════════════════════════════
+# اسکرچ محلی (پوشه‌های بکاپ پچ‌ها) — هرگز کامیت نشود
+# ═══════════════════════════════════════════
+/.*/
+
+# اسکریپت‌های پچ یک‌بارمصرف در ریشه
+/final_ultimate_fix*.py
+/ultimate_hub_revamp.py
+/restore_hub_and_add_modal.py
+/apply_*.py
+/upgrade_*.py
+/fix_*.py
+/*_fix*.py
+/add_*.py
+/rename_*.py
+/setup_*.py
+/tmp_*.py
+
+# پوشه‌های کار محلی
+/_archived_scripts/
+/_local_tools/
+/backups/
+/logs/
+
+# پشتیبان‌های دیتابیس
+/db_backup_*.json
+
+# اسکریپت‌های اسکرچ باقی‌مانده
+/final_cleanup.py
+/clean_*.py
+/scratch_*.py

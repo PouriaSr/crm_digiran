@@ -1,0 +1,217 @@
+{# مودال ثبت تماس — خودکفا؛ با رویداد open-call-modal باز می‌شود #}
+<div id="call-modal-root"
+     x-data="callModalWidget()"
+     x-on:open-call-modal.window="openCall($event.detail)"
+     x-on:close-call-modal.window="isCallModalOpen = false">
+
+    <div x-show="isCallModalOpen" style="display:none;" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+
+        <div @click.away="popupOverlayClick($event) || (isCallModalOpen = false)" class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-slide-up">
+            <div class="shrink-0 bg-gradient-to-r from-blue-600 to-indigo-700 p-6 text-white flex justify-between items-center">
+                <h2 class="text-xl font-bold">ثبت تماس</h2>
+                <button @click="isCallModalOpen = false" class="text-white/80 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+            
+            <form method="post" action="{% url 'customers:hub_submit_call' %}" class="flex flex-col flex-1 min-h-0">
+                {% csrf_token %}
+                <input type="hidden" name="next" id="hub_call_next" value="">
+
+                <div class="p-6 space-y-5 overflow-y-auto flex-1 min-h-0">
+
+                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-200 relative">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">شماره تماس <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        {{ call_form.mobile }}
+                        <div x-show="checking" class="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500">
+                            <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                        </div>
+                    </div>
+                    <div x-show="existingCustomer" x-cloak class="mt-2 text-sm text-amber-600 font-bold bg-amber-50 p-2 rounded-lg border border-amber-100">این شماره موجود است: <span x-text="existingCustomer?.name"></span></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">نام و نام خانوادگی</label>
+                        {{ call_form.name }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">نوع تماس</label>
+                        {{ call_form.call_type }}
+                    </div>
+                    <div class="md:col-span-2 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <label class="block text-sm font-bold text-blue-800 mb-2">منبع تماس</label>
+                        {{ call_form.source }}
+                    </div>
+                    <div class="md:col-span-2 border-t border-gray-100 pt-4">
+                        <label class="flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer">
+                            {{ call_form.needs_followup }}
+                            نیاز به پیگیری
+                        </label>
+                        <div x-show="needsFollowup" x-cloak class="mt-3">
+                            <label class="block text-xs font-bold text-orange-700 mb-1">
+                                تاریخ پیگیری <span class="text-red-500">*</span>
+                            </label>
+                            {{ call_form.follow_up_date }}
+                            {% if call_form.follow_up_date.errors %}
+                            <p class="text-xs text-red-600 mt-1">{{ call_form.follow_up_date.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">شرح مکالمه <span class="text-red-500">*</span></label>
+                    {{ call_form.notes }}
+                </div>
+
+
+                
+                </div>
+                <div class="shrink-0 border-t border-gray-100 px-6 py-4 bg-white flex gap-3">
+                    <button type="submit"
+                            class="flex-1 py-3.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 active:scale-[0.99] transition shadow-sm">
+                        ثبت تماس
+                    </button>
+                    <button type="button" @click="isCallModalOpen = false"
+                            class="px-6 py-3.5 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition">
+                        انصراف
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function callModalWidget() {
+    return {
+        isCallModalOpen: false,
+        callType: 'incoming',
+        needsFollowup: false,
+        mobile: '',
+        existingCustomer: null,
+        checking: false,
+
+        openCall(detail) {
+            var d = detail || {};
+            this.isCallModalOpen = true;
+            this.callType = d.call_type || 'incoming';
+            this.needsFollowup = false;
+            this.existingCustomer = null;
+
+            // پیش‌پر کردن از پیش (state) تا با هر بار رندر دوباره ساخته نشود
+            this.mobile = d.mobile || '';
+
+            var self = this;
+            // توکن: فقط آخرین باز شدن حق نوشتن در فیلدها را دارد
+            this._openSeq = (this._openSeq || 0) + 1;
+            var seq = this._openSeq;
+
+            function fill(force) {
+                if (seq !== self._openSeq) return;   // باز شدن جدیدتری آمده
+                var m = document.getElementById('hub_call_mobile');
+                var n = document.getElementById('hub_call_name');
+                var wantMobile = d.mobile || '';
+                var wantName = d.name || '';
+
+                if (m) {
+                    // در پاس‌های بعدی فقط اگر کاربر چیزی تایپ نکرده باشد
+                    if (force || !m.value) m.value = wantMobile;
+                    m.readOnly = !!d.lock;
+                    m.classList.toggle('bg-gray-100', !!d.lock);
+                }
+                if (n) {
+                    if (force || !n.value) n.value = wantName;
+                    n.readOnly = !!d.lock;
+                    n.classList.toggle('bg-gray-100', !!d.lock);
+                }
+
+                var nx = document.getElementById('hub_call_next');
+                if (nx) nx.value = d.next || '';
+
+                if (self.mobile && self.mobile.length >= 10) self.checkMobile();
+                if (window.jalaliDatepicker) jalaliDatepicker.startWatch();
+
+                // فوکوس روی فیلدی که خالی مانده
+                if (m && !m.value) {
+                    m.focus();
+                } else if (n && !n.value) {
+                    n.focus();
+                } else if (m) {
+                    m.focus();
+                }
+            }
+
+            fill(true);                 // فوری (حتی اگر Alpine آماده نباشد)
+            try {
+                this.$nextTick(function () { fill(true); });
+            } catch (e) {
+                fill(true);
+            }
+            setTimeout(function () { fill(false); }, 80);   // مقاوم به رندر دوباره
+        },
+
+        checkMobile() {
+            var self = this;
+            var mEl = document.getElementById('hub_call_mobile');
+            if (mEl) this.mobile = mEl.value.trim();
+            if (!this.mobile || this.mobile.length < 10) { this.existingCustomer = null; return; }
+            this.checking = true;
+            fetch('/customers/hub/api/check/?mobile=' + encodeURIComponent(this.mobile))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    self.existingCustomer = data.exists ? data : null;
+                    self.checking = false;
+                    if (data.exists) {
+                        var n = document.getElementById('hub_call_name');
+                        if (n && !n.value) n.value = data.name;
+                    }
+                })
+                .catch(function () { self.checking = false; });
+        }
+    };
+}
+</script>
+
+<script>
+// ── باز کردن مودال «ثبت تماس» به‌صورت مستقیم (مستقل از رویداد window) ──
+function normalizeDigitsFa(s) {
+    return String(s || '')
+        .replace(/[\u06F0-\u06F9]/g, function (ch) {
+            return String.fromCharCode(ch.charCodeAt(0) - 0x06F0 + 48);
+        })
+        .replace(/[\u0660-\u0669]/g, function (ch) {
+            return String.fromCharCode(ch.charCodeAt(0) - 0x0660 + 48);
+        });
+}
+
+function openNewCall(detail) {
+    var d = detail || {};
+    var root = document.getElementById('call-modal-root');
+    if (root && window.Alpine && typeof Alpine.$data === 'function') {
+        try {
+            var state = Alpine.$data(root);
+            if (state && typeof state.openCall === 'function') {
+                state.openCall(d);
+                return true;
+            }
+        } catch (e) { /* fallback به رویداد */ }
+    }
+    window.dispatchEvent(new CustomEvent('open-call-modal', { detail: d }));
+    return false;
+}
+
+function openNewCallFromSearch() {
+    // ⚠️ در صفحه چند input[name="q"] وجود دارد (جستجوی هدر)؛ باید همین کادر خوانده شود
+    var input = document.getElementById('hub-search-input')
+        || document.querySelector('#customer-table-container input[name="q"]')
+        || document.querySelector('input[name="q"]');
+    var raw = normalizeDigitsFa((input && input.value ? input.value : '').trim());
+    var digits = (raw.match(/[0-9]/g) || []).join('');
+    var detail = { lock: false };   // از جستجو → فیلدها قابل ویرایش
+    if (digits.length >= 10) {
+        detail.mobile = digits;
+    } else if (raw) {
+        detail.name = raw;
+    }
+    return openNewCall(detail);
+}
+</script>

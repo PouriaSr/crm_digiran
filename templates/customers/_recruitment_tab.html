@@ -1,0 +1,64 @@
+{% load fa_numbers %}
+{# ═══ تب واحد استخدام — مصاحبه‌کننده‌ها ═══ #}
+<div x-show="tab === 'recruitment'" x-transition.opacity style="display: none;">
+
+    <div class="mb-4">
+        <h2 class="text-lg font-bold text-gray-800">واحد استخدام — مصاحبه‌کننده‌ها</h2>
+        <p class="text-xs text-gray-500 mt-1">
+            این افراد در تب پذیرش با پاسخ «مصاحبه‌کننده» ثبت شده‌اند. اطلاعاتشان در تب‌های
+            اطلاعات/پرونده/فاکتور نمایش داده نمی‌شود ولی پاک هم نشده است.
+        </p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-center">
+                <thead class="bg-gray-50/80 border-b border-gray-100 text-gray-600">
+                    <tr>
+                        <th class="p-3 font-medium">نام</th>
+                        <th class="p-3 font-medium">شماره تماس</th>
+                        <th class="p-3 font-medium">مدت انتظار</th>
+                        <th class="p-3 font-medium">تاریخ ثبت</th>
+                        <th class="p-3 font-medium">ثبت‌کننده</th>
+                        <th class="p-3 font-medium">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for r in recruiter_rows %}
+                    <tr class="hover:bg-teal-50/30 transition {% if recruiter_customer and recruiter_customer.pk == r.customer_id %}bg-teal-50/50{% endif %}">
+                        <td class="p-3 font-bold text-gray-800">{{ r.customer.name }}</td>
+                        <td class="p-3 font-mono text-gray-600" dir="ltr">{{ r.customer.mobile }}</td>
+                        <td class="p-3 text-gray-600">
+                            {% if r.wait_minutes_total %}
+                            {{ r.wait_minutes_total|fa_num }} دقیقه
+                            {% elif r.wait_choice %}
+                            {{ r.get_wait_choice_display }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="p-3 text-xs text-gray-500">{{ r.created_at|jdate:"Y/m/d H:i" }}</td>
+                        <td class="p-3 text-xs text-gray-600">
+                            {% if r.created_by %}{{ r.created_by.get_full_name|default:r.created_by.username }}{% else %}—{% endif %}
+                        </td>
+                        <td class="p-3">
+                            <a href="{% url 'customers:hub' %}?tab=reception&c={{ r.customer_id }}"
+                               class="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg text-xs font-bold border bg-teal-50 text-teal-700 border-teal-100 hover:bg-teal-100 transition">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                تغییر پاسخ
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="p-12 text-center text-gray-400">
+                            هنوز مصاحبه‌کننده‌ای ثبت نشده است.
+                            <div class="text-xs mt-2">
+                                در تب پذیرش، برای سؤال ۱ گزینه «مصاحبه‌کننده» را انتخاب کنید.
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

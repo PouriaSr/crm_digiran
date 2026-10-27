@@ -1,0 +1,30 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>خطای سرور — CRM دیجیران</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style> body { font-family: Vazirmatn, Tahoma, sans-serif; } </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-6">
+    <div class="bg-white rounded-3xl shadow-xl border border-gray-100 max-w-md w-full p-8 text-center">
+        <div class="text-6xl font-black text-rose-600 mb-2">۵۰۰</div>
+        <h1 class="text-xl font-bold text-gray-800 mb-2">خطای غیرمنتظره در سرور</h1>
+        <p class="text-sm text-gray-500 leading-6 mb-6">
+            مشکلی پیش آمد و درخواست شما انجام نشد. اگر تکرار شد، لطفاً به پشتیبانی اطلاع دهید.
+        </p>
+        <div class="flex gap-2">
+            <a href="/"
+               class="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition">
+                بازگشت به داشبورد
+            </a>
+            <a href="javascript:location.reload()"
+               class="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-200 transition">
+                تلاش دوباره
+            </a>
+        </div>
+    </div>
+</body>
+</html>

@@ -4,6 +4,14 @@ from django.utils import timezone
 from customers.models import Customer
 
 
+# وضعیت مشتری که اپراتور در فرم ثبت تماس اعلام می‌کند (تک‌منبع حقیقت)
+DECLARED_CUSTOMER_STATUS_CHOICES = [
+    ('none', 'فاقد شرایط'),
+    ('lead', 'بالقوه'),
+    ('active', 'بالفعل'),
+]
+
+
 class Call(models.Model):
     """مدل تماس — ثبت هر تماس تلفنی"""
 
@@ -18,6 +26,18 @@ class Call(models.Model):
         ('busy', 'مشغول'),
         ('no_answer', 'جواب نداد'),
         ('followup', 'نیاز به پیگیری'),
+    ]
+
+    # نوع تماسی که کاربر در فرم «ثبت تماس» انتخاب می‌کند
+    # (هم‌ارز HubCallForm.call_type — قبلاً ذخیره نمی‌شد و در call_type/status/purpose
+    #  تجزیه می‌شد؛ حالا خودش نگه داشته می‌شود)
+    CONTACT_TYPE_CHOICES = [
+        ('incoming', 'تماس مشتری'),
+        ('missed', 'از دست رفته'),
+        ('divar', 'چت دیوار'),
+        ('ads', 'تبلیغات'),
+        ('followup', 'پیگیری'),
+        ('busy', 'مشغول'),
     ]
 
     CALL_PURPOSE_CHOICES = [
@@ -45,6 +65,16 @@ class Call(models.Model):
     # ═══ وضعیت و نوع ═══
     call_type = models.CharField('نوع تماس', max_length=20,
                                   choices=CALL_TYPE_CHOICES, default='outgoing')
+    contact_type = models.CharField(
+        'نوع تماس (فرم)', max_length=20,
+        choices=CONTACT_TYPE_CHOICES, default='incoming', db_index=True,
+    )
+    declared_customer_status = models.CharField(
+        'وضعیت اعلام‌شده مشتری', max_length=10,
+        choices=DECLARED_CUSTOMER_STATUS_CHOICES,
+        blank=True, default='', db_index=True,
+        help_text='همان گزینه‌ای که اپراتور در فرم ثبت تماس انتخاب کرده',
+    )
     status = models.CharField('وضعیت', max_length=20,
                                choices=CALL_STATUS_CHOICES, default='answered',
                                db_index=True)

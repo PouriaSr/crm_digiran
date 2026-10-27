@@ -50,9 +50,13 @@ PERMISSIONS = {
     'customers.view':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
     'customers.add':    [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR],
     'customers.edit':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR],
+    'customers.profile_full': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'customers.delete': [ROLE_ADMIN, ROLE_SALES_MANAGER],
-    'customers.visit': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR],
     'customers.followup': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT],
+    'customers.reception': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SUPPORT],
+    'customers.case': [ROLE_ADMIN, ROLE_SALES_MANAGER],
+    'customers.recruitment': [ROLE_ADMIN, ROLE_SALES_MANAGER],
+    'customers.history': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT],
 
     'calls.view':       [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
     'calls.add':        [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR],
@@ -101,7 +105,12 @@ PERMISSION_META = {
     'customers.view':   ('مشتریان', 'مشاهده', 'مشاهده‌ی لیست و جزئیات مشتریان'),
     'customers.add':    ('مشتریان', 'ایجاد', 'افزودن مشتری جدید'),
     'customers.edit':   ('مشتریان', 'ویرایش', 'ویرایش اطلاعات مشتریان'),
+    'customers.profile_full': ('مشتریان', 'پروفایل کامل مشتری', 'کد ملی، تولد، آدرس، ایمیل و فاکتورها'),
     'customers.delete': ('مشتریان', 'حذف', 'غیرفعال‌سازی و بازگردانی مشتریان'),
+    'customers.reception': ('مشتریان', 'پذیرش حضوری', 'تب پذیرش و ثبت سه پاسخ'),
+    'customers.case': ('مشتریان', 'پرونده مشتری', 'ثبت/ویرایش پرونده مشتری'),
+    'customers.recruitment': ('مشتریان', 'واحد استخدام', 'تب واحد استخدام و پرونده مصاحبه‌کننده'),
+    'customers.history': ('مشتریان', 'تاریخچه تب‌ها', 'مشاهده تاریخچه و به‌روزرسانی‌های تب پذیرش/پرونده'),
 
     'calls.view':     ('تماس‌ها', 'مشاهده', 'مشاهده‌ی لیست و جزئیات تماس‌ها'),
     'calls.add':      ('تماس‌ها', 'ایجاد', 'ثبت تماس جدید'),
@@ -142,6 +151,9 @@ PERMISSION_META = {
     'ads.edit':        ('تبلیغات', 'ویرایش', 'ویرایش تبلیغات'),
     'ads.delete':      ('تبلیغات', 'حذف', 'حذف تبلیغات'),
     'ads.manage_defs': ('تبلیغات', 'مدیریت تعاریف', 'مدیریت پلتفرم‌ها، فرآیندها و منابع'),
+    'customers.followup': ('مشتریان', 'پیگیری', 'پیگیری تماس و یادداشت مشتری'),
+    'customers.reception': ('مشتریان', 'پذیرش حضوری', 'تب پذیرش، سؤالات و تایمر انتظار'),
+    'customers.case': ('مشتریان', 'پرونده مشتری', 'تکمیل و مشاهده‌ی پرونده‌ی اعتباری مشتری'),
 }
 
 
