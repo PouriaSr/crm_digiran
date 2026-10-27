@@ -8,7 +8,7 @@ from crm.duplicate_check import (
 from crm.form_mixins import DuplicateCheckMixin
 from .models import Customer, CustomerCase, CustomerNote
 from products.models import Product
-from calls.models import DECLARED_CUSTOMER_STATUS_CHOICES
+from calls.models import Call, DECLARED_CUSTOMER_STATUS_CHOICES
 
 
 class CustomerForm(DuplicateCheckMixin, forms.ModelForm):
@@ -88,23 +88,11 @@ class CustomerForm(DuplicateCheckMixin, forms.ModelForm):
     def save(self, commit=True):
         customer = super().save(commit=False)
 
-        # «وضعیت» تعیین‌کننده‌ی برچسب، تیک پیگیری، پیامک و دسترسی‌هاست
+        # «وضعیت» تعیین‌کننده‌ی برچسب، تیک پیگیری و دسترسی‌هاست
         new_stage = self.cleaned_data.get('stage')
         if new_stage in ('potential', 'lead'):
-            was_potential = bool(
-                self.instance and self.instance.pk and self.instance.stage == 'potential'
-            )
             customer.stage = new_stage
             customer.needs_followup = (new_stage == 'potential')
-
-            if commit and new_stage == 'potential' and not was_potential:
-                # تغییر به «بالقوه» → پیامک خودکار (هوک؛ با اتصال API ارسال می‌شود)
-                try:
-                    from .sms import send_followup_sms
-                    customer.save()
-                    send_followup_sms(customer)
-                except Exception:
-                    pass
 
         if commit:
             customer.save()
@@ -271,9 +259,9 @@ CUSTOMER_STATUS_CHOICES = DECLARED_CUSTOMER_STATUS_CHOICES
 
 class HubCallForm(forms.Form):
     mobile = forms.CharField(label='شماره تماس', max_length=15, required=True,
-        widget=forms.TextInput(attrs={'class': 'w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-lg font-mono tracking-widest bg-white', 'dir': 'ltr', 'placeholder': '09123456789', 'id': 'hub_call_mobile', '@input.debounce.500ms': 'checkMobile()'}))
-    name = forms.CharField(label='نام و نام خانوادگی', max_length=200, required=False,
-        widget=forms.TextInput(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all', 'id': 'hub_call_name'}))
+        widget=forms.TextInput(attrs={'class': 'w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-lg font-mono tracking-widest bg-white', 'dir': 'ltr', 'placeholder': '09123456789', 'id': 'hub_call_mobile', 'inputmode': 'numeric', 'minlength': 11, 'maxlength': 11, 'pattern': '[0-9۰-۹٠-٩]{11}', '@input.debounce.500ms': 'checkMobile()'}))
+    name = forms.CharField(label='نام و نام خانوادگی', max_length=200, required=True,
+        widget=forms.TextInput(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all', 'id': 'hub_call_name', 'autocomplete': 'name', 'placeholder': 'مثلاً: مریم احمدی', 'pattern': r'[^\p{N}]+', 'title': 'نام و نام خانوادگی نباید شامل عدد باشد.', '@input': 'validateName($el)', ':aria-invalid': "nameInvalid ? 'true' : 'false'", 'aria-describedby': 'hub_call_name_error'}))
     
     call_type = forms.ChoiceField(label='نوع تماس', choices=[
         ('incoming', 'تماس مشتری'),
@@ -282,8 +270,43 @@ class HubCallForm(forms.Form):
         ('ads', 'تبلیغات'),
         ('followup', 'پیگیری'),
         ('busy', 'مشغول'),
-    ], widget=forms.Select(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all', 'x-model': 'callType'}))
+    ], widget=forms.Select(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all', 'x-model': 'callType', '@change': "callStatus = ({missed: 'missed', busy: 'busy'})[callType] || 'answered'; purpose = callType === 'followup' ? 'followup' : 'sale'"}))
     
+    purpose = forms.ChoiceField(
+        label='هدف تماس', choices=Call.CALL_PURPOSE_CHOICES, required=False,
+        widget=forms.Select(attrs={'x-model': 'purpose'}))
+    call_status = forms.ChoiceField(
+        label='وضعیت تماس', required=False,
+        choices=[choice for choice in Call.CALL_STATUS_CHOICES if choice[0] != 'followup'],
+        widget=forms.Select(attrs={'x-model': 'callStatus'}))
+    customer_analysis = forms.ChoiceField(
+        label='تحلیل مشتری', required=False,
+        choices=[('lead', 'فاقد شرایط'), ('potential', 'قصد خرید دارد')],
+        widget=forms.Select(attrs={'x-model': 'customerAnalysis'}))
+    requested_condition = forms.ChoiceField(
+        label='شرایط درخواستی', required=False,
+        choices=[('', 'انتخاب شرایط…')] + CustomerCase.CONDITION_CHOICES)
+    send_address = forms.BooleanField(
+        label='ارسال آدرس', required=False,
+        widget=forms.CheckboxInput(attrs={
+            'x-model': 'sendAddress', 'id': 'hub_send_address',
+            'class': 'sr-only peer',
+        }))
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user is not None:
+            from accounts.permissions import has_permission
+            if not has_permission(user, 'customers.case'):
+                self.fields['purpose'].choices = [
+                    choice for choice in self.fields['purpose'].choices if choice[0] != 'info'
+                ]
+        for field in ('purpose', 'call_status', 'customer_analysis', 'requested_condition'):
+            self.fields[field].widget.attrs['class'] = (
+                'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl '
+                'focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500'
+            )
+
     source = forms.ModelChoiceField(label='منبع تماس', queryset=__import__('ads.models', fromlist=['AdSource']).AdSource.objects.filter(is_active=True), required=False,
         widget=forms.Select(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all'}))
     
@@ -291,6 +314,7 @@ class HubCallForm(forms.Form):
         widget=forms.CheckboxInput(attrs={
             'class': 'w-5 h-5 rounded text-orange-600 border-gray-300 focus:ring-orange-500',
             'x-model': 'needsFollowup',
+            '@change': 'sendAddress = $el.checked',
             'id': 'hub_needs_followup',
         }))
     
@@ -304,10 +328,27 @@ class HubCallForm(forms.Form):
     notes = forms.CharField(label='شرح مکالمه', required=True,
         widget=forms.Textarea(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all resize-none', 'rows': 3, 'placeholder': 'شرح مکالمه...'}))
 
+    def clean_name(self):
+        name = self.cleaned_data['name']
+        if any(character.isnumeric() for character in name):
+            raise forms.ValidationError('نام و نام خانوادگی نباید شامل عدد باشد.')
+        return name
+
+    def clean_mobile(self):
+        mobile = normalize_digits(self.cleaned_data['mobile'])
+        if len(mobile) != 11 or not mobile.isascii() or not mobile.isdigit():
+            raise forms.ValidationError('شماره تماس باید دقیقاً ۱۱ رقم باشد.')
+        return mobile
+
     def clean(self):
         data = super().clean()
-        if data.get('needs_followup') and not (data.get('follow_up_date') or '').strip():
-            self.add_error('follow_up_date', 'وقتی «نیاز به پیگیری» را می‌زنید، تاریخ پیگیری الزامی است.')
+        if data.get('needs_followup'):
+            value = normalize_digits(data.get('follow_up_date') or '').replace('-', '/')
+            try:
+                year, month, day = map(int, value.split('/'))
+                data['follow_up_due'] = jdatetime.date(year, month, day).togregorian()
+            except (ValueError, TypeError):
+                self.add_error('follow_up_date', 'برای پیگیری، یک تاریخ شمسی معتبر وارد کنید.')
         return data
 
 

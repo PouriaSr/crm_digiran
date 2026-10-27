@@ -1,79 +1,138 @@
-{# مودال ثبت تماس — خودکفا؛ با رویداد open-call-modal باز می‌شود #}
+{# Shared new-call dialog: hub and customer profile. #}
+<style>
+#call-modal-root input[aria-invalid="true"] {border-color:#f87171;box-shadow:0 0 0 3px #fef2f2;}
+#call-modal-root .call-scroll {scrollbar-width:thin;scrollbar-color:#cbd5e1 transparent;}
+</style>
 <div id="call-modal-root"
      x-data="callModalWidget()"
      x-on:open-call-modal.window="openCall($event.detail)"
-     x-on:close-call-modal.window="isCallModalOpen = false">
-
-    <div x-show="isCallModalOpen" style="display:none;" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-
-        <div @click.away="popupOverlayClick($event) || (isCallModalOpen = false)" class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-slide-up">
-            <div class="shrink-0 bg-gradient-to-r from-blue-600 to-indigo-700 p-6 text-white flex justify-between items-center">
-                <h2 class="text-xl font-bold">ثبت تماس</h2>
-                <button @click="isCallModalOpen = false" class="text-white/80 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+     x-on:close-call-modal.window="isCallModalOpen = false"
+     @keydown.escape.window="isCallModalOpen = false">
+    <div x-show="isCallModalOpen" style="display:none;"
+         class="fixed inset-0 bg-slate-900/50 z-[100] flex items-center justify-center p-2 sm:p-4 backdrop-blur-sm">
+        <div role="dialog" aria-modal="true" aria-labelledby="call-modal-title"
+             @click.away="popupOverlayClick($event) || (isCallModalOpen = false)"
+             class="bg-slate-50 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col animate-slide-up">
+            <div class="shrink-0 rounded-t-3xl bg-gradient-to-l from-blue-700 to-indigo-600 px-5 py-4 sm:px-6 text-white flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <span class="hidden sm:flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M3 5a2 2 0 012-2h3l2 5-2 2a16 16 0 006 6l2-2 5 2v3a2 2 0 01-2 2C10 21 3 14 3 5z"/></svg>
+                    </span>
+                    <div>
+                        <h2 id="call-modal-title" class="text-lg sm:text-xl font-bold">ثبت تماس جدید</h2>
+                        <p class="mt-1 text-xs text-blue-100">اطلاعات مخاطب، نتیجه تماس و اقدام بعدی را یک‌جا ثبت کنید.</p>
+                    </div>
+                </div>
+                <button type="button" @click="isCallModalOpen = false" aria-label="بستن فرم ثبت تماس"
+                        class="rounded-xl p-2 text-white/80 hover:text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
             </div>
-            
-            <form method="post" action="{% url 'customers:hub_submit_call' %}" class="flex flex-col flex-1 min-h-0">
+            <form method="post" action="{% url 'customers:hub_submit_call' %}"
+                  @submit="if ($el.checkValidity()) submitting = true"
+                  class="flex flex-col flex-1 min-h-0">
                 {% csrf_token %}
                 <input type="hidden" name="next" id="hub_call_next" value="">
-
-                <div class="p-6 space-y-5 overflow-y-auto flex-1 min-h-0">
-
-                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-200 relative">
-                    <label class="block text-sm font-bold text-gray-700 mb-2">شماره تماس <span class="text-red-500">*</span></label>
-                    <div class="relative">
-                        {{ call_form.mobile }}
-                        <div x-show="checking" class="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500">
-                            <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                <div class="call-scroll p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
+                    <section class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm" aria-labelledby="call-contact-heading">
+                        <div class="flex items-center justify-between gap-3 mb-4">
+                            <h3 id="call-contact-heading" class="font-bold text-slate-800 text-sm">اطلاعات مخاطب</h3>
+                            <span class="text-xs text-slate-400">فیلدهای ستاره‌دار الزامی‌اند</span>
                         </div>
-                    </div>
-                    <div x-show="existingCustomer" x-cloak class="mt-2 text-sm text-amber-600 font-bold bg-amber-50 p-2 rounded-lg border border-amber-100">این شماره موجود است: <span x-text="existingCustomer?.name"></span></div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">نام و نام خانوادگی</label>
-                        {{ call_form.name }}
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">نوع تماس</label>
-                        {{ call_form.call_type }}
-                    </div>
-                    <div class="md:col-span-2 bg-blue-50 p-4 rounded-xl border border-blue-100">
-                        <label class="block text-sm font-bold text-blue-800 mb-2">منبع تماس</label>
-                        {{ call_form.source }}
-                    </div>
-                    <div class="md:col-span-2 border-t border-gray-100 pt-4">
-                        <label class="flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer">
-                            {{ call_form.needs_followup }}
-                            نیاز به پیگیری
-                        </label>
-                        <div x-show="needsFollowup" x-cloak class="mt-3">
-                            <label class="block text-xs font-bold text-orange-700 mb-1">
-                                تاریخ پیگیری <span class="text-red-500">*</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="hub_call_mobile" class="block text-sm font-medium text-slate-700 mb-2">شماره تماس <span class="text-red-500">*</span></label>
+                                <div class="relative">
+                                    {{ call_form.mobile }}
+                                    <span x-show="checking" class="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500" aria-label="در حال بررسی شماره">
+                                        <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                    </span>
+                                </div>
+                                <p class="mt-2 text-xs text-slate-400">۱۱ رقم؛ اعداد فارسی و انگلیسی پذیرفته می‌شوند.</p>
+                            </div>
+                            <div>
+                                <label for="hub_call_name" class="block text-sm font-medium text-slate-700 mb-2">نام و نام خانوادگی <span class="text-red-500">*</span></label>
+                                {{ call_form.name }}
+                                <p id="hub_call_name_error" class="mt-2 text-xs" :class="nameInvalid ? 'text-red-600' : 'text-slate-400'" aria-live="polite"
+                                   x-text="nameInvalid ? 'نام و نام خانوادگی نباید شامل عدد باشد.' : 'نام کامل مخاطب را بدون عدد وارد کنید.'"></p>
+                            </div>
+                        </div>
+                        <div x-show="existingCustomer" x-cloak class="mt-4 text-xs text-emerald-800 bg-emerald-50 px-3 py-2.5 rounded-xl border border-emerald-100" role="status">
+                            مشتری شناسایی شد: <strong x-text="existingCustomer?.name"></strong>
+                        </div>
+                    </section>
+                    <section class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm" aria-labelledby="call-details-heading">
+                        <h3 id="call-details-heading" class="font-bold text-slate-800 text-sm mb-4">جزئیات و نتیجه تماس</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="id_call_type" class="block text-sm font-medium text-slate-700 mb-2">نوع تماس</label>
+                                {{ call_form.call_type }}
+                            </div>
+                            <div>
+                                <label for="id_source" class="block text-sm font-medium text-slate-700 mb-2">منبع تماس</label>
+                                {{ call_form.source }}
+                            </div>
+                            <div>
+                                <label for="id_purpose" class="block text-sm font-medium text-slate-700 mb-2">هدف تماس</label>
+                                {{ call_form.purpose }}
+                            </div>
+                            <div>
+                                <label for="id_call_status" class="block text-sm font-medium text-slate-700 mb-2">وضعیت تماس</label>
+                                {{ call_form.call_status }}
+                            </div>
+                            <div>
+                                <div class="flex items-center justify-between mb-2 gap-2">
+                                    <label for="id_customer_analysis" class="block text-sm font-medium text-slate-700">تحلیل مشتری</label>
+                                    <span class="rounded-full px-2.5 py-0.5 text-xs font-bold"
+                                          :class="customerAnalysis === 'potential' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'"
+                                          x-text="customerAnalysis === 'potential' ? 'بالقوه' : 'سرنخ'"></span>
+                                </div>
+                                {{ call_form.customer_analysis }}
+                            </div>
+                            <div>
+                                <label for="id_requested_condition" class="block text-sm font-medium text-slate-700 mb-2">شرایط درخواستی</label>
+                                {{ call_form.requested_condition }}
+                                <p class="mt-2 text-xs text-slate-400">در مرحله تکمیل پرونده، پیش‌پر می‌شود.</p>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm" aria-labelledby="call-next-heading">
+                        <h3 id="call-next-heading" class="font-bold text-slate-800 text-sm mb-4">اقدام بعدی</h3>
+                        <div class="rounded-xl border p-3 transition" :class="needsFollowup ? 'border-orange-200 bg-orange-50' : 'border-slate-200 bg-slate-50'">
+                            <label for="hub_needs_followup" class="flex items-center gap-3 cursor-pointer">
+                                {{ call_form.needs_followup }}
+                                <span>
+                                    <span class="block text-sm font-bold text-slate-700">نیاز به پیگیری</span>
+                                    <span class="block mt-1 text-xs text-slate-500">برای تماس بعدی، تاریخ مشخص کنید.</span>
+                                </span>
                             </label>
-                            {{ call_form.follow_up_date }}
-                            {% if call_form.follow_up_date.errors %}
-                            <p class="text-xs text-red-600 mt-1">{{ call_form.follow_up_date.errors.0 }}</p>
-                            {% endif %}
+                            <div x-show="needsFollowup" x-cloak class="mt-3 pt-3 border-t border-orange-100">
+                                <label for="hub_followup_date" class="block text-xs font-bold text-orange-800 mb-2">تاریخ پیگیری <span class="text-red-500">*</span></label>
+                                {{ call_form.follow_up_date }}
+                                {% if call_form.follow_up_date.errors %}<p class="text-xs text-red-600 mt-1">{{ call_form.follow_up_date.errors.0 }}</p>{% endif %}
+                            </div>
                         </div>
-                    </div>
+                        <label for="hub_send_address" class="flex items-center gap-3 mt-3 cursor-pointer select-none">
+                            {{ call_form.send_address }}
+                            <span class="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 bg-white peer-checked:bg-blue-600 peer-checked:border-blue-600 peer-checked:text-white peer-focus-visible:ring-4 peer-focus-visible:ring-blue-200 transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 21s7-6 7-12a7 7 0 10-14 0c0 6 7 12 7 12z"/><circle cx="12" cy="9" r="2.5" stroke-width="1.8"/></svg>
+                                ارسال آدرس
+                            </span>
+                            <span class="text-xs text-slate-500" aria-live="polite" x-text="sendAddress ? 'فعال؛ همراه ثبت تماس' : 'برای ارسال، انتخاب کنید'"></span>
+                        </label>
+                        <p class="text-xs text-slate-400 mt-2">ارسال آدرس فعلاً آزمایشی است؛ پیامک واقعی ارسال نمی‌شود.</p>
+                    </section>
+                    <section class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm">
+                        <label for="id_notes" class="block text-sm font-bold text-slate-800 mb-3">شرح مکالمه <span class="text-red-500">*</span></label>
+                        {{ call_form.notes }}
+                    </section>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">شرح مکالمه <span class="text-red-500">*</span></label>
-                    {{ call_form.notes }}
-                </div>
-
-
-                
-                </div>
-                <div class="shrink-0 border-t border-gray-100 px-6 py-4 bg-white flex gap-3">
-                    <button type="submit"
-                            class="flex-1 py-3.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 active:scale-[0.99] transition shadow-sm">
-                        ثبت تماس
-                    </button>
+                <div class="shrink-0 rounded-b-3xl border-t border-slate-200 px-4 sm:px-6 py-4 bg-white flex items-center gap-3">
+                    <button type="submit" :disabled="submitting"
+                            class="flex-1 py-3.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-60 disabled:cursor-wait focus-visible:ring-4 focus-visible:ring-blue-200 transition shadow-sm"
+                            x-text="submitting ? 'در حال ثبت…' : 'ثبت تماس'">ثبت تماس</button>
                     <button type="button" @click="isCallModalOpen = false"
-                            class="px-6 py-3.5 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition">
-                        انصراف
-                    </button>
+                            class="px-5 py-3.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 focus-visible:ring-4 focus-visible:ring-slate-200 transition">انصراف</button>
                 </div>
             </form>
         </div>
@@ -86,15 +145,34 @@ function callModalWidget() {
         isCallModalOpen: false,
         callType: 'incoming',
         needsFollowup: false,
+        sendAddress: false,
+        customerAnalysis: 'lead',
+        purpose: 'sale',
+        callStatus: 'answered',
         mobile: '',
         existingCustomer: null,
         checking: false,
+        nameInvalid: false,
+        submitting: false,
+
+        validateName(input) {
+            this.nameInvalid = /\p{N}/u.test(input.value);
+            input.setCustomValidity(this.nameInvalid ? 'نام و نام خانوادگی نباید شامل عدد باشد.' : '');
+        },
 
         openCall(detail) {
             var d = detail || {};
+            var form = document.querySelector('#call-modal-root form');
+            if (form) form.reset();
             this.isCallModalOpen = true;
+            this.sendAddress = false;
+            this.nameInvalid = false;
+            this.submitting = false;
+            this.customerAnalysis = 'lead';
             this.callType = d.call_type || 'incoming';
             this.needsFollowup = false;
+            this.purpose = this.callType === 'followup' ? 'followup' : 'sale';
+            this.callStatus = ({missed: 'missed', busy: 'busy'})[this.callType] || 'answered';
             this.existingCustomer = null;
 
             // پیش‌پر کردن از پیش (state) تا با هر بار رندر دوباره ساخته نشود
@@ -120,8 +198,9 @@ function callModalWidget() {
                 }
                 if (n) {
                     if (force || !n.value) n.value = wantName;
-                    n.readOnly = !!d.lock;
-                    n.classList.toggle('bg-gray-100', !!d.lock);
+                    n.readOnly = !!d.lock && !!wantName && !/\p{N}/u.test(wantName);
+                    n.classList.toggle('bg-gray-100', n.readOnly);
+                    self.validateName(n);
                 }
 
                 var nx = document.getElementById('hub_call_next');
@@ -142,7 +221,7 @@ function callModalWidget() {
 
             fill(true);                 // فوری (حتی اگر Alpine آماده نباشد)
             try {
-                this.$nextTick(function () { fill(true); });
+                this.$nextTick(function () { fill(false); });
             } catch (e) {
                 fill(true);
             }
@@ -152,17 +231,20 @@ function callModalWidget() {
         checkMobile() {
             var self = this;
             var mEl = document.getElementById('hub_call_mobile');
-            if (mEl) this.mobile = mEl.value.trim();
-            if (!this.mobile || this.mobile.length < 10) { this.existingCustomer = null; return; }
+            if (mEl) this.mobile = normalizeDigitsFa(mEl.value.trim());
+            if (!/^[0-9]{11}$/.test(this.mobile)) { this.existingCustomer = null; this.checking = false; return; }
             this.checking = true;
-            fetch('/customers/hub/api/check/?mobile=' + encodeURIComponent(this.mobile))
+            var requestedMobile = this.mobile;
+            var seq = this._openSeq;
+            fetch("{% url 'customers:hub_check_api' %}?mobile=" + encodeURIComponent(requestedMobile))
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
+                    if (seq !== self._openSeq || requestedMobile !== self.mobile) return;
                     self.existingCustomer = data.exists ? data : null;
                     self.checking = false;
                     if (data.exists) {
                         var n = document.getElementById('hub_call_name');
-                        if (n && !n.value) n.value = data.name;
+                        if (n && !n.value) { n.value = data.name; self.validateName(n); }
                     }
                 })
                 .catch(function () { self.checking = false; });

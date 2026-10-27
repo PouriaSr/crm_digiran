@@ -4,6 +4,7 @@ from datetime import timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Q, Sum, Count, OuterRef, Subquery, IntegerField
 from django.db.models.functions import Coalesce
 from django.contrib.auth.models import User
@@ -15,7 +16,7 @@ from django.views.decorators.http import require_POST, require_GET
 from accounts.permissions import has_permission, require_permission
 from .models import (Customer, CustomerCase, FollowUp, RecordUpdate, Reception,
                      Visit)
-from .sms import send_followup_sms
+from .sms import send_address_sms
 from .forms import CustomerCaseForm, HubCallForm
 from calls.models import Call
 from sales.models import Invoice
@@ -287,6 +288,17 @@ def customer_hub(request):
                     and case_customer.stage == 'potential'
                 )
 
+    # Prefill only empty case fields; never turn a call into a completed case.
+    case_initial = {}
+    if case_customer:
+        condition = (case_customer.calls.exclude(requested_condition='')
+                     .order_by('-created_at', '-pk')
+                     .values_list('requested_condition', flat=True).first())
+        if condition and not (customer_case and customer_case.condition):
+            case_initial['condition'] = condition
+        if condition == 'retired' and not (customer_case and customer_case.job):
+            case_initial['job'] = 'retired'
+
     # گزینه‌های لیست‌ها
     filter_customers = (Customer.all_objects
                         .filter(is_interviewer=False)
@@ -335,13 +347,13 @@ def customer_hub(request):
         'case_customers': case_customers,
         'case_customer': case_customer,
         'customer_case': customer_case,
-        'case_form': CustomerCaseForm(instance=customer_case) if case_customer else None,
+        'case_form': CustomerCaseForm(instance=customer_case, initial=case_initial) if case_customer else None,
         'filter_sources': filter_sources,
         'reassign_users': reassign_users,
         'contact_type_choices': Call.CONTACT_TYPE_CHOICES,
         'type_choices': Call.CALL_TYPE_CHOICES,
         'invoices': (Invoice.objects.select_related('customer', 'created_by').order_by('-created_at')[:20]),
-        'call_form': HubCallForm(),
+        'call_form': HubCallForm(user=request.user),
     }
     
     # دکمه «ثبت تماس جدید»:
@@ -364,94 +376,73 @@ def customer_hub(request):
 
 @login_required
 @require_permission('customers.add')
+@require_POST
 def hub_submit_call(request):
-    if request.method == 'POST':
-        form = HubCallForm(request.POST)
-        if form.is_valid():
-            mobile = form.cleaned_data['mobile']
-            name = (form.cleaned_data.get('name') or '').strip()
-            explanation = (form.cleaned_data.get('notes') or '').strip()
-            call_type = form.cleaned_data.get('call_type') or 'incoming'
-            needs_followup = bool(form.cleaned_data.get('needs_followup'))
-            source = form.cleaned_data.get('source')
+    back = f"{reverse('customers:hub')}?tab=call"
+    form = HubCallForm(request.POST, user=request.user)
+    if not form.is_valid():
+        for field, errors in form.errors.items():
+            label = form.fields[field].label if field in form.fields else ''
+            for error in errors:
+                messages.error(request, f'{label}: {error}')
+        return redirect(back)
 
-            customer = Customer.objects.filter(mobile=mobile).first()
+    data = form.cleaned_data
+    mobile = data['mobile']
+    needs_followup = data['needs_followup']
+    # The explicit analysis controls the badge, independently of follow-up.
+    # Keep older clients (without the new field) compatible.
+    stage = data.get('customer_analysis') or ('potential' if needs_followup else 'lead')
+    contact_type = data['call_type']
+    source = data.get('source')
+    due = data.get('follow_up_due')
 
-            # ═══ مرحله‌ی ۱: پروفایل حداقلی ═══
-            # اگر مشتری با این شماره نبود، همین‌جا ساخته می‌شود (بدون ریدایرکت)
-            if customer is None:
-                if not name:
-                    messages.error(request, 'برای ثبت مشتری جدید، نام الزامی است.')
-                    return redirect('/customers/hub/?tab=call')
-                customer = Customer.objects.create(
-                    name=name,
-                    mobile=mobile,
-                    source='ads' if source else 'website',
-                    ad_source=source,
-                    assigned_to=request.user,
-                    created_by=request.user,
-                    status='lead',
-                )
-            else:
-                if name:
-                    customer.name = name
-                if source:
-                    customer.ad_source = source
-
-            # ═══ برچسب مرحله: بالقوه با تیک پیگیری، وگرنه سرنخ ═══
-            customer.needs_followup = needs_followup
-            customer.stage = 'potential' if needs_followup else 'lead'
-            if explanation:
-                customer.notes = explanation
-            customer.save()
-
-            c_type = 'outgoing' if call_type in ('followup',) else 'incoming'
-            # وضعیت متناسب با نوع تماس انتخاب‌شده
-            c_status = {
-                'missed': 'missed',
-                'busy': 'busy',
-            }.get(call_type, 'answered')
-
-            Call.objects.create(
-                customer=customer,
-                caller_name=customer.name,
-                call_number=mobile,
-                call_type=c_type,
-                purpose='followup' if call_type == 'followup' else 'sale',
-                contact_type=call_type,
-                declared_customer_status='lead' if needs_followup else 'none',
-                status=c_status,
-                notes=form.cleaned_data['notes'],
-                called_by=request.user,
-                created_by=request.user,
+    with transaction.atomic():
+        customer = Customer.objects.select_for_update().filter(mobile=mobile).first()
+        if customer is None:
+            customer = Customer.objects.create(
+                name=data['name'], mobile=mobile,
+                source='ads' if source else 'website', ad_source=source,
+                assigned_to=request.user, created_by=request.user, status='lead',
             )
-            if needs_followup:
-                due = parse_jalali(form.cleaned_data.get('follow_up_date'))
-                if due is None:
-                    due = timezone.localdate()
-                FollowUp.objects.create(
-                    customer=customer,
-                    due_date=due,
-                    note=explanation,
-                    created_by=request.user,
-                )
-                sms_sent = send_followup_sms(customer)
-                messages.info(request, (
-                    'برچسب «بالقوه» ثبت شد و پیامک برای مشتری ارسال شد.'
-                    if sms_sent else
-                    'برچسب «بالقوه» ثبت شد. ارسال پیامک پس از اتصال پنل پیامکی انجام می‌شود.'
-                ))
-            else:
-                messages.info(request, 'مشتری با برچسب «سرنخ» ثبت شد.')
-            messages.success(request, 'تماس با موفقیت ثبت شد.')
+        else:
+            customer.name = data['name']
+            if source:
+                customer.ad_source = source
+        customer.stage = stage
+        customer.needs_followup = needs_followup or customer.followups.filter(is_done=False).exists()
+        customer.notes = data['notes']
+        customer.save()
 
-            # بازگشت به همان صفحه‌ای که مودال از آن باز شد (فقط مسیرهای امن)
-            nxt = (request.POST.get('next') or '').strip()
-            if nxt.startswith('/customers/') and '//' not in nxt:
-                return redirect(nxt)
-            return redirect(f"/customers/hub/?tab=call")
-    messages.error(request, 'خطا در ثبت تماس.')
-    return redirect('/customers/hub/?tab=call')
+        call = Call.objects.create(
+            customer=customer, caller_name=customer.name, call_number=mobile,
+            call_type='outgoing' if contact_type == 'followup' else 'incoming',
+            contact_type=contact_type,
+            purpose=data.get('purpose') or ('followup' if contact_type == 'followup' else 'sale'),
+            status=data.get('call_status') or {'missed': 'missed', 'busy': 'busy'}.get(contact_type, 'answered'),
+            declared_customer_status='lead' if stage == 'potential' else 'none',
+            requested_condition=data.get('requested_condition') or '',
+            send_address=data['send_address'], follow_up_date=due,
+            notes=data['notes'], called_by=request.user, created_by=request.user,
+        )
+        if needs_followup:
+            FollowUp.objects.create(
+                customer=customer, due_date=due,
+                note=data['notes'], created_by=request.user,
+            )
+
+    messages.info(request, 'برچسب «بالقوه» ثبت شد.' if stage == 'potential' else 'مشتری با برچسب «سرنخ» ثبت شد.')
+    if call.send_address:
+        # Test mode only until the SMS provider is configured.
+        send_address_sms(customer)
+        messages.info(request, 'درخواست ارسال آدرس آزمایشی ثبت شد؛ پیامک واقعی ارسال نشده است.')
+    messages.success(request, 'تماس با موفقیت ثبت شد.')
+
+    nxt = (request.POST.get('next') or '').strip()
+    prefix = reverse('customers:hub').split('/customers/')[0]
+    if nxt.startswith(f'{prefix}/customers/') and '//' not in nxt:
+        return redirect(nxt)
+    return redirect(back)
 
 
 

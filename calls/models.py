@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
-from customers.models import Customer
+from customers.models import Customer, CustomerCase
 
 
 # وضعیت مشتری که اپراتور در فرم ثبت تماس اعلام می‌کند (تک‌منبع حقیقت)
@@ -80,6 +80,12 @@ class Call(models.Model):
                                db_index=True)
     purpose = models.CharField('هدف تماس', max_length=20,
                                 choices=CALL_PURPOSE_CHOICES, default='sale')
+
+    requested_condition = models.CharField(
+        'شرایط درخواستی', max_length=20,
+        choices=CustomerCase.CONDITION_CHOICES, blank=True, default='',
+    )
+    send_address = models.BooleanField('درخواست ارسال آدرس', default=False)
 
     # ═══ زمان ═══
     call_date = models.DateTimeField('تاریخ تماس', default=timezone.now, db_index=True)

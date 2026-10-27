@@ -91,7 +91,7 @@ def customer_detail(request, pk):
         'total_purchase': total_purchase,
         'can_view_invoices': can_view_invoices,
         'show_full_profile': has_permission(request.user, 'customers.profile_full'),
-        'call_form': HubCallForm(),
+        'call_form': HubCallForm(user=request.user),
     }
     return render(request, 'customers/detail.html', context)
 

@@ -73,7 +73,8 @@ class CallModalPrefillTest(TestCase):
     def test_fields_editable_by_default(self):
         # قفل فقط وقتی مشتری ثابت است (lock)
         self.assertIn('m.readOnly = !!d.lock;', self.body)
-        self.assertIn('n.readOnly = !!d.lock;', self.body)
+        # A missing name must remain editable because it is now required.
+        self.assertIn('n.readOnly = !!d.lock && !!wantName && !/\p{N}/u.test(wantName);', self.body)
 
     def test_search_flow_is_unlocked(self):
         self.assertIn('var detail = { lock: false };', self.body)

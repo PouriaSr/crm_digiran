@@ -337,9 +337,11 @@ class CustomerCase(models.Model):
     """پرونده‌ی مشتری — شرایط، شغل، اعتبار، وام‌ها، کالا و نتیجه‌ی مراجعه"""
 
     CONDITION_CHOICES = [
+        ('cheque', 'چکی'),
+        ('retired', 'بازنشسته'),
         ('cash', 'نقد'),
         ('credit', 'دارای اعتبار'),
-        ('cheque', 'چک'),
+        ('other', 'سایر'),
     ]
     CHEQUE_OWNER_CHOICES = [
         ('self', 'برای خودش'),
