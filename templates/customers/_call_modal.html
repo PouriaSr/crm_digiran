@@ -21,6 +21,10 @@
                     <div>
                         <h2 id="call-modal-title" class="text-lg sm:text-xl font-bold">ثبت تماس جدید</h2>
                         <p class="mt-1 text-xs text-blue-100">اطلاعات مخاطب، نتیجه تماس و اقدام بعدی را یک‌جا ثبت کنید.</p>
+                        <div class="mt-2 flex items-center gap-2 text-xs text-blue-100">
+                            <span>ساعت سیستم · تهران</span>
+                            <span class="font-mono rounded-md bg-white/15 px-2 py-0.5" dir="ltr" x-text="systemTime"></span>
+                        </div>
                     </div>
                 </div>
                 <button type="button" @click="isCallModalOpen = false" aria-label="بستن فرم ثبت تماس"
@@ -33,6 +37,7 @@
                   class="flex flex-col flex-1 min-h-0">
                 {% csrf_token %}
                 <input type="hidden" name="next" id="hub_call_next" value="">
+                <p class="px-4 sm:px-6 pt-3 text-xs text-slate-500">ساعت دقیق تماس هنگام ثبت، به‌صورت خودکار ذخیره می‌شود.</p>
                 <div class="call-scroll p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
                     <section class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm" aria-labelledby="call-contact-heading">
                         <div class="flex items-center justify-between gap-3 mb-4">
@@ -157,6 +162,28 @@ function callModalWidget() {
         checking: false,
         nameInvalid: false,
         submitting: false,
+        systemTime: '',
+        serverClockBase: Date.parse("{% now 'c' %}"),
+        serverClockStart: performance.now(),
+
+        init() {
+            this.updateSystemTime();
+            this._clockTimer = setInterval(() => {
+                if (this.isCallModalOpen) this.updateSystemTime();
+            }, 1000);
+        },
+
+        destroy() {
+            clearInterval(this._clockTimer);
+        },
+
+        updateSystemTime() {
+            var time = new Date(this.serverClockBase + performance.now() - this.serverClockStart);
+            this.systemTime = new Intl.DateTimeFormat('fa-IR', {
+                timeZone: 'Asia/Tehran', hour: '2-digit', minute: '2-digit',
+                second: '2-digit', hour12: false
+            }).format(time);
+        },
 
         applyCustomerAnalysis(value) {
             this.customerAnalysis = value;
@@ -174,6 +201,7 @@ function callModalWidget() {
             var form = document.querySelector('#call-modal-root form');
             if (form) form.reset();
             this.isCallModalOpen = true;
+            this.updateSystemTime();
             this.sendAddress = false;
             this.nameInvalid = false;
             this.submitting = false;

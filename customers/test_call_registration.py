@@ -1,5 +1,8 @@
 """New-call registration: validation, independent choices, case prefill and SMS intent."""
 from unittest.mock import patch
+from datetime import datetime, timezone as datetime_timezone
+from django.template import Template, Context
+from django.utils import timezone
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -43,6 +46,21 @@ class CallRegistrationTest(TestCase):
                 form = HubCallForm({**self.data, 'mobile': mobile})
                 self.assertTrue(form.is_valid(), form.errors)
                 self.assertEqual(form.cleaned_data['mobile'], '09123456789')
+
+    def test_call_timestamp_uses_server_time_and_ignores_posted_time(self):
+        before = timezone.now()
+        self.submit(call_date='2000-01-01T00:00:00', call_time='00:00')
+        after = timezone.now()
+        call = Call.objects.get()
+        self.assertTrue(timezone.is_aware(call.call_date))
+        self.assertLessEqual(before, call.call_date)
+        self.assertLessEqual(call.call_date, after)
+
+    def test_call_time_display_uses_tehran_timezone(self):
+        value = datetime(2026, 10, 27, 23, 45, tzinfo=datetime_timezone.utc)
+        template = Template('{% load fa_numbers %}{{ value|jdate:"H:i" }}')
+        with timezone.override('Asia/Tehran'):
+            self.assertEqual(template.render(Context({'value': value})), '۰۳:۱۵')
 
     def test_name_is_required_even_for_existing_customer(self):
         Customer.objects.create(name='نام قبلی', mobile=self.data['mobile'])

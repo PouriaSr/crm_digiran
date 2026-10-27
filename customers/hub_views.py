@@ -416,6 +416,7 @@ def hub_submit_call(request):
 
         call = Call.objects.create(
             customer=customer, caller_name=customer.name, call_number=mobile,
+            call_date=timezone.now(),
             call_type='outgoing' if contact_type == 'followup' else 'incoming',
             contact_type=contact_type,
             purpose=data.get('purpose') or ('followup' if contact_type == 'followup' else 'sale'),

@@ -76,7 +76,7 @@ def fa_digits(value):
     return _to_persian_digits(str(value))
 
 
-@register.filter(name='jdate')
+@register.filter(name='jdate', expects_localtime=True)
 def jdate(value, arg=None):
     """
     تبدیل تاریخ میلادی به شمسی با پشتیبانی از فرمت‌های جنگو (Y, m, d, H, i)
