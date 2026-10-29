@@ -244,22 +244,57 @@ class Reception(models.Model):
     created_at = models.DateTimeField('تاریخ ثبت', auto_now_add=True)
     updated_at = models.DateTimeField('آخرین ویرایش', auto_now=True)
 
+    # Legacy reception records remain archived; each new visit has its own stages.
+    workflow_version = models.PositiveSmallIntegerField(default=2, editable=False)
+    referred_to = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL,
+                                    related_name='receptions_assigned', verbose_name='ارجاع به')
+    referred_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL,
+                                    related_name='receptions_referred', verbose_name='ارجاع‌دهنده')
+    referred_at = models.DateTimeField('زمان ارجاع', null=True, blank=True)
+    case_completed_at = models.DateTimeField('زمان ثبت پرونده', null=True, blank=True)
+    case_completed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL,
+                                          related_name='receptions_case_completed')
+    registration_completed_at = models.DateTimeField('زمان ثبت اطلاعات', null=True, blank=True)
+    registration_completed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL,
+                                                  related_name='receptions_registered')
+
     class Meta:
         verbose_name = 'پذیرش حضوری'
         verbose_name_plural = 'پذیرش‌های حضوری'
         ordering = ['-created_at']
+        constraints = [models.UniqueConstraint(
+            fields=['customer'],
+            condition=models.Q(workflow_version=2, registration_completed_at__isnull=True),
+            name='one_open_reception_per_customer',
+        )]
 
     def __str__(self):
-        return f'{self.customer.name} — {self.get_wait_choice_display() or "بدون انتظار"}'
+        return f'{self.customer.name} — {self.get_person_type_display() or "پذیرش"}'
 
     @property
     def answers_complete(self):
+        if self.workflow_version == 2:
+            return bool(self.person_type)
         return bool(self.person_type and self.has_visit and self.wait_choice)
 
     @property
     def can_submit_info(self):
         """دکمه‌ی «ثبت اطلاعات مشتری» چه زمانی فعال شود"""
+        if self.workflow_version == 2:
+            return bool(self.case_completed_at)
         return self.answers_complete and self.customer.stage == 'potential'
+
+    @property
+    def wait_seconds(self):
+        if not self.wait_started_at:
+            return 0
+        end = self.wait_ended_at or timezone.now()
+        return max(0, int((end - self.wait_started_at).total_seconds()))
+
+    @property
+    def wait_display(self):
+        seconds = self.wait_seconds
+        return f'{seconds // 3600:02}:{seconds // 60 % 60:02}:{seconds % 60:02}'
 
 
 # ═══════════════════════════════════════════════════════════════

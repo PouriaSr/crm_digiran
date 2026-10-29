@@ -3,7 +3,7 @@ from django.shortcuts import redirect
 from django.urls import path
 
 from accounts.permissions import require_permission
-from . import views, hub_views
+from . import views, hub_views, reception_workflow
 
 app_name = 'customers'
 
@@ -29,6 +29,8 @@ urlpatterns = [
     path('<int:pk>/', views.customer_detail, name='detail'),
     path('<int:pk>/edit/', views.customer_edit, name='edit'),
     path('hub/case/save/', hub_views.hub_case_save, name='case_save'),
+    path('hub/reception/clock/', reception_workflow.reception_clock, name='reception_clock'),
+    path('hub/registration/<int:pk>/', reception_workflow.registration_form, name='registration_form'),
     path('hub/reception/action/', hub_views.hub_reception_action, name='reception_action'),
     path('<int:pk>/quick-call/', hub_views.hub_quick_call, name='quick_call'),
     path('hub/calls/<int:pk>/edit/', hub_views.hub_call_edit, name='hub_call_edit'),

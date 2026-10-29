@@ -4,8 +4,8 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
-from accounts.permissions import require_permission, PERMISSIONS
-from .forms import UserCreateForm, UserEditForm, UserPasswordForm, get_user_role, ensure_groups
+from accounts.permissions import require_permission, PERMISSIONS, get_user_role_display
+from .forms import UserCreateForm, UserEditForm, UserPasswordForm, get_user_role, ensure_groups, ROLE_CHOICES
 from crm.duplicate_check import show_duplicate_warnings
 from django.contrib.auth.views import PasswordChangeView
 from django.urls import reverse_lazy
@@ -20,7 +20,7 @@ from django.urls import reverse_lazy
 def user_list(request):
     ensure_groups()
 
-    users = User.objects.all().prefetch_related('groups').order_by('-date_joined')
+    users = User.objects.all().prefetch_related('groups').select_related('role_profile').order_by('-date_joined')
 
     search = request.GET.get('q', '').strip()
     if search:
@@ -28,7 +28,7 @@ def user_list(request):
             Q(username__icontains=search) |
             Q(first_name__icontains=search) |
             Q(last_name__icontains=search) |
-            Q(email__icontains=search)
+            Q(email__icontains=search) | Q(role_profile__display_name__icontains=search)
         )
 
     role_filter = request.GET.get('role', '')
@@ -45,7 +45,10 @@ def user_list(request):
             from .forms import ROLE_GROUP_MAP
             group_name = ROLE_GROUP_MAP.get(role_filter, '')
             if group_name:
-                users = users.filter(groups__name=group_name)
+                names = [group_name, role_filter]
+                if role_filter == 'sales_manager':
+                    names.extend(['سرپرست', 'supervisor'])
+                users = users.filter(groups__name__in=names).distinct()
 
     stats = {
         'total': User.objects.count(),
@@ -61,16 +64,7 @@ def user_list(request):
     for u in page_obj:
         users_data.append({
             'user': u,
-            'role_display': dict([
-                ('admin', 'مدیر کل'),
-                ('sales_manager', 'مدیر فروش'),
-                ('sales', 'کارشناس فروش'),
-                ('support', 'پشتیبان'),
-                ('accountant', 'حسابدار'),
-                ('operator', 'اپراتور'),
-                ('ads_manager', 'مسئول تبلیغات'),
-                ('none', 'بدون نقش خاص'),
-            ]).get(get_user_role(u), '—'),
+            'role_display': get_user_role_display(u),
             'role_key': get_user_role(u),
         })
 
@@ -79,19 +73,7 @@ def user_list(request):
         'stats': stats,
         'search': search,
         'current_role': role_filter,
-        'role_choices': [
-            ('', 'همه'),
-            ('admin', 'مدیر کل'),
-            ('sales_manager', 'مدیر فروش'),
-            ('sales', 'کارشناس فروش'),
-            ('support', 'پشتیبان'),
-            ('accountant', 'حسابدار'),
-            ('operator', 'اپراتور'),
-            ('ads_manager', 'مسئول تبلیغات'),
-            ('none', 'بدون نقش خاص'),
-            ('active', 'فعال'),
-            ('inactive', 'غیرفعال'),
-        ],
+        'role_choices': [('', 'همه')] + ROLE_CHOICES + [('active', 'فعال'), ('inactive', 'غیرفعال')],
     }
     return render(request, 'accounts/user_list.html', context)
 
@@ -114,6 +96,7 @@ def user_create(request):
         'title': 'ایجاد کاربر جدید',
         'submit_label': 'ایجاد کاربر',
         'is_create': True,
+        'permissions_map': PERMISSIONS,
     })
 
 

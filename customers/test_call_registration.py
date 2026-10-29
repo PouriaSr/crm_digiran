@@ -170,7 +170,7 @@ class CallRegistrationTest(TestCase):
         customer = Customer.objects.get()
         self.assertEqual(Call.objects.get().requested_condition, 'retired')
         self.assertFalse(CustomerCase.objects.exists())
-        Reception.objects.create(customer=customer, person_type='customer', info_submitted=True)
+        Reception.objects.create(customer=customer, person_type='customer', referred_at=timezone.now())
         response = self.client.get(reverse('customers:hub'), {'tab': 'case', 'c': customer.pk})
         form = response.context['case_form']
         self.assertEqual(form['condition'].value(), 'retired')
@@ -182,6 +182,7 @@ class CallRegistrationTest(TestCase):
         customer = Customer.objects.create(name='مشتری', mobile=self.data['mobile'], stage='potential')
         case = CustomerCase.objects.create(customer=customer, condition='cash', job='private')
         self.submit(customer_analysis='potential', requested_condition='retired')
+        Reception.objects.create(customer=customer, person_type='customer', referred_at=timezone.now())
         response = self.client.get(reverse('customers:hub'), {'tab': 'case', 'c': customer.pk})
         self.assertEqual(response.context['case_form']['condition'].value(), 'cash')
         self.assertEqual(response.context['case_form']['job'].value(), 'private')

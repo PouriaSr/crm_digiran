@@ -28,54 +28,48 @@ class TabHistoryTest(TestCase):
 
     def _complete_reception(self):
         self._reception()
+        rec = Reception.objects.get(customer=self.customer)
         self.client.post(reverse('customers:reception_action'),
-                         {'customer': self.customer.pk, 'action': 'end_wait'})
-        self.client.post(reverse('customers:reception_action'),
-                         {'customer': self.customer.pk, 'action': 'submit_info'})
+                         {'reception': rec.pk, 'action': 'refer', 'user': self.user.pk})
+        return rec
 
     # ── پذیرش ──
     def test_reception_history_section_rendered(self):
         self._reception()
         body = self.client.get(f'{self.hub}?tab=reception&c={self.customer.pk}').content.decode('utf-8')
-        self.assertIn('تاریخچه پذیرش‌ها', body)
+        self.assertIn('مراجعه‌کنندگان و وضعیت انتظار', body)
         self.assertIn('مشتری تاریخچه', body)
-        self.assertIn(f'tab=reception&c={self.customer.pk}', body)
+        self.assertIn('data-reception-id=', body)
 
     def test_reception_history_in_context(self):
         self._reception()
         r = self.client.get(f'{self.hub}?tab=reception&c={self.customer.pk}')
-        self.assertIn(self.customer.pk, [x.customer_id for x in r.context['reception_history']])
+        self.assertIn(self.customer.pk, [x.customer_id for x in r.context['reception_records']])
 
-    def test_reception_edit_logs_update(self):
-        self._reception('customer', '30')
-        before = RecordUpdate.objects.filter(customer=self.customer, scope='reception').count()
-        self._reception('interviewer', '45')
-        after = RecordUpdate.objects.filter(customer=self.customer, scope='reception').count()
-        self.assertGreater(after, before)
-
-        upd = RecordUpdate.objects.filter(customer=self.customer, scope='reception').order_by('-id').first()
-        labels = [ch['label'] for ch in upd.changes]
-        self.assertIn('فرد مورد نظر', labels)
-        self.assertIn('مدت انتظار', labels)
+    def test_referral_logs_update(self):
+        self._complete_reception()
+        upd = RecordUpdate.objects.filter(customer=self.customer, scope='reception').latest('pk')
+        self.assertEqual(upd.changes[0]['label'], 'ارجاع پذیرش')
+        self.assertEqual(upd.changes[0]['new'], self.user.username)
 
     # ── پرونده ──
     def test_case_history_section_rendered(self):
-        self._complete_reception()
+        rec = self._complete_reception()
         self.client.post(reverse('customers:case_save'), {
-            'customer': self.customer.pk, 'condition': 'cash', 'job': 'private',
+            'reception': rec.pk, 'condition': 'cash', 'job': 'private',
             'credit_rank': 'A1', 'visit_result': 'bought', 'quantity': 1,
         })
         body = self.client.get(f'{self.hub}?tab=case&c={self.customer.pk}').content.decode('utf-8')
-        self.assertIn('تاریخچه پرونده‌ها', body)
+        self.assertIn('فهرست پرونده‌ها و اطلاعات این مرحله', body)
 
     def test_case_edit_logs_before_after(self):
-        self._complete_reception()
+        rec = self._complete_reception()
         self.client.post(reverse('customers:case_save'), {
-            'customer': self.customer.pk, 'condition': 'cash', 'job': 'private',
+            'reception': rec.pk, 'condition': 'cash', 'job': 'private',
             'credit_rank': 'A1', 'visit_result': 'bought', 'quantity': 1,
         })
         self.client.post(reverse('customers:case_save'), {
-            'customer': self.customer.pk, 'condition': 'credit', 'job': 'freelance',
+            'reception': rec.pk, 'condition': 'credit', 'job': 'freelance',
             'credit_rank': 'B2', 'visit_result': 'review', 'quantity': 2,
         })
         upd = RecordUpdate.objects.filter(customer=self.customer, scope='case').order_by('-id').first()
@@ -85,30 +79,30 @@ class TabHistoryTest(TestCase):
                             and ch['new'] == 'B2' for ch in upd.changes))
 
     def test_no_change_no_log(self):
-        self._complete_reception()
+        rec = self._complete_reception()
         self.client.post(reverse('customers:case_save'), {
-            'customer': self.customer.pk, 'condition': 'cash', 'job': 'private',
+            'reception': rec.pk, 'condition': 'cash', 'job': 'private',
             'credit_rank': 'A1', 'visit_result': 'bought', 'quantity': 1,
         })
         before = RecordUpdate.objects.filter(customer=self.customer, scope='case').count()
         # همان داده‌ها دوباره
         self.client.post(reverse('customers:case_save'), {
-            'customer': self.customer.pk, 'condition': 'cash', 'job': 'private',
+            'reception': rec.pk, 'condition': 'cash', 'job': 'private',
             'credit_rank': 'A1', 'visit_result': 'bought', 'quantity': 1,
         })
         after = RecordUpdate.objects.filter(customer=self.customer, scope='case').count()
         self.assertEqual(before, after, 'بدون تغییر نباید خط جدید ثبت شود')
 
     def test_updates_visible_in_page(self):
-        self._complete_reception()
+        rec = self._complete_reception()
         self.client.post(reverse('customers:case_save'), {
-            'customer': self.customer.pk, 'condition': 'cash', 'job': 'private',
+            'reception': rec.pk, 'condition': 'cash', 'job': 'private',
             'credit_rank': 'A1', 'visit_result': 'bought', 'quantity': 1,
         })
         self.client.post(reverse('customers:case_save'), {
-            'customer': self.customer.pk, 'condition': 'cheque', 'job': 'retired',
+            'reception': rec.pk, 'condition': 'cheque', 'cheque_owner': 'self', 'job': 'retired',
             'credit_rank': 'C1', 'visit_result': 'abandoned', 'quantity': 1,
         })
         body = self.client.get(f'{self.hub}?tab=case&c={self.customer.pk}').content.decode('utf-8')
-        self.assertIn('به‌روزرسانی', body)
+        self.assertIn('تاریخچه تغییرات این فرد', body)
         self.assertIn('بازنشسته', body)

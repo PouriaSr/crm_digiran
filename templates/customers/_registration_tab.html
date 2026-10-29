@@ -1,0 +1,21 @@
+{% load fa_numbers %}
+<div x-show="tab === 'registration'" style="display:none" class="space-y-5">
+    <div class="rounded-2xl bg-blue-50 border border-blue-100 p-5"><h2 class="font-bold text-blue-900">ثبت اطلاعات مراجعه‌کنندگان</h2><p class="mt-2 text-sm text-blue-700">افرادی که پرونده‌شان ثبت شده در این مرحله نمایش داده می‌شوند. با انتخاب نام، فرم تکمیل اطلاعات باز می‌شود.</p></div>
+    {% if registration_unlocked %}
+    <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm"><label for="registration-person" class="block text-sm font-bold text-gray-700 mb-2">انتخاب فرد برای ثبت اطلاعات</label><select id="registration-person" onchange="if (this.value) openCustomerModal(this.value)" class="w-full rounded-xl bg-gray-50 border border-gray-200 p-3 text-sm"><option value="">انتخاب کنید...</option>{% for rec in registration_choices %}<option value="{% url 'customers:registration_form' rec.pk %}">{{ rec.customer.name }} — {{ rec.customer.mobile }} · {{ rec.wait_started_at|jdate:'Y/m/d H:i' }}</option>{% endfor %}</select></div>
+    <section class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"><h3 class="p-5 font-bold border-b border-gray-100 text-gray-800">فهرست اطلاعات تکمیل‌شده و در انتظار ثبت</h3><div class="divide-y divide-gray-100">
+        {% for rec in registration_records %}<article class="p-4 sm:p-5 space-y-4">
+            <div class="flex flex-wrap justify-between gap-4"><div>{% include 'customers/_workflow_person.html' with person=rec.customer %}</div><div class="flex flex-col items-start gap-2"><span class="text-xs rounded-lg px-3 py-1.5 {% if rec.registration_completed_at %}bg-emerald-50 text-emerald-700{% else %}bg-amber-50 text-amber-700{% endif %}">{% if rec.registration_completed_at %}اطلاعات ثبت شده{% else %}آماده ثبت اطلاعات{% endif %}</span><button type="button" onclick="openCustomerModal('{% url 'customers:registration_form' rec.pk %}')" class="rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2.5 font-bold">{% if rec.registration_completed_at %}مشاهده و ویرایش اطلاعات{% else %}ثبت اطلاعات{% endif %}</button></div></div>
+            <div class="text-xs text-gray-500 flex flex-wrap gap-3"><span>{{ rec.get_person_type_display }}</span><span>ورود: {{ rec.wait_started_at|jdate:'Y/m/d H:i:s' }}</span><span>انتظار: <span dir="ltr">{{ rec.wait_display }}</span></span><span>پرونده: {{ rec.case_completed_at|jdate:'Y/m/d H:i' }}</span>{% if rec.registration_completed_at %}<span>ثبت اطلاعات: {{ rec.registration_completed_at|jdate:'Y/m/d H:i' }}</span>{% endif %}</div>
+            <details class="rounded-xl border border-gray-100 p-3"><summary class="cursor-pointer text-sm font-bold text-blue-700">نمایش اطلاعات کلی و پرونده</summary><div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                <div><span class="text-gray-400">کارشناس مسئول: </span>{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% else %}—{% endif %}</div>
+                <div><span class="text-gray-400">کد ملی: </span>{{ rec.customer.national_id|default:'—' }}</div>
+                <div><span class="text-gray-400">تولد: </span>{{ rec.customer.birth_date|jdate:'Y/m/d'|default:'—' }}</div>
+                <div><span class="text-gray-400">ایمیل: </span>{{ rec.customer.email|default:'—' }}</div>
+                <div class="sm:col-span-2 break-words"><span class="text-gray-400">آدرس: </span>{{ rec.customer.address|default:'—' }}</div>
+                {% include 'customers/_workflow_case_summary.html' with case=rec.customer.case %}
+            </div></details>
+        </article>{% empty %}<p class="p-10 text-center text-sm text-gray-400">هنوز پرونده‌ای ثبت نشده است.</p>{% endfor %}
+    </div>{% include 'customers/_workflow_pagination.html' with page=registration_records page_key='registration_page' page_tab='registration' %}</section>
+    {% else %}<div class="rounded-2xl bg-white border border-gray-100 p-10 text-center text-gray-500"><div class="text-2xl mb-3">🔒</div>این مرحله پس از ثبت اولین پرونده قابل دسترس شما فعال می‌شود.</div>{% endif %}
+</div>

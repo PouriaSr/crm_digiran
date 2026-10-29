@@ -1,0 +1,2 @@
+{% load fa_numbers %}
+{% if page.paginator.num_pages > 1 %}<nav class="flex justify-between items-center text-sm p-4 border-t border-gray-100" aria-label="صفحه‌بندی"><span>{{ page.number|fa_num }} از {{ page.paginator.num_pages|fa_num }}</span><div class="flex gap-3">{% if page.has_previous %}<a class="text-blue-600" href="?tab={{ page_tab }}&{{ page_key }}={{ page.previous_page_number }}">قبلی</a>{% endif %}{% if page.has_next %}<a class="text-blue-600" href="?tab={{ page_tab }}&{{ page_key }}={{ page.next_page_number }}">بعدی</a>{% endif %}</div></nav>{% endif %}

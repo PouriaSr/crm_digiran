@@ -7,7 +7,7 @@ from accounts.models import UserPermissionOverride
 from accounts.permissions import (PERMISSIONS, PERMISSION_META, ROLE_SUPPORT,
                                   ROLE_TO_GROUP, has_permission)
 
-NEW_KEYS = ('customers.profile_full', 'customers.recruitment', 'customers.history')
+NEW_KEYS = ('customers.profile_full', 'customers.registration', 'customers.history')
 
 
 class AdvancedPermissionsTest(TestCase):
@@ -27,7 +27,7 @@ class AdvancedPermissionsTest(TestCase):
         for key in NEW_KEYS:
             self.assertIn(key, PERMISSIONS)
             self.assertIn(key, PERMISSION_META)
-            self.assertEqual(PERMISSION_META[key][0], 'مشتریان')
+            self.assertIn(PERMISSION_META[key][0], ('مشتریان', 'تب‌های مرکز مشتریان'))
 
     def test_all_permissions_have_meta(self):
         self.assertEqual(set(PERMISSIONS), set(PERMISSION_META))
@@ -41,7 +41,7 @@ class AdvancedPermissionsTest(TestCase):
 
     def test_matrix_labels_new_features(self):
         body = self.client.get(f'/accounts/users/{self.support.pk}/edit/').content.decode('utf-8')
-        for label in ('پروفایل کامل مشتری', 'واحد استخدام', 'تاریخچه تب‌ها'):
+        for label in ('پروفایل کامل مشتری', 'تب ثبت اطلاعات', 'تاریخچه تب‌ها'):
             self.assertIn(label, body)
 
     # ── override ──
@@ -58,24 +58,24 @@ class AdvancedPermissionsTest(TestCase):
 
     def test_override_allow_and_deny(self):
         self._save_with(customers_profile_full='allow',
-                        customers_recruitment='allow',
+                        customers_registration='allow',
                         customers_history='deny')
         self.support.refresh_from_db()
         self.assertTrue(has_permission(self.support, 'customers.profile_full'))
-        self.assertTrue(has_permission(self.support, 'customers.recruitment'))
+        self.assertTrue(has_permission(self.support, 'customers.registration'))
         self.assertFalse(has_permission(self.support, 'customers.history'))
 
     def test_override_affects_ui(self):
-        self._save_with(customers_recruitment='allow', customers_history='deny')
+        self._save_with(customers_registration='allow', customers_reception='allow', customers_history='deny')
         c = self.client
         c.force_login(self.support)
         hub = c.get(reverse('customers:hub') + '?tab=info').content.decode('utf-8')
-        self.assertIn("tab = 'recruitment'", hub)
+        self.assertIn("🔒 ثبت اطلاعات", hub)
         rec = c.get(reverse('customers:hub') + '?tab=reception').content.decode('utf-8')
         self.assertNotIn('تاریخچه پذیرش‌ها', rec)
 
     def test_default_roles(self):
-        self.assertEqual(set(PERMISSIONS['customers.recruitment']),
+        self.assertEqual(set(PERMISSIONS['customers.registration']),
                          {'admin', 'sales_manager'})
         self.assertEqual(set(PERMISSIONS['customers.profile_full']),
                          {'admin', 'sales_manager'})

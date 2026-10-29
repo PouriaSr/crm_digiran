@@ -1,0 +1,7 @@
+<div><span class="text-gray-400">شرایط: </span>{{ case.get_condition_display|default:'—' }}</div>
+<div><span class="text-gray-400">شغل: </span>{{ case.get_job_display|default:'—' }}</div>
+<div><span class="text-gray-400">رتبه اعتباری: </span>{{ case.credit_rank|default:'—' }}</div>
+<div><span class="text-gray-400">وام‌ها: </span>{{ case.loans_display|default:'—' }}</div>
+<div><span class="text-gray-400">کالا: </span>{{ case.product|default:'—' }}{% if case.product %} × {{ case.quantity }}{% endif %}</div>
+<div><span class="text-gray-400">نتیجه مراجعه: </span>{{ case.get_visit_result_display|default:'—' }}</div>
+{% if case.condition == 'cheque' %}<div><span class="text-gray-400">چک برای: </span>{{ case.get_cheque_owner_display|default:'—' }}</div>{% if case.cheque_owner == 'other' %}<div><span class="text-gray-400">صاحب چک: </span>{{ case.cheque_other_name }}</div><div><span class="text-gray-400">شماره صاحب چک: </span>{{ case.cheque_other_phone }}</div>{% endif %}{% endif %}

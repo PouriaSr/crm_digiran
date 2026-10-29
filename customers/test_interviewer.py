@@ -1,85 +1,68 @@
-"""تست ماندگار: جریان مصاحبه‌کننده (واحد استخدام)."""
+"""Interview visitors share the same staged workflow as customers."""
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
-
 from customers.models import Customer, Reception
 
 
 class InterviewerFlowTest(TestCase):
-
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_superuser('int_admin', password='t123456')
-        cls.cand = Customer.objects.create(name='کاندید تست', mobile='09121290001',
-                                           stage='potential', needs_followup=True,
-                                           assigned_to=cls.user, created_by=cls.user)
-        cls.other = Customer.objects.create(name='مشتری نمونه', mobile='09121290002',
-                                            stage='lead', assigned_to=cls.user,
-                                            created_by=cls.user)
+        cls.user = User.objects.create_superuser('int_admin')
+        cls.cand = Customer.objects.create(name='کاندید تست', mobile='09121290001', assigned_to=cls.user)
+        cls.other = Customer.objects.create(name='مشتری نمونه', mobile='09121290002', assigned_to=cls.user)
 
     def setUp(self):
         self.client.force_login(self.user)
         self.hub = reverse('customers:hub')
+        self.action = reverse('customers:reception_action')
 
-    def _answer(self, person, wait='45'):
-        data = {'customer': self.cand.pk, 'action': 'answer',
-                'person_type': person, 'wait_choice': wait}
-        if person == 'customer':
-            data['has_visit'] = 'yes'
-        return self.client.post(reverse('customers:reception_action'), data)
+    def arrive(self):
+        self.client.post(self.action, {'customer': self.cand.pk, 'action': 'arrive', 'person_type': 'interviewer'})
+        return Reception.objects.get(customer=self.cand)
 
-    # ── ثبت به‌عنوان مصاحبه‌کننده ──
     def test_flag_set_for_interviewer(self):
-        self._answer('interviewer')
-        self.cand.refresh_from_db()
+        self.arrive(); self.cand.refresh_from_db()
         self.assertTrue(self.cand.is_interviewer)
 
-    def test_hidden_from_info_list(self):
-        self._answer('interviewer')
-        r = self.client.get(f'{self.hub}?tab=info')
-        ids = [c.pk for c in r.context['customers']]
-        self.assertNotIn(self.cand.pk, ids)
-        self.assertIn(self.other.pk, ids)
+    def test_interviewers_remain_in_shared_information_list(self):
+        self.arrive()
+        ids = [row.pk for row in self.client.get(self.hub).context['customers']]
+        self.assertIn(self.cand.pk, ids); self.assertIn(self.other.pk, ids)
 
-    def test_hidden_from_case_selector(self):
-        self._answer('interviewer')
-        r = self.client.get(f'{self.hub}?tab=case&c={self.other.pk}')
-        self.assertNotIn(self.cand.pk, [c.pk for c in r.context['case_customers']])
+    def test_case_selector_requires_referral_for_interviewers(self):
+        rec = self.arrive()
+        response = self.client.get(self.hub, {'tab': 'case'})
+        self.assertFalse(response.context['case_choices'].exists())
+        self.client.post(self.action, {'action': 'refer', 'reception': rec.pk, 'user': self.user.pk})
+        self.assertIn(rec, self.client.get(self.hub, {'tab': 'case'}).context['case_choices'])
 
-    # ── تب پذیرش شرطی ──
-    def test_reception_shows_interviewer_question(self):
-        self._answer('interviewer')
-        body = self.client.get(f'{self.hub}?tab=reception&c={self.cand.pk}').content.decode('utf-8')
-        self.assertIn('مصاحبه‌کننده چند دقیقه در سالن منتظر است؟', body)
-        self.assertIn("x-show=\"person !== 'interviewer'\"", body)
-        self.assertIn('پرونده مصاحبه‌کننده', body)
+    def test_reception_has_same_question_and_clock_for_both_types(self):
+        self.arrive()
+        response = self.client.get(self.hub, {'tab': 'reception'})
+        self.assertContains(response, 'مراجعه‌کننده، مشتری است یا مصاحبه‌کننده؟')
+        self.assertContains(response, 'data-wait-start=')
+        self.assertNotContains(response, 'name="has_visit"')
 
-    # ── تب واحد استخدام ──
-    def test_recruitment_tab_lists_interviewers(self):
-        self._answer('interviewer')
-        r = self.client.get(f'{self.hub}?tab=recruitment')
-        self.assertIn('واحد استخدام', r.content.decode('utf-8'))
-        self.assertIn(self.cand.pk, [x.customer_id for x in r.context['recruiter_rows']])
+    def test_old_recruitment_url_opens_registration(self):
+        self.arrive()
+        response = self.client.get(self.hub, {'tab': 'recruitment'})
+        self.assertEqual(response.context['active_tab'], 'registration')
+        self.assertContains(response, 'این مرحله پس از ثبت اولین پرونده')
 
-    def test_recruitment_tab_excludes_customers(self):
-        r = self.client.get(f'{self.hub}?tab=recruitment')
-        self.assertNotIn(self.other.pk, [x.customer_id for x in r.context['recruiter_rows']])
+    def test_interviewers_are_not_ready_for_registration_just_on_arrival(self):
+        self.arrive()
+        response = self.client.get(self.hub, {'tab': 'registration'})
+        self.assertFalse(response.context['registration_unlocked'])
 
-    # ── بازگشت به مشتری ──
-    def test_switch_back_restores_visibility(self):
-        self._answer('interviewer')
-        self._answer('customer', '30')
-        self.cand.refresh_from_db()
-        self.assertFalse(self.cand.is_interviewer)
-
-        r = self.client.get(f'{self.hub}?tab=info')
-        self.assertIn(self.cand.pk, [c.pk for c in r.context['customers']])
-
-        r2 = self.client.get(f'{self.hub}?tab=recruitment')
-        self.assertNotIn(self.cand.pk, [x.customer_id for x in r2.context['recruiter_rows']])
+    def test_repeated_arrival_cannot_change_active_visit_type(self):
+        rec = self.arrive()
+        self.client.post(self.action, {'customer': self.cand.pk, 'action': 'arrive', 'person_type': 'customer'})
+        self.cand.refresh_from_db(); rec.refresh_from_db()
+        self.assertTrue(self.cand.is_interviewer)
+        self.assertEqual(rec.person_type, 'interviewer')
 
     def test_data_not_deleted(self):
-        self._answer('interviewer')
-        self._answer('customer', '30')
-        self.assertTrue(Reception.objects.filter(customer=self.cand).exists())
+        self.arrive()
+        self.assertTrue(Customer.objects.filter(pk=self.cand.pk).exists())
+        self.assertEqual(Reception.objects.filter(customer=self.cand).count(), 1)

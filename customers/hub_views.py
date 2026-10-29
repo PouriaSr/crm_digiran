@@ -18,10 +18,9 @@ from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST, require_GET
 from accounts.permissions import has_permission, require_permission
-from .models import (Customer, CustomerCase, FollowUp, RecordUpdate, Reception,
-                     Visit)
+from .models import Customer, FollowUp
 from .sms import send_address_sms
-from .forms import CustomerCaseForm, HubCallForm
+from .forms import HubCallForm
 from calls.models import Call
 from sales.models import Invoice
 from ads.models import AdSource
@@ -154,15 +153,20 @@ def _calls_count_subquery():
 
 @never_cache
 @login_required
-@require_permission('customers.view')
 def customer_hub(request):
-    tab = request.GET.get('tab', 'info')
+    from .reception_workflow import allowed_tabs, build_workflow_context
+    tabs = allowed_tabs(request.user)
+    if not tabs:
+        raise PermissionDenied('دسترسی به تب‌های مرکز مشتریان ندارید.')
+    tab = request.GET.get('tab') or tabs[0]
+    tab = {'call': 'info', 'followup': 'info', 'visit': 'info', 'recruitment': 'registration'}.get(tab, tab)
+    if tab not in tabs:
+        raise PermissionDenied('دسترسی این تب برای شما فعال نیست.')
     search = request.GET.get('q', '').strip()
     
     from django.db.models import Prefetch
     open_due_sq, last_done_sq = _followup_annotation()
     customers = (Customer.all_objects
-                 .filter(is_interviewer=False)
                  .select_related('assigned_to', 'created_by', 'ad_source')
                  .prefetch_related(Prefetch(
                      'calls',
@@ -222,134 +226,10 @@ def customer_hub(request):
         sort = 'priority'
         customers = customers.order_by('followup_priority', F('open_fu_due').asc(nulls_last=True), F('open_fu_time').asc(nulls_first=True), '-created_at', '-pk')
 
-    def _range_filter(field, value, datetime_field=False):
-        """
-        بازه‌ی آماده روی یک فیلد تاریخ.
-
-        ⚠️ روی DateTimeField باید __date بگذاریم، ولی روی DateField نه
-        (وگرنه «Unsupported lookup 'date'» می‌دهد).
-        """
-        suffix = '__date' if datetime_field else ''
-        if value == 'today':
-            return Q(**{f'{field}{suffix}': today})
-        if value == 'yesterday':
-            return Q(**{f'{field}{suffix}': today - timedelta(days=1)})
-        if value == '7':
-            return Q(**{f'{field}{suffix}__gte': today - timedelta(days=6)})
-        if value == '30':
-            return Q(**{f'{field}{suffix}__gte': today - timedelta(days=29)})
-        if value == '90':
-            return Q(**{f'{field}{suffix}__gte': today - timedelta(days=89)})
-        return Q()
-
-
-    # ═══ تب پذیرش ═══
-    reception_customer = None
-    reception = None
-    reception_customers = []
-    if has_permission(request.user, 'customers.reception'):
-        reception_customers = Customer.objects.order_by('name')[:500]
-        cid = request.GET.get('c', '')
-        if cid.isdigit():
-            reception_customer = Customer.objects.filter(pk=int(cid)).first()
-            if reception_customer:
-                reception = (Reception.objects
-                             .filter(customer=reception_customer)
-                             .order_by('-created_at').first())
-
-    # ═══ تاریخچه تب‌های پذیرش و پرونده ═══
-    reception_history = []
-    case_history = []
-
-    if has_permission(request.user, 'customers.history'):
-        seen = set()
-        for r in (Reception.objects.select_related('customer', 'created_by')
-                  .order_by('-created_at')[:200]):
-            if r.customer_id in seen:
-                continue
-            seen.add(r.customer_id)
-            reception_history.append(r)
-        reception_history = reception_history[:50]
-
-    if has_permission(request.user, 'customers.history'):
-        seen = set()
-        for k in (CustomerCase.objects.select_related('customer', 'created_by', 'product')
-                  .order_by('-created_at')[:200]):
-            if k.customer_id in seen:
-                continue
-            seen.add(k.customer_id)
-            case_history.append(k)
-        case_history = case_history[:50]
-
-    hist_ids = [r.customer_id for r in reception_history] + [k.customer_id for k in case_history]
-    updates_map = {}
-    if hist_ids:
-        for u in (RecordUpdate.objects.filter(customer_id__in=hist_ids)
-                  .select_related('edited_by').order_by('created_at')):
-            updates_map.setdefault((u.scope, u.customer_id), []).append(u)
-
-    # هر ردیف تاریخچه، تغییرات خودش را همراه دارد
-    for r in reception_history:
-        r.updates = updates_map.get(('reception', r.customer_id), [])
-    for k in case_history:
-        k.updates = updates_map.get(('case', k.customer_id), [])
-
-    # ═══ تب واحد استخدام (مصاحبه‌کننده‌ها) ═══
-    recruiter_rows = []
-    recruiter_customer = None
-    if has_permission(request.user, 'customers.recruitment'):
-        rid = request.GET.get('c', '')
-        if rid.isdigit():
-            recruiter_customer = Customer.objects.filter(pk=int(rid),
-                                                         is_interviewer=True).first()
-        qs = (Reception.objects
-              .filter(person_type='interviewer')
-              .select_related('customer', 'created_by')
-              .order_by('-created_at'))
-        seen = set()
-        for r in qs:
-            if r.customer_id in seen:
-                continue
-            seen.add(r.customer_id)
-            recruiter_rows.append(r)
-
-    # ═══ تب پرونده — فقط بعد از تکمیل پذیرش باز است ═══
-    case_unlocked = False
-    case_customer = None
-    customer_case = None
-    case_customers = []
-    if has_permission(request.user, 'customers.case'):
-        case_customers = (Customer.objects.filter(is_interviewer=False)
-                          .order_by('name')[:500])
-        ccid = request.GET.get('c', '')
-        if ccid.isdigit():
-            # مصاحبه‌کننده پرونده ندارد → تب پرونده برایش قفل می‌ماند
-            case_customer = Customer.objects.filter(
-                pk=int(ccid), is_interviewer=False).first()
-            if case_customer:
-                customer_case = CustomerCase.objects.filter(customer=case_customer).first()
-                last_rec = (Reception.objects
-                            .filter(customer=case_customer)
-                            .order_by('-created_at').first())
-                case_unlocked = bool(
-                    last_rec and last_rec.info_submitted
-                    and case_customer.stage == 'potential'
-                )
-
-    # Prefill only empty case fields; never turn a call into a completed case.
-    case_initial = {}
-    if case_customer:
-        condition = (case_customer.calls.exclude(requested_condition='')
-                     .order_by('-created_at', '-pk')
-                     .values_list('requested_condition', flat=True).first())
-        if condition and not (customer_case and customer_case.condition):
-            case_initial['condition'] = condition
-        if condition == 'retired' and not (customer_case and customer_case.job):
-            case_initial['job'] = 'retired'
+    workflow_context = build_workflow_context(request)
 
     # گزینه‌های لیست‌ها
     filter_customers = (Customer.all_objects
-                        .filter(is_interviewer=False)
                         .annotate(n_calls=Count('calls'))
                         .order_by('name', 'id')[:1000])
     filter_sources = AdSource.objects.order_by('phone_number')
@@ -359,13 +239,13 @@ def customer_hub(request):
     # ═══ پیگیری‌ها: یک تعریف واحد از «در انتظار» ═══
     # در انتظار = تیک نخورده + تاریخ دارد + تاریخش رسیده (امروز یا گذشته)
     open_followups = FollowUp.objects.filter(
-        is_done=False, customer__is_deleted=False, customer__is_interviewer=False,
+        is_done=False, customer__is_deleted=False,
     )
     due_followups = open_followups.filter(due_date__lte=today)
 
     
-    total_customers = Customer.objects.filter(is_interviewer=False).count()
-    total_leads = Customer.objects.filter(stage='lead', is_interviewer=False).count()
+    total_customers = Customer.objects.count()
+    total_leads = Customer.objects.filter(stage='lead').count()
     pending_followups = due_followups.count()
     upcoming_followups_count = open_followups.filter(due_date__gt=today).count()
     recent_revenue = Invoice.objects.filter(status='paid').aggregate(total=Sum('total'))['total'] or 0
@@ -383,31 +263,19 @@ def customer_hub(request):
         'customers': customers[:50],
         'today': today,
         'filter_customers': filter_customers,
-        'reception_customers': reception_customers,
-        'reception_customer': reception_customer,
-        'reception': reception,
-        'wait_choices': Reception.WAIT_CHOICES,
-        'case_unlocked': case_unlocked,
-        'reception_history': reception_history,
-        'case_history': case_history,
-        'updates_map': updates_map,
-        'recruiter_rows': recruiter_rows,
-        'recruiter_customer': recruiter_customer,
-        'case_customers': case_customers,
-        'case_customer': case_customer,
-        'customer_case': customer_case,
-        'case_form': CustomerCaseForm(instance=customer_case, initial=case_initial) if case_customer else None,
         'filter_sources': filter_sources,
         'reassign_users': reassign_users,
         'contact_type_choices': Call.CONTACT_TYPE_CHOICES,
         'type_choices': Call.CALL_TYPE_CHOICES,
-        'invoices': (Invoice.objects.select_related('customer', 'created_by').order_by('-created_at')[:20]),
+        'invoices': (Invoice.objects.select_related('customer', 'created_by').order_by('-created_at')[:20]) if 'invoice' in tabs else [],
         'call_form': HubCallForm(user=request.user),
     }
     
+    context.update(workflow_context)
+
     # دکمه «ثبت تماس جدید»:
     #   جستجو خالی → غیرفعال · مشتری موجود → غیرفعال · مشتری ناموجود → فعال
-    show_new = bool(search) and not Customer.all_objects.filter(is_interviewer=False).filter(
+    show_new = bool(search) and not Customer.all_objects.filter(
         Q(name__icontains=search) | Q(mobile__icontains=search)
     ).exists()
     context['show_new'] = show_new
@@ -837,143 +705,4 @@ def hub_quick_call(request, pk):
     return _quick_call_redirect(request, back)
 
 
-@login_required
-@require_permission('customers.reception')
-@require_POST
-def hub_reception_action(request):
-    """
-    عملیات تب پذیرش:
-      answer      → ثبت ۳ پاسخ + شروع تایمر از ادامه‌ی گزینه
-      end_wait    → پایان انتظار و محاسبه‌ی مجموع دقیقه
-      submit_info → اجازه/ثبت «اطلاعات مشتری» و انتقال به فرم ویرایش
-    """
-    customer_id = request.POST.get('customer') or ''
-    action = request.POST.get('action') or ''
-    customer = get_object_or_404(Customer.objects, pk=customer_id)
-    back = f"{reverse('customers:hub')}?tab=reception&c={customer.pk}"
-
-    rec = (Reception.objects.filter(customer=customer).order_by('-created_at').first())
-    if rec is None:
-        rec = Reception.objects.create(customer=customer, created_by=request.user)
-
-    # عکس وضعیت قبلی برای ثبت تغییرات
-    before = {
-        'person_type': rec.get_person_type_display() if rec.person_type else '',
-        'has_visit': rec.get_has_visit_display() if rec.has_visit else '',
-        'wait_choice': rec.get_wait_choice_display() if rec.wait_choice else '',
-        'info_submitted': rec.info_submitted,
-    }
-
-    if action == 'answer':
-        rec.person_type = request.POST.get('person_type') or rec.person_type
-        rec.has_visit = request.POST.get('has_visit') or rec.has_visit
-
-        # مصاحبه‌کننده یا مشتری؟ → پرچم روی مشتری (قابل بازگشت)
-        customer.is_interviewer = (rec.person_type == 'interviewer')
-        customer.save(update_fields=['is_interviewer', 'updated_at'])
-
-        wc = request.POST.get('wait_choice') or ''
-        if wc in Reception.WAIT_OFFSET_MINUTES:
-            rec.wait_choice = wc
-            offset = Reception.WAIT_OFFSET_MINUTES[wc]
-            rec.wait_started_at = timezone.now() - timedelta(minutes=offset)
-            rec.wait_ended_at = None
-            rec.wait_minutes_total = None
-            rec.is_waiting = True
-        rec.save()
-        messages.success(request, 'پاسخ‌ها ثبت شد.')
-
-    elif action == 'end_wait':
-        if rec.is_waiting:
-            rec.wait_ended_at = timezone.now()
-            rec.is_waiting = False
-            if rec.wait_started_at:
-                rec.wait_minutes_total = int(
-                    (rec.wait_ended_at - rec.wait_started_at).total_seconds() // 60
-                )
-            rec.save()
-            messages.success(
-                request,
-                f'انتظار پایان یافت — مجموع {rec.wait_minutes_total} دقیقه.'
-            )
-
-    elif action == 'submit_info':
-        if not rec.can_submit_info:
-            messages.error(
-                request,
-                'ثبت اطلاعات نیازمند برچسب «بالقوه» و پاسخ کامل به سؤالات است.'
-            )
-            return redirect(back)
-        rec.info_submitted = True
-        rec.save(update_fields=['info_submitted', 'updated_at'])
-        messages.info(request, 'اطلاعات مشتری را تکمیل و ذخیره کنید.')
-        return redirect(f"{reverse('customers:hub')}?tab=info&open_edit={customer.pk}")
-
-    # ثبت تغییرات تب پذیرش (خط جدید در تاریخچه)
-    rec.refresh_from_db()
-    after = {
-        'person_type': rec.get_person_type_display() if rec.person_type else '',
-        'has_visit': rec.get_has_visit_display() if rec.has_visit else '',
-        'wait_choice': rec.get_wait_choice_display() if rec.wait_choice else '',
-        'info_submitted': rec.info_submitted,
-    }
-    _log_record_update(customer, 'reception', before, after, RECEPTION_LABELS, request.user)
-
-    return redirect(back)
-
-
-@login_required
-@require_permission('customers.case')
-@require_POST
-def hub_case_save(request):
-    """ثبت/به‌روزرسانی پرونده‌ی مشتری از تب پرونده"""
-    customer_id = request.POST.get('customer') or ''
-    customer = get_object_or_404(Customer.objects, pk=customer_id)
-    back = f"{reverse('customers:hub')}?tab=case&c={customer.pk}"
-
-    # پرونده فقط برای مشتری «بالقوه» که پذیرشش تکمیل شده مجاز است
-    last_rec = (Reception.objects.filter(customer=customer)
-                .order_by('-created_at').first())
-    if customer.stage != 'potential' or not (last_rec and last_rec.info_submitted):
-        messages.error(request, 'ثبت پرونده نیازمند برچسب «بالقوه» و تکمیل پذیرش است.')
-        return redirect(back)
-
-    case = CustomerCase.objects.filter(customer=customer).first()
-    is_new = case is None
-    if is_new:
-        case = CustomerCase(customer=customer)
-
-    # عکس وضعیت قبلی برای ثبت تغییرات
-    def _snap(obj):
-        if obj is None or not obj.pk:
-            return {}
-        return {
-            'condition': obj.get_condition_display() if obj.condition else '',
-            'cheque_owner': obj.get_cheque_owner_display() if obj.cheque_owner else '',
-            'cheque_other_name': obj.cheque_other_name or '',
-            'cheque_other_phone': obj.cheque_other_phone or '',
-            'job': obj.get_job_display() if obj.job else '',
-            'credit_rank': obj.credit_rank or '',
-            'active_loans': obj.active_loans or [],
-            'product': str(obj.product) if obj.product_id else '',
-            'quantity': obj.quantity,
-            'visit_result': obj.get_visit_result_display() if obj.visit_result else '',
-        }
-
-    before_case = _snap(case)
-
-    form = CustomerCaseForm(request.POST, instance=case)
-    if form.is_valid():
-        obj = form.save(commit=False)
-        if not obj.created_by_id:
-            obj.created_by = request.user
-        obj.save()
-
-        # خط جدید در تاریخچه (فقط اگر تغییری واقعاً رخ داده باشد)
-        _log_record_update(customer, 'case', before_case, _snap(obj), CASE_LABELS, request.user)
-        messages.success(request, 'پرونده مشتری ثبت شد.' if is_new else 'پرونده مشتری به‌روزرسانی شد.')
-    else:
-        errs = '، '.join(f'{f}: {", ".join(m)}' for f, m in form.errors.items())
-        messages.error(request, f'خطا در ثبت پرونده — {errs}')
-
-    return redirect(back)
+from .reception_workflow import reception_action as hub_reception_action, case_save as hub_case_save

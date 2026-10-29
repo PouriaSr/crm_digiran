@@ -43,6 +43,8 @@ AUDIT_MODELS = {
     'customers.Reception': [
         'person_type', 'has_visit', 'wait_choice',
         'wait_minutes_total', 'is_waiting', 'info_submitted',
+        'wait_started_at', 'wait_ended_at', 'referred_to', 'referred_by', 'referred_at',
+        'case_completed_at', 'registration_completed_at',
     ],
     'customers.CustomerCase': [
         'condition', 'cheque_owner', 'cheque_other_name', 'cheque_other_phone',
@@ -50,6 +52,8 @@ AUDIT_MODELS = {
     ],
 
     # ─── کاربران ───
+    'accounts.UserRoleProfile': ['display_name'],
+    'accounts.UserPermissionOverride': ['permission_key', 'granted'],
     'auth.User': [
         'username', 'email', 'first_name', 'last_name',
         'is_active', 'is_staff', 'is_superuser',

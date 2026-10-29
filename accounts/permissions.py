@@ -22,15 +22,17 @@ ROLE_SUPPORT = 'support'
 ROLE_ACCOUNTANT = 'accountant'
 ROLE_OPERATOR = 'operator'
 ROLE_ADS_MANAGER = 'ads_manager'
+ROLE_SECRETARY = 'secretary'
 
 ROLE_DISPLAY = {
     ROLE_ADMIN: 'مدیر کل',
-    ROLE_SALES_MANAGER: 'مدیر فروش',
+    ROLE_SALES_MANAGER: 'سرپرست',
     ROLE_SALES: 'کارشناس فروش',
     ROLE_SUPPORT: 'پشتیبان',
     ROLE_ACCOUNTANT: 'حسابدار',
     ROLE_OPERATOR: 'اپراتور',
     ROLE_ADS_MANAGER: 'مسئول تبلیغات',
+    ROLE_SECRETARY: 'منشی',
 }
 
 ROLE_TO_GROUP = {
@@ -40,6 +42,7 @@ ROLE_TO_GROUP = {
     ROLE_ACCOUNTANT: 'حسابدار',
     ROLE_OPERATOR: 'اپراتور',
     ROLE_ADS_MANAGER: 'مسئول تبلیغات',
+    ROLE_SECRETARY: 'منشی',
 }
 
 
@@ -47,20 +50,22 @@ ROLE_TO_GROUP = {
 # تعریف دسترسی‌ها
 # ═══════════════════════════════════════════════════════════
 PERMISSIONS = {
-    'customers.view':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
-    'customers.add':    [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR],
-    'customers.edit':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR],
+    'customers.view':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
+    'customers.add':    [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR, ROLE_SECRETARY],
+    'customers.edit':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR, ROLE_SECRETARY],
     'customers.profile_full': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'customers.delete': [ROLE_ADMIN, ROLE_SALES_MANAGER],
-    'customers.followup': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
-    'customers.reception': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SUPPORT],
+    'customers.followup': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
+    'customers.reception': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SECRETARY],
     'customers.case': [ROLE_ADMIN, ROLE_SALES_MANAGER],
-    'customers.recruitment': [ROLE_ADMIN, ROLE_SALES_MANAGER],
+    'customers.registration': [ROLE_ADMIN, ROLE_SALES_MANAGER],
+    'customers.info': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
+    'customers.invoices': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_ADS_MANAGER],
     'customers.history': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT],
 
-    'calls.view':       [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
-    'calls.add':        [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
-    'calls.edit':       [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT],
+    'calls.view':       [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
+    'calls.add':        [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
+    'calls.edit':       [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_SECRETARY],
     'calls.delete':     [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'calls.reassign':   [ROLE_ADMIN, ROLE_SALES_MANAGER],
 
@@ -85,7 +90,7 @@ PERMISSIONS = {
     'hr.review_leaves':     [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'hr.attendance':        [ROLE_ADMIN, ROLE_SALES_MANAGER],
 
-    'dashboard.view':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
+    'dashboard.view':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
     'dashboard.export': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_ACCOUNTANT],
     'dashboard.bi':     [ROLE_ADMIN, ROLE_SALES_MANAGER],
 
@@ -107,9 +112,9 @@ PERMISSION_META = {
     'customers.edit':   ('مشتریان', 'ویرایش', 'ویرایش اطلاعات مشتریان'),
     'customers.profile_full': ('مشتریان', 'پروفایل کامل مشتری', 'کد ملی، تولد، آدرس، ایمیل و فاکتورها'),
     'customers.delete': ('مشتریان', 'حذف', 'غیرفعال‌سازی و بازگردانی مشتریان'),
-    'customers.reception': ('مشتریان', 'پذیرش حضوری', 'تب پذیرش و ثبت سه پاسخ'),
-    'customers.case': ('مشتریان', 'پرونده مشتری', 'ثبت/ویرایش پرونده مشتری'),
-    'customers.recruitment': ('مشتریان', 'واحد استخدام', 'تب واحد استخدام و پرونده مصاحبه‌کننده'),
+    'customers.registration': ('تب‌های مرکز مشتریان', 'تب ثبت اطلاعات', 'تکمیل اطلاعات پس از ثبت پرونده'),
+    'customers.info': ('تب‌های مرکز مشتریان', 'تب اطلاعات', 'فهرست مشتریان، تماس‌ها و پیگیری‌ها'),
+    'customers.invoices': ('تب‌های مرکز مشتریان', 'تب فاکتورها', 'مشاهده فاکتورها در مرکز مشتریان'),
     'customers.history': ('مشتریان', 'تاریخچه تب‌ها', 'مشاهده تاریخچه و به‌روزرسانی‌های تب پذیرش/پرونده'),
 
     'calls.view':     ('تماس‌ها', 'مشاهده', 'مشاهده‌ی لیست و جزئیات تماس‌ها'),
@@ -152,8 +157,8 @@ PERMISSION_META = {
     'ads.delete':      ('تبلیغات', 'حذف', 'حذف تبلیغات'),
     'ads.manage_defs': ('تبلیغات', 'مدیریت تعاریف', 'مدیریت پلتفرم‌ها، فرآیندها و منابع'),
     'customers.followup': ('مشتریان', 'پیگیری', 'پیگیری تماس و یادداشت مشتری'),
-    'customers.reception': ('مشتریان', 'پذیرش حضوری', 'تب پذیرش، سؤالات و تایمر انتظار'),
-    'customers.case': ('مشتریان', 'پرونده مشتری', 'تکمیل و مشاهده‌ی پرونده‌ی اعتباری مشتری'),
+    'customers.reception': ('تب‌های مرکز مشتریان', 'تب پذیرش', 'ثبت ورود، مشاهده صف و ارجاع به کاربر'),
+    'customers.case': ('تب‌های مرکز مشتریان', 'تب پرونده', 'تکمیل پرونده افراد ارجاع‌شده'),
 }
 
 
@@ -174,17 +179,14 @@ def get_user_role(user):
     if user.is_superuser:
         return ROLE_ADMIN
 
-    if user.groups.filter(name__in=['سرپرست', 'supervisor']).exists():
+    names = {group.name for group in user.groups.all()}
+    if names & {'سرپرست', 'supervisor'}:
         return ROLE_SALES_MANAGER
-
-    # ─── چک گروه فارسی ───
     for role_key, group_name in ROLE_TO_GROUP.items():
-        if user.groups.filter(name=group_name).exists():
+        if group_name in names:
             return role_key
-
-    # ─── fallback: چک گروه انگلیسی (برای سازگاری با تست‌ها/legacy) ───
-    for role_key in ROLE_TO_GROUP.keys():
-        if user.groups.filter(name=role_key).exists():
+    for role_key in ROLE_TO_GROUP:
+        if role_key in names:
             return role_key
 
     return 'none'
@@ -192,7 +194,8 @@ def get_user_role(user):
 
 def get_user_role_display(user):
     role = get_user_role(user)
-    return ROLE_DISPLAY.get(role, '—')
+    profile = getattr(user, 'role_profile', None)
+    return (profile.display_name if profile and profile.display_name else ROLE_DISPLAY.get(role, '—'))
 
 
 def has_role(user, *roles):
@@ -216,9 +219,8 @@ def has_permission(user, permission_name):
         return True
 
     # 1. override
-    override = user.permission_overrides.filter(
-        permission_key=permission_name,
-    ).first()
+    override = next((item for item in user.permission_overrides.all()
+                     if item.permission_key == permission_name), None)
     if override is not None:
         return override.granted
 

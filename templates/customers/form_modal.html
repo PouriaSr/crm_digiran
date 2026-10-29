@@ -1,10 +1,11 @@
 <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" id="new-customer-modal-backdrop">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <form hx-post="{% if customer %}{% url 'customers:edit' customer.pk %}{% else %}{% url 'customers:create' %}{% endif %}?is_modal=1"
+        <form hx-post="{% if form_action %}{{ form_action }}{% elif customer %}{% url 'customers:edit' customer.pk %}{% else %}{% url 'customers:create' %}{% endif %}?is_modal=1"
               hx-target="#new-customer-modal-backdrop"
               hx-swap="outerHTML"
+              @change="if ($event.target.name === 'source') sourceVal = $event.target.value"
               class="p-6"
-              x-data="{ sourceVal: 'website' }">
+              x-data="{ sourceVal: '{{ form.source.value|default:'website'|escapejs }}' }">
             {% csrf_token %}
             <div class="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
                 <h3 class="text-lg font-bold text-gray-800">{{ title }}</h3>
@@ -12,6 +13,7 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
+            {{ form.non_field_errors }}
             <div class="space-y-4 text-sm">
                 {% for field in form %}
                 <div {% if field.name == 'ad_source' %}x-show="sourceVal === 'ads' || sourceVal === 'divar'" x-cloak style="display:none"{% endif %}>

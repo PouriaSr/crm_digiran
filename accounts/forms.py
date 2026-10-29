@@ -1,29 +1,15 @@
 from collections import OrderedDict
 
 from django import forms
+from django.db import transaction
 from django.contrib.auth.models import User, Group
 from crm.form_mixins import DuplicateCheckMixin
 
 
-ROLE_CHOICES = [
-    ('admin', 'مدیر کل'),
-    ('sales_manager', 'مدیر فروش'),
-    ('sales', 'کارشناس فروش'),
-    ('support', 'پشتیبان'),
-    ('accountant', 'حسابدار'),
-    ('operator', 'اپراتور'),
-    ('ads_manager', 'مسئول تبلیغات'),
-    ('none', 'بدون نقش خاص'),
-]
+from accounts.permissions import ROLE_DISPLAY, ROLE_TO_GROUP, get_user_role
 
-ROLE_GROUP_MAP = {
-    'sales_manager': 'مدیر فروش',
-    'sales': 'کارشناس فروش',
-    'support': 'پشتیبان',
-    'accountant': 'حسابدار',
-    'operator': 'اپراتور',
-    'ads_manager': 'مسئول تبلیغات',
-}
+ROLE_CHOICES = list(ROLE_DISPLAY.items()) + [('none', 'بدون نقش خاص')]
+ROLE_GROUP_MAP = ROLE_TO_GROUP
 
 
 def ensure_groups():
@@ -31,13 +17,11 @@ def ensure_groups():
         Group.objects.get_or_create(name=group_name)
 
 
-def get_user_role(user):
-    if user.is_superuser:
-        return 'admin'
-    for role_key, group_name in ROLE_GROUP_MAP.items():
-        if user.groups.filter(name=group_name).exists():
-            return role_key
-    return 'none'
+def save_role_title(user, cleaned_data):
+    from accounts.models import UserRoleProfile
+    UserRoleProfile.objects.update_or_create(
+        user=user, defaults={'display_name': cleaned_data.get('role_title', '').strip()},
+    )
 
 
 # ─── کلاس استایل ───
@@ -148,6 +132,11 @@ class UserCreateForm(DuplicateCheckMixin, forms.ModelForm):
         label='نقش', choices=ROLE_CHOICES, initial='sales',
         widget=forms.Select(attrs={'class': StyledMixin.input_class}),
     )
+    role_title = forms.CharField(
+        label='عنوان دلخواه نقش', max_length=100, required=False,
+        help_text='خالی بماند، عنوان نقش اصلی نمایش داده می‌شود. این عنوان مجوزها را تغییر نمی‌دهد.',
+        widget=forms.TextInput(attrs={'class': StyledMixin.input_class, 'placeholder': 'مثلاً کارشناس پذیرش'}),
+    )
     is_active = forms.BooleanField(
         label='فعال', required=False, initial=True,
         widget=forms.CheckboxInput(attrs={'class': 'w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500'}),
@@ -201,6 +190,7 @@ class UserCreateForm(DuplicateCheckMixin, forms.ModelForm):
             raise forms.ValidationError('رمز عبور باید حداقل ۶ کاراکتر باشد')
         return cleaned
 
+    @transaction.atomic
     def save(self, commit=True):
         user = super().save(commit=False)
         user.set_password(self.cleaned_data['password1'])
@@ -218,6 +208,7 @@ class UserCreateForm(DuplicateCheckMixin, forms.ModelForm):
                 group, _ = Group.objects.get_or_create(name=ROLE_GROUP_MAP[role])
                 user.groups.add(group)
             save_permission_overrides(user, self.cleaned_data)
+            save_role_title(user, self.cleaned_data)
         return user
 
 
@@ -234,6 +225,11 @@ class UserEditForm(DuplicateCheckMixin, forms.ModelForm):
     role = forms.ChoiceField(
         label='نقش', choices=ROLE_CHOICES,
         widget=forms.Select(attrs={'class': StyledMixin.input_class}),
+    )
+    role_title = forms.CharField(
+        label='عنوان دلخواه نقش', max_length=100, required=False,
+        help_text='خالی بماند، عنوان نقش اصلی نمایش داده می‌شود. این عنوان مجوزها را تغییر نمی‌دهد.',
+        widget=forms.TextInput(attrs={'class': StyledMixin.input_class, 'placeholder': 'مثلاً کارشناس پذیرش'}),
     )
     is_active = forms.BooleanField(
         label='فعال', required=False,
@@ -257,6 +253,9 @@ class UserEditForm(DuplicateCheckMixin, forms.ModelForm):
 
         if self.instance and self.instance.pk:
             self.fields['role'].initial = get_user_role(self.instance)
+            self.fields['is_active'].initial = self.instance.is_active
+            profile = getattr(self.instance, 'role_profile', None)
+            self.fields['role_title'].initial = profile.display_name if profile else ''
         # جدول دسترسی‌ها برای کاربر جدید هم نمایش داده می‌شود
         self._build_permission_fields()
 
@@ -282,6 +281,7 @@ class UserEditForm(DuplicateCheckMixin, forms.ModelForm):
                 self.add_error('email', f'⛔ ایمیل «{email}» قبلاً برای کاربر «{existing.username}» ثبت شده است.')
         return email
 
+    @transaction.atomic
     def save(self, commit=True):
         user = super().save(commit=False)
         user.is_active = self.cleaned_data.get('is_active', True)
@@ -301,6 +301,7 @@ class UserEditForm(DuplicateCheckMixin, forms.ModelForm):
 
             # ذخیره overrideها از طریق تابع مشترک
             save_permission_overrides(user, self.cleaned_data)
+            save_role_title(user, self.cleaned_data)
         return user
 
 

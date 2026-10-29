@@ -1,193 +1,87 @@
 {% load fa_numbers %}
-{# ═══ تب پذیرش حضوری ═══ #}
-<div x-show="tab === 'reception'" x-transition.opacity style="display: none;"
-     x-data="{ person: '{{ reception.person_type|default:'' }}' }">
-
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
-        <form method="get" class="flex flex-wrap items-end gap-3">
-            <input type="hidden" name="tab" value="reception">
-            <div class="flex-1 min-w-[220px]">
-                <label class="block text-xs font-bold text-gray-600 mb-1">مشتری حاضر در سالن</label>
-                <select name="c" onchange="this.form.submit()" autocomplete="off"
-                        class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl">
-                    <option value="">انتخاب کنید...</option>
-                    {% for cu in reception_customers %}
-                    <option value="{{ cu.pk }}" {% if reception_customer and reception_customer.pk == cu.pk %}selected{% endif %}>
-                        {{ cu.name }} — {{ cu.mobile }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-        </form>
+<div x-show="tab === 'reception'" class="space-y-5" style="display:none">
+    <div class="rounded-2xl bg-emerald-50 border border-emerald-100 p-5">
+        <h2 class="font-bold text-emerald-900">پذیرش مراجعه‌کننده</h2>
+        <p class="text-sm text-emerald-700 mt-2">فرد را انتخاب و ورودش را ثبت کنید. زمان ورود و انتظار به‌صورت خودکار ثبت می‌شوند.</p>
     </div>
-
-    {% if reception_customer %}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-        <!-- سؤالات -->
-        <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <h3 class="font-bold text-gray-800 mb-4">سؤالات پذیرش</h3>
-
-            <form method="post" action="{% url 'customers:reception_action' %}" class="space-y-5"
-                  autocomplete="off">
-                {% csrf_token %}
-                <input type="hidden" name="customer" value="{{ reception_customer.pk }}">
-                <input type="hidden" name="action" value="answer">
-
-                <div>
-                    <div class="text-sm font-bold text-gray-700 mb-2">۱. فرد مورد نظر، مشتری است یا مصاحبه‌کننده؟</div>
-                    <div class="flex gap-3">
-                        <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm cursor-pointer">
-                            <input type="radio" name="person_type" value="customer" required
-                                   x-model="person"
-                                   {% if reception and reception.person_type == 'customer' %}checked{% endif %}>
-                            مشتری
-                        </label>
-                        <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm cursor-pointer">
-                            <input type="radio" name="person_type" value="interviewer"
-                                   x-model="person"
-                                   {% if reception and reception.person_type == 'interviewer' %}checked{% endif %}>
-                            مصاحبه‌کننده
-                        </label>
-                    </div>
-                </div>
-
-                <div x-show="person !== 'interviewer'" x-cloak>
-                    <div class="text-sm font-bold text-gray-700 mb-2">۲. مشتری، مراجعه حضوری دارد؟</div>
-                    <div class="flex gap-3">
-                        <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm cursor-pointer">
-                            <input type="radio" name="has_visit" value="yes" :required="person !== 'interviewer'"
-                                   {% if reception and reception.has_visit == 'yes' %}checked{% endif %}>
-                            بله
-                        </label>
-                        <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm cursor-pointer">
-                            <input type="radio" name="has_visit" value="no"
-                                   {% if reception and reception.has_visit == 'no' %}checked{% endif %}>
-                            خیر
-                        </label>
-                    </div>
-                </div>
-
-                <div>
-                    <div class="text-sm font-bold text-gray-700 mb-2">
-                        <span x-show="person !== 'interviewer'">۳. مشتری چند دقیقه در سالن منتظر است؟</span>
-                        <span x-show="person === 'interviewer'" x-cloak>۲. مصاحبه‌کننده چند دقیقه در سالن منتظر است؟</span>
-                    </div>
-                    <div class="flex flex-wrap gap-2">
-                        {% for value, label in wait_choices %}
-                        <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm cursor-pointer">
-                            <input type="radio" name="wait_choice" value="{{ value }}" required
-                                   {% if reception and reception.wait_choice == value %}checked{% endif %}>
-                            {{ label }}
-                        </label>
-                        {% endfor %}
-                    </div>
-                    <p class="text-[11px] text-gray-400 mt-2">
-                        با انتخاب هر گزینه، تایمر از ادامه‌ی همان زمان شروع به شمارش می‌کند.
-                    </p>
-                </div>
-
-                <button type="submit"
-                        class="w-full py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition">
-                    ثبت پاسخ‌ها
-                </button>
-            </form>
+    <form method="post" action="{% url 'customers:reception_action' %}" class="bg-white rounded-2xl border border-gray-100 p-5 space-y-5 shadow-sm">
+        {% csrf_token %}<input type="hidden" name="action" value="arrive">
+        <div>
+            <label for="arrival-customer" class="block text-sm font-bold text-gray-700 mb-2">مراجعه‌کننده</label>
+            <select id="arrival-customer" name="customer" required autocomplete="off" class="w-full rounded-xl border border-gray-200 p-3 text-sm bg-gray-50">
+                <option value="">انتخاب نام و شماره تماس...</option>
+                {% for person in reception_customers %}<option value="{{ person.pk }}">{{ person.name }} — {{ person.mobile }}</option>{% endfor %}
+            </select>
         </div>
-
-        <!-- وضعیت و دکمه‌ها -->
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-            <h3 class="font-bold text-gray-800">وضعیت انتظار</h3>
-
-            {% if reception and reception.is_waiting and reception.wait_started_at %}
-            <div class="text-center">
-                <div id="wait-timer"
-                     data-start="{{ reception.wait_started_at|date:'c' }}"
-                     class="text-3xl font-mono font-bold text-emerald-700"
-                     dir="ltr">--:--:--</div>
-                <p class="text-[11px] text-gray-400 mt-1">شمارش از: {{ reception.get_wait_choice_display }}</p>
+        <fieldset><legend class="text-sm font-bold text-gray-700 mb-3">مراجعه‌کننده، مشتری است یا مصاحبه‌کننده؟</legend>
+            <div class="grid grid-cols-2 gap-3">
+                <label class="cursor-pointer flex items-center gap-3 p-4 rounded-xl border border-gray-200 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50"><input type="radio" name="person_type" value="customer" required class="accent-emerald-600">مشتری</label>
+                <label class="cursor-pointer flex items-center gap-3 p-4 rounded-xl border border-gray-200 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50"><input type="radio" name="person_type" value="interviewer" required class="accent-emerald-600">مصاحبه‌کننده</label>
             </div>
-            {% elif reception and reception.wait_ended_at %}
-            <div class="text-center">
-                <div class="text-2xl font-bold text-emerald-700">{{ reception.wait_minutes_total|fa_num }} دقیقه</div>
-                <p class="text-[11px] text-gray-400 mt-1">انتظار پایان یافت</p>
-            </div>
-            {% else %}
-            <p class="text-sm text-gray-400">هنوز انتظاری شروع نشده است.</p>
-            {% endif %}
-
-            <div class="pt-3 border-t border-gray-100 space-y-2">
-                <form method="post" action="{% url 'customers:reception_action' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="customer" value="{{ reception_customer.pk }}">
-                    <input type="hidden" name="action" value="end_wait">
-                    <button type="submit"
-                            {% if not reception or not reception.is_waiting %}disabled{% endif %}
-                            class="w-full py-2.5 rounded-xl text-sm font-bold transition
-                                   {% if reception and reception.is_waiting %}bg-amber-500 text-white hover:bg-amber-600{% else %}bg-gray-100 text-gray-400 cursor-not-allowed{% endif %}">
-                        پایان انتظار
-                    </button>
+        </fieldset>
+        <button class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl px-8 py-3">ثبت ورود و شروع انتظار</button>
+    </form>
+    <section class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+        <div class="p-5 border-b border-gray-100"><h3 class="font-bold text-gray-800">مراجعه‌کنندگان و وضعیت انتظار</h3><p class="mt-2 text-xs text-gray-500">با ارجاع، تایمر متوقف می‌شود و کاربر انتخاب‌شده مسئول کارت و تکمیل پرونده خواهد بود.</p></div>
+        <div id="admission-queue" data-clock-url="{% url 'customers:reception_clock' %}" data-server-now="{% now 'c' %}" class="divide-y divide-gray-100">
+            {% for rec in reception_records %}
+            <article class="p-4 sm:p-5 space-y-4" data-reception-id="{{ rec.pk }}">
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                    <div>{% include 'customers/_workflow_person.html' with person=rec.customer %}<span class="inline-block mt-2 text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-1 rounded-lg">{{ rec.get_person_type_display }}</span></div>
+                    <div class="text-sm text-gray-600 space-y-1"><div>ورود: <time>{{ rec.wait_started_at|jdate:'Y/m/d H:i:s' }}</time></div><div>ثبت‌کننده: {% if rec.created_by %}{{ rec.created_by.get_full_name|default:rec.created_by.username }}{% else %}—{% endif %}</div></div>
+                    <div class="text-center rounded-xl px-5 py-3 {% if rec.is_waiting %}bg-amber-50 text-amber-800{% else %}bg-gray-50 text-gray-600{% endif %}">
+                        <div class="text-xs mb-1">{% if rec.is_waiting %}مدت انتظار{% else %}انتظار پایان‌یافته{% endif %}</div>
+                        <time class="text-xl font-bold font-mono" dir="ltr" {% if rec.is_waiting %}data-wait-start="{{ rec.wait_started_at|date:'c' }}"{% endif %}>{{ rec.wait_display }}</time>
+                    </div>
+                </div>
+                {% if rec.is_waiting %}
+                <form method="post" action="{% url 'customers:reception_action' %}" class="rounded-xl bg-gray-50 p-3 flex flex-wrap gap-3 items-end">
+                    {% csrf_token %}<input type="hidden" name="action" value="refer"><input type="hidden" name="reception" value="{{ rec.pk }}">
+                    <div class="flex-1 min-w-[180px]"><label for="refer-{{ rec.pk }}" class="block text-xs font-bold text-gray-600 mb-2">ارجاع به کاربر</label>
+                    <select id="refer-{{ rec.pk }}" name="user" required class="w-full rounded-lg p-2.5 text-sm border border-gray-200 bg-white"><option value="">انتخاب کاربر مسئول...</option>{% for operator in referral_users %}<option value="{{ operator.pk }}">{{ operator.get_full_name|default:operator.username }}</option>{% endfor %}</select></div>
+                    <button class="px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700">ارجاع به کاربر</button>
                 </form>
-
-                <form method="post" action="{% url 'customers:reception_action' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="customer" value="{{ reception_customer.pk }}">
-                    <input type="hidden" name="action" value="submit_info">
-                    <button type="submit" x-show="person !== 'interviewer'"
-                            {% if not reception or not reception.can_submit_info or not reception.wait_ended_at %}disabled{% endif %}
-                            class="w-full py-2.5 rounded-xl text-sm font-bold transition
-                                   {% if reception and reception.can_submit_info and reception.wait_ended_at %}bg-blue-600 text-white hover:bg-blue-700{% else %}bg-gray-100 text-gray-400 cursor-not-allowed{% endif %}">
-                        ثبت اطلاعات مشتری
-                    </button>
-                </form>
-
-                {% if reception and reception.info_submitted and reception_customer.stage == 'potential' %}
-                <a href="{% url 'customers:hub' %}?tab=case&c={{ reception_customer.pk }}"
-                   x-show="person !== 'interviewer'" x-cloak
-                   class="block text-center w-full py-2.5 rounded-xl text-sm font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition">
-                    پرونده مشتری
-                </a>
-                {% endif %}
-
-                {% if 'customers.recruitment' in user_permissions %}
-                <a href="{% url 'customers:hub' %}?tab=recruitment&c={{ reception_customer.pk }}"
-                   x-show="person === 'interviewer'" x-cloak
-                   class="block text-center w-full py-2.5 rounded-xl text-sm font-bold bg-teal-50 text-teal-700 hover:bg-teal-100 transition">
-                    پرونده مصاحبه‌کننده
-                </a>
-                {% endif %}
-            </div>
-
-            <div class="text-[11px] text-gray-400 leading-5" x-show="person !== 'interviewer'" x-cloak>
-                {% if not reception or not reception.can_submit_info %}
-                «ثبت اطلاعات مشتری» وقتی فعال می‌شود که مشتری برچسب «بالقوه» داشته باشد و هر ۳ پاسخ ثبت شده باشد.
-                {% endif %}
-            </div>
+                {% else %}<div class="rounded-xl bg-blue-50 p-3 text-xs text-blue-800">ارجاع به {% if rec.referred_to %}{{ rec.referred_to.get_full_name|default:rec.referred_to.username }}{% else %}کاربر حذف‌شده{% endif %} در {{ rec.referred_at|jdate:'Y/m/d H:i:s' }}{% if rec.registration_completed_at %} · ثبت اطلاعات تکمیل شده{% elif rec.case_completed_at %} · پرونده ثبت شده{% else %} · در انتظار تکمیل پرونده{% endif %}</div>{% endif %}
+                {% include 'customers/_workflow_updates.html' %}
+            </article>
+            {% empty %}<p class="p-10 text-center text-sm text-gray-400">هنوز مراجعه‌ای در این جریان ثبت نشده است.</p>{% endfor %}
         </div>
-    </div>
-
-    <script>
-    (function () {
-        var el = document.getElementById('wait-timer');
-        if (!el || !el.dataset.start) return;
-        var start = new Date(el.dataset.start).getTime();
-        if (isNaN(start)) return;
-        function pad(n) { return (n < 10 ? '0' : '') + n; }
-        function tick() {
-            var s = Math.max(0, Math.floor((Date.now() - start) / 1000));
-            el.textContent = pad(Math.floor(s / 3600)) + ':' + pad(Math.floor((s % 3600) / 60)) + ':' + pad(s % 60);
-        }
-        tick();
-        setInterval(tick, 1000);
-    })();
-    </script>
-
-    {% else %}
-    <div class="bg-white rounded-2xl border border-gray-100 p-10 text-center text-gray-400 text-sm">
-        برای شروع پذیرش، مشتری حاضر در سالن را از بالا انتخاب کنید.
-    </div>
-    {% endif %}
-
-    {% if 'customers.history' in user_permissions %}
-    {% include "customers/_reception_history.html" %}
-    {% endif %}
+        {% include 'customers/_workflow_pagination.html' with page=reception_records page_key='reception_page' page_tab='reception' %}
+    </section>
+    {% if legacy_receptions %}<details class="rounded-2xl border border-gray-200 bg-white p-5"><summary class="cursor-pointer text-sm font-bold text-gray-600">بایگانی پذیرش‌های نسخه قبل</summary><div class="mt-4 space-y-3">{% for rec in legacy_receptions %}<div class="text-sm border-t border-gray-100 pt-3">{{ rec.customer.name }} · {{ rec.get_person_type_display|default:'—' }} · {{ rec.created_at|jdate:'Y/m/d H:i' }}{% if rec.wait_minutes_total != None %} · انتظار {{ rec.wait_minutes_total|fa_num }} دقیقه{% endif %}</div>{% endfor %}</div></details>{% endif %}
 </div>
+<script>
+(function () {
+    const queue = document.getElementById('admission-queue');
+    if (!queue) return;
+    let base = Date.parse(queue.dataset.serverNow), anchor = performance.now();
+    const pad = n => String(n).padStart(2, '0');
+    function tick() {
+        const now = base + performance.now() - anchor;
+        queue.querySelectorAll('[data-wait-start]').forEach(el => {
+            const seconds = Math.max(0, Math.floor((now - Date.parse(el.dataset.waitStart)) / 1000));
+            el.textContent = pad(Math.floor(seconds / 3600)) + ':' + pad(Math.floor(seconds / 60) % 60) + ':' + pad(seconds % 60);
+        });
+    }
+    tick(); setInterval(tick, 1000);
+    setInterval(async () => {
+        if (document.hidden || !queue.querySelector('[data-wait-start]')) return;
+        try {
+            const response = await fetch(queue.dataset.clockUrl, {headers: {'Accept': 'application/json'}});
+            if (!response.ok) return;
+            const data = await response.json();
+            base = Date.parse(data.server_now); anchor = performance.now();
+            const waiting = new Set(data.waiting.map(row => String(row.pk)));
+            // Another user may have referred this visit. Fetch the final timing/state.
+            if (Array.from(queue.querySelectorAll('[data-wait-start]')).some(el => !waiting.has(el.closest('[data-reception-id]').dataset.receptionId))) {
+                const page = await fetch(window.location.href);
+                if (!page.ok) return;
+                const dom = new DOMParser().parseFromString(await page.text(), 'text/html');
+                const updated = dom.getElementById('admission-queue');
+                if (updated) queue.innerHTML = updated.innerHTML;
+            }
+            tick();
+        } catch (_) { /* A temporary network failure does not reset the clock. */ }
+    }, 15000);
+})();
+</script>

@@ -30,10 +30,12 @@ def permissions_context(request):
         }
 
     from customers.access import card_manager_for_request
+    from customers.reception_workflow import allowed_tabs
     role = get_user_role(user)
     notifications = get_notifications(user)
 
     return {
+        'can_open_customer_hub': bool(allowed_tabs(user)),
         'can_transfer_calls': card_manager_for_request(request),
         'user_permissions': get_user_permissions(user),
         'user_role': role,

@@ -2,6 +2,7 @@
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from customers.forms import CustomerForm
 from customers.models import Customer, Reception
@@ -45,7 +46,7 @@ class TwoStateStatusTest(TestCase):
         self.assertEqual(self.customer.stage, 'potential')
         self.assertTrue(self.customer.needs_followup)
 
-    def test_potential_enables_case_access(self):
+    def test_potential_requires_case_completion_for_registration(self):
         self._edit('potential')
         self.customer.refresh_from_db()
         rec = Reception.objects.create(customer=self.customer, person_type='customer',
@@ -53,6 +54,9 @@ class TwoStateStatusTest(TestCase):
         rec.refresh_from_db()
         self.assertTrue(rec.answers_complete, 'پاسخ‌ها کامل نیست')
         self.assertEqual(rec.customer.stage, 'potential')
+        self.assertFalse(rec.can_submit_info)
+        rec.case_completed_at = timezone.now()
+        rec.save(update_fields=['case_completed_at'])
         self.assertTrue(rec.can_submit_info)
 
     def test_potential_shows_badge(self):
@@ -70,7 +74,7 @@ class TwoStateStatusTest(TestCase):
         self.assertEqual(self.customer.stage, 'lead')
         self.assertFalse(self.customer.needs_followup)
 
-    def test_not_potential_blocks_case_access(self):
+    def test_lead_without_case_is_not_ready_for_registration(self):
         self._edit('lead')
         rec = Reception.objects.create(customer=self.customer, person_type='customer',
                                        has_visit='yes', wait_choice='30')

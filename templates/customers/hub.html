@@ -7,23 +7,16 @@
 
 {% block content %}
 <div x-data="{ 
-        tab: (() => {
-            const t = new URLSearchParams(window.location.search).get('tab') || 'info';
-            // تب‌های قدیمی (call/visit/followup) به لیست اطلاعات هدایت می‌شوند
-            if (['followup', 'call', 'visit'].includes(t)) return 'info';
-            // تب پرونده فقط بعد از تکمیل پذیرش باز می‌شود
-            if (t === 'case' && !{{ case_unlocked|yesno:'true,false' }}) return 'reception';
-            return t;
-        })(),
+        tab: '{{ active_tab|escapejs }}',
         isCallModalOpen: false,
         callType: 'incoming',
         customerStatus: 'none',
         mobile: '',
         existingCustomer: null,
         checking: false,
-        searchQuery: '{{ request.GET.q|default:"" }}',
+        searchQuery: '{{ request.GET.q|default:""|escapejs }}',
         showNewBtn: {{ show_new|yesno:'true,false' }},
-        caseUnlocked: {{ case_unlocked|yesno:'true,false' }},
+        registrationUnlocked: {{ registration_unlocked|yesno:'true,false' }},
         
         searchCustomers() {
             const params = new URLSearchParams(window.location.search);
@@ -71,6 +64,7 @@
     }"
      class="w-full max-w-7xl mx-auto pb-10 overflow-x-hidden">
     
+    {% if "info" in allowed_hub_tabs %}
     <!-- Premium KPI Cards -->
     <div x-show="tab === 'info'" class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
 
@@ -98,47 +92,19 @@
         </div>
     </div>
 
-    <!-- Premium Segmented Tabs -->
-    <div class="bg-gray-100/80 p-1.5 rounded-2xl border border-gray-200/60 shadow-inner mb-6 w-full overflow-hidden">
-        <div class="flex flex-nowrap overflow-x-auto hide-scrollbar gap-2 pt-2 pb-2 px-2">
-            <button @click="tab = 'info'; window.history.replaceState(null, '', '?tab=info')" 
-                    :class="tab === 'info' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/50'"
-                    class="flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
-                <span class="text-lg opacity-80">👥</span> اطلاعات
-            </button>
-            {% if 'customers.reception' in user_permissions %}
-            <button @click="tab = 'reception'; window.history.replaceState(null, '', '?tab=reception')"
-                    :class="tab === 'reception' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/50'"
-                    class="flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
-                <span class="text-lg opacity-80">🤝</span> پذیرش
-            </button>
-            {% endif %}
-            {% if 'customers.case' in user_permissions %}
-            <button @click="if (caseUnlocked) { tab = 'case'; window.history.replaceState(null, '', '?tab=case') }"
-                    :disabled="!caseUnlocked"
-                    :title="caseUnlocked ? 'پرونده مشتری' : 'ابتدا پذیرش و «ثبت اطلاعات مشتری» را تکمیل کنید'"
-                    :class="!caseUnlocked
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : (tab === 'case' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/50')"
-                    class="flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
-                <span class="text-lg opacity-80">{% if case_unlocked %}📁{% else %}🔒{% endif %}</span> پرونده
-            </button>
-            {% endif %}
-            {% if 'customers.recruitment' in user_permissions %}
-            <button @click="tab = 'recruitment'; window.history.replaceState(null, '', '?tab=recruitment')"
-                    :class="tab === 'recruitment' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/50'"
-                    class="flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
-                <span class="text-lg opacity-80">🧑‍💼</span> واحد استخدام
-            </button>
-            {% endif %}
-            <button @click="tab = 'invoice'; window.history.replaceState(null, '', '?tab=invoice')" 
-                    :class="tab === 'invoice' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/50'"
-                    class="flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
-                <span class="text-lg opacity-80">📄</span> فاکتورها
-            </button>
-        </div>
-    </div>
+    {% endif %}
+    <nav id="hub-tabs" aria-label="مراحل مرکز مشتریان" class="bg-gray-100/80 p-2 rounded-2xl border border-gray-200 mb-6 flex overflow-x-auto gap-2">
+        {% for item in hub_tab_items %}
+        {% if item.key == 'registration' and not registration_unlocked %}
+        <button disabled title="پس از ثبت یک پرونده، این مرحله فعال می‌شود" class="shrink-0 px-5 py-3 rounded-xl text-sm font-bold text-gray-400 cursor-not-allowed">🔒 ثبت اطلاعات</button>
+        {% else %}
+        <a href="{% url 'customers:hub' %}?tab={{ item.key }}" data-hub-tab="{{ item.key }}" {% if active_tab == item.key %}aria-current="page"{% endif %}
+           class="shrink-0 px-5 py-3 rounded-xl text-sm font-bold transition {% if active_tab == item.key %}bg-white text-blue-700 shadow-sm{% else %}text-gray-500 hover:bg-white{% endif %}">{{ item.icon }} {{ item.label }}</a>
+        {% endif %}
+        {% endfor %}
+    </nav>
 
+    {% if "info" in allowed_hub_tabs %}
     <!-- TAB 1: INFO -->
     <div x-show="tab === 'info'" x-transition.opacity class="space-y-4">
         <div class="flex flex-col md:flex-row justify-between items-center gap-3">
@@ -178,6 +144,8 @@
     </div>
 
     <!-- TAB 5: INVOICE -->
+    {% endif %}
+    {% if "invoice" in allowed_hub_tabs %}
     <div x-show="tab === 'invoice'" x-transition.opacity style="display: none;">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 md:mb-6">
             <div>
@@ -224,9 +192,10 @@
         </div>
     </div>
 
-    {% include "customers/_reception_tab.html" %}
-    {% include "customers/_case_tab.html" %}
-    {% include "customers/_recruitment_tab.html" %}
+    {% endif %}
+    {% if "reception" in allowed_hub_tabs %}{% include "customers/_reception_tab.html" %}{% endif %}
+    {% if "case" in allowed_hub_tabs %}{% include "customers/_case_tab.html" %}{% endif %}
+    {% if "registration" in allowed_hub_tabs %}{% include "customers/_registration_tab.html" %}{% endif %}
     {% include "customers/_call_modal.html" %}
 {% include "customers/_quick_call_modal.html" %}
 {% include "customers/_call_edit_modal.html" %}
@@ -311,6 +280,10 @@ document.addEventListener('keydown', function (e) {
 
 
 <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const active = document.querySelector('#hub-tabs [aria-current="page"]');
+    if (active) active.scrollIntoView({block: 'nearest', inline: 'center'});
+});
 function openCustomerModal(url) {
     // باز کردن مودال مشتری (جدید یا ویرایش) با آدرس دلخواه
     var old = document.getElementById('new-customer-modal-backdrop');

@@ -2,6 +2,15 @@ from django.contrib.auth.models import User
 from django.db import models
 
 
+class UserRoleProfile(models.Model):
+    """An optional display title; authorization always uses the base role."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='role_profile')
+    display_name = models.CharField('عنوان دلخواه نقش', max_length=100, blank=True)
+
+    def __str__(self):
+        return f'{self.user.username} — {self.display_name}'
+
+
 class UserPermissionOverride(models.Model):
     """بازنویسی دسترسی کاربر — فراتر از نقش"""
     user = models.ForeignKey(
