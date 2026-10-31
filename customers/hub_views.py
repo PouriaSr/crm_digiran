@@ -272,7 +272,7 @@ def customer_hub(request):
         'reassign_users': reassign_users,
         'contact_type_choices': Call.CONTACT_TYPE_CHOICES,
         'type_choices': Call.CALL_TYPE_CHOICES,
-        'invoices': (Invoice.objects.select_related('customer', 'created_by').order_by('-created_at')[:20]) if 'invoice' in tabs else [],
+        'invoices': (Invoice.objects.select_related('customer', 'created_by').order_by('-created_at')[:20]) if 'invoice' in tabs and has_permission(request.user, 'invoices.view') else [],
         'call_form': HubCallForm(user=request.user),
     }
     
@@ -299,7 +299,7 @@ def customer_hub(request):
 
 
 @login_required
-@require_permission('customers.add')
+@require_permission('calls.add')
 @require_POST
 def hub_submit_call(request):
     back = f"{reverse('customers:hub')}?tab=call"
@@ -330,9 +330,9 @@ def hub_submit_call(request):
                 assigned_to=request.user, created_by=request.user, status='lead',
             )
         else:
-            if can_edit_card(request.user, customer):
+            if has_permission(request.user, 'customers.edit') and can_edit_card(request.user, customer):
                 customer.name = data['name']
-            if source and can_edit_card(request.user, customer):
+            if source and has_permission(request.user, 'customers.edit') and can_edit_card(request.user, customer):
                 customer.ad_source = source
         customer.stage = stage
         customer.needs_followup = needs_followup or customer.followups.filter(is_done=False).exists()
@@ -392,6 +392,7 @@ def hub_check_customer(request):
 
 @login_required
 @require_roles(ROLE_ADMIN, ROLE_SALES_MANAGER)
+@require_permission('customers.reassign')
 @require_POST
 def customer_reassign(request, pk):
     if not is_card_manager(request.user):
@@ -428,6 +429,7 @@ def customer_reassign(request, pk):
     return redirect('customers:detail', pk=customer.pk)
 
 @login_required
+@require_permission('calls.edit')
 @require_POST
 @transaction.atomic
 def hub_call_edit(request, pk):
@@ -606,7 +608,7 @@ def hub_quick_call(request, pk):
 
     if kind == 'followup':
         source_id = request.POST.get('source') or ''
-        if source_id.isdigit() and can_edit_card(request.user, customer):
+        if source_id.isdigit() and has_permission(request.user, 'customers.edit') and can_edit_card(request.user, customer):
             customer.ad_source_id = int(source_id)
 
         done_due = parse_jalali(request.POST.get('follow_up_date'))
@@ -622,7 +624,8 @@ def hub_quick_call(request, pk):
             messages.error(request, 'تاریخ و ساعت پیگیری بعدی را وارد کنید.')
             return redirect(back)
 
-        customer.notes = notes
+        if has_permission(request.user, 'customers.edit') and can_edit_card(request.user, customer):
+            customer.notes = notes
         customer.stage = 'potential'
         customer.save(update_fields=['notes', 'stage', 'ad_source', 'updated_at'])
 
@@ -675,8 +678,9 @@ def hub_quick_call(request, pk):
         return _quick_call_redirect(request, back)
 
     else:
-        customer.notes = notes
-        customer.save(update_fields=['notes', 'updated_at'])
+        if has_permission(request.user, 'customers.edit') and can_edit_card(request.user, customer):
+            customer.notes = notes
+            customer.save(update_fields=['notes', 'updated_at'])
 
         # وضعیت و هدف تماس (فقط مقادیر مجاز)
         new_status = request.POST.get('status') or 'answered'

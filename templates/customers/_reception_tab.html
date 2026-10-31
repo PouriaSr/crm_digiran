@@ -2,12 +2,14 @@
 <div x-show="tab === 'reception'" class="space-y-5" style="display:none">
     <section class="wf-panel">
         <header class="wf-panel-head"><div><h2 class="wf-title">پذیرش مراجعه‌کننده</h2><p class="wf-subtitle">ورود را ثبت کنید؛ زمان سیستم، مبنای شمارش انتظار است.</p></div><span class="wf-badge wf-badge-neutral">مشتری ← پرونده · مصاحبه‌کننده ← استخدام</span></header>
+        {% if "customers.reception_add" in user_permissions %}
         <form method="post" action="{% url 'customers:reception_action' %}" class="wf-panel-body wf-arrival-fields">
             {% csrf_token %}<input type="hidden" name="action" value="arrive">
             <div><label for="arrival-customer" class="wf-label">مراجعه‌کننده</label><select id="arrival-customer" name="customer" required autocomplete="off" data-placeholder="جستجوی نام یا شماره مراجعه‌کننده" class="w-full rounded-xl border border-gray-200 p-2.5 text-sm"><option value="">انتخاب کنید...</option>{% for person in reception_customers %}<option value="{{ person.pk }}">{{ person.name }} — {{ person.mobile }}</option>{% endfor %}</select></div>
             <fieldset><legend class="wf-label">مراجعه‌کننده، مشتری است یا مصاحبه‌کننده؟</legend><div class="grid grid-cols-2 gap-2"><label class="wf-choice"><input type="radio" name="person_type" value="customer" required>مشتری</label><label class="wf-choice"><input type="radio" name="person_type" value="interviewer" required>مصاحبه‌کننده</label></div></fieldset>
             <button class="wf-action wf-primary" style="padding:12px 20px">ثبت ورود و شروع انتظار</button>
         </form>
+        {% endif %}
     </section>
     <section class="wf-panel">
         <header class="wf-panel-head"><div><h3 class="wf-title">مراجعه‌کنندگان و وضعیت انتظار <span class="wf-tab-count">{{ reception_records.paginator.count|fa_num }}</span></h3><p class="wf-subtitle">هر ردیف یک مراجعه است؛ برای اطلاعات بیشتر، ردیف یا «جزئیات» را باز کنید.</p></div>{% include 'customers/_workflow_search.html' with search_tab='reception' search_label='پذیرش' %}</header>
@@ -21,7 +23,7 @@
                     <time class="wf-time" data-label="ورود:" title="{{ rec.wait_started_at|jdate:'Y/m/d H:i:s' }}">{{ rec.wait_started_at|jdate:'Y/m/d H:i' }}</time>
                     <span class="wf-metric"><time class="wf-timer {% if rec.is_waiting %}text-amber-700{% else %}text-gray-500{% endif %}" dir="ltr" {% if rec.is_waiting %}data-wait-start="{{ rec.wait_started_at|date:'c' }}"{% endif %}>{{ rec.wait_display }}</time></span>
                     <span class="wf-owner" title="{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% endif %}">{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% else %}تعیین نشده{% endif %}</span>
-                    <span class="wf-actions">{% if rec.is_waiting %}<button type="button" class="wf-action" data-reception="{{ rec.pk }}" data-name="{{ rec.customer.name }}" data-person-type="{{ rec.person_type }}" onclick="event.preventDefault(); event.stopPropagation(); openReceptionReferral(this)">ارجاع به کاربر</button>{% endif %}{% include 'customers/_workflow_row_toggle.html' %}</span>
+                    <span class="wf-actions">{% if rec.is_waiting and "customers.reception_refer" in user_permissions %}<button type="button" class="wf-action" data-reception="{{ rec.pk }}" data-name="{{ rec.customer.name }}" data-person-type="{{ rec.person_type }}" onclick="event.preventDefault(); event.stopPropagation(); openReceptionReferral(this)">ارجاع به کاربر</button>{% endif %}{% include 'customers/_workflow_row_toggle.html' %}</span>
                 </summary>
                 {% include 'customers/_workflow_record_details.html' %}
             </details>

@@ -1,6 +1,7 @@
-{% load fa_numbers %}
+{% if 'calls.view' in user_permissions %}
+{% load fa_numbers card_access %}
 <div class="space-y-3 border-r-2 border-blue-100 pr-3">
-{% for call in history_calls %}
+{% for call in history_calls %}{% can_edit_call call as history_call_editable %}
 <article class="bg-white rounded-xl border border-slate-200 p-4 text-right shadow-sm"
  data-call-id="{{ call.pk }}"
  data-call-type="{{ call.contact_type }}"
@@ -15,7 +16,7 @@
  data-call-fu-done="{% if call.is_followed_up %}1{% else %}0{% endif %}">
  <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
   <div class="flex items-center gap-2"><span class="font-bold rounded-lg px-2 py-1 bg-blue-50 text-blue-700">{{ call.get_contact_type_display }}</span><span class="text-slate-500" dir="ltr" title="تاریخ و ساعت ثبت">{{ call.call_date|jdate:"Y/m/d H:i:s" }}</span></div>
-  {% if can_edit_history %}<button type="button" onclick="openCallEdit(this)" title="ویرایش این تماس" aria-label="ویرایش تماس" class="rounded-lg px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-100">ویرایش تماس</button>{% endif %}
+  {% if history_call_editable %}<button type="button" onclick="openCallEdit(this)" title="ویرایش این تماس" aria-label="ویرایش تماس" class="rounded-lg px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-100">ویرایش تماس</button>{% endif %}
  </div>
  <div class="flex flex-wrap gap-2 text-xs mt-3 text-slate-600">
   <span title="هدف تماس" class="rounded-md bg-violet-50 px-2 py-1">هدف: {{ call.get_purpose_display }}</span>
@@ -31,3 +32,5 @@
 </article>
 {% empty %}<p class="text-sm text-slate-400 py-4">هنوز تماسی برای این مشتری ثبت نشده است.</p>{% endfor %}
 </div>
+
+{% endif %}

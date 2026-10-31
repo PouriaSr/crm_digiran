@@ -87,11 +87,13 @@
             <div class="text-gray-500 text-xs font-medium mb-1">در انتظار پیگیری</div>
             <div class="text-xl md:text-2xl font-bold text-gray-800">{{ stats.pending_followups|fa_num }}</div>
         </div>
+        {% if 'invoices.view' in user_permissions %}
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden flex flex-col justify-center col-span-2 md:col-span-1">
             <div class="absolute right-0 top-0 bottom-0 w-1.5 bg-emerald-500"></div>
             <div class="text-gray-500 text-xs font-medium mb-1">درآمد وصول شده</div>
             <div class="text-lg md:text-xl font-bold text-gray-800" dir="ltr">{{ stats.recent_revenue|floatformat:0|fa_num }} <span class="text-xs font-normal text-gray-400">تومان</span></div>
         </div>
+        {% endif %}
     </div>
 
     {% endif %}
@@ -124,6 +126,7 @@
         </form>
             
             <div class="flex items-center gap-2 shrink-0">
+            {% if "calls.add" in user_permissions %}
             <button type="button" id="btn-new-call"
                     onclick="openNewCallFromSearch()"
                     :disabled="!showNewBtn"
@@ -134,6 +137,7 @@
                     class="flex items-center justify-center gap-2 px-6 py-3 rounded-xl transition font-medium whitespace-nowrap">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg> ثبت تماس جدید
             </button>
+            {% endif %}
             {% if 'customers.view' in user_permissions %}
             <a href="{% url 'customers:inactive_list' %}"
                class="flex items-center justify-center gap-2 bg-red-600 text-white hover:bg-red-700 px-6 py-3 rounded-xl font-medium whitespace-nowrap shadow-md transition">

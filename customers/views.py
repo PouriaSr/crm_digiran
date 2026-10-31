@@ -150,6 +150,7 @@ def customer_create(request):
     })
 
 @login_required
+@require_permission('customers.edit')
 def customer_edit(request, pk):
     full = has_permission(request.user, 'customers.profile_full')
     customer = get_object_or_404(Customer, pk=pk)
@@ -157,7 +158,7 @@ def customer_edit(request, pk):
         raise PermissionDenied('ویرایش فقط برای کارشناس مسئول کارت، سرپرست و ادمین مجاز است.')
     if request.method == 'POST':
         form = CustomerForm(request.POST, instance=customer, limited=not full)
-        if not is_card_manager(request.user):
+        if not is_card_manager(request.user) or not has_permission(request.user, 'customers.reassign'):
             form.fields.pop('assigned_to', None)
         if form.is_valid():
             form.save()
@@ -174,7 +175,7 @@ def customer_edit(request, pk):
             return redirect('customers:detail', pk=customer.pk)
     else:
         form = CustomerForm(instance=customer, limited=not full)
-        if not is_card_manager(request.user):
+        if not is_card_manager(request.user) or not has_permission(request.user, 'customers.reassign'):
             form.fields.pop('assigned_to', None)
 
     is_modal = request.headers.get('HX-Request') or request.GET.get('is_modal') == '1'
@@ -283,7 +284,7 @@ def customer_inactive_list(request):
 # ═══════════════════════════════════════════════════════════════
 
 @login_required
-@require_permission('customers.edit')
+@require_permission('customers.notes_add')
 def note_create(request, pk):
     customer = get_object_or_404(Customer, pk=pk)
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -292,6 +293,8 @@ def note_create(request, pk):
         form = CustomerNoteForm(request.POST)
         if form.is_valid():
             note = form.save(commit=False)
+            if not has_permission(request.user, 'customers.notes_pin'):
+                note.is_pinned = False
             note.customer = customer
             note.created_by = request.user
             note.save()
@@ -320,7 +323,7 @@ def note_create(request, pk):
 
 
 @login_required
-@require_permission('customers.edit')
+@require_permission('customers.notes_edit')
 def note_edit(request, pk, note_pk):
     customer = get_object_or_404(Customer, pk=pk)
     note = get_object_or_404(CustomerNote, pk=note_pk, customer=customer)
@@ -333,6 +336,8 @@ def note_edit(request, pk, note_pk):
 
     if request.method == 'POST':
         form = CustomerNoteForm(request.POST, instance=note)
+        if not has_permission(request.user, 'customers.notes_pin') or 'is_pinned' not in request.POST:
+            form.fields.pop('is_pinned', None)
         if form.is_valid():
             form.save()
 
@@ -351,7 +356,7 @@ def note_edit(request, pk, note_pk):
 
 
 @login_required
-@require_permission('customers.edit')
+@require_permission('customers.notes_delete')
 def note_delete(request, pk, note_pk):
     customer = get_object_or_404(Customer, pk=pk)
     note = get_object_or_404(CustomerNote, pk=note_pk, customer=customer)
@@ -375,7 +380,7 @@ def note_delete(request, pk, note_pk):
 
 
 @login_required
-@require_permission('customers.edit')
+@require_permission('customers.notes_pin')
 @require_POST
 def note_toggle_pin(request, pk, note_pk):
     """سنجاق/لغو سنجاق یادداشت — فقط POST (جلوگیری از CSRF)"""
@@ -415,7 +420,7 @@ _MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 MB
 
 
 @login_required
-@require_permission('customers.add')
+@require_permission('customers.excel_import')
 def customer_excel_import(request):
     """آپلود فایل Excel مشتریان"""
     if request.method == 'POST':
@@ -458,7 +463,7 @@ def customer_excel_import(request):
 
 
 @login_required
-@require_permission('customers.add')
+@require_permission('customers.excel_import')
 def customer_excel_preview(request, token):
     """پیش‌نمایش و تأیید نهایی"""
     result = cache.get(f'{_CACHE_PREFIX}:{token}')
@@ -500,7 +505,7 @@ def customer_excel_preview(request, token):
 
 
 @login_required
-@require_permission('customers.add')
+@require_permission('customers.excel_import')
 def customer_excel_template(request):
     """دانلود قالب Excel"""
     content = build_customer_template()

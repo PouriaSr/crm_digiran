@@ -8,7 +8,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.contrib.auth.models import User
 from datetime import timedelta
-from accounts.permissions import require_permission
+from accounts.permissions import require_permission, has_permission
 from customers.access import can_edit_call, is_card_manager
 from django.core.exceptions import PermissionDenied
 from .models import Call
@@ -151,6 +151,7 @@ def call_create(request):
 
 
 @login_required
+@require_permission('calls.edit')
 def call_edit(request, pk):
     call = get_object_or_404(Call.objects.select_related('customer'), pk=pk)
     if not can_edit_call(request.user, call):
@@ -160,6 +161,8 @@ def call_edit(request, pk):
         if not is_card_manager(request.user):
             for field in ('customer', 'called_by'):
                 form.fields.pop(field, None)
+        if not has_permission(request.user, 'calls.reassign'):
+            form.fields.pop('called_by', None)
         if form.is_valid():
             form.save()
             messages.success(request, 'اطلاعات تماس به‌روزرسانی شد.')
@@ -169,6 +172,8 @@ def call_edit(request, pk):
         if not is_card_manager(request.user):
             for field in ('customer', 'called_by'):
                 form.fields.pop(field, None)
+        if not has_permission(request.user, 'calls.reassign'):
+            form.fields.pop('called_by', None)
 
     return render(request, 'calls/form.html', {
         'form': form,
@@ -192,6 +197,7 @@ def call_delete(request, pk):
 
 @login_required
 @require_roles(ROLE_ADMIN, ROLE_SALES_MANAGER)
+@require_permission('calls.reassign')
 def call_reassign(request, pk):
     """ارجاع تماس به کارمند دیگر — پشتیبانی از AJAX و فرم معمولی"""
     call = get_object_or_404(Call, pk=pk)

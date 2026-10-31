@@ -52,7 +52,7 @@ ROLE_TO_GROUP = {
 PERMISSIONS = {
     'customers.view':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
     'customers.add':    [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR, ROLE_SECRETARY],
-    'customers.edit':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR, ROLE_SECRETARY],
+    'customers.edit':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
     'customers.profile_full': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'customers.delete': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'customers.followup': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
@@ -66,7 +66,7 @@ PERMISSIONS = {
 
     'calls.view':       [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
     'calls.add':        [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
-    'calls.edit':       [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_SECRETARY],
+    'calls.edit':       [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
     'calls.delete':     [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'calls.reassign':   [ROLE_ADMIN, ROLE_SALES_MANAGER],
 
@@ -110,10 +110,10 @@ PERMISSIONS = {
 PERMISSION_META = {
     'customers.view':   ('مشتریان', 'مشاهده', 'مشاهده‌ی لیست و جزئیات مشتریان'),
     'customers.add':    ('مشتریان', 'ایجاد', 'افزودن مشتری جدید'),
-    'customers.edit':   ('مشتریان', 'ویرایش', 'ویرایش اطلاعات مشتریان'),
-    'customers.profile_full': ('مشتریان', 'پروفایل کامل مشتری', 'کد ملی، تولد، آدرس، ایمیل و فاکتورها'),
+    'customers.edit':   ('مشتریان', 'ویرایش', 'ویرایش اطلاعات فقط برای مسئول کارت، سرپرست و ادمین'),
+    'customers.profile_full': ('مشتریان', 'پروفایل کامل مشتری', 'نمایش و ویرایش کد ملی، تولد، آدرس و ایمیل؛ فاکتورها مجوز جدا دارند'),
     'customers.delete': ('مشتریان', 'حذف', 'غیرفعال‌سازی و بازگردانی مشتریان'),
-    'customers.registration': ('تب‌های مرکز مشتریان', 'تب ثبت اطلاعات', 'تکمیل اطلاعات پس از ثبت پرونده'),
+    'customers.registration': ('تب‌های مرکز مشتریان', 'تب ثبت اطلاعات', 'مشاهده مرحله ثبت اطلاعات؛ ویرایش مجوز جدا دارد'),
     'customers.hiring': ('تب‌های مرکز مشتریان', 'تب استخدام', 'مشاهده اطلاعات مصاحبه‌کننده‌ها و سوابق ورود و ارجاع'),
     'customers.info': ('تب‌های مرکز مشتریان', 'تب اطلاعات', 'فهرست مشتریان، تماس‌ها و پیگیری‌ها'),
     'customers.invoices': ('تب‌های مرکز مشتریان', 'تب فاکتورها', 'مشاهده فاکتورها در مرکز مشتریان'),
@@ -121,7 +121,7 @@ PERMISSION_META = {
 
     'calls.view':     ('تماس‌ها', 'مشاهده', 'مشاهده‌ی لیست و جزئیات تماس‌ها'),
     'calls.add':      ('تماس‌ها', 'ایجاد', 'ثبت تماس جدید'),
-    'calls.edit':     ('تماس‌ها', 'ویرایش', 'ویرایش تماس‌ها'),
+    'calls.edit':     ('تماس‌ها', 'ویرایش', 'ویرایش تماس‌های کارت تحت مسئولیت؛ سرپرست و ادمین به همه دسترسی دارند'),
     'calls.delete':   ('تماس‌ها', 'حذف', 'حذف تماس'),
     'calls.reassign': ('تماس‌ها', 'ارجاع', 'ارجاع تماس به کارمند دیگر'),
 
@@ -159,9 +159,39 @@ PERMISSION_META = {
     'ads.delete':      ('تبلیغات', 'حذف', 'حذف تبلیغات'),
     'ads.manage_defs': ('تبلیغات', 'مدیریت تعاریف', 'مدیریت پلتفرم‌ها، فرآیندها و منابع'),
     'customers.followup': ('مشتریان', 'پیگیری', 'پیگیری تماس و یادداشت مشتری'),
-    'customers.reception': ('تب‌های مرکز مشتریان', 'تب پذیرش', 'ثبت ورود، مشاهده صف و ارجاع به کاربر'),
-    'customers.case': ('تب‌های مرکز مشتریان', 'تب پرونده', 'تکمیل پرونده افراد ارجاع‌شده'),
+    'customers.reception': ('تب‌های مرکز مشتریان', 'تب پذیرش', 'مشاهده صف پذیرش؛ ثبت ورود و ارجاع مجوز جدا دارند'),
+    'customers.case': ('تب‌های مرکز مشتریان', 'تب پرونده', 'مشاهده پرونده افراد ارجاع‌شده؛ ویرایش مجوز جدا دارد'),
 }
+
+
+# New operation keys inherit existing per-user overrides until explicitly customized.
+PERMISSION_PARENT = {
+    'customers.reception_add': 'customers.reception',
+    'customers.reception_refer': 'customers.reception',
+    'customers.case_edit': 'customers.case',
+    'customers.registration_edit': 'customers.registration',
+    'customers.reassign': 'calls.reassign',
+    'customers.notes_add': 'customers.edit',
+    'customers.notes_edit': 'customers.edit',
+    'customers.notes_delete': 'customers.edit',
+    'customers.notes_pin': 'customers.edit',
+    'customers.excel_import': 'customers.add',
+}
+_OPERATION_META = {
+    'customers.reception_add': ('ثبت ورود', 'ثبت ورود و شروع تایمر پذیرش'),
+    'customers.reception_refer': ('ارجاع پذیرش', 'ارجاع مراجعه‌کننده و توقف تایمر'),
+    'customers.case_edit': ('ثبت و ویرایش پرونده', 'با شرط مسئول کارت، سرپرست یا ادمین'),
+    'customers.registration_edit': ('ثبت و ویرایش اطلاعات تکمیلی', 'فرم کامل مرحله ثبت اطلاعات؛ با شرط مالکیت کارت'),
+    'customers.reassign': ('انتقال کارت مشتری', 'انتقال معمول کارت؛ فقط نقش سرپرست یا ادمین'),
+    'customers.notes_add': ('افزودن یادداشت', 'ثبت یادداشت روی مشتری'),
+    'customers.notes_edit': ('ویرایش یادداشت', 'ویرایش یادداشت توسط نویسنده یا ادمین'),
+    'customers.notes_delete': ('حذف یادداشت', 'حذف یادداشت توسط نویسنده یا ادمین'),
+    'customers.notes_pin': ('سنجاق یادداشت', 'سنجاق و لغو سنجاق توسط نویسنده یا ادمین'),
+    'customers.excel_import': ('ورود مشتریان از Excel', 'دریافت قالب، پیش‌نمایش و ثبت ورود مشتریان'),
+}
+for key, parent in PERMISSION_PARENT.items():
+    PERMISSIONS[key] = list(PERMISSIONS[parent])
+    PERMISSION_META[key] = ('عملیات مرکز مشتریان', *_OPERATION_META[key])
 
 
 # ═══════════════════════════════════════════════════════════
@@ -225,6 +255,10 @@ def has_permission(user, permission_name):
                      if item.permission_key == permission_name), None)
     if override is not None:
         return override.granted
+    parent = PERMISSION_PARENT.get(permission_name)
+    inherited = next((item for item in user.permission_overrides.all() if item.permission_key == parent), None)
+    if inherited is not None:
+        return inherited.granted
 
     # 2. role-based
     allowed_roles = PERMISSIONS.get(permission_name, [])
@@ -238,16 +272,9 @@ def get_user_permissions(user):
         return set(PERMISSIONS.keys())
 
     user_role = get_user_role(user)
-    perms = {
-        perm for perm, roles in PERMISSIONS.items()
-        if user_role in roles
-    }
-
-    for override in user.permission_overrides.all():
-        if override.granted:
-            perms.add(override.permission_key)
-        else:
-            perms.discard(override.permission_key)
+    overrides = {item.permission_key: item.granted for item in user.permission_overrides.all()}
+    perms = {key for key, roles in PERMISSIONS.items()
+             if overrides.get(key, overrides.get(PERMISSION_PARENT.get(key), user_role in roles))}
 
     return perms
 

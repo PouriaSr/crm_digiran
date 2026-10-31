@@ -35,7 +35,7 @@ class StyledMixin:
 # ═══════════════════════════════════════════════════════════
 def build_permission_fields(form):
     """فیلدهای perm__ را روی فرم می‌سازد (برای کاربر جدید و موجود)"""
-    from accounts.permissions import PERMISSIONS, PERMISSION_META
+    from accounts.permissions import PERMISSIONS, PERMISSION_META, PERMISSION_PARENT
 
     if getattr(form, '_perm_fields_built', False):
         return
@@ -66,13 +66,14 @@ def build_permission_fields(form):
 
         form.fields[field_name] = forms.ChoiceField(
             choices=[
-                ('inherit', 'خودکار (از نقش)'),
+                ('inherit', 'خودکار (نقش/مجوز پایه)'),
                 ('allow', '✓ دسترسی'),
                 ('deny', '✗ بدون دسترسی'),
             ],
             initial=initial,
             required=False,
             widget=forms.Select(attrs={
+                'data-permission-parent': PERMISSION_PARENT.get(perm_key, ''),
                 'class': 'w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-500'
             }),
         )

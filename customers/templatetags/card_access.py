@@ -7,10 +7,10 @@ register = template.Library()
 @register.simple_tag(takes_context=True)
 def can_edit_card(context, customer):
     request = context['request']
-    return check_card(request.user, customer, card_manager_for_request(request))
+    return 'customers.edit' in context.get('user_permissions', set()) and check_card(request.user, customer, card_manager_for_request(request))
 
 
 @register.simple_tag(takes_context=True)
 def can_edit_call(context, call):
     request = context['request']
-    return check_call(request.user, call, card_manager_for_request(request))
+    return 'calls.edit' in context.get('user_permissions', set()) and check_call(request.user, call, card_manager_for_request(request))

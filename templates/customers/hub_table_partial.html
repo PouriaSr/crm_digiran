@@ -99,13 +99,14 @@
                             </button>
                             {% else %}
                             <button type="button" disabled
-                                    title="برای این مشتری «نیاز به پیگیری» ثبت نشده است"
+                                    title="مجوز ثبت پیگیری ندارید"
                                     class="hub-act hub-act-primary-off">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 <span>پیگیری</span>
                             </button>
                             {% endif %}
 
+                            {% if "calls.add" in user_permissions %}
                             <button type="button" title="ثبت تماس جدید"
                                     onclick="openQuickCall('new', {{ c.pk }}, '{{ c.name|escapejs }}', '{{ c.mobile|escapejs }}')"
                                     class="hub-act hub-act-sky">
@@ -113,10 +114,11 @@
                                 <span>تماس جدید</span>
                             </button>
 
+                            {% endif %}
                             <span class="w-px h-5 bg-gray-200 mx-0.5"></span>
 
                             {# ── گروه ثانویه: آیکن‌محور ── #}
-                            {% if can_transfer_calls %}
+                            {% if can_transfer_cards %}
                             <button type="button" title="انتقال به کارمند دیگر" aria-label="انتقال"
                                     onclick="openReassignModal({{ c.pk }}, '{{ c.name|escapejs }}')"
                                     class="hub-act-icon hub-act-violet">
@@ -208,8 +210,10 @@
                     <button type="button" onclick="openQuickCall('followup', {{ c.pk }}, '{{ c.name|escapejs }}', '{{ c.mobile|escapejs }}')"
                             class="text-xs px-2 py-1 bg-emerald-50 text-emerald-700 rounded-lg">تماس پیگیری</button>
                     {% endif %}
+                    {% if "calls.add" in user_permissions %}
                     <button type="button" onclick="openQuickCall('new', {{ c.pk }}, '{{ c.name|escapejs }}', '{{ c.mobile|escapejs }}')"
                             class="text-xs px-2 py-1 bg-sky-50 text-sky-700 rounded-lg">تماس جدید</button>
+                    {% endif %}
                     {% if card_editable %}
                     <button type="button" onclick="openCustomerModal('{% url 'customers:edit' c.pk %}?is_modal=1')"
                             class="text-xs px-2 py-1 bg-amber-50 text-amber-700 rounded-lg">ویرایش</button>

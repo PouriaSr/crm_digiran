@@ -86,7 +86,7 @@ def referral_users(person_type='customer'):
     # Honor effective per-user overrides, including explicit denials.
     users = User.objects.filter(is_active=True).prefetch_related('groups', 'permission_overrides').order_by('first_name', 'username')
     permission = 'customers.hiring' if person_type == 'interviewer' else 'customers.case'
-    return [user for user in users if has_permission(user, permission)]
+    return [user for user in users if has_permission(user, permission) and (person_type == 'interviewer' or has_permission(user, 'customers.case_edit'))]
 
 
 def search_records(records, query):
@@ -193,6 +193,8 @@ def record_change(rec, user, changes):
 def reception_action(request):
     action = request.POST.get('action', '')
     if action in ('answer', 'arrive'):
+        if not has_permission(request.user, 'customers.reception_add'):
+            raise PermissionDenied('مجوز ثبت ورود ندارید.')
         person = request.POST.get('person_type', '')
         if person not in dict(Reception.PERSON_CHOICES):
             return HttpResponse('نوع مراجعه‌کننده را انتخاب کنید.', status=400)
@@ -212,6 +214,8 @@ def reception_action(request):
 
     if action != 'refer':
         return HttpResponse('عملیات پذیرش معتبر نیست.', status=400)
+    if not has_permission(request.user, 'customers.reception_refer'):
+        raise PermissionDenied('مجوز ارجاع پذیرش ندارید.')
     rec = get_object_or_404(Reception.objects.select_for_update(),
                            pk=posted_pk(request, 'reception'), workflow_version=2)
     customer = get_object_or_404(Customer.objects.select_for_update(), pk=rec.customer_id)
@@ -220,7 +224,7 @@ def reception_action(request):
         return redirect(back_to('reception', rec))
     target = get_object_or_404(User.objects, pk=posted_pk(request, 'user'), is_active=True)
     permission = 'customers.hiring' if rec.person_type == 'interviewer' else 'customers.case'
-    if not has_permission(target, permission):
+    if not has_permission(target, permission) or (rec.person_type == 'customer' and not has_permission(target, 'customers.case_edit')):
         return HttpResponse('کاربر انتخاب‌شده دسترسی مرحله بعد این مراجعه را ندارد.', status=400)
     now = timezone.now()
     rec.referred_to, rec.referred_by, rec.referred_at = target, request.user, now
@@ -267,6 +271,7 @@ def case_snapshot(case):
 
 @login_required
 @require_permission('customers.case')
+@require_permission('customers.case_edit')
 @require_POST
 @transaction.atomic
 def case_save(request):
@@ -308,6 +313,7 @@ def case_save(request):
 
 @login_required
 @require_permission('customers.registration')
+@require_permission('customers.registration_edit')
 @transaction.atomic
 def registration_form(request, pk):
     if request.method not in ('GET', 'POST'):
@@ -321,7 +327,7 @@ def registration_form(request, pk):
     if not rec.referred_at or not rec.case_completed_at:
         return HttpResponse('ابتدا ارجاع و ثبت پرونده را تکمیل کنید.', status=409)
     # Same profile popup, fully prefilled. The tab permission authorizes this stage.
-    form = CustomerForm(request.POST if request.method == 'POST' else None, instance=customer)
+    form = CustomerForm(request.POST if request.method == 'POST' else None, instance=customer, limited=not has_permission(request.user, 'customers.profile_full'))
     form.fields.pop('assigned_to', None)  # Changing ownership is a separate operation.
     if request.method == 'POST' and form.is_valid():
         form.save()

@@ -170,6 +170,7 @@ function callModalWidget() {
         serverClockStart: performance.now(),
 
         init() {
+            this.$watch('customerAnalysis', value => { if (this.isCallModalOpen) this.applyCustomerAnalysis(value); });
             this.updateSystemTime();
             this._clockTimer = setInterval(() => {
                 if (this.isCallModalOpen) this.updateSystemTime();
@@ -189,6 +190,7 @@ function callModalWidget() {
         },
 
         applyCustomerAnalysis(value) {
+            value = value === 'potential' ? 'potential' : 'lead';
             this.customerAnalysis = value;
             this.needsFollowup = value === 'potential';
             this.sendAddress = this.needsFollowup;
@@ -269,6 +271,16 @@ function callModalWidget() {
                 }
             }
 
+            this.$nextTick(() => {
+                const values = {customer_analysis: 'lead', call_type: this.callType, purpose: this.purpose, call_status: this.callStatus, requested_condition: '', source: ''};
+                for (const [name, value] of Object.entries(values)) {
+                    const input = form && form.querySelector('[name="' + name + '"]');
+                    if (!input) continue;
+                    if (input.tomselect) input.tomselect.setValue(value, true);
+                    input.value = value;
+                }
+                this.applyCustomerAnalysis('lead');
+            });
             fill(true);                 // فوری (حتی اگر Alpine آماده نباشد)
             try {
                 this.$nextTick(function () { fill(false); });

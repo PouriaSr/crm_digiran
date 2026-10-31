@@ -36,7 +36,8 @@ def permissions_context(request):
 
     return {
         'can_open_customer_hub': bool(allowed_tabs(user)),
-        'can_transfer_calls': card_manager_for_request(request),
+        'can_transfer_cards': card_manager_for_request(request) and 'customers.reassign' in get_user_permissions(user),
+        'can_transfer_calls': card_manager_for_request(request) and 'calls.reassign' in get_user_permissions(user),
         'user_permissions': get_user_permissions(user),
         'user_role': role,
         'user_role_display': get_user_role_display(user),

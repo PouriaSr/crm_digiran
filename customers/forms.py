@@ -281,7 +281,7 @@ class HubCallForm(forms.Form):
         choices=[choice for choice in Call.CALL_STATUS_CHOICES if choice[0] != 'followup'],
         widget=forms.Select(attrs={'x-model': 'callStatus'}))
     customer_analysis = forms.ChoiceField(
-        label='تحلیل مشتری', required=False,
+        label='تحلیل مشتری', required=True, initial='lead',
         choices=[('lead', 'فاقد شرایط'), ('potential', 'قصد خرید دارد')],
         widget=forms.Select(attrs={'x-model': 'customerAnalysis', '@change': 'applyCustomerAnalysis($el.value)'}))
     requested_condition = forms.ChoiceField(

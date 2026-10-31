@@ -265,7 +265,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 : '<span class="text-xs text-gray-400 font-bold">\u2717 ندارد</span>';
         }
         if (sel && effCell) {
-            const v = sel.value;
+            let v = sel.value;
+            if (v === 'inherit' && sel.dataset.permissionParent) {
+                const parent = document.querySelector('tr[data-perm-key="'+sel.dataset.permissionParent+'"] select');
+                if (parent && parent.value !== 'inherit') v = parent.value;
+            }
             const effective = role === 'admin' || ((v === 'allow') ? true : (v === 'deny') ? false : hasRole);
             effCell.innerHTML = effective
                 ? '<span class="text-xs text-green-700 font-bold">\u2713 فعال</span>'
@@ -290,7 +294,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.querySelectorAll('select[name^="perm__"]').forEach(function(s) {
         s.addEventListener('change', function() {
-            updateRow(this.closest('tr'));
+            updateAll();
         });
     });
 
@@ -318,7 +322,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!confirm('همه‌ی بازنویسی‌ها به حالت «خودکار» برگردند؟')) return;
             document.querySelectorAll('select[name^="perm__"]').forEach(function(s) {
                 s.value = 'inherit';
-                updateRow(s.closest('tr'));
+                updateAll();
             });
         });
     }

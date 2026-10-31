@@ -4,7 +4,7 @@
         <header class="wf-panel-head"><div><h2 class="wf-title">پرونده مشتریان ارجاع‌شده</h2><p class="wf-subtitle">مشتری را انتخاب و فیلدهای باقی‌مانده را تکمیل کنید؛ مشخصات قبلی حفظ شده‌اند.</p></div></header>
         <div class="wf-picker"><label for="case-person" class="wf-label">انتخاب مشتری برای تکمیل پرونده</label><form method="get"><input type="hidden" name="tab" value="case"><select id="case-person" name="r" onchange="this.form.submit()" data-placeholder="جستجوی مشتری ارجاع‌شده" class="w-full rounded-xl border border-gray-200 p-2.5 text-sm"><option value="">انتخاب کنید...</option>{% for rec in case_choices %}<option value="{{ rec.pk }}" {% if case_record.pk == rec.pk %}selected{% endif %}>{{ rec.customer.name }} — {{ rec.customer.mobile }}</option>{% endfor %}</select></form></div>
     </section>
-    {% if case_record and case_form %}
+    {% if case_record and case_form and "customers.case_edit" in user_permissions %}
     <details id="case-editor" class="wf-editor" {% if not case_record.case_completed_at or case_form.errors or request.GET.edit_case %}open{% endif %}>
         <summary>{% if case_record.case_completed_at %}ویرایش پرونده{% else %}تکمیل پرونده{% endif %} — {{ case_customer.name }} <span class="font-normal text-xs text-gray-400 mr-2">برای باز و بسته کردن فرم کلیک کنید</span></summary>
         <div class="wf-editor-content">
@@ -148,7 +148,7 @@
                     <time class="wf-time" data-label="ارجاع:" title="{{ rec.referred_at|jdate:'Y/m/d H:i:s' }}">{{ rec.referred_at|jdate:'Y/m/d H:i' }}</time>
                     <span class="wf-metric text-xs">{{ rec.customer.case.get_condition_display|default:'تعیین نشده' }}</span>
                     <span class="wf-owner" title="{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% endif %}">{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% else %}تعیین نشده{% endif %}</span>
-                    <span class="wf-actions"><a class="wf-action" href="?tab=case&r={{ rec.pk }}&edit_case=1#case-editor" onclick="event.stopPropagation()">{% if rec.case_completed_at %}ویرایش پرونده{% else %}تکمیل پرونده{% endif %}</a>{% include 'customers/_workflow_row_toggle.html' %}</span>
+                    <span class="wf-actions">{% if "customers.case_edit" in user_permissions %}<a class="wf-action" href="?tab=case&r={{ rec.pk }}&edit_case=1#case-editor" onclick="event.stopPropagation()">{% if rec.case_completed_at %}ویرایش پرونده{% else %}تکمیل پرونده{% endif %}</a>{% endif %}{% include 'customers/_workflow_row_toggle.html' %}</span>
                 </summary>
                 {% include 'customers/_workflow_record_details.html' %}
             </details>
