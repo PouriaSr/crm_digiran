@@ -88,10 +88,8 @@ class AdForm(DuplicateCheckMixin, StyledFormMixin, forms.ModelForm):
         if not ad_number:
             raise ValidationError('شناسه آگهی الزامی است.')
 
-        qs = Ad.objects.filter(ad_number=ad_number)
-        if self.instance.pk:
-            qs = qs.exclude(pk=self.instance.pk)
-        if qs.exists():
+        from crm.duplicate_check import find_exact_match, normalize_code
+        if find_exact_match(Ad, 'ad_number', ad_number, normalize_code, self.instance.pk):
             raise ValidationError(
                 f'شناسه آگهی «{ad_number}» قبلاً ثبت شده است. '
                 'شناسه آگهی باید یونیک باشد.'
@@ -128,12 +126,13 @@ class AdPlatformForm(DuplicateCheckMixin, StyledFormMixin, forms.ModelForm):
         fields = ['name', 'ad_number_start', 'is_active']
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': 'مثال: دیوار'}),
-            'ad_number_start': forms.NumberInput(attrs={'step': '1000'}),
+            'ad_number_start': forms.NumberInput(attrs={'step': '1'}),
         }
 
     def clean_name(self):
         name = self.cleaned_data['name'].strip()
-        if AdPlatform.objects.filter(name=name).exclude(pk=self.instance.pk).exists():
+        from crm.duplicate_check import find_exact_match, normalize_text
+        if find_exact_match(AdPlatform, 'name', name, normalize_text, self.instance.pk):
             raise ValidationError('این عنوان قبلاً تعریف شده است.')
         return name
 
@@ -143,8 +142,23 @@ class AdProcessForm(StyledFormMixin, forms.ModelForm):
         model = AdProcess
         fields = ['platform', 'name', 'default_cost', 'is_active']
         widgets = {
-            'default_cost': forms.NumberInput(attrs={'step': '1000'}),
+            'default_cost': forms.NumberInput(attrs={'step': '1'}),
         }
+
+    def clean_platform(self):
+        platform = self.cleaned_data['platform']
+        if self.instance.pk and platform.pk != self.instance.platform_id and self.instance.ads.exists():
+            raise ValidationError('این فرآیند در تبلیغات استفاده شده است؛ عنوان آن قابل جابه‌جایی نیست. برای عنوان دیگر، فرآیند جدید بسازید.')
+        return platform
+
+    def clean(self):
+        cleaned = super().clean()
+        platform, name = cleaned.get('platform'), cleaned.get('name')
+        if platform and name:
+            from crm.duplicate_check import find_exact_match, normalize_text
+            if find_exact_match(AdProcess, 'name', name, normalize_text, self.instance.pk, extra_filter={'platform': platform}):
+                self.add_error('name', 'این نام فرآیند برای این عنوان قبلاً تعریف شده است.')
+        return cleaned
 
 
 class AdSourceForm(DuplicateCheckMixin, StyledFormMixin, forms.ModelForm):
@@ -157,7 +171,8 @@ class AdSourceForm(DuplicateCheckMixin, StyledFormMixin, forms.ModelForm):
 
     def clean_phone_number(self):
         from crm.duplicate_check import normalize_phone, find_exact_match
-        raw = self.cleaned_data['phone_number'].strip()
+        from crm.numerals import ascii_digits
+        raw = ascii_digits(self.cleaned_data['phone_number']).strip()
         if any(character not in '+- ()0123456789۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩' for character in raw):
             raise ValidationError('شماره منبع باید فقط شامل رقم و علائم متداول شماره تلفن باشد.')
         phone = normalize_phone(raw)

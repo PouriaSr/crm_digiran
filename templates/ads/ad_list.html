@@ -135,8 +135,8 @@
         {% for ad in page_obj %}
         <tr class="hover:bg-gray-50 transition">
           <td class="px-4 py-3 text-center text-gray-500" data-label="ردیف">{{ forloop.counter0|add:page_obj.start_index|fa_num }}</td>
-          <td class="px-4 py-3 text-center font-medium text-gray-800" data-label="عنوان">{{ ad.platform.name }}</td>
-          <td class="px-4 py-3 text-center text-gray-600" data-label="فرآیند">{{ ad.process.name }}</td>
+          <td class="px-4 py-3 text-center font-medium text-gray-800" data-label="عنوان">{{ ad.platform_name_snapshot }}</td>
+          <td class="px-4 py-3 text-center text-gray-600" data-label="فرآیند">{{ ad.process_name_snapshot }}</td>
           <td class="px-4 py-3 text-center text-gray-800 font-medium" data-label="هزینه">{{ ad.cost|fa_num }} تومان</td>
           <td class="px-4 py-3 text-center text-gray-600" data-label="منبع"><bdi dir="ltr">{{ ad.source_phone_snapshot }}</bdi>{% if ad.source_label_snapshot %}<span class="block text-xs text-gray-500">{{ ad.source_label_snapshot }}</span>{% endif %}</td>
           <td class="px-4 py-3 text-center text-gray-600" data-label="محصول">{% if ad.product %}{{ ad.product.name }}{% else %}--{% endif %}</td>

@@ -1,14 +1,15 @@
 """Canonical digits for business inputs; never rewrite opaque credentials."""
 import re
+from .unicode_digits import DIGIT_GLYPHS
 
-ASCII_DIGITS = str.maketrans('۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩', '01234567890123456789')
-PERSIAN_DIGITS = str.maketrans('0123456789٠١٢٣٤٥٦٧٨٩', '۰۱۲۳۴۵۶۷۸۹۰۱۲۳۴۵۶۷۸۹')
+ASCII_DIGITS = {ord(char): str(digit) for digit, glyphs in enumerate(DIGIT_GLYPHS) for char in glyphs}
+PERSIAN_DIGITS = {ord(char): '۰۱۲۳۴۵۶۷۸۹'[digit] for digit, glyphs in enumerate(DIGIT_GLYPHS) for char in glyphs}
 _OPAQUE_PARTS = {
     'password', 'password1', 'password2', 'token', 'secret', 'csrfmiddlewaretoken',
     'key', 'signature', 'username', 'email', 'url', 'uri', 'next', 'redirect',
     'redirectto', 'returnto', 'session', 'uidb64', 'credential',
 }
-_NUMBER = re.compile(r'^[+-]?(?:\d+|\d{1,3}(?:[,٬]\d{3})+)(?:[.٫]\d+)?$')
+_NUMBER = re.compile(r'^[+\-＋－−]?(?:\d+|\d{1,3}(?:[,٬，]\d{3})+)(?:[.٫．]\d+)?$')
 
 
 def preserve_field(name):
@@ -31,7 +32,9 @@ def normalize_input(value):
     value = ascii_digits(value)
     if _NUMBER.fullmatch(value.strip()):
         # Only numeric values: leave commas in prose and date separators intact.
-        value = value.replace('٬', '').replace(',', '').replace('٫', '.')
+        value = value.translate(str.maketrans({'٬': '', ',': '', '，': '', '٫': '.', '．': '.', '＋': '+', '－': '-', '−': '-'}))
+    elif re.fullmatch(r'\s*(?:\d{1,4}[/／.．\-－]\d{1,2}[/／.．\-－]\d{1,4}(?:[ T]\d{1,2}[:：﹕]\d{2}(?:[:：﹕]\d{2})?)?|\d{1,2}[:：﹕]\d{2}(?:[:：﹕]\d{2})?)\s*', value):
+        value = value.translate(str.maketrans({'／': '/', '．': '.', '－': '-', '：': ':', '﹕': ':'}))
     return value
 
 
@@ -41,14 +44,12 @@ def digit_contains(field, query):
     Ordinary text searches keep their usual SQL. Digit searches normalize only
     the compared column; surrounding ownership/permission filters are unchanged.
     """
-    from django.db.models import F, Q, TextField, Value
-    from django.db.models.functions import Replace
-    from django.db.models.lookups import IContains
+    from django.db.models import Q
 
     query = ascii_digits(query)
     if not re.search('[0-9]', query):
         return Q(**{field + '__icontains': query})
-    expression = F(field)
-    for source, target in zip('۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩', '01234567890123456789'):
-        expression = Replace(expression, Value(source), Value(target), output_field=TextField())
-    return Q(IContains(expression, Value(query)))
+    # A literal pattern avoids hundreds of nested SQL REPLACE calls, and also
+    # finds pre-existing records containing digits from different keyboards.
+    pattern = ''.join('[' + DIGIT_GLYPHS[int(char)] + ']' if char in '0123456789' else re.escape(char) for char in query)
+    return Q(**{field + '__iregex': pattern})

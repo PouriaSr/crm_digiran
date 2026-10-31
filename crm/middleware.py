@@ -4,9 +4,10 @@ Thread-local برای نگه‌داشتن request و user جاری در signalه
 """
 import html
 import threading
+import re
 from html.parser import HTMLParser
 
-from .numerals import PERSIAN_DIGITS, normalize_input, preserve_field
+from .numerals import PERSIAN_DIGITS, normalize_input, preserve_field, persian_digits
 
 
 _thread_locals = threading.local()
@@ -101,14 +102,30 @@ class PersianDigitsHTMLParser(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         # استفاده از متن اصلی تگ برای جلوگیری از خراب شدن استایل‌ها و لینک‌ها
-        self.result.append(self.get_starttag_text())
+        self.result.append(self._start_tag(tag, attrs))
         if tag in _RAW_CONTENT_TAGS:
             self._mode_stack.append('raw')
         elif tag in _PRESERVE_DIGITS_TAGS:
             self._mode_stack.append('preserve')
 
     def handle_startendtag(self, tag, attrs):
-        self.result.append(self.get_starttag_text())
+        self.result.append(self._start_tag(tag, attrs, closed=True))
+
+    def _start_tag(self, tag, attrs, closed=False):
+        display = {'title', 'placeholder', 'aria-label', 'alt'}
+        if tag in ('option', 'optgroup'):
+            display.add('label')
+        if not any(name in display and value is not None and persian_digits(value) != value for name, value in attrs):
+            return self.get_starttag_text()
+        rendered = []
+        for name, value in attrs:
+            if value is None:
+                rendered.append(' ' + name)
+            else:
+                if name in display:
+                    value = persian_digits(value)
+                rendered.append(' ' + name + '="' + html.escape(value, quote=True) + '"')
+        return '<' + tag + ''.join(rendered) + ('/>' if closed else '>')
 
     def handle_endtag(self, tag):
         if tag in _ALL_IGNORE_TAGS and self._mode_stack:
@@ -168,6 +185,13 @@ class PersianDigitsMiddleware:
             content = response.content.decode('utf-8')
         except UnicodeDecodeError:
             return response
+
+        # Also cover standalone/admin pages that do not extend our base. Partial
+        # HTMX responses inherit their parent's assets and are not injected.
+        if 'id="crm-numeral-inputs"' not in content and re.search(r'</head\s*>', content, flags=re.I):
+            from django.template.loader import render_to_string
+            assets = render_to_string('includes/_numerals.html')
+            content = re.sub(r'</head\s*>', lambda match: assets + match.group(), content, count=1, flags=re.I)
 
         parser = PersianDigitsHTMLParser()
         parser.feed(content)

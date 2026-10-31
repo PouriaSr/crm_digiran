@@ -26,14 +26,15 @@ class AdPlatform(models.Model):
 
     def get_next_ad_number(self):
         """عدد بعدی سری برای این پلتفرم"""
+        from crm.numerals import ascii_digits
         nums = []
         for n in self.ads.values_list('ad_number', flat=True):
             try:
-                nums.append(int(n))
+                nums.append(int(ascii_digits(n)))
             except (ValueError, TypeError):
                 continue
         if nums:
-            return str(max(nums) + 1)
+            return str(max(self.ad_number_start, max(nums) + 1))
         return str(self.ad_number_start)
 
 
@@ -139,6 +140,8 @@ class Ad(SourceSnapshotMixin):
         help_text='شماره یونیک آگهی در پلتفرم',
     )
     note = models.TextField('توضیحات', blank=True)
+    platform_name_snapshot = models.CharField('عنوان هنگام ثبت', max_length=100, blank=True, default='', editable=False)
+    process_name_snapshot = models.CharField('فرآیند هنگام ثبت', max_length=150, blank=True, default='', editable=False)
 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -159,6 +162,23 @@ class Ad(SourceSnapshotMixin):
 
     def __str__(self):
         return f'{self.platform.name} — {self.ad_number}'
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get('update_fields')
+        relations = {'platform', 'platform_id', 'process', 'process_id'}
+        if self._state.adding or update_fields is None or relations & set(update_fields):
+            db = kwargs.get('using') or self._state.db
+            previous = {} if self._state.adding else type(self).objects.using(db).filter(pk=self.pk).values('platform_id', 'process_id').first() or {}
+            for relation, Model in (('platform', AdPlatform), ('process', AdProcess)):
+                relation_id = getattr(self, relation + '_id')
+                if self._state.adding or relation_id != previous.get(relation + '_id'):
+                    name = Model.objects.using(db).filter(pk=relation_id).values_list('name', flat=True).first() or ''
+                    snapshot = relation + '_name_snapshot'
+                    setattr(self, snapshot, name)
+                    if update_fields is not None:
+                        update_fields = set(update_fields) | {snapshot}
+                        kwargs['update_fields'] = update_fields
+        return super().save(*args, **kwargs)
 
 
 class AdLog(models.Model):

@@ -61,11 +61,8 @@ class InvoiceForm(forms.ModelForm):
             self.initial['due_date'] = j.strftime('%Y/%m/%d')
 
     def _to_en(self, value):
-        persian = '۰۱۲۳۴۵۶۷۸۹'
-        arabic = '٠١٢٣٤٥٦٧٨٩'
-        for i, (p, a) in enumerate(zip(persian, arabic)):
-            value = value.replace(p, str(i)).replace(a, str(i))
-        return value
+        from crm.numerals import normalize_input
+        return normalize_input(value)
 
     
     def clean_due_date(self):

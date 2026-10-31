@@ -26,11 +26,11 @@ _ARABIC_TO_PERSIAN = {
     'ؤ': 'و', 'إ': 'ا', 'أ': 'ا',
 }
 
-def normalize_text(value, lower=True):
+def normalize_text(value, lower=True, digits=True):
     """نرمال‌سازی متن برای مقایسه (ی/ک عربی، ZWNJ، فاصله)"""
     if value is None:
         return ''
-    s = str(value).strip()
+    s = (ascii_digits(value) if digits else str(value)).strip()
     for ar, fa in _ARABIC_TO_PERSIAN.items():
         s = s.replace(ar, fa)
     s = re.sub(r'[\u200b\u200c\u200d\ufeff]', '', s)
@@ -67,7 +67,7 @@ def normalize_email(value):
     """نرمال‌سازی ایمیل"""
     if not value:
         return ''
-    return normalize_text(value, lower=True)
+    return normalize_text(value, lower=True, digits=False)
 
 
 # ═══════════════════════════════════════════════════

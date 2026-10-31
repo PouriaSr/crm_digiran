@@ -50,7 +50,7 @@ def parse_jalali_date(value):
     if isinstance(value, date):
         return value
 
-    s = normalize_digits(value).replace('-', '/').replace('.', '/')
+    s = normalize_input(value).replace('-', '/').replace('.', '/')
     if ' ' in s:
         s = s.split(' ', 1)[0]
 

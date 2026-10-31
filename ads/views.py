@@ -88,8 +88,8 @@ def ad_list(request):
     if q:
         qs = qs.filter(
             digit_contains('ad_number', q)
-            | digit_contains('platform__name', q)
-            | digit_contains('process__name', q)
+            | digit_contains('platform_name_snapshot', q)
+            | digit_contains('process_name_snapshot', q)
             | digit_contains('source_phone_snapshot', q)
             | digit_contains('source_label_snapshot', q)
             | digit_contains('product__name', q)
@@ -132,11 +132,12 @@ def ad_list(request):
     }
 
     by_platform = list(
-        report_qs.values('platform__name')
+        report_qs.values('platform_name_snapshot')
         .annotate(count=Count('id'), total=Sum('cost'))
         .order_by('-total')
     )
     for item in by_platform:
+        item['platform__name'] = item['platform_name_snapshot']
         item['total'] = item['total'] or 0
 
     by_user = None
@@ -233,8 +234,8 @@ def ad_export_report(request):
     for i, ad in enumerate(qs, 1):
         ws.append([
             i,
-            ad.platform.name,
-            ad.process.name,
+            ad.platform_name_snapshot,
+            ad.process_name_snapshot,
             float(ad.cost),
             ad.source_display,
             ad.product.name if ad.product else '—',
@@ -255,13 +256,13 @@ def ad_export_report(request):
         cell.font = header_font
 
     by_platform = (
-        qs.values('platform__name')
+        qs.values('platform_name_snapshot')
         .annotate(count=Count('id'), total=Sum('cost'))
         .order_by('-total')
     )
     for item in by_platform:
         ws2.append([
-            item['platform__name'],
+            item['platform_name_snapshot'],
             item['count'],
             float(item['total'] or 0),
         ])
@@ -324,8 +325,8 @@ def ad_create(request):
                     action='create',
                     changed_by=request.user,
                     changes={
-                        'platform': [None, ad.platform.name],
-                        'process': [None, ad.process.name],
+                        'platform': [None, ad.platform_name_snapshot],
+                        'process': [None, ad.process_name_snapshot],
                         'cost': [None, str(ad.cost)],
                         'source': [None, ad.source_display],
                         'product': [None, ad.product.name if ad.product else '—'],
@@ -368,8 +369,8 @@ def ad_edit(request, pk):
 
     if request.method == 'POST':
         old = {
-            'platform': ad.platform.name,
-            'process': ad.process.name,
+            'platform': ad.platform_name_snapshot,
+            'process': ad.process_name_snapshot,
             'cost': str(ad.cost),
             'source': ad.source_display,
             'product': ad.product.name if ad.product else '—',
@@ -382,8 +383,8 @@ def ad_edit(request, pk):
                 updated = form.save()
 
                 new_vals = {
-                    'platform': updated.platform.name,
-                    'process': updated.process.name,
+                    'platform': updated.platform_name_snapshot,
+                    'process': updated.process_name_snapshot,
                     'cost': str(updated.cost),
                     'source': updated.source_display,
                     'product': updated.product.name if updated.product else '—',
@@ -461,6 +462,21 @@ def platform_list(request):
 
 
 @login_required
+@perm_required('ads.manage_defs')
+@require_http_methods(['GET', 'POST'])
+def platform_edit(request, pk):
+    platform = get_object_or_404(AdPlatform, pk=pk)
+    form = AdPlatformForm(request.POST if request.method == 'POST' else None, instance=platform)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'عنوان به‌روزرسانی شد؛ اطلاعات گزارش‌های قبلی حفظ شدند.')
+        return redirect('ads:platform_list')
+    return render(request, 'ads/platform_list.html', {
+        'form': form, 'items': AdPlatform.objects.all(), 'editing_platform': platform,
+    })
+
+
+@login_required
 
 
 @perm_required('ads.manage_defs')
@@ -491,6 +507,21 @@ def process_list(request):
     return render(request, 'ads/process_list.html', {
         'form': form,
         'items': AdProcess.objects.select_related('platform').all(),
+    })
+
+
+@login_required
+@perm_required('ads.manage_defs')
+@require_http_methods(['GET', 'POST'])
+def process_edit(request, pk):
+    process = get_object_or_404(AdProcess, pk=pk)
+    form = AdProcessForm(request.POST if request.method == 'POST' else None, instance=process)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'فرآیند به‌روزرسانی شد؛ هزینه و نام ثبت‌شده در تبلیغات قبلی حفظ شدند.')
+        return redirect('ads:process_list')
+    return render(request, 'ads/process_list.html', {
+        'form': form, 'items': AdProcess.objects.select_related('platform').all(), 'editing_process': process,
     })
 
 

@@ -98,11 +98,8 @@ class CallForm(forms.ModelForm):
 
     # ═══ متد کمکی ═══
     def _to_en_digits(self, value):
-        persian = '۰۱۲۳۴۵۶۷۸۹'
-        arabic = '٠١٢٣٤٥٦٧٨٩'
-        for i, (p, a) in enumerate(zip(persian, arabic)):
-            value = value.replace(p, str(i)).replace(a, str(i))
-        return value
+        from crm.numerals import normalize_input
+        return normalize_input(value)
 
     # ═══ اعتبارسنجی تاریخ و ساعت تماس ═══
     

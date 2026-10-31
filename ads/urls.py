@@ -16,8 +16,10 @@ urlpatterns = [
 
     # مدیریت (ادمین)
     path('manage/platforms/', views.platform_list, name='platform_list'),
+    path('manage/platforms/<int:pk>/edit/', views.platform_edit, name='platform_edit'),
     path('manage/platforms/<int:pk>/delete/', views.platform_delete, name='platform_delete'),
     path('manage/processes/', views.process_list, name='process_list'),
+    path('manage/processes/<int:pk>/edit/', views.process_edit, name='process_edit'),
     path('manage/processes/<int:pk>/delete/', views.process_delete, name='process_delete'),
     path('manage/sources/', views.source_list, name='source_list'),
     path('manage/sources/<int:pk>/edit/', views.source_edit, name='source_edit'),

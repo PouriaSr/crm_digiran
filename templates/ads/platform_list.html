@@ -11,6 +11,8 @@
 
   <form method="post" class="bg-white rounded-xl shadow-sm p-5 mb-6">
     {% csrf_token %}
+    <h2 class="font-bold text-gray-700 mb-4">{% if editing_platform %}ویرایش عنوان{% else %}افزودن عنوان{% endif %}</h2>
+    {% if form.non_field_errors %}<div class="text-red-600 text-sm mb-3">{{ form.non_field_errors }}</div>{% endif %}
     <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
       <div class="md:col-span-2">
         <label class="block text-sm font-medium text-gray-700 mb-1">نام عنوان <span class="text-red-500">*</span></label>
@@ -24,10 +26,11 @@
       </div>
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-2">{{ form.is_active }}<label class="text-sm text-gray-700">فعال</label></div>
-        <button type="submit" class="ml-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">افزودن</button>
+        <button type="submit" class="ml-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">{% if editing_platform %}ذخیره تغییرات{% else %}افزودن{% endif %}</button>
       </div>
     </div>
   </form>
+  {% if editing_platform %}<a class="inline-block text-sm text-blue-600 mb-4" href="{% url 'ads:platform_list' %}">انصراف از ویرایش</a>{% endif %}
 
   <div class="bg-white rounded-xl shadow-sm overflow-hidden">
     <table class="responsive-table w-full text-sm">
@@ -52,6 +55,7 @@
           <td class="px-4 py-3 text-center text-gray-600">{{ item.processes.count }}</td>
           <td class="px-4 py-3 text-center text-gray-600">{{ item.ads.count }}</td>
           <td class="px-4 py-3 text-center">
+            <a class="text-blue-600 hover:text-blue-800 text-xs font-medium ml-3" href="{% url 'ads:platform_edit' item.pk %}">ویرایش</a>
             <form method="post" action="{% url 'ads:platform_delete' item.pk %}" class="inline" onsubmit="return confirm('حذف شود؟');">
               {% csrf_token %}
               <button type="submit" class="text-red-600 hover:text-red-800 text-xs font-medium">حذف</button>

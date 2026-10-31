@@ -1,18 +1,17 @@
 {% include 'includes/_numeral_font.html' %}
-<script>
+{% include 'includes/_digit_glyphs.html' %}
+<script id="crm-numeral-inputs">
 (function () {
     'use strict';
     if (window.CRMNumerals) return;
-    function ascii(value) {
-        return String(value == null ? '' : value)
-            .replace(/[۰-۹]/g, c => String(c.charCodeAt(0) - 1776))
-            .replace(/[٠-٩]/g, c => String(c.charCodeAt(0) - 1632));
-    }
+    const digitMap = new Map();
+    window.CRM_DIGIT_GLYPHS.forEach((glyphs, digit) => { for (const glyph of glyphs) digitMap.set(glyph, String(digit)); });
+    function ascii(value) { return Array.from(String(value == null ? '' : value), c => digitMap.get(c) ?? c).join(''); }
     function persian(value) {
         return ascii(value).replace(/[0-9]/g, c => '۰۱۲۳۴۵۶۷۸۹'[Number(c)]);
     }
     function numeric(value) {
-        value = ascii(value);
+        value = ascii(value).replace(/[٫．]/g, '.').replace(/٬/g, '').replace(/，/g, ',').replace(/[－−]/g, '-').replace(/＋/g, '+');
         if (/^[+-]?(?:\d+|\d{1,3}(?:[,٬]\d{3})+)(?:[.٫]\d+)?$/.test(value.trim())) {
             return value.replace(/[,٬]/g, '').replace(/٫/g, '.');
         }
@@ -27,11 +26,46 @@
     }
     function normalize(el) {
         if (!eligible(el)) return;
-        const value = el.type === 'number' ? numeric(el.value) : ascii(el.value);
-        if (value === el.value) return;
+        const convert = el.dataset.crmTime !== undefined ? value => ascii(value).replace(/[：﹕]/g, ':') : el.type === 'number' ? numeric : ascii;
+        const original = el.value, value = convert(original);
+        if (value === el.value) { if (el.dataset.crmTime !== undefined) validateTime(el); return; }
         const start = el.selectionStart, end = el.selectionEnd, direction = el.selectionDirection;
         el.value = value;
-        if (start !== null && typeof el.setSelectionRange === 'function') el.setSelectionRange(start, end, direction);
+        if (start !== null && typeof el.setSelectionRange === 'function') el.setSelectionRange(convert(original.slice(0, start)).length, convert(original.slice(0, end)).length, direction);
+        if (el.dataset.crmTime !== undefined) validateTime(el);
+    }
+    function validateTime(el) {
+        const value = ascii(el.value).replace(/[：﹕]/g, ':');
+        const match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(value);
+        if (!value) { el.setCustomValidity(''); return; }
+        if (!match || +match[1] > 23 || +match[2] > 59 || +(match[3] || 0) > 59) {
+            el.setCustomValidity('ساعت را مانند ۱۴:۳۰ وارد کنید.'); return;
+        }
+        const seconds = +match[1] * 3600 + +match[2] * 60 + +(match[3] || 0);
+        const toSeconds = text => { const p = text.split(':').map(Number); return p[0]*3600 + p[1]*60 + (p[2] || 0); };
+        const min = el.min ? toSeconds(el.min) : null, max = el.max ? toSeconds(el.max) : null;
+        const outside = min !== null && max !== null && min > max ? seconds < min && seconds > max : (min !== null && seconds < min) || (max !== null && seconds > max);
+        const step = el.step === 'any' ? null : Number(el.step || 60);
+        el.setCustomValidity(outside ? 'ساعت باید در بازه مجاز باشد.' : step && Math.abs((seconds - (min || 0)) % step) > 0.00001 ? 'ساعت با فاصله زمانی مجاز سازگار نیست.' : '');
+    }
+    function prepareTime(el) {
+        if (el.type !== 'time') return;
+        // Native segmented time editors reject non-Latin keyboard characters
+        // before input events. A text time field accepts every mapped digit.
+        const value = el.value;
+        el.dataset.crmTime = '';
+        el.type = 'text';
+        el.inputMode = 'numeric';
+        if (!el.hasAttribute('dir')) el.dir = 'ltr';
+        el.placeholder = el.placeholder || '۱۴:۳۰';
+        el.value = value;
+        el.addEventListener('blur', () => {
+            let next = ascii(el.value).replace(/[：﹕]/g, ':');
+            if (/^\d{4}$/.test(next)) next = next.slice(0, 2) + ':' + next.slice(2);
+            if (next !== el.value) { el.value = next; el.dispatchEvent(new Event('input', {bubbles:true})); }
+            validateTime(el);
+        });
+        validateTime(el);
     }
     // Native number inputs discard Persian text before the input event. Insert
     // canonical text at the real caret, preserving native min/max/step validation.
@@ -62,16 +96,33 @@
         const inputs = root.matches && root.matches('input,textarea') ? [root] : [];
         inputs.push(...root.querySelectorAll('input,textarea'));
         inputs.forEach(el => {
+            prepareTime(el);
             if (eligible(el)) normalize(el);
-            else if (['password','email','url'].includes(el.type) || opaque.test(el.name || '')) el.classList.add('crm-preserve-digits');
+        });
+        const displays = root.matches && root.matches('[title],[placeholder],[aria-label],[alt],option[label],optgroup[label]') ? [root] : [];
+        displays.push(...root.querySelectorAll('[title],[placeholder],[aria-label],[alt],option[label],optgroup[label]'));
+        displays.forEach(localizeAttributes);
+    }
+    const displayAttrs = ['title', 'placeholder', 'aria-label', 'alt', 'label'];
+    function localizeAttributes(el) {
+        displayAttrs.forEach(name => {
+            if (name === 'label' && !el.matches('option,optgroup')) return;
+            const value = el.getAttribute(name);
+            if (value !== null && persian(value) !== value) el.setAttribute(name, persian(value));
         });
     }
     document.addEventListener('DOMContentLoaded', () => {
         scan(document);
-        new MutationObserver(changes => changes.forEach(change => change.addedNodes.forEach(scan)))
-            .observe(document.body, {childList:true, subtree:true});
+        new MutationObserver(changes => changes.forEach(change => {
+            if (change.type === 'attributes') localizeAttributes(change.target);
+            else change.addedNodes.forEach(scan);
+            if (change.target.nodeName === 'TITLE' || change.target.parentElement?.nodeName === 'TITLE') {
+                if (document.title !== persian(document.title)) document.title = persian(document.title);
+            }
+        })).observe(document.documentElement, {childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:displayAttrs});
     });
     document.addEventListener('htmx:afterSwap', event => scan(event.detail.target));
+    document.addEventListener('reset', event => { setTimeout(() => scan(event.target), 0); }, true);
     window.CRMNumerals = {ascii, persian, numeric};
 })();
 </script>

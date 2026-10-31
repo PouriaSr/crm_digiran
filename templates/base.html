@@ -18,7 +18,7 @@
     // ─── Persian numeral converter (idempotent) ───
     window._faDigits = function (val) {
         if (val === null || val === undefined) return val;
-        var str = String(val);
+        var str = window.CRMNumerals ? CRMNumerals.ascii(val) : String(val);
         // Add thousand-separator for pure integers only
         if (/^-?[0-9]+$/.test(str)) {
             str = str.replace(/\B(?=([0-9]{3})+(?![0-9]))/g, ',');
@@ -1479,6 +1479,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const tsConfig = {
             create: false, plugins: ['dropdown_input'], placeholder: labelText,
             maxOptions: 1000, dropdownParent: 'body',
+            score: function(search) {
+                const canonical = value => window.CRMNumerals ? CRMNumerals.ascii(value) : value;
+                const score = this.getScoreFunction(canonical(search));
+                return item => score(Object.fromEntries(Object.entries(item).map(([key, value]) => [key, typeof value === 'string' ? canonical(value) : value])));
+            },
             render: { no_results: () => '<div class="p-3 text-gray-500 text-center text-sm">موردی یافت نشد</div>' }
         };
         // ⚠️ allowEmptyOption را عمداً true نمی‌کنیم: اگر true باشد، TomSelect
@@ -1695,7 +1700,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 function validateCustomerPhone(input, blur = false) {
-    const digits = input.value.trim().replace(/[۰-۹]/g,c=>String(c.charCodeAt(0)-1776)).replace(/[٠-٩]/g,c=>String(c.charCodeAt(0)-1632));
+    const digits = window.CRMNumerals ? CRMNumerals.ascii(input.value.trim()) : input.value.trim();
     const invalid = !/^[0-9]{11}$/.test(digits);
     input.setCustomValidity(invalid ? 'شماره تماس باید دقیقاً ۱۱ رقم باشد.' : '');
     input.setAttribute('aria-invalid',invalid && (digits.length > 0 || blur) ? 'true' : 'false');

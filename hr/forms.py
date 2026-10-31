@@ -171,11 +171,8 @@ class TaskForm(forms.ModelForm):
             self.initial['due_date'] = j.strftime('%Y/%m/%d')
 
     def _to_en(self, value):
-        persian = '۰۱۲۳۴۵۶۷۸۹'
-        arabic = '٠١٢٣٤٥٦٧٨٩'
-        for i, (p, a) in enumerate(zip(persian, arabic)):
-            value = value.replace(p, str(i)).replace(a, str(i))
-        return value
+        from crm.numerals import normalize_input
+        return normalize_input(value)
 
     def clean_due_date(self):
         value = self.cleaned_data.get('due_date')
@@ -253,11 +250,8 @@ class LeaveRequestForm(forms.ModelForm):
                 self.initial['end_date'] = j.strftime('%Y/%m/%d')
 
     def _to_en(self, value):
-        persian = '۰۱۲۳۴۵۶۷۸۹'
-        arabic = '٠١٢٣٤٥٦٧٨٩'
-        for i, (p, a) in enumerate(zip(persian, arabic)):
-            value = value.replace(p, str(i)).replace(a, str(i))
-        return value
+        from crm.numerals import normalize_input
+        return normalize_input(value)
 
     def _parse_jalali(self, value):
         if not value:
@@ -320,11 +314,8 @@ class AttendanceForm(forms.ModelForm):
 
         
     def _to_en(self, value):
-        persian = '۰۱۲۳۴۵۶۷۸۹'
-        arabic = '٠١٢٣٤٥٦٧٨٩'
-        for i, (p, a) in enumerate(zip(persian, arabic)):
-            value = value.replace(p, str(i)).replace(a, str(i))
-        return value
+        from crm.numerals import normalize_input
+        return normalize_input(value)
 
     
 

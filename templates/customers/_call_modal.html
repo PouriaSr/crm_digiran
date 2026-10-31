@@ -318,6 +318,7 @@ function callModalWidget() {
 <script>
 // ── باز کردن مودال «ثبت تماس» به‌صورت مستقیم (مستقل از رویداد window) ──
 function normalizeDigitsFa(s) {
+    if (window.CRMNumerals) return CRMNumerals.ascii(s);
     return String(s || '')
         .replace(/[\u06F0-\u06F9]/g, function (ch) {
             return String.fromCharCode(ch.charCodeAt(0) - 0x06F0 + 48);

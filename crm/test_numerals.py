@@ -9,6 +9,7 @@ from django.urls import reverse
 
 from crm.middleware import NormalizeNumeralInputsMiddleware, PersianDigitsMiddleware
 from crm.numerals import ascii_digits, normalize_input
+from crm.unicode_digits import DIGIT_GLYPHS
 from dashboard.templatetags.fa_numbers import fa_digits, fa_num
 from products.models import Category, Product
 
@@ -21,6 +22,26 @@ class NumeralInputTests(SimpleTestCase):
     def test_mixed_digits_and_leading_zeroes(self):
         self.assertEqual(ascii_digits('۰۹1٢۳۴۵۶۷۸۹'), '09123456789')
         self.assertEqual(normalize_input('۱۴۰۵/۰۸/۰۹ ٠٩:۳۰'), '1405/08/09 09:30')
+
+    def test_all_supported_unicode_digits_are_equivalent(self):
+        for digit, glyphs in enumerate(DIGIT_GLYPHS):
+            for glyph in glyphs:
+                self.assertEqual(ascii_digits(glyph), str(digit), repr(glyph))
+                self.assertEqual(fa_digits(glyph), '۰۱۲۳۴۵۶۷۸۹'[digit], repr(glyph))
+        self.assertEqual(normalize_input('خط ①٢３ 𝟜५۶'), 'خط 123 456')
+        self.assertEqual(normalize_input('０９１２３４５６７８９'), '09123456789')
+        self.assertEqual(normalize_input('１２３．４５'), '123.45')
+        self.assertEqual(normalize_input('−۱۲'), '-12')
+        self.assertEqual(normalize_input('۱۴۰۵／۰۸／۰۹'), '1405/08/09')
+        self.assertEqual(normalize_input('１２：３０'), '12:30')
+
+    def test_display_attributes_are_persian_but_machine_values_are_unchanged(self):
+        body = '<input title="Ref １２٣ &lt;img&gt;" placeholder="𝟜۵" value="0012" data-key="12" onclick="show(12)"><option value="12" label="خط １２">خط １２</option>'
+        response = PersianDigitsMiddleware(lambda req: HttpResponse(body))(RequestFactory().get('/'))
+        text = response.content.decode()
+        for expected in ('title="Ref ۱۲۳ &lt;img&gt;"', 'placeholder="۴۵"', 'value="0012"', 'data-key="12"', 'onclick="show(12)"', 'label="خط ۱۲"'):
+            self.assertIn(expected, text)
+        self.assertNotIn('<img>', text)
 
     def test_grouped_money_and_decimal_separators(self):
         for value in ('۱٬۲۳۴٫۵۰', '1,234.50', '١٬٢٣٤٫٥٠'):
@@ -87,12 +108,20 @@ class NumeralBusinessFlowTests(TestCase):
         self.assertEqual(product.stock, 12)
 
     def test_search_matches_legacy_mixed_scripts_with_any_input_script(self):
-        for query in ('123', '۱۲۳', '١٢٣', '۱2٣'):
+        for query in ('123', '۱۲۳', '١٢٣', '۱2٣', '１２３', '𝟙𝟚𝟛', '१२३', '①②③'):
             response = self.client.get(reverse('products:list'), {'q': query})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(list(response.context['page_obj']), [self.legacy])
         self.legacy.refresh_from_db()
         self.assertEqual(self.legacy.code, 'LEGACY۱۲٣')
+
+    def test_legacy_styled_digits_are_searchable_without_changing_them(self):
+        self.legacy.code = 'LEGACY①𝟚３'
+        self.legacy.save(update_fields=['code'])
+        result = self.client.get(reverse('products:list'), {'q': '۱۲۳'})
+        self.assertEqual(list(result.context['page_obj']), [self.legacy])
+        self.legacy.refresh_from_db()
+        self.assertEqual(self.legacy.code, 'LEGACY①𝟚３')
 
     def test_search_keeps_literal_wildcards_and_access_checks(self):
         response = self.client.get(reverse('products:list'), {'q': '۱۲%'})
@@ -100,3 +129,9 @@ class NumeralBusinessFlowTests(TestCase):
         self.client.logout()
         response = self.client.get(reverse('products:list'), {'q': '۱۲۳'})
         self.assertEqual(response.status_code, 302)
+
+    def test_admin_and_base_pages_receive_numeral_assets_exactly_once(self):
+        for url in (reverse('admin:index'), reverse('products:create')):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.content.decode().count('id="crm-numeral-inputs"'), 1)
