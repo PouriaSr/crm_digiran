@@ -1,0 +1,7 @@
+{% if 'customers.hiring_interview' in user_permissions %}
+ {% if rec.has_active_interview %}<button class="wf-action wf-primary" type="button" data-open-hiring="{% url 'customers:interview_open' rec.pk %}" data-method="POST" data-kind="first">ادامه مصاحبه</button>
+ {% elif not rec.hiring.latest_session_id %}<button class="wf-action wf-primary" type="button" data-open-hiring="{% url 'customers:interview_open' rec.pk %}" data-method="POST" data-kind="first">شروع مصاحبه</button>
+ {% elif rec.hiring.status == 'repeat' %}<button class="wf-action wf-primary" type="button" data-open-hiring="{% url 'customers:interview_open' rec.pk %}" data-method="POST" data-kind="repeat">مصاحبه مجدد</button>{% endif %}
+ {% if rec.hiring.latest_session_id %}<button class="wf-action" type="button" data-open-hiring="{% url 'customers:interview_edit' rec.hiring.latest_session_id %}">ویرایش جلسه</button>{% endif %}
+{% endif %}
+{% if 'customers.hiring_refer' in user_permissions %}<button class="wf-action" type="button" data-open-hiring="{% url 'customers:hiring_refer' rec.pk %}">ارجاع</button>{% endif %}

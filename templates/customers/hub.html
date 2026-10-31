@@ -5,7 +5,7 @@
 {% endblock %}
 {% block mobile_title %}مرکز مشتریان{% endblock %}
 
-{% block extra_head %}{{ block.super }}{% include 'customers/_workflow_styles.html' %}{% endblock %}
+{% block extra_head %}{{ block.super }}{% include 'customers/_workflow_styles.html' %}{% include 'customers/_hiring_styles.html' %}{% endblock %}
 
 {% block content %}
 <div x-data="{ 
@@ -209,6 +209,7 @@
     {% if active_tab == "registration" and "registration" in allowed_hub_tabs %}{% include "customers/_registration_tab.html" %}{% endif %}
     {% if active_tab == "hiring" and "hiring" in allowed_hub_tabs %}{% include "customers/_hiring_tab.html" %}{% endif %}
     {% include 'customers/_workflow_clocks.html' %}
+    {% include 'customers/_hiring_client.html' %}
     {% include "customers/_call_modal.html" %}
 {% include "customers/_quick_call_modal.html" %}
 {% include "customers/_call_edit_modal.html" %}

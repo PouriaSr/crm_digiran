@@ -183,6 +183,7 @@ FULL_PROJECT_EVERYTHING.md
 /_local_tools/
 /backups/
 /logs/
+/private_uploads/
 
 # پشتیبان‌های دیتابیس
 /db_backup_*.json

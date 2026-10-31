@@ -17,7 +17,7 @@ class ReactiveReceptionTest(TestCase):
         self.hub = reverse('customers:hub')
 
     def arrive(self, customer):
-        self.client.post(reverse('customers:reception_action'), {'customer': customer.pk, 'action': 'arrive', 'person_type': 'customer'})
+        self.client.post(reverse('customers:reception_action'), {'customer': customer.pk, 'action': 'arrive', 'person_type': 'interviewer'})
         return Reception.objects.get(customer=customer)
 
     def test_clock_uses_server_baseline_and_monotonic_elapsed_time(self):
@@ -45,6 +45,7 @@ class ReactiveReceptionTest(TestCase):
 
     def test_referral_enables_case_selector_without_info_submitted(self):
         rec = self.arrive(self.c1)
+        rec.person_type='customer'; rec.save(update_fields=['person_type'])
         self.client.post(reverse('customers:reception_action'), {'reception': rec.pk, 'action': 'refer', 'user': self.user.pk})
         response = self.client.get(self.hub, {'tab': 'case', 'r': rec.pk})
         self.assertEqual(response.context['case_record'], rec)

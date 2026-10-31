@@ -166,6 +166,10 @@ PERMISSION_META = {
 
 # New operation keys inherit existing per-user overrides until explicitly customized.
 PERMISSION_PARENT = {
+    'customers.hiring_interview': 'customers.hiring',
+    'customers.hiring_refer': 'customers.hiring',
+    'customers.hiring_ads': 'customers.hiring',
+    'customers.hiring_documents': 'customers.profile_full',
     'customers.reception_add': 'customers.reception',
     'customers.reception_refer': 'customers.reception',
     'customers.case_edit': 'customers.case',
@@ -178,8 +182,12 @@ PERMISSION_PARENT = {
     'customers.excel_import': 'customers.add',
 }
 _OPERATION_META = {
-    'customers.reception_add': ('ثبت ورود', 'ثبت ورود و شروع تایمر پذیرش'),
-    'customers.reception_refer': ('ارجاع پذیرش', 'ارجاع مراجعه‌کننده و توقف تایمر'),
+    'customers.hiring_interview': ('ثبت و ویرایش مصاحبه', 'شروع، پایان، ارزیابی، مصاحبه مجدد و دعوت به همکاری؛ فقط کارت تحت مسئولیت یا سرپرست/ادمین'),
+    'customers.hiring_refer': ('ارجاع کارجو', 'تغییر مسئول کارجو بدون شروع تایمر؛ با کنترل مالکیت'),
+    'customers.hiring_ads': ('آگهی استخدام', 'ثبت آگهی و انتخاب سمت از نقش‌های تعریف‌شده'),
+    'customers.hiring_documents': ('مدارک و کد ملی کارجو', 'دریافت رزومه خصوصی و ثبت کد ملی؛ نیازمند دسترسی استخدام و مالکیت کارت'),
+    'customers.reception_add': ('ثبت ورود', 'ثبت تاریخ و ساعت ورود و دریافت رزومه برای مصاحبه‌کننده'),
+    'customers.reception_refer': ('ارجاع پذیرش', 'ارجاع مراجعه‌کننده به پرونده یا استخدام؛ بدون پایان خودکار انتظار کارجو'),
     'customers.case_edit': ('ثبت و ویرایش پرونده', 'با شرط مسئول کارت، سرپرست یا ادمین'),
     'customers.registration_edit': ('ثبت و ویرایش اطلاعات تکمیلی', 'فرم کامل مرحله ثبت اطلاعات؛ با شرط مالکیت کارت'),
     'customers.reassign': ('انتقال کارت مشتری', 'انتقال معمول کارت؛ فقط نقش سرپرست یا ادمین'),

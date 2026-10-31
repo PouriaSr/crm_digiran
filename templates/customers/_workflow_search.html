@@ -1,5 +1,6 @@
 <form class="wf-search" method="get" role="search">
     <input type="hidden" name="tab" value="{{ search_tab }}">
+    {% for field in workflow_filters %}{% if field.value %}<input type="hidden" name="{{ field.html_name }}" value="{{ field.value }}">{% endif %}{% endfor %}
     <input type="search" name="workflow_q" value="{{ workflow_query }}" placeholder="جستجوی نام یا شماره..." aria-label="جستجو در {{ search_label }}">
     <button class="wf-action" aria-label="جستجو">جستجو</button>
     {% if workflow_query %}<a class="text-xs text-gray-400" href="?tab={{ search_tab }}">پاک‌کردن</a>{% endif %}

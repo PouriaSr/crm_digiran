@@ -1,0 +1,59 @@
+<script>
+(function(){
+ const csrf=()=>document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+ let previousFocus=null;
+ const timers=new WeakMap();
+ function removeModal(){const modal=document.getElementById('hiring-modal');if(!modal)return;modal.querySelectorAll('select').forEach(el=>el.tomselect?.destroy());if(window.Alpine?.destroyTree)Alpine.destroyTree(modal);modal.remove();}
+ function close(){removeModal();document.body.style.overflow='';previousFocus?.focus();}
+ function message(text,error=false){const el=document.querySelector('#hiring-modal [data-hiring-message]');if(el){el.textContent=text;el.className=error?'hr-errors':'hr-alert';}else alert(text);}
+ function conditions(form){
+  if(!form?.matches('[data-interview-form]'))return;
+  const result=form.querySelector('[name=result]')?.value;
+  form.querySelectorAll('[data-result-panel]').forEach(panel=>{const show=panel.dataset.resultPanel===result;panel.classList.toggle('hr-hidden',!show);panel.querySelectorAll('input,select,textarea').forEach(el=>{el.disabled=!show;if(el.tomselect)el.tomselect[show?'enable':'disable']();});});
+  const invite=form.querySelector('[name=invite]');
+  if(result!=='accepted')invite.checked=false;
+  invite.disabled=result!=='accepted';
+  const panel=form.querySelector('[data-invitation-panel]');panel.classList.toggle('hr-hidden',!invite.checked);panel.querySelectorAll('input,select,textarea').forEach(el=>{el.disabled=!invite.checked;if(el.tomselect)el.tomselect[invite.checked?'enable':'disable']();});
+ }
+ function install(modal){
+  conditions(modal.querySelector('[data-interview-form]'));
+  if(window.Alpine) Alpine.initTree(modal);
+  if(window.TomSelect)modal.querySelectorAll('select:not(.no-search)').forEach(el=>{if(el.tomselect)return;new TomSelect(el,{create:false,plugins:['dropdown_input'],dropdownParent:'body',maxOptions:1000,score:function(search){const convert=v=>window.CRMNumerals?CRMNumerals.ascii(v):v;const score=this.getScoreFunction(convert(search));return item=>score(Object.fromEntries(Object.entries(item).map(([key,value])=>[key,typeof value==='string'?convert(value):value])));}});});
+  if(window.jalaliDatepicker)jalaliDatepicker.startWatch({time:false});
+  const first=modal.querySelector('input:not([type=hidden]),select,textarea');if(first?.tomselect)first.tomselect.focus();else first?.focus();
+ }
+ async function show(response){
+  if(response.redirected){window.location.assign(response.url);return;}
+  const text=await response.text(),doc=new DOMParser().parseFromString(text,'text/html'),node=doc.getElementById('hiring-modal');
+  if(!node)throw new Error(response.status===403?'برای این عملیات دسترسی ندارید.':'فرم باز نشد؛ صفحه را تازه و دوباره تلاش کنید.');
+  removeModal();document.body.appendChild(node);document.body.style.overflow='hidden';install(node);
+ }
+ document.addEventListener('click',async event=>{
+  const opener=event.target.closest('[data-open-hiring]');
+  if(opener){event.preventDefault();event.stopPropagation();previousFocus=opener;opener.disabled=true;
+   try{const method=opener.dataset.method||'GET',options={method,headers:{'X-Requested-With':'XMLHttpRequest'}};if(method==='POST'){options.body=new URLSearchParams({csrfmiddlewaretoken:csrf(),kind:opener.dataset.kind||'first'});}await show(await fetch(opener.dataset.openHiring,options));}catch(error){message(error.message,true);}finally{opener.disabled=false;}return;
+  }
+  if(event.target.closest('[data-close-hiring]')){event.preventDefault();close();return;}
+  const ending=event.target.closest('[data-end-interview]');
+  if(ending){ending.disabled=true;try{const response=await fetch(ending.dataset.endInterview,{method:'POST',body:new URLSearchParams({csrfmiddlewaretoken:csrf()})});if(!response.ok)throw new Error('پایان مصاحبه ثبت نشد؛ دوباره تلاش کنید.');const data=await response.json(),modal=document.getElementById('hiring-modal');modal.querySelector('[data-session-timer]').dataset.end=data.ended_at;modal.querySelector('[data-interview-ended-label]').textContent=new Intl.DateTimeFormat('fa-IR',{timeZone:'Asia/Tehran',dateStyle:'short',timeStyle:'medium'}).format(new Date(data.ended_at));ending.textContent='پایان مصاحبه ثبت شد';message('پایان مصاحبه ثبت شد؛ برای ذخیره ارزیابی، ثبت اطلاعات را بزنید.');}catch(error){ending.disabled=false;message(error.message,true);}return;}
+  const identity=event.target.closest('[data-hiring-identity]');
+  if(identity){const field=document.querySelector('#hiring-modal [name=national_id]');identity.disabled=true;try{const response=await fetch(identity.dataset.hiringIdentity,{method:'POST',body:new URLSearchParams({csrfmiddlewaretoken:csrf(),national_id:field.value})});const data=await response.json();if(!response.ok)throw new Error(data.error||'کد ملی ثبت نشد.');message(data.message);}catch(error){message(error.message,true);}finally{identity.disabled=false;}return;}
+ });
+ document.addEventListener('submit',async event=>{const form=event.target;if(!form.matches('[data-interview-form],[data-hiring-form]'))return;event.preventDefault();const button=form.querySelector('button[type=submit]');if(button)button.disabled=true;try{await show(await fetch(form.action,{method:'POST',body:new FormData(form),headers:{'X-Requested-With':'XMLHttpRequest'}}));}catch(error){message(error.message,true);}finally{if(button)button.disabled=false;}});
+ document.addEventListener('change',event=>{if(event.target.matches('[name=result],[name=invite]'))conditions(event.target.closest('form'));});
+ document.addEventListener('keydown',event=>{const modal=document.getElementById('hiring-modal');if(!modal)return;if(event.key==='Escape'){event.preventDefault();close();}if(event.key==='Tab'){const focusable=Array.from(modal.querySelectorAll('button,input,select,textarea,a[href]')).filter(el=>!el.disabled && el.offsetParent!==null && el.type!=='hidden');if(focusable.length){const first=focusable[0],last=focusable[focusable.length-1];if(event.shiftKey && document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first.focus();}}}});
+ function tick(){document.querySelectorAll('[data-session-timer],[data-case-clock]').forEach(el=>{const start=Date.parse(el.dataset.start);if(!Number.isFinite(start))return;let baseline=timers.get(el);if(!baseline){baseline={now:Date.parse(el.dataset.serverNow)||Date.now(),anchor:performance.now()};timers.set(el,baseline);}const end=el.dataset.end?Date.parse(el.dataset.end):baseline.now+performance.now()-baseline.anchor;el.textContent=(Math.max(0,end-start)/60000).toFixed(1)+' دقیقه';});}setInterval(tick,1000);tick();
+ async function syncClock(selector,key,url,rowsKey='sessions'){
+  const elements=Array.from(document.querySelectorAll(selector)).filter(el=>!el.dataset.end);if(!elements.length||document.hidden)return;
+  const ids=[...new Set(elements.map(el=>el.dataset[key]))].filter(Boolean).slice(0,100);if(!ids.length)return;
+  const query=new URLSearchParams();ids.forEach(id=>query.append('ids',id));
+  try{const response=await fetch(url+'?'+query);if(!response.ok)return;const data=await response.json(),rows=new Map(data[rowsKey].map(row=>[String(row.pk),row]));
+   elements.forEach(el=>{const row=rows.get(el.dataset[key]);if(!row)return;el.dataset.end=row.ended_at||row.wait_ended_at||'';el.dataset.serverNow=data.server_now;timers.delete(el);});tick();
+  }catch(_){}
+ }
+ setInterval(()=>{syncClock('[data-case-work-id]','caseWorkId',"{% url 'customers:case_clock' %}");syncClock('[data-interview-id]','interviewId',"{% url 'customers:interview_clock' %}");syncClock('[data-hiring-wait]','hiringWait',"{% url 'customers:hiring_clock' %}",'states');},15000);
+ const editor=document.getElementById('case-editor');
+ if(editor){let starting=false,started=false;async function start(){if(!editor.open||starting||started)return;starting=true;const form=editor.querySelector('form'),buttons=form.querySelectorAll('button[type=submit],button:not([type])');buttons.forEach(b=>b.disabled=true);try{const response=await fetch(editor.dataset.openCase,{method:'POST',body:new URLSearchParams({csrfmiddlewaretoken:csrf()})});if(response.redirected){window.location.assign(response.url);return;}if(!response.ok)throw new Error('شروع زمان انتظار ثبت نشد؛ دوباره تلاش کنید.');const data=await response.json();form.querySelector('[name=work_session]').value=data.id;const clock=editor.querySelector('[data-case-clock]');clock.dataset.caseWorkId=data.id;clock.dataset.start=data.started_at;clock.dataset.serverNow=data.server_now;timers.delete(clock);started=true;editor.querySelector('[data-case-clock-error]').textContent='';tick();}catch(error){editor.querySelector('[data-case-clock-error]').textContent=error.message;}finally{starting=false;buttons.forEach(b=>b.disabled=!started);}}editor.addEventListener('toggle',start);editor.querySelector('[data-case-clock-retry]')?.addEventListener('click',()=>{started=false;start();});start();}
+ const arrival=document.querySelector('[data-arrival-form]');if(arrival){const sync=()=>{const show=arrival.querySelector('[name=person_type]:checked')?.value==='interviewer';const panel=arrival.querySelector('[data-arrival-resume]');panel.classList.toggle('hr-hidden',!show);panel.querySelectorAll('input,select').forEach(el=>{el.disabled=!show;if(el.tomselect)el.tomselect[show?'enable':'disable']();});};arrival.addEventListener('change',sync);sync();}
+})();
+</script>

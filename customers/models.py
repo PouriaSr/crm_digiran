@@ -248,6 +248,8 @@ class Reception(models.Model):
 
     # Legacy reception records remain archived; each new visit has its own stages.
     workflow_version = models.PositiveSmallIntegerField(default=2, editable=False)
+    arrived_at = models.DateTimeField('زمان ورود', null=True, blank=True, editable=False)
+    timing_version = models.PositiveSmallIntegerField(default=3, editable=False)
     referred_to = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL,
                                     related_name='receptions_assigned', verbose_name='ارجاع به')
     referred_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL,
@@ -460,3 +462,8 @@ class CustomerCase(models.Model):
     def loans_display(self):
         labels = dict(self.LOAN_CHOICES)
         return '، '.join(labels.get(x, x) for x in (self.active_loans or []))
+
+
+# Imported here so Django discovers these models and existing imports stay stable.
+from .recruitment_models import (CaseWorkSession, HiringAd, HiringAdSequence,
+                                HiringApplication, HiringReferral, InterviewSession)

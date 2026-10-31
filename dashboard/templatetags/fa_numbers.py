@@ -5,6 +5,14 @@ from crm.numerals import persian_digits, normalize_input
 
 register = template.Library()
 
+
+@register.simple_tag(takes_context=True)
+def workflow_page_url(context, key, number, tab):
+    query = context['request'].GET.copy()
+    query[key] = number
+    query['tab'] = tab
+    return '?' + query.urlencode()
+
 def _to_persian_digits(value):
     """تبدیل اعداد انگلیسی به فارسی"""
     return persian_digits(value)

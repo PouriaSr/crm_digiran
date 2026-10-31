@@ -34,8 +34,12 @@ class HiringAndListsTest(TestCase):
         self.hub = reverse('customers:hub')
         self.action = reverse('customers:reception_action')
 
-    def arrival(self, person='interviewer'):
-        return self.client.post(self.action, {'action': 'arrive', 'customer': self.candidate.pk, 'person_type': person})
+    def arrival(self, person='interviewer', refer=True):
+        response = self.client.post(self.action, {'action': 'arrive', 'customer': self.candidate.pk, 'person_type': person})
+        if refer:
+            rec = Reception.objects.filter(customer=self.candidate, workflow_version=2).latest('pk')
+            self.client.post(self.action, {'action':'refer', 'reception':rec.pk, 'user':self.operator.pk if 'customers.hiring' in get_user_permissions(self.operator) else self.manager.pk})
+        return response
 
     def grant(self, user, key, value=True):
         UserPermissionOverride.objects.update_or_create(user=user, permission_key=key, defaults={'granted': value})
@@ -57,10 +61,10 @@ class HiringAndListsTest(TestCase):
     def test_authorized_arrival_opens_hiring_and_preserves_existing_information(self):
         now = timezone.now()
         response = self.arrival()
-        self.assertIn('tab=hiring', response['Location'])
+        self.assertIn('tab=reception', response['Location'])
         rec = Reception.objects.get(customer=self.candidate)
         self.assertGreaterEqual(rec.wait_started_at, now)
-        page = self.client.get(response['Location'])
+        page = self.client.get(self.hub, {'tab':'hiring'})
         self.assertContains(page, 'شرح ثبت‌شده قبل از پذیرش')
         self.assertContains(page, 'نشانی قبلی')
         self.assertContains(page, 'candidate@example.com')
@@ -117,22 +121,22 @@ class HiringAndListsTest(TestCase):
 
     def test_hiring_referral_uses_hiring_permission_and_stops_timer(self):
         self.grant(self.operator, 'customers.hiring')
-        self.client.force_login(self.secretary); self.arrival()
+        self.client.force_login(self.secretary); self.arrival(refer=False)
         rec = Reception.objects.get(customer=self.candidate)
         response = self.client.post(self.action, {'action': 'refer', 'reception': rec.pk, 'user': self.operator.pk})
         self.assertEqual(response.status_code, 302)
-        rec.refresh_from_db(); self.assertFalse(rec.is_waiting)
+        rec.refresh_from_db(); self.assertTrue(rec.is_waiting)
         self.assertIsNotNone(rec.referred_at)
         self.assertIsNone(rec.case_completed_at)
         self.assertNotIn('customers.case', get_user_permissions(self.operator))
         self.client.force_login(self.operator)
         self.assertIn(rec, self.client.get(self.hub, {'tab': 'hiring'}).context['hiring_records'])
-        self.assertEqual(self.client.get(reverse('customers:hiring_clock')).json()['waiting'], [])
+        self.assertEqual(self.client.get(reverse('customers:hiring_clock')).json()['waiting'][0]['pk'], rec.pk)
         self.assertEqual(self.client.get(reverse('customers:reception_clock')).status_code, 403)
 
     def test_explicit_hiring_denial_rejects_target_without_affecting_customer_referrals(self):
         self.grant(self.manager, 'customers.hiring', False)
-        self.arrival(); rec = Reception.objects.get(customer=self.candidate)
+        self.arrival(refer=False); rec = Reception.objects.get(customer=self.candidate)
         response = self.client.post(self.action, {'action': 'refer', 'reception': rec.pk, 'user': self.manager.pk})
         self.assertEqual(response.status_code, 400)
         rec.refresh_from_db(); self.assertTrue(rec.is_waiting)
@@ -168,8 +172,9 @@ class HiringAndListsTest(TestCase):
         self.assertEqual(self.client.get(self.hub, {'tab': 'hiring', 'workflow_q': 'ناموجود'}).context['hiring_records'].paginator.count, 0)
         for i in range(31):
             customer = Customer.objects.create(name=f'متقاضی شماره {i}', mobile=f'09130000{i:03d}', assigned_to=self.admin)
-            Reception.objects.create(customer=customer, person_type='interviewer')
+            Reception.objects.create(customer=customer, person_type='interviewer', referred_at=timezone.now())
         page = self.client.get(self.hub, {'tab': 'hiring', 'workflow_q': 'متقاضی', 'hiring_page': '2'})
         self.assertEqual(page.context['hiring_records'].paginator.count, 32)
         self.assertEqual(len(page.context['hiring_records']), 2)
-        self.assertContains(page, 'hiring_page=1&workflow_q=')
+        self.assertContains(page, 'hiring_page=1')
+        self.assertContains(page, 'workflow_q=')

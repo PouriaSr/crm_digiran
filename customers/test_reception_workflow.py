@@ -71,13 +71,15 @@ class ReceptionWorkflowTest(TestCase):
         now = datetime(2026, 10, 29, 10, 20, 30, tzinfo=dt_timezone.utc)
         with patch('customers.reception_workflow.timezone.now', return_value=now):
             rec = self.arrive()
-        self.assertEqual(rec.wait_started_at, now)
-        self.assertTrue(rec.is_waiting)
+        self.assertEqual(rec.arrived_at, now)
+        self.assertIsNone(rec.wait_started_at)
+        self.assertFalse(rec.is_waiting)
         self.assertIsNone(rec.referred_at)
         body = self.client.get(self.hub, {'tab': 'reception'}).content.decode()
         for old in ('name="has_visit"', 'name="wait_choice"', 'پایان انتظار'):
             self.assertNotIn(old, body)
-        self.assertIn('data-wait-start=', body)
+        self.assertNotIn('data-wait-start=', body)
+        self.assertIn('ثبت ورود', body)
         self.assertIn('یادداشت قبلی', body)
 
     def test_duplicate_arrival_preserves_clock_and_type(self):
@@ -109,7 +111,7 @@ class ReceptionWorkflowTest(TestCase):
         for action in ('end_wait', 'submit_info'):
             self.assertEqual(self.client.post(self.action, {'action': action, 'customer': self.customer.pk}).status_code, 400)
 
-    def test_referral_stops_clock_once_and_transfers_responsibility(self):
+    def test_referral_records_timestamp_once_and_transfers_responsibility(self):
         rec = self.arrive()
         start = timezone.now() - timedelta(minutes=12, seconds=23)
         Reception.objects.filter(pk=rec.pk).update(wait_started_at=start)
@@ -117,25 +119,26 @@ class ReceptionWorkflowTest(TestCase):
         with patch('customers.reception_workflow.timezone.now', return_value=now):
             self.assertEqual(self.refer(rec).status_code, 302)
         rec.refresh_from_db(); self.customer.refresh_from_db()
-        self.assertEqual(rec.wait_ended_at, now)
+        self.assertIsNone(rec.wait_ended_at)
         self.assertEqual(rec.referred_at, now)
         self.assertEqual(rec.referred_by, self.secretary)
         self.assertEqual(rec.referred_to, self.manager)
         self.assertEqual(self.customer.assigned_to, self.manager)
-        self.assertEqual(rec.wait_seconds, int((now - start).total_seconds()))
+        self.assertEqual(rec.arrived_at is not None, True)
         self.assertFalse(rec.is_waiting)
         self.refer(rec, self.peer)
         rec.refresh_from_db()
         self.assertEqual(rec.referred_to, self.manager)
-        self.assertEqual(rec.wait_ended_at, now)
+        self.assertIsNone(rec.wait_ended_at)
 
-    def test_invalid_referral_keeps_waiting(self):
+    def test_invalid_referral_keeps_arrival_without_starting_wait(self):
         rec = self.arrive()
         self.assertEqual(self.refer(rec, self.operator).status_code, 400)
         self.operator.is_active = False; self.operator.save()
         self.assertEqual(self.refer(rec, self.operator).status_code, 404)
         rec.refresh_from_db()
-        self.assertTrue(rec.is_waiting)
+        self.assertFalse(rec.is_waiting)
+        self.assertIsNone(rec.wait_started_at)
         self.assertIsNone(rec.wait_ended_at)
 
     def test_explicit_case_denial_excludes_referral_target(self):
@@ -241,13 +244,13 @@ class ReceptionWorkflowTest(TestCase):
             set_script_prefix(prefix)
 
     def test_clock_reports_only_server_time_and_timing_ids(self):
-        rec = self.arrive()
+        rec = self.arrive('interviewer')
         result = self.client.get(reverse('customers:reception_clock')).json()
         self.assertEqual(set(result), {'server_now', 'waiting'})
         self.assertEqual(result['waiting'][0]['pk'], rec.pk)
         self.assertNotIn(self.customer.name, str(result))
         self.refer(rec)
-        self.assertEqual(self.client.get(reverse('customers:reception_clock')).json()['waiting'], [])
+        self.assertEqual(self.client.get(reverse('customers:reception_clock')).json()['waiting'][0]['pk'], rec.pk)
 
     def test_custom_role_title_is_separate_from_role_and_permissions(self):
         self.assertTrue(UserEditForm(instance=self.operator)['is_active'].value())

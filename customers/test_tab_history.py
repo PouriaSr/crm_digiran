@@ -37,7 +37,7 @@ class TabHistoryTest(TestCase):
     def test_reception_history_section_rendered(self):
         self._reception()
         body = self.client.get(f'{self.hub}?tab=reception&c={self.customer.pk}').content.decode('utf-8')
-        self.assertIn('مراجعه‌کنندگان و وضعیت انتظار', body)
+        self.assertIn('مراجعه‌کنندگان و وضعیت ورود', body)
         self.assertIn('مشتری تاریخچه', body)
         self.assertIn('data-reception-id=', body)
 

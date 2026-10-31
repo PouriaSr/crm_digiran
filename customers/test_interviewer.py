@@ -46,7 +46,8 @@ class InterviewerFlowTest(TestCase):
         self.assertNotContains(response, 'name="has_visit"')
 
     def test_old_recruitment_url_opens_hiring(self):
-        self.arrive()
+        rec = self.arrive()
+        self.client.post(self.action, {'action':'refer', 'reception':rec.pk, 'user':self.user.pk})
         response = self.client.get(self.hub, {'tab': 'recruitment'})
         self.assertEqual(response.context['active_tab'], 'hiring')
         self.assertContains(response, self.cand.name)

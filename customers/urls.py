@@ -3,7 +3,7 @@ from django.shortcuts import redirect
 from django.urls import path
 
 from accounts.permissions import require_permission
-from . import views, hub_views, reception_workflow
+from . import views, hub_views, reception_workflow, hiring_views
 
 app_name = 'customers'
 
@@ -29,6 +29,18 @@ urlpatterns = [
     path('<int:pk>/', views.customer_detail, name='detail'),
     path('<int:pk>/edit/', views.customer_edit, name='edit'),
     path('hub/case/save/', hub_views.hub_case_save, name='case_save'),
+    path('hub/case/<int:pk>/open/', reception_workflow.case_open, name='case_open'),
+    path('hub/case/clock/', reception_workflow.case_clock, name='case_clock'),
+    path('hub/hiring/sessions/clock/', hiring_views.interview_clock, name='interview_clock'),
+    path('hub/hiring/<int:pk>/interview/open/', hiring_views.interview_open, name='interview_open'),
+    path('hub/hiring/session/<int:pk>/end/', hiring_views.interview_end, name='interview_end'),
+    path('hub/hiring/session/<int:pk>/save/', hiring_views.interview_save, name='interview_save'),
+    path('hub/hiring/session/<int:pk>/edit/', hiring_views.interview_edit, name='interview_edit'),
+    path('hub/hiring/<int:pk>/identity/', hiring_views.hiring_identity, name='hiring_identity'),
+    path('hub/hiring/<int:pk>/resume/', hiring_views.hiring_resume, name='hiring_resume'),
+    path('hub/hiring/<int:pk>/resume/upload/', hiring_views.hiring_resume_upload, name='hiring_resume_upload'),
+    path('hub/hiring/<int:pk>/refer/', hiring_views.hiring_refer, name='hiring_refer'),
+    path('hub/hiring/ads/new/', hiring_views.hiring_ad_create, name='hiring_ad_create'),
     path('hub/reception/clock/', reception_workflow.reception_clock, name='reception_clock'),
     path('hub/hiring/clock/', reception_workflow.hiring_clock, name='hiring_clock'),
     path('hub/registration/<int:pk>/', reception_workflow.registration_form, name='registration_form'),

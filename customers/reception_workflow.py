@@ -16,7 +16,7 @@ from django.views.decorators.http import require_GET, require_POST
 from accounts.permissions import get_user_permissions, has_permission, require_permission
 from .access import can_edit_card, is_card_manager
 from .forms import CustomerCaseForm, CustomerForm
-from .models import Customer, CustomerCase, Reception, RecordUpdate
+from .models import Customer, CustomerCase, Reception, RecordUpdate, CaseWorkSession, HiringApplication, InterviewSession, HiringReferral
 from calls.models import Call
 from crm.duplicate_check import normalize_digits
 
@@ -41,7 +41,7 @@ def workflow_records():
         'customer__calls',
         queryset=Call.objects.select_related('called_by').order_by('-call_date', '-pk')[:1],
         to_attr='latest_contact',
-    ))
+    ), Prefetch('work_sessions', queryset=CaseWorkSession.objects.order_by('-started_at', '-pk')[:1], to_attr='latest_work'), Prefetch('work_sessions', queryset=CaseWorkSession.objects.select_related('started_by','ended_by').order_by('-started_at','-pk')[:20], to_attr='work_history'))
 
 
 def editable_records(user):
@@ -71,13 +71,14 @@ def hiring_records(user):
     # Hiring also includes archived records; the same owner boundary applies.
     records = Reception.objects.filter(
         customer__is_deleted=False, person_type='interviewer', pk=Subquery(latest),
-    ).select_related('customer', 'customer__assigned_to', 'customer__ad_source',
+    ).filter(Q(workflow_version=1) | Q(referred_at__isnull=False)).select_related('customer', 'customer__assigned_to', 'customer__ad_source',
                      'customer__case', 'customer__case__product', 'created_by',
-                     'referred_to', 'referred_by', 'case_completed_by', 'registration_completed_by')
+                     'referred_to', 'referred_by', 'case_completed_by', 'registration_completed_by',
+                     'hiring', 'hiring__job_ad', 'hiring__latest_session', 'hiring__latest_session__invited_by')
     records = records.prefetch_related(Prefetch(
         'customer__calls', queryset=Call.objects.select_related('called_by').order_by('-call_date', '-pk')[:1],
         to_attr='latest_contact',
-    ))
+    ), Prefetch('hiring__sessions', queryset=InterviewSession.objects.select_related('job_ad', 'interviewer', 'invited_by', 'saved_by').order_by('-round_number')[:20], to_attr='session_history'), Prefetch('hiring__referrals', queryset=HiringReferral.objects.select_related('from_user','to_user','actor').order_by('-created_at','-pk')[:20], to_attr='referral_history'))
     if not is_card_manager(user):
         records = records.filter(customer__assigned_to=user)
     return records.order_by('-created_at', '-pk')
@@ -87,7 +88,8 @@ def referral_users(person_type='customer'):
     # Honor effective per-user overrides, including explicit denials.
     users = User.objects.filter(is_active=True).prefetch_related('groups', 'permission_overrides').order_by('first_name', 'username')
     permission = 'customers.hiring' if person_type == 'interviewer' else 'customers.case'
-    return [user for user in users if has_permission(user, permission) and (person_type == 'interviewer' or has_permission(user, 'customers.case_edit'))]
+    operation = 'customers.hiring_interview' if person_type == 'interviewer' else 'customers.case_edit'
+    return [user for user in users if has_permission(user, permission) and has_permission(user, operation)]
 
 
 def search_records(records, query):
@@ -125,6 +127,11 @@ def build_workflow_context(request):
     query = request.GET.get('workflow_q', '').strip()[:200]
     active = getattr(request, '_hub_tab', request.GET.get('tab', 'info'))
     def paginated(records, tab, page_key):
+        if active == tab and tab in ('reception','case','registration'):
+            from .workflow_filters import filter_workflow_records
+            records, filters = filter_workflow_records(request, records, tab)
+            context['workflow_filters'] = filters
+            context['workflow_filters_active'] = any(request.GET.get(name) for name in filters.fields)
         return Paginator(search_records(records, query if active == tab else ''), 30).get_page(request.GET.get(page_key))
     context = {'allowed_hub_tabs': tabs, 'registration_unlocked': False, 'workflow_query': query,
                'hub_tab_items': [{'key': tab, 'icon': labels[tab][0], 'label': labels[tab][1]} for tab in tabs]}
@@ -134,7 +141,9 @@ def build_workflow_context(request):
         context.update(registration_unlocked=ready.exists(), registration_choices=ready, registration_records=paginated(ready, 'registration', 'registration_page'),
                        registration_record=selected_record(request, ready))
     if 'reception' in tabs:
-        records = workflow_records().order_by('-wait_started_at', '-pk')
+        records = workflow_records().select_related('hiring', 'hiring__job_ad').order_by('-arrived_at', '-pk')
+        from .hiring_forms import ResumeForm
+        context['arrival_resume_form'] = getattr(request, '_arrival_resume_form', None) or ResumeForm()
         context.update(reception_customers=Customer.objects.order_by('name'),
                        reception_records=paginated(records, 'reception', 'reception_page'), referral_users=referral_users() if active == 'reception' else [], hiring_referral_users=referral_users('interviewer') if active == 'reception' else [],
                        legacy_receptions=Reception.objects.filter(workflow_version=1, customer__is_deleted=False)
@@ -157,7 +166,11 @@ def build_workflow_context(request):
                        case_form=form,
                        legacy_cases=legacy_cases.distinct().select_related('customer', 'product').order_by('-updated_at')[:100])
     if 'hiring' in tabs:
-        context['hiring_records'] = paginated(hiring_records(request.user), 'hiring', 'hiring_page')
+        if active == 'hiring':
+            from .hiring_views import hiring_context
+            context.update(hiring_context(request, hiring_records(request.user)))
+        else:
+            context['hiring_records'] = paginated(hiring_records(request.user), 'hiring', 'hiring_page')
     for item in context['hub_tab_items']:
         records = context.get(item['key'] + '_records')
         if records is not None:
@@ -179,7 +192,7 @@ def back_to(tab, rec=None):
 
 
 def admission_destination(user, rec):
-    tab = 'hiring' if rec.person_type == 'interviewer' and has_permission(user, 'customers.hiring') else 'reception'
+    tab = 'hiring' if rec.person_type == 'interviewer' and rec.referred_at and has_permission(user, 'customers.hiring') else 'reception'
     return back_to(tab, rec)
 
 
@@ -200,17 +213,46 @@ def reception_action(request):
         if person not in dict(Reception.PERSON_CHOICES):
             return HttpResponse('نوع مراجعه‌کننده را انتخاب کنید.', status=400)
         customer = get_object_or_404(Customer.objects.select_for_update(), pk=posted_pk(request, 'customer'))
+        from .hiring_forms import ResumeForm
+        from .hiring_views import save_resume
+        resume_form = ResumeForm(request.POST, request.FILES) if person == 'interviewer' else None
+        if resume_form is not None and not resume_form.is_valid():
+            from .hub_views import customer_hub
+            request.GET = request.GET.copy()
+            request.GET['tab'] = 'reception'
+            request._arrival_resume_form = resume_form
+            response = customer_hub(request)
+            response.status_code = 400
+            return response
         current = Reception.objects.filter(customer=customer, workflow_version=2,
                                            registration_completed_at__isnull=True).first()
         if current:
-            messages.info(request, 'این فرد یک مراجعه در جریان دارد؛ زمان ورود قبلی حفظ شد.')
+            fresh_arrival = False
+            if current.person_type == person == 'interviewer':
+                application, _ = HiringApplication.objects.get_or_create(reception=current, defaults={'current_arrived_at':current.arrived_at or current.created_at})
+                latest = application.latest_session
+                if application.status == 'repeat' and latest and (not application.current_arrived_at or application.current_arrived_at <= latest.saved_at):
+                    now = timezone.now()
+                    application.current_arrived_at = now
+                    current.wait_started_at, current.wait_ended_at, current.is_waiting, current.wait_minutes_total = now, None, True, None
+                    current.timing_version = 3
+                    current.save(update_fields=['wait_started_at','wait_ended_at','is_waiting','wait_minutes_total','timing_version','updated_at'])
+                    fresh_arrival = True
+                    messages.success(request, 'ورود مجدد کارجو ثبت شد.')
+                save_resume(application, resume_form, request.user)
+            if not fresh_arrival:
+                messages.info(request, 'این فرد یک مراجعه در جریان دارد؛ زمان ورود قبلی حفظ شد.')
             return redirect(admission_destination(request.user, current))
         now = timezone.now()
-        rec = Reception.objects.create(customer=customer, person_type=person, wait_started_at=now,
-                                       is_waiting=True, created_by=request.user)
+        rec = Reception.objects.create(customer=customer, person_type=person, arrived_at=now,
+                                       wait_started_at=now if person == 'interviewer' else None,
+                                       is_waiting=person == 'interviewer', created_by=request.user)
+        if person == 'interviewer':
+            application = HiringApplication.objects.create(reception=rec, current_arrived_at=now)
+            save_resume(application, resume_form, request.user)
         customer.is_interviewer = person == 'interviewer'
         customer.save(update_fields=['is_interviewer', 'updated_at'])
-        messages.success(request, 'ورود ثبت شد؛ شمارش انتظار از زمان سیستم شروع شد.')
+        messages.success(request, 'تاریخ و ساعت ورود ثبت شد؛ برای انتقال فرد، مسئول مرحله بعد را انتخاب و ارجاع دهید.')
         return redirect(admission_destination(request.user, rec))
 
     if action != 'refer':
@@ -220,24 +262,23 @@ def reception_action(request):
     rec = get_object_or_404(Reception.objects.select_for_update(),
                            pk=posted_pk(request, 'reception'), workflow_version=2)
     customer = get_object_or_404(Customer.objects.select_for_update(), pk=rec.customer_id)
-    if rec.referred_at or not rec.is_waiting:
+    if rec.referred_at:
         messages.info(request, 'این مراجعه قبلاً ارجاع شده است؛ زمان و مسئول قبلی حفظ شدند.')
         return redirect(back_to('reception', rec))
     target = get_object_or_404(User.objects, pk=posted_pk(request, 'user'), is_active=True)
     permission = 'customers.hiring' if rec.person_type == 'interviewer' else 'customers.case'
-    if not has_permission(target, permission) or (rec.person_type == 'customer' and not has_permission(target, 'customers.case_edit')):
+    operation = 'customers.hiring_interview' if rec.person_type == 'interviewer' else 'customers.case_edit'
+    if not has_permission(target, permission) or not has_permission(target, operation):
         return HttpResponse('کاربر انتخاب‌شده دسترسی مرحله بعد این مراجعه را ندارد.', status=400)
     now = timezone.now()
     rec.referred_to, rec.referred_by, rec.referred_at = target, request.user, now
-    rec.wait_ended_at, rec.is_waiting = now, False
-    rec.wait_minutes_total = rec.wait_seconds // 60
     rec.save()
     customer.assigned_to = target
     customer.save(update_fields=['assigned_to', 'updated_at'])
     record_change(rec, request.user, [{'label': 'ارجاع پذیرش', 'old': 'در انتظار',
                                      'new': target.get_full_name() or target.username}])
     destination = 'استخدام' if rec.person_type == 'interviewer' else 'پرونده'
-    messages.success(request, f'ارجاع ثبت و تایمر متوقف شد؛ فرد در تب {destination} کاربر مسئول قرار گرفت.')
+    messages.success(request, f'ارجاع ثبت شد؛ فرد در تب {destination} کاربر مسئول قرار گرفت.')
     return redirect(admission_destination(request.user, rec))
 
 
@@ -257,8 +298,21 @@ def reception_clock(request):
 def hiring_clock(request):
     rows = hiring_records(request.user).filter(workflow_version=2, is_waiting=True,
                                               wait_started_at__isnull=False).values('pk', 'wait_started_at')
-    return JsonResponse({'server_now': timezone.now().isoformat(), 'waiting': list(rows)},
+    ids = [int(value) for value in request.GET.getlist('ids')[:100] if value.isascii() and value.isdigit() and len(value) < 16]
+    states = hiring_records(request.user).filter(pk__in=ids).values('pk', 'wait_started_at', 'wait_ended_at', 'is_waiting')
+    return JsonResponse({'server_now': timezone.now().isoformat(), 'waiting': list(rows), 'states':list(states)},
                         headers={'Cache-Control': 'no-store'})
+
+
+@login_required
+@require_permission('customers.case')
+@require_GET
+def case_clock(request):
+    ids = [int(value) for value in request.GET.getlist('ids')[:100] if value.isascii() and value.isdigit() and len(value) < 16]
+    sessions = CaseWorkSession.objects.filter(pk__in=ids, reception__customer__is_deleted=False)
+    if not is_card_manager(request.user):
+        sessions = sessions.filter(reception__customer__assigned_to=request.user)
+    return JsonResponse({'server_now':timezone.now().isoformat(), 'sessions':list(sessions.values('pk','started_at','ended_at'))}, headers={'Cache-Control':'no-store'})
 
 
 def case_snapshot(case):
@@ -268,6 +322,28 @@ def case_snapshot(case):
     for key in ('condition', 'cheque_owner', 'job', 'visit_result'):
         values[key] = getattr(case, f'get_{key}_display')()
     return values
+
+
+def start_case_work(rec, user):
+    session = CaseWorkSession.objects.filter(reception=rec, ended_at__isnull=True).first()
+    if session is None:
+        session = CaseWorkSession.objects.create(reception=rec, started_by=user, started_at=timezone.now())
+    return session
+
+
+@login_required
+@require_permission('customers.case')
+@require_permission('customers.case_edit')
+@require_POST
+@transaction.atomic
+def case_open(request, pk):
+    rec = get_object_or_404(Reception.objects.select_for_update().select_related('customer'), pk=pk, workflow_version=2, person_type='customer')
+    if not can_edit_card(request.user, rec.customer):
+        raise PermissionDenied('دسترسی تکمیل این پرونده را ندارید.')
+    if not rec.referred_at:
+        return HttpResponse('ابتدا ارجاع پذیرش را ثبت کنید.', status=409)
+    session = start_case_work(rec, request.user)
+    return JsonResponse({'id': session.pk, 'started_at': session.started_at.isoformat(), 'server_now': timezone.now().isoformat(), 'seconds': session.seconds})
 
 
 @login_required
@@ -289,11 +365,19 @@ def case_save(request):
     before = case_snapshot(case)
     form = CustomerCaseForm(request.POST, instance=case)
     if form.is_valid():
+        active = CaseWorkSession.objects.filter(reception=rec, ended_at__isnull=True).first()
+        posted_session = normalize_digits(request.POST.get('work_session', ''))
+        if posted_session and (not posted_session.isdigit() or not active or str(active.pk) != posted_session):
+            return HttpResponse('این نوبت تکمیل پرونده تغییر کرده است؛ صفحه را تازه کنید.', status=409)
+        if active is None:
+            active = start_case_work(rec, request.user)
         case = form.save(commit=False)
         case.customer = customer
         if not case.created_by_id:
             case.created_by = request.user
         case.save()
+        active.ended_at, active.ended_by = max(timezone.now(), active.started_at), request.user
+        active.save(update_fields=['ended_at', 'ended_by'])
         if not rec.case_completed_at:
             rec.case_completed_at, rec.case_completed_by = timezone.now(), request.user
             rec.save(update_fields=['case_completed_at', 'case_completed_by', 'updated_at'])

@@ -1,5 +1,6 @@
 {% load fa_numbers %}
 <div x-show="tab === 'registration'" style="display:none" class="space-y-5">
+    {% include 'customers/_workflow_filters.html' with filter_tab='registration' %}
     <section class="wf-panel">
         <header class="wf-panel-head"><div><h2 class="wf-title">ثبت اطلاعات مشتریان</h2><p class="wf-subtitle">پرونده‌های ثبت‌شده آماده تکمیل اطلاعات هستند.</p></div>{% if registration_unlocked %}<span class="wf-badge wf-badge-done">مرحله فعال است</span>{% else %}<span class="wf-badge wf-badge-neutral">🔒 در انتظار ثبت پرونده</span>{% endif %}</header>
         {% if registration_unlocked and "customers.registration_edit" in user_permissions %}<div class="wf-picker"><label for="registration-person" class="wf-label">انتخاب فرد برای ثبت اطلاعات</label><div><select id="registration-person" data-placeholder="جستجوی مشتری برای تکمیل اطلاعات" onchange="if (this.value) openCustomerModal(this.value)" class="w-full rounded-xl border border-gray-200 p-2.5 text-sm"><option value="">انتخاب کنید...</option>{% for rec in registration_choices %}<option value="{% url 'customers:registration_form' rec.pk %}">{{ rec.customer.name }} — {{ rec.customer.mobile }}</option>{% endfor %}</select></div></div>{% elif not registration_unlocked %}<p class="wf-empty">این مرحله پس از ثبت اولین پرونده قابل دسترس شما فعال می‌شود.</p>{% endif %}
