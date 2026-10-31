@@ -1,0 +1,74 @@
+<script>
+(function () {
+    'use strict';
+    if (window.CRMSourceSearch) return;
+    const selector = 'select[data-source-search="label-first"]';
+    function configure(el, settings) {
+        settings.options = Array.from(el.options, option => ({
+            value: option.value, text: option.text,
+            source_label: option.dataset.sourceLabel || '',
+            source_number: option.dataset.sourceNumber || ''
+        }));
+        settings.score = function(search) {
+            const canonical = value => window.CRMNumerals ? CRMNumerals.ascii(value) : value;
+            const query = canonical(search);
+            const fallback = this.getScoreFunction(query);
+            const labelScore = this.sifter.getScoreFunction(query, {fields:['source_label'], conjunction:'and'});
+            const numberScore = this.sifter.getScoreFunction(query, {fields:['source_number'], conjunction:'and'});
+            return item => {
+                const normalized = Object.fromEntries(Object.entries(item).map(([key, value]) => [key, typeof value === 'string' ? canonical(value) : value]));
+                if (!query.trim()) return fallback(normalized);
+                const label = labelScore(normalized), number = numberScore(normalized);
+                if (label > 0) return 2 + Math.min(label, 1);
+                if (number > 0) return 1 + Math.min(number, 1);
+                return Math.min(fallback(normalized), 1) / 2;
+            };
+        };
+        return settings;
+    }
+    let loading = null;
+    function library() {
+        if (window.TomSelect) return Promise.resolve();
+        if (loading) return loading;
+        // Standalone/admin pages use the same library as the main CRM layout.
+        loading = new Promise((resolve, reject) => {
+            if (!document.querySelector('link[href*="tom-select"]')) {
+                const css = document.createElement('link');css.rel = 'stylesheet';
+                css.href = 'https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css';document.head.appendChild(css);
+            }
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js';
+            script.onload = resolve;script.onerror = reject;document.head.appendChild(script);
+        });
+        return loading;
+    }
+    async function enhance() {
+        const pending = Array.from(document.querySelectorAll(selector)).filter(el => !el.tomselect);
+        if (!pending.length) return;
+        try { await library(); } catch (_) { return; }
+        pending.forEach(el => {
+            if (!el.isConnected || el.tomselect) return;
+            new TomSelect(el, configure(el, {
+                create:false, plugins:['dropdown_input'], maxOptions:1000, dropdownParent:'body',
+                placeholder:el.dataset.placeholder || el.options[0]?.text || 'انتخاب منبع…',
+                render:{no_results:() => '<div class="p-3 text-gray-500 text-center text-sm">موردی یافت نشد</div>'}
+            }));
+        });
+    }
+    let scheduled = false;
+    function schedule() {
+        if (scheduled) return;
+        scheduled = true;
+        // Let the main layout initialize its normal selectors first.
+        setTimeout(() => { scheduled = false; enhance(); }, 0);
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        schedule();
+        new MutationObserver(changes => {
+            if (changes.some(change => Array.from(change.addedNodes).some(node => node.nodeType === 1 && (node.matches?.(selector) || node.querySelector?.(selector))))) schedule();
+        }).observe(document.body, {childList:true, subtree:true});
+    });
+    document.addEventListener('htmx:afterSwap', schedule);
+    window.CRMSourceSearch = {configure, enhance};
+})();
+</script>

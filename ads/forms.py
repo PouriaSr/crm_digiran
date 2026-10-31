@@ -4,6 +4,7 @@ from django.forms import CheckboxInput
 
 from crm.form_mixins import DuplicateCheckMixin
 from .models import Ad, AdPlatform, AdProcess, AdSource
+from .widgets import SourceSelect
 
 
 class StyledFormMixin:
@@ -36,6 +37,7 @@ class AdForm(DuplicateCheckMixin, StyledFormMixin, forms.ModelForm):
             'product', 'ad_number', 'note',
         ]
         widgets = {
+            'source': SourceSelect(),
             'note': forms.Textarea(attrs={'rows': 3}),
             'cost': forms.NumberInput(attrs={'step': '1000'}),
             'ad_number': forms.TextInput(attrs={

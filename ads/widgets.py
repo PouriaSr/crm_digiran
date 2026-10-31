@@ -1,8 +1,8 @@
 from django import forms
 
 
-class ContactSourceSelect(forms.Select):
-    """Contact-source search metadata, separate from its visible option text."""
+class SourceSelect(forms.Select):
+    """Shared source search metadata and label-first text throughout the system."""
 
     def __init__(self, attrs=None, choices=()):
         super().__init__({'data-source-search': 'label-first', **(attrs or {})}, choices)
@@ -15,3 +15,7 @@ class ContactSourceSelect(forms.Select):
             option['attrs']['data-source-number'] = source.phone_number
             option['label'] = f'{source.label} — {source.phone_number}' if source.label else source.phone_number
         return option
+
+
+# Keep existing call forms using the same shared widget.
+ContactSourceSelect = SourceSelect
