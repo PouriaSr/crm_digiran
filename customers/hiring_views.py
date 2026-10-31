@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import F, Max, Q
+from django.db.models import Count, F, Max, Q
 from django.http import FileResponse, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -91,8 +91,23 @@ def hiring_context(request, records):
     selected_pk = request.GET.get('r', '')
     selected_record = choices.filter(pk=selected_pk).first() if selected_pk.isascii() and selected_pk.isdigit() and len(selected_pk) < 16 else None
     page = Paginator(records, 30).get_page(request.GET.get('hiring_page'))
+    ad_scope = Q(applications__reception__customer__is_deleted=False)
+    if not is_card_manager(request.user):
+        ad_scope &= Q(applications__reception__customer__assigned_to=request.user)
+    ads = HiringAd.objects.select_related('created_by').annotate(applicant_count=Count('applications', filter=ad_scope, distinct=True))
+    ad_query = request.GET.get('ad_q', '').strip()[:200]
+    if ad_query:
+        from django.db.models import CharField
+        from django.db.models.functions import Cast
+        ads = ads.annotate(number_text=Cast('number', CharField()))
+        condition = digit_contains('role_title', ad_query) | digit_contains('email', ad_query) | digit_contains('number_text', ad_query)
+        for value, title in HiringAd.PLATFORMS:
+            if ad_query in title or ad_query.lower() in value.lower():
+                condition |= Q(platform=value)
+        ads = ads.filter(condition)
+    ads_page = Paginator(ads.order_by('-created_at','-pk'), 15).get_page(request.GET.get('ad_page'))
     return {'hiring_records': page, 'hiring_choices': choices, 'hiring_selected': selected_record,
-            'hiring_filters': form, 'hiring_filters_active': any(request.GET.get(k) for k in form.fields),
+            'hiring_ads': ads_page, 'hiring_ad_query': ad_query, 'hiring_filters': form, 'hiring_filters_active': any(request.GET.get(k) for k in form.fields),
             'can_hiring_documents': has_permission(request.user, 'customers.hiring_documents')}
 
 

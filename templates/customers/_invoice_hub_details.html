@@ -1,6 +1,7 @@
 {% load fa_numbers %}
 <section class="wf-details wf-expanded" aria-label="جزئیات فاکتور {{ inv.number }}">
     <header class="wf-expanded-header"><div><p class="wf-eyebrow">خلاصه فاکتور</p><h3>{{ inv.customer.name }}</h3><span class="wf-contact-line"><bdi dir="ltr">{{ inv.number }}</bdi></span></div><a class="wf-action" href="{% url 'sales:detail' inv.pk %}">مشاهده فاکتور کامل</a></header>
+    <div class="wf-next-step"><strong>وضعیت پرداخت: {{ inv.get_status_display }}</strong><p>مبلغ نهایی: {{ inv.total|floatformat:0|fa_num }} تومان{% if inv.due_date %} · مهلت پرداخت: <bdi dir="ltr">{{ inv.due_date|jdate:'Y/m/d' }}</bdi>{% endif %}</p></div>
     <div class="wf-info-grid">
         <section class="wf-info-section"><header class="wf-section-heading"><h4>اطلاعات صدور</h4><span class="wf-badge {% if inv.status == 'paid' %}wf-badge-done{% else %}wf-badge-neutral{% endif %}">{{ inv.get_status_display }}</span></header>
             <dl class="wf-fields"><div><dt>مشتری</dt><dd>{{ inv.customer.name }}</dd></div><div><dt>تاریخ صدور</dt><dd><bdi dir="ltr">{{ inv.issue_date|jdate:'Y/m/d · H:i' }}</bdi></dd></div><div><dt>مهلت پرداخت</dt><dd>{% if inv.due_date %}<bdi dir="ltr">{{ inv.due_date|jdate:'Y/m/d' }}</bdi>{% else %}<span class="wf-unset">تعیین نشده</span>{% endif %}</dd></div><div><dt>روش پرداخت</dt><dd>{{ inv.get_payment_type_display }}</dd></div><div><dt>ثبت‌کننده</dt><dd>{% if inv.created_by %}{{ inv.created_by.get_full_name|default:inv.created_by.username }}{% else %}<span class="wf-unset">ثبت نشده</span>{% endif %}</dd></div></dl>

@@ -1,0 +1,102 @@
+<style>
+[data-live-results][aria-busy="true"] {opacity:.65;transition:opacity .12s}
+.crm-live-status {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.crm-live-status.crm-live-error {position:relative;width:auto;height:auto;clip-path:none;color:#be123c;font-size:12px;display:block;padding:6px}
+.crm-search-popup {position:fixed;z-index:1600;background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 15px 45px #0f172a26;padding:14px;overflow:auto;max-height:65vh;direction:rtl;color:#334155;font-size:13px}
+.crm-search-popup[hidden] {display:none}.crm-search-popup h1 {font-size:15px}.crm-search-popup a {display:block}.crm-search-popup [data-live-results]>div {margin-bottom:12px}
+</style>
+<script>
+(function(){
+ 'use strict';
+ if(window.CRMLiveSearch)return;
+ const states=new Map(), inputSelector='input[name="q"],input[name="workflow_q"],input[name="ad_q"],input[type="search"][name]';
+ const normalize=value=>window.CRMNumerals?CRMNumerals.ascii(value):value;
+ let popupCounter=0;
+ function config(form){
+  if(!form || (form.method||'get').toLowerCase()!=='get' || form.dataset.liveSearch==='off')return null;
+  const input=Array.from(form.querySelectorAll(inputSelector)).find(el=>el.type!=='hidden'&&!el.disabled);
+  if(!input)return null;
+  if(form.hasAttribute('data-global-search')){const action=new URL(form.action,location.href);if(action.pathname===location.pathname&&document.getElementById('global-search-results'))return {input,id:'global-search-results',key:'global-search-results'};return {input,global:true,key:form};}
+  const tab=form.querySelector('[name=tab]')?.value;
+  let id=input.name==='ad_q'?'hiring-ad-results':tab==='info'?'customer-table-container':tab?'workflow-'+tab+'-results':'crm-list-results';
+  if(!document.getElementById(id)){if(document.getElementById('changelist-form'))id='changelist-form';else return null;}
+  return {input,id,key:id};
+ }
+ function status(form,text,error=false){
+  let node=form.querySelector('[data-live-status]');if(!node){node=document.createElement('span');node.dataset.liveStatus='';node.setAttribute('role','status');node.setAttribute('aria-live','polite');form.appendChild(node);}
+  node.className='crm-live-status'+(error?' crm-live-error':'');node.textContent=text;
+ }
+ function stateFor(cfg){if(!states.has(cfg.key))states.set(cfg.key,{version:0});return states.get(cfg.key);}
+ function cancel(cfg){const state=stateFor(cfg);state.version++;state.controller?.abort();clearTimeout(state.timer);return state;}
+ function paramsFor(form,cfg){
+  const action=new URL(form.getAttribute('action')||location.href,location.href);
+  if(action.origin!==location.origin)return null;
+  const same=action.pathname===location.pathname;
+  const url=new URL(same?location.href:action.href);url.hash='';url.searchParams.delete('partial');
+  function merge(other){if(!other)return;for(const key of new Set(Array.from(other.elements).map(el=>el.name).filter(Boolean)))url.searchParams.delete(key);for(const [key,value] of new FormData(other)){if(typeof value==='string')url.searchParams.append(key,normalize(value));}}
+  if(cfg.id==='customer-table-container')merge(document.getElementById('hub-filter-form'));
+  merge(form);
+  if(cfg.id?.startsWith('workflow-')){merge(document.querySelector('form[data-workflow-filters]'));url.searchParams.set(cfg.input.name,normalize(cfg.input.value));}
+  const pageKey=cfg.id==='hiring-ad-results'?'ad_page':cfg.id?.startsWith('workflow-')?cfg.id.replace('workflow-','').replace('-results','')+'_page':cfg.id==='changelist-form'?'p':'page';url.searchParams.delete(pageKey);
+  if(cfg.id==='hiring-ad-results'){const other=document.querySelector('input[name=workflow_q]:not([type=hidden])');if(other)url.searchParams.set('workflow_q',normalize(other.value));}
+  else if(cfg.id==='workflow-hiring-results'){const other=document.querySelector('input[name=ad_q]');if(other)url.searchParams.set('ad_q',normalize(other.value));}
+  // Search must never trigger an editor-open navigation.
+  url.searchParams.delete('edit_case');return url;
+ }
+ function destroy(node){node.querySelectorAll('select').forEach(el=>el.tomselect?.destroy());window.Alpine?.destroyTree?.(node);}
+ function prepare(node){
+  window.Alpine?.initTree?.(node);window.htmx?.process(node);
+  if(window.TomSelect)node.querySelectorAll('select:not(.no-search)').forEach(el=>{if(el.tomselect)return;const options={create:false,plugins:['dropdown_input'],dropdownParent:'body',maxOptions:1000,score:function(search){const score=this.getScoreFunction(normalize(search));return item=>score(Object.fromEntries(Object.entries(item).map(([key,value])=>[key,typeof value==='string'?normalize(value):value])));}};if(el.dataset.sourceSearch==='label-first')window.CRMSourceSearch?.configure(el,options);new TomSelect(el,options);});
+  if(window.Actions && node.querySelector('.action-select'))window.Actions(node.querySelectorAll('.action-select'));
+  document.dispatchEvent(new CustomEvent('crm:results-updated',{detail:{root:node}}));
+ }
+ function replaceResults(current,next){
+  // Keep expanded rows when the same person remains in the result.
+  const opened=new Set(Array.from(current.querySelectorAll('details[open][data-reception-id]')).map(el=>el.dataset.receptionId));
+  destroy(current);current.replaceChildren(...Array.from(next.childNodes));
+  for(const attr of ['data-show-new'])if(next.hasAttribute(attr))current.setAttribute(attr,next.getAttribute(attr));
+  current.querySelectorAll('details[data-reception-id]').forEach(el=>{el.open=opened.has(el.dataset.receptionId);});prepare(current);
+  if(current.id==='customer-table-container'){
+   const scope=current.closest('[x-data]');if(window.Alpine&&scope)Alpine.$data(scope).showNewBtn=current.dataset.showNew==='true';
+  }
+ }
+ function popupFor(form,input){
+  let node=form._livePopup;if(node?.isConnected)return node;
+  node=document.createElement('div');node.id='crm-search-popup-'+(++popupCounter);node.className='crm-search-popup';node.setAttribute('role','region');node.setAttribute('aria-label','نتایج جستجوی سراسری');node.hidden=true;document.body.appendChild(node);form._livePopup=node;
+  input.setAttribute('aria-controls',node.id);input.setAttribute('aria-expanded','false');return node;
+ }
+ function placePopup(form,input){const node=popupFor(form,input),rect=form.getBoundingClientRect();node.style.top=Math.min(rect.bottom+6,innerHeight-180)+'px';node.style.width=Math.min(Math.max(rect.width,300),innerWidth-24)+'px';node.style.left=Math.max(12,Math.min(rect.left,innerWidth-parseFloat(node.style.width)-12))+'px';}
+ function hidePopup(form,cfg){const popup=form._livePopup;if(popup)popup.hidden=true;cfg.input.setAttribute('aria-expanded','false');}
+ async function run(form,cfg,url,version){
+  const state=stateFor(cfg);if(state.version!==version)return;
+  if(cfg.global && !cfg.input.value.trim()){hidePopup(form,cfg);status(form,'');return;}
+  const controller=new AbortController();state.controller=controller;
+  const target=cfg.global?popupFor(form,cfg.input):document.getElementById(cfg.id);if(!target)return;
+  target.setAttribute('aria-busy','true');status(form,'در حال جستجو…');
+  try{
+   const response=await fetch(url,{signal:controller.signal,headers:{'Accept':'text/html','X-Live-Search':'1'},cache:'no-store'});
+   if(state.version!==version)return;
+   if(response.redirected){throw new Error('برای ادامه، صفحه را تازه کنید و در صورت نیاز دوباره وارد شوید.');}
+   if(!response.ok)throw new Error('جستجو انجام نشد؛ دوباره تلاش کنید.');
+   const doc=new DOMParser().parseFromString(await response.text(),'text/html');if(state.version!==version)return;
+   const next=doc.getElementById(cfg.global?'global-search-results':cfg.id);if(!next)throw new Error('نتیجه دریافت نشد؛ دوباره تلاش کنید.');
+   if(cfg.global){replaceResults(target,next);placePopup(form,cfg.input);target.hidden=false;cfg.input.setAttribute('aria-expanded','true');}
+   else {replaceResults(target,next);if(cfg.id==='hiring-ad-results'||cfg.id==='workflow-hiring-results'){for(const name of ['ad_q','workflow_q']){const field=document.querySelector('input[name="'+name+'"]:not([type=hidden])');if(field)url.searchParams.set(name,normalize(field.value));}}history.replaceState(history.state,'',url);}
+   if(!cfg.global)document.querySelectorAll('input[type=hidden][name="'+cfg.input.name+'"]').forEach(el=>{el.value=cfg.input.value;});status(form,'نتایج به‌روز شد.');
+  }catch(error){if(error.name!=='AbortError' && state.version===version)status(form,error.message,true);}
+  finally{if(state.version===version)target.removeAttribute('aria-busy');}
+ }
+ function search(form,immediate=true,url=null){const cfg=config(form);if(!cfg)return false;const state=cancel(cfg),version=state.version;url=url||paramsFor(form,cfg);if(!url)return false;if(immediate)run(form,cfg,url,version);else state.timer=setTimeout(()=>run(form,cfg,url,version),200);return true;}
+ document.addEventListener('input',event=>{if(event.isComposing||!event.target.matches(inputSelector))return;const form=event.target.form,cfg=config(form);if(!cfg||cfg.input!==event.target)return;search(form,false);});
+ document.addEventListener('compositionend',event=>{if(event.target.matches(inputSelector))search(event.target.form,false);});
+ document.addEventListener('submit',event=>{const cfg=config(event.target);if(!cfg)return;if(cfg.global)return;event.preventDefault();event.stopImmediatePropagation();search(event.target);},true);
+ document.addEventListener('click',event=>{
+  const link=event.target.closest('a[href]'),region=link?.closest('[data-live-results]');
+  if((region||link?.closest('#changelist-form')) && !event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey && event.button===0){const url=new URL(link.href,location.href);if(url.pathname===location.pathname && Array.from(url.searchParams.keys()).some(key=>key==='page'||key.endsWith('_page'))){const form=Array.from(document.forms).find(form=>config(form)?.id===(region||link.closest('#changelist-form')).id);if(form){event.preventDefault();search(form,true,url);}}}
+  document.querySelectorAll('form[data-global-search]').forEach(form=>{if(!form.contains(event.target)&&!form._livePopup?.contains(event.target)){const cfg=config(form);if(cfg){cancel(cfg);hidePopup(form,cfg);}}});
+ });
+ document.addEventListener('keydown',event=>{if(event.key==='Escape')document.querySelectorAll('form[data-global-search]').forEach(form=>{const cfg=config(form);if(cfg){cancel(cfg);hidePopup(form,cfg);}});});
+ window.addEventListener('resize',()=>document.querySelectorAll('form[data-global-search]').forEach(form=>{if(form._livePopup&&!form._livePopup.hidden)placePopup(form,config(form).input);}));
+ window.CRMLiveSearch={search,prepare};
+})();
+</script>

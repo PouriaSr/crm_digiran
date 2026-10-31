@@ -14,7 +14,8 @@
     </section>
     <section class="wf-panel">
         <header class="wf-panel-head"><div><h3 class="wf-title">مراجعه‌کنندگان و وضعیت ورود <span class="wf-tab-count">{{ reception_records.paginator.count|fa_num }}</span></h3><p class="wf-subtitle">هر ردیف یک مراجعه است؛ برای اطلاعات بیشتر، ردیف یا «جزئیات» را باز کنید.</p></div>{% include 'customers/_workflow_search.html' with search_tab='reception' search_label='پذیرش' %}</header>
-        <div id="admission-queue" class="wf-list" data-workflow-clock data-clock-url="{% url 'customers:reception_clock' %}" data-server-now="{% now 'c' %}">
+        <div id="workflow-reception-results" data-live-results>
+<div id="admission-queue" class="wf-list" data-workflow-clock data-clock-url="{% url 'customers:reception_clock' %}" data-server-now="{% now 'c' %}">
             <div class="wf-list-head" aria-hidden="true"><span>نام مراجعه‌کننده</span><span>شماره تماس</span><span>مسیر / وضعیت</span><span>زمان ورود</span><span>مدت انتظار</span><span>کارشناس مسئول</span><span>عملیات</span></div>
             {% for rec in reception_records %}
             <details class="wf-record" data-reception-id="{{ rec.pk }}">
@@ -30,7 +31,7 @@
             </details>
             {% empty %}<p class="wf-empty">{% if workflow_query %}فردی با این نام یا شماره پیدا نشد.{% else %}هنوز مراجعه‌ای ثبت نشده است.{% endif %}</p>{% endfor %}
         </div>
-        {% include 'customers/_workflow_pagination.html' with page=reception_records page_key='reception_page' page_tab='reception' %}
+        {% include 'customers/_workflow_pagination.html' with page=reception_records page_key='reception_page' page_tab='reception' %}</div>
     </section>
     {% if legacy_receptions %}<details class="wf-panel"><summary class="p-4 cursor-pointer text-xs font-bold text-gray-500">بایگانی پذیرش‌های نسخه قبل</summary><div class="px-4 pb-4 divide-y divide-gray-100">{% for rec in legacy_receptions %}<div class="flex flex-wrap gap-x-5 gap-y-2 py-3 text-xs text-gray-500"><strong class="text-gray-700">{{ rec.customer.name }}</strong><span>{{ rec.get_person_type_display|default:'—' }}</span><span>{{ rec.created_at|jdate:'Y/m/d H:i' }}</span>{% if rec.wait_minutes_total != None %}<span>انتظار {{ rec.wait_minutes_total|fa_num }} دقیقه</span>{% endif %}</div>{% endfor %}</div></details>{% endif %}
 </div>

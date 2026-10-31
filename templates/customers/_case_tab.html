@@ -141,7 +141,8 @@
     {% endif %}
     <section class="wf-panel">
         <header class="wf-panel-head"><div><h3 class="wf-title">فهرست پرونده‌ها و اطلاعات این مرحله <span class="wf-tab-count">{{ case_records.paginator.count|fa_num }}</span></h3><p class="wf-subtitle">جزئیات هر پرونده به‌صورت کشویی در همان ردیف نمایش داده می‌شود.</p></div>{% include 'customers/_workflow_search.html' with search_tab='case' search_label='پرونده‌ها' %}</header>
-        <div class="wf-list">
+        <div id="workflow-case-results" data-live-results>
+<div class="wf-list">
             <div class="wf-list-head" aria-hidden="true"><span>نام مشتری</span><span>شماره تماس</span><span>وضعیت پرونده</span><span>زمان ارجاع</span><span>انتظار / شرایط</span><span>کارشناس مسئول</span><span>عملیات</span></div>
             {% for rec in case_records %}
             <details class="wf-record" data-reception-id="{{ rec.pk }}">
@@ -157,7 +158,7 @@
             </details>
             {% empty %}<p class="wf-empty">{% if workflow_query %}مشتری با این نام یا شماره پیدا نشد.{% else %}هنوز مشتری‌ای به پرونده‌های قابل دسترس شما ارجاع نشده است.{% endif %}</p>{% endfor %}
         </div>
-        {% include 'customers/_workflow_pagination.html' with page=case_records page_key='case_page' page_tab='case' %}
+        {% include 'customers/_workflow_pagination.html' with page=case_records page_key='case_page' page_tab='case' %}</div>
     </section>
     {% if legacy_cases %}<details class="wf-panel"><summary class="p-4 text-xs font-bold text-gray-500 cursor-pointer">بایگانی پرونده‌های نسخه قبل</summary><div class="px-4 pb-4">{% for case in legacy_cases %}<details class="border-t border-gray-100"><summary class="py-3 cursor-pointer text-sm text-gray-600">{{ case.customer.name }} · {{ case.customer.mobile }}</summary><div class="wf-detail-grid pb-4"><div class="wf-detail-card space-y-3">{% include 'customers/_workflow_case_summary.html' %}</div></div></details>{% endfor %}</div></details>{% endif %}
 </div>

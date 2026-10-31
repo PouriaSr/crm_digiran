@@ -1,12 +1,13 @@
 {% load fa_numbers %}
 <section class="wf-details wf-expanded" aria-label="جزئیات {{ rec.customer.name }}">
     <header class="wf-expanded-header">
-        <div><p class="wf-eyebrow">جزئیات مراجعه‌کننده</p><h3>{{ rec.customer.name }}</h3><span class="wf-contact-line"><bdi dir="ltr">{{ rec.customer.mobile }}</bdi><span>·</span>{{ rec.get_person_type_display|default:'مراجعه‌کننده' }}</span></div>
+        <div><p class="wf-eyebrow">{% if hiring_view %}اطلاعات فرد پیش از مصاحبه{% else %}جزئیات مراجعه‌کننده{% endif %}</p><h3>{{ rec.customer.name }}</h3><span class="wf-contact-line"><bdi dir="ltr">{{ rec.customer.mobile }}</bdi><span>·</span>{{ rec.get_person_type_display|default:'مراجعه‌کننده' }}</span></div>
         <span class="wf-badge {% if rec.registration_completed_at %}wf-badge-done{% elif rec.is_waiting %}wf-badge-wait{% else %}wf-badge-neutral{% endif %}">{% if rec.registration_completed_at %}اطلاعات ثبت شده{% elif rec.case_completed_at %}پرونده ثبت شده{% elif rec.referred_at %}ارجاع انجام شده{% else %}در انتظار ارجاع{% endif %}</span>
     </header>
+    <div class="wf-next-step" role="note"><strong>وضعیت فعلی و اقدام بعدی</strong><p>{% if hiring_view %}{% if rec.has_active_interview %}مصاحبه در حال انجام است؛ برای ثبت ارزیابی، «ادامه مصاحبه» را بزنید.{% elif rec.hiring.status == 'repeat' %}مصاحبه مجدد ثبت شده است؛ زمان جلسه بعد در اطلاعات استخدام مشخص است.{% elif rec.hiring.status == 'invited' %}دعوت به همکاری ثبت شده است؛ زمان دعوت و وضعیت حضور را در نتیجه جلسه ببینید.{% elif rec.hiring.status == 'rejected' %}کارجو رد شده است؛ دلیل رد در نتیجه جلسه ثبت شده است.{% elif rec.hiring.latest_session_id %}جلسه مصاحبه ثبت شده است؛ نتیجه و ارزیابی در اطلاعات استخدام قرار دارد.{% else %}کارجو مراجعه کرده است؛ با «شروع مصاحبه»، انتظار پایان می‌یابد و زمان جلسه شروع می‌شود.{% endif %}{% elif rec.registration_completed_at %}اطلاعات تکمیلی ثبت شده است؛ مشخصات و سوابق فرد در بخش‌های زیر قرار دارند.{% elif rec.case_completed_at %}پرونده ثبت شده است؛ مرحله بعد، تکمیل مشخصات در تب «ثبت اطلاعات» است.{% elif rec.referred_at %}فرد به کارشناس ارجاع شده است؛ مرحله بعد، تکمیل و ثبت پرونده است.{% else %}ورود ثبت شده است؛ برای انتقال به مرحله بعد، کاربر مسئول را انتخاب و ارجاع دهید.{% endif %}</p></div>
     <div class="wf-info-grid">
-        <section class="wf-info-section">
-            <header class="wf-section-heading"><h4>مشخصات و ارتباط</h4><span>اطلاعات پایه</span></header>
+        <details class="wf-info-section wf-detail-accordion" open>
+            <summary class="wf-section-heading"><h4>مشخصات و ارتباط</h4><span>اطلاعات پایه</span></summary>
             <dl class="wf-fields">
                 <div><dt>نام و نام خانوادگی</dt><dd>{{ rec.customer.name }}</dd></div>
                 <div><dt>شماره تماس</dt><dd><bdi dir="ltr">{{ rec.customer.mobile }}</bdi></dd></div>
@@ -17,34 +18,34 @@
                 <div><dt>ثبت اولیه</dt><dd><bdi dir="ltr">{{ rec.customer.created_at|jdate:'Y/m/d · H:i' }}</bdi></dd></div>
             </dl>
             {% if rec.customer.notes %}<div class="wf-note-box"><h5>یادداشت ثبت‌شده مشتری</h5><p>{{ rec.customer.notes }}</p></div>{% endif %}
-        </section>
-        <section class="wf-info-section">
-            <header class="wf-section-heading"><h4>روند مراجعه</h4><span>ورود، انتظار و ارجاع</span></header>
+        </details>
+        <details class="wf-info-section wf-detail-accordion" open>
+            <summary class="wf-section-heading"><h4>روند مراجعه</h4><span>زمان و مسئول هر مرحله</span></summary>
             <ol class="wf-journey" role="list">
                 <li class="is-complete"><div class="wf-journey-heading"><h5>ورود مراجعه‌کننده</h5><time><bdi dir="ltr">{{ rec.arrived_at|default:rec.wait_started_at|default:rec.created_at|jdate:'Y/m/d · H:i:s' }}</bdi></time></div><p>ثبت‌کننده: {% if rec.created_by %}{{ rec.created_by.get_full_name|default:rec.created_by.username }}{% else %}ثبت نشده{% endif %}</p></li>
-                <li class="{% if rec.referred_at %}is-complete{% else %}is-current{% endif %}"><div class="wf-journey-heading"><h5>ارجاع به کارشناس</h5>{% if rec.referred_at %}<time><bdi dir="ltr">{{ rec.referred_at|jdate:'Y/m/d · H:i:s' }}</bdi></time>{% else %}<span class="wf-badge wf-badge-wait">هنوز ارجاع نشده</span>{% endif %}</div>{% if rec.referred_to %}<p>ارجاع به: <strong>{{ rec.referred_to.get_full_name|default:rec.referred_to.username }}</strong></p>{% endif %}{% if rec.referred_by %}<p>توسط {{ rec.referred_by.get_full_name|default:rec.referred_by.username }}</p>{% endif %}{% if rec.wait_ended_at %}<p>پایان انتظار: <bdi dir="ltr">{{ rec.wait_ended_at|jdate:'H:i:s' }}</bdi><span class="wf-duration">مجموع انتظار <bdi dir="ltr">{{ rec.wait_display }}</bdi></span></p>{% endif %}</li>
+                <li class="{% if rec.referred_at %}is-complete{% else %}is-current{% endif %}"><div class="wf-journey-heading"><h5>ارجاع به کارشناس</h5>{% if rec.referred_at %}<time><bdi dir="ltr">{{ rec.referred_at|jdate:'Y/m/d · H:i:s' }}</bdi></time>{% else %}<span class="wf-badge wf-badge-wait">هنوز ارجاع نشده</span>{% endif %}</div>{% if rec.referred_to %}<p>ارجاع به: <strong>{{ rec.referred_to.get_full_name|default:rec.referred_to.username }}</strong></p>{% endif %}{% if rec.referred_by %}<p>توسط {{ rec.referred_by.get_full_name|default:rec.referred_by.username }}</p>{% endif %}{% if rec.wait_ended_at %}<p>پایان انتظار{% if rec.person_type == 'interviewer' %} / شروع مصاحبه{% endif %}: <bdi dir="ltr">{{ rec.wait_ended_at|jdate:'H:i:s' }}</bdi><span class="wf-duration">مجموع انتظار <bdi dir="ltr">{{ rec.wait_display }}</bdi></span></p>{% endif %}</li>
                 {% if rec.person_type == 'customer' %}
                 <li class="{% if rec.case_completed_at %}is-complete{% elif rec.referred_at %}is-current{% endif %}"><div class="wf-journey-heading"><h5>ثبت پرونده</h5>{% if rec.case_completed_at %}<time><bdi dir="ltr">{{ rec.case_completed_at|jdate:'Y/m/d · H:i' }}</bdi></time>{% else %}<span class="wf-unset">تکمیل نشده</span>{% endif %}</div>{% if rec.case_completed_by %}<p>{{ rec.case_completed_by.get_full_name|default:rec.case_completed_by.username }}</p>{% endif %}</li>
                 <li class="{% if rec.registration_completed_at %}is-complete{% elif rec.case_completed_at %}is-current{% endif %}"><div class="wf-journey-heading"><h5>ثبت اطلاعات تکمیلی</h5>{% if rec.registration_completed_at %}<time><bdi dir="ltr">{{ rec.registration_completed_at|jdate:'Y/m/d · H:i' }}</bdi></time>{% else %}<span class="wf-unset">تکمیل نشده</span>{% endif %}</div>{% if rec.registration_completed_by %}<p>{{ rec.registration_completed_by.get_full_name|default:rec.registration_completed_by.username }}</p>{% endif %}</li>
                 {% endif %}
             </ol>
-        </section>
+        </details>
         {% if 'calls.view' in user_permissions %}{% for call in rec.customer.latest_contact %}
-        <section class="wf-info-section">
-            <header class="wf-section-heading"><h4>آخرین تماس و شرایط درخواستی</h4><time><bdi dir="ltr">{{ call.call_date|jdate:'Y/m/d · H:i' }}</bdi></time></header>
+        <details class="wf-info-section wf-detail-accordion">
+            <summary class="wf-section-heading"><h4>آخرین تماس و شرایط درخواستی</h4><time><bdi dir="ltr">{{ call.call_date|jdate:'Y/m/d · H:i' }}</bdi></time></summary>
             <dl class="wf-fields"><div><dt>نوع تماس</dt><dd>{{ call.get_contact_type_display }}</dd></div><div><dt>هدف تماس</dt><dd>{{ call.get_purpose_display }}</dd></div><div><dt>وضعیت تماس</dt><dd><span class="wf-badge {% if call.status == 'answered' %}wf-badge-done{% else %}wf-badge-wait{% endif %}">{{ call.get_status_display }}</span></dd></div>{% if call.requested_condition %}<div><dt>شرایط درخواستی</dt><dd>{{ call.get_requested_condition_display }}</dd></div>{% endif %}{% if call.called_by %}<div><dt>کارشناس تماس</dt><dd>{{ call.called_by.get_full_name|default:call.called_by.username }}</dd></div>{% endif %}</dl>
             <dl class="wf-fields"><div><dt>منبع هنگام ثبت تماس</dt><dd>{{ call.source_display }}</dd></div></dl>
             <div class="wf-note-box"><h5>شرح مکالمه</h5><p>{{ call.notes|default:'شرحی ثبت نشده است.' }}</p></div>
-        </section>
+        </details>
         {% endfor %}{% endif %}
         {% if rec.customer.case %}{% if 'customers.case' in user_permissions %}
-        <section class="wf-info-section"><header class="wf-section-heading"><h4>پرونده و شرایط خرید</h4><span>اطلاعات ثبت‌شده پرونده</span></header>{% include 'customers/_workflow_case_summary.html' with case=rec.customer.case %}</section>
+        <details class="wf-info-section wf-detail-accordion"><summary class="wf-section-heading"><h4>پرونده و شرایط خرید</h4><span>اطلاعات ثبت‌شده پرونده</span></summary>{% include 'customers/_workflow_case_summary.html' with case=rec.customer.case %}</details>
         {% endif %}{% endif %}
         {% if 'customers.profile_full' in user_permissions %}{% if not hiring_view or can_hiring_documents %}
-        <section class="wf-info-section">
-            <header class="wf-section-heading"><h4>مشخصات تکمیلی</h4><span>هویتی و نشانی</span></header>
+        <details class="wf-info-section wf-detail-accordion">
+            <summary class="wf-section-heading"><h4>مشخصات تکمیلی</h4><span>هویتی و نشانی</span></summary>
             <dl class="wf-fields"><div><dt>کد ملی</dt><dd>{% if rec.customer.national_id %}<bdi dir="ltr">{{ rec.customer.national_id }}</bdi>{% else %}<span class="wf-unset">ثبت نشده</span>{% endif %}</dd></div><div><dt>تاریخ تولد</dt><dd>{% if rec.customer.birth_date %}<bdi dir="ltr">{{ rec.customer.birth_date|jdate:'Y/m/d' }}</bdi>{% else %}<span class="wf-unset">ثبت نشده</span>{% endif %}</dd></div><div><dt>ایمیل</dt><dd>{% if rec.customer.email %}<bdi dir="ltr">{{ rec.customer.email }}</bdi>{% else %}<span class="wf-unset">ثبت نشده</span>{% endif %}</dd></div><div class="wf-field-long"><dt>آدرس</dt><dd>{{ rec.customer.address|default:'ثبت نشده' }}</dd></div></dl>
-        </section>
+        </details>
         {% endif %}{% endif %}
     </div>
     {% if rec.work_history and rec.person_type == 'customer' %}<details class="hr-session-card"><summary>نوبت‌های تکمیل پرونده و زمان انتظار</summary><div class="mt-3">{% for work in rec.work_history %}<div class="hr-session-card"><dl class="wf-fields"><div><dt>شروع</dt><dd><bdi dir="ltr">{{ work.started_at|jdate:'Y/m/d · H:i:s' }}</bdi></dd></div><div><dt>پایان</dt><dd><bdi dir="ltr">{{ work.ended_at|jdate:'Y/m/d · H:i:s'|default:'در حال تکمیل' }}</bdi></dd></div><div><dt>زمان انتظار</dt><dd><span data-case-clock data-case-work-id="{{ work.pk }}" data-start="{{ work.started_at|date:'c' }}" data-end="{{ work.ended_at|date:'c' }}" data-server-now="{% now 'c' %}">{{ work.minutes|fa_num }} دقیقه</span></dd></div><div><dt>کاربر شروع‌کننده</dt><dd>{% if work.started_by %}{{ work.started_by.get_full_name|default:work.started_by.username }}{% else %}ثبت نشده{% endif %}</dd></div></dl></div>{% endfor %}</div></details>{% endif %}

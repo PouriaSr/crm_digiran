@@ -1062,7 +1062,7 @@ window.apexMobileMerge = function (options) {
         <!-- ===== Desktop Header ===== -->
         <header class="hidden lg:flex min-h-[76px] bg-white border-b border-gray-200 px-6 py-3 items-center justify-between gap-6">
             <!-- Search: visually grouped as one control -->
-            <form method="get" action="{% url 'dashboard:search' %}" class="flex-1 min-w-0 max-w-2xl flex items-stretch">
+            <form data-global-search method="get" action="{% url 'dashboard:search' %}" class="flex-1 min-w-0 max-w-2xl flex items-stretch">
                 <div class="relative flex-1 min-w-0">
                     <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
@@ -1318,7 +1318,7 @@ window.apexMobileMerge = function (options) {
      class="lg:hidden fixed inset-0 bg-white z-[60] flex flex-col"
      x-transition.opacity>
     <div class="h-14 flex items-center px-3 gap-2 border-b border-gray-200 flex-shrink-0">
-        <form method="get" action="{% url 'dashboard:search' %}" class="flex-1 flex gap-2">
+        <form data-global-search method="get" action="{% url 'dashboard:search' %}" class="flex-1 flex gap-2">
             <div class="relative flex-1">
                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                     <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
@@ -1548,6 +1548,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+{% include 'includes/_live_search.html' %}
 {% block extra_js %}{% endblock %}
 
 

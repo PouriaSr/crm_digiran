@@ -21,28 +21,7 @@
         registrationUnlocked: {{ registration_unlocked|yesno:'true,false' }},
         
         searchCustomers() {
-            const params = new URLSearchParams(window.location.search);
-            params.set('tab', 'info'); params.set('partial', '1'); params.set('q', this.searchQuery);
-            fetch('?' + params.toString(), {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'HX-Request': 'true'
-                }
-            })
-            .then(res => {
-                this.showNewBtn = res.headers.get('X-Show-New-Customer') === 'true';
-                return res.text();
-            })
-            .then(html => {
-                const container = document.getElementById('customer-table-container');
-                if (!container) return;
-                if (html.includes('<html') || html.includes('<!DOCTYPE')) {
-                    console.error('partial expected, got full page');
-                    return;
-                }
-                container.outerHTML = html.trim();
-            })
-            .catch(err => console.error('Search error:', err));
+            window.CRMLiveSearch?.search(document.getElementById('hub-search-input').form);
         },
         
         checkMobile() {
@@ -116,9 +95,9 @@
     <!-- TAB 1: INFO -->
     <div x-show="tab === 'info'" x-transition.opacity class="space-y-4">
         <div class="flex flex-col md:flex-row justify-between items-center gap-3">
-            <form method="get" @submit.prevent="searchCustomers()" class="w-full md:w-1/2 relative group">
+            <form method="get" class="w-full md:w-1/2 relative group">
             <input type="hidden" name="tab" value="info">
-            <input type="text" name="q" id="hub-search-input" x-model="searchQuery" @input.debounce.500ms="searchCustomers()" placeholder="جستجوی نام یا شماره..." 
+            <input type="text" name="q" id="hub-search-input" x-model="searchQuery" placeholder="جستجوی نام یا شماره..."
                    class="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm shadow-sm group-hover:border-gray-300">
             <button type="submit" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-400 rounded-lg group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>

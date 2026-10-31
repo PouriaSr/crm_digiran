@@ -1,7 +1,8 @@
 <script>
 (function () {
     const pad = n => String(n).padStart(2, '0');
-    document.querySelectorAll('[data-workflow-clock]').forEach(container => {
+    function installClocks() { document.querySelectorAll('[data-workflow-clock]').forEach(container => {
+        if(container.dataset.clockInitialized)return;container.dataset.clockInitialized='1';
         let base = Date.parse(container.dataset.serverNow), anchor = performance.now();
         function tick() {
             const now = base + performance.now() - anchor;
@@ -34,9 +35,10 @@
                 tick();
             } catch (_) { /* Keep the original server baseline during a temporary network failure. */ }
         }
-        tick(); setInterval(tick,1000);
+        const ticking=setInterval(()=>{if(!container.isConnected){clearInterval(ticking);return;}tick();},1000);tick();
         document.addEventListener('DOMContentLoaded',sync,{once:true});
-        setInterval(sync,15000);
-    });
+        const syncing=setInterval(()=>{if(!container.isConnected){clearInterval(syncing);return;}sync();},15000);
+    }); }
+    installClocks();document.addEventListener('crm:results-updated',installClocks);
 })();
 </script>

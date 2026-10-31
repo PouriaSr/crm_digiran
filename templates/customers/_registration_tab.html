@@ -8,7 +8,8 @@
     {% if registration_unlocked %}
     <section class="wf-panel">
         <header class="wf-panel-head"><div><h3 class="wf-title">فهرست اطلاعات تکمیل‌شده و در انتظار ثبت <span class="wf-tab-count">{{ registration_records.paginator.count|fa_num }}</span></h3><p class="wf-subtitle">مشخصات و اطلاعات کامل هر فرد در بخش کشویی همان ردیف قرار دارد.</p></div>{% include 'customers/_workflow_search.html' with search_tab='registration' search_label='ثبت اطلاعات' %}</header>
-        <div class="wf-list">
+        <div id="workflow-registration-results" data-live-results>
+<div class="wf-list">
             <div class="wf-list-head" aria-hidden="true"><span>نام مشتری</span><span>شماره تماس</span><span>وضعیت اطلاعات</span><span>زمان ثبت پرونده</span><span>ثبت نهایی</span><span>کارشناس مسئول</span><span>عملیات</span></div>
             {% for rec in registration_records %}
             <details class="wf-record" data-reception-id="{{ rec.pk }}">
@@ -24,7 +25,7 @@
             </details>
             {% empty %}<p class="wf-empty">فردی با این نام یا شماره پیدا نشد.</p>{% endfor %}
         </div>
-        {% include 'customers/_workflow_pagination.html' with page=registration_records page_key='registration_page' page_tab='registration' %}
+        {% include 'customers/_workflow_pagination.html' with page=registration_records page_key='registration_page' page_tab='registration' %}</div>
     </section>
     {% endif %}
 </div>
