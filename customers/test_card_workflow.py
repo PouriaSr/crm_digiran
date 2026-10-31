@@ -1,3 +1,4 @@
+from ads.models import AdSource
 from datetime import datetime, timedelta, time, timezone as utc_timezone
 from unittest.mock import patch
 import jdatetime
@@ -141,7 +142,7 @@ class CardWorkflowTest(TestCase):
         self.assertEqual(Call.objects.count(),1)
 
     def test_purchase_intent_without_followup_time_cannot_create_customer(self):
-        self.client.post(reverse('customers:hub_submit_call'), {'mobile':'09126667777','name':'مشتری نو','call_type':'incoming','notes':'تست','customer_analysis':'potential','follow_up_date':jdate(timezone.localdate())})
+        self.client.post(reverse('customers:hub_submit_call'), {'purpose':'sale', 'call_status':'answered', 'requested_condition':'cash', 'source':AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk, 'mobile':'09126667777','name':'مشتری نو','call_type':'incoming','notes':'تست','customer_analysis':'potential','follow_up_date':jdate(timezone.localdate())})
         self.assertFalse(Customer.objects.filter(mobile='09126667777').exists())
 
     def test_legacy_history_without_a_registered_caller_renders(self):
@@ -198,9 +199,9 @@ class FollowupPriorityFilterTest(TestCase):
 
     def test_date_range_is_inclusive_and_preserves_sort(self):
         day=jdate(self.today)
-        self.assertEqual(self.rows(date_from=day,date_to=day),[self.cards[1].pk,self.cards[2].pk])
-        self.assertEqual(self.rows(date_from=jdate(self.today+timedelta(days=2))),[])
-        self.assertEqual(self.rows(date_from='wrong'),[])
+        self.assertEqual(self.rows(date_field='followup',date_from=day,date_to=day),[self.cards[1].pk,self.cards[2].pk])
+        self.assertEqual(self.rows(date_field='followup',date_from=jdate(self.today+timedelta(days=2))),[])
+        self.assertEqual(self.rows(date_field='followup',date_from='wrong'),[])
 
     def test_pending_counter_uses_open_tasks_not_call_history(self):
         response = self.client.get(reverse('customers:hub'))

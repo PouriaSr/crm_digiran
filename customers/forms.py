@@ -76,6 +76,7 @@ class CustomerForm(DuplicateCheckMixin, forms.ModelForm):
             self.fields['source'].choices = self._meta.model.SOURCE_CHOICES
             attrs = self.fields['source'].widget.attrs
             attrs['x-model'] = 'sourceVal'
+        self.fields['mobile'].widget.attrs.update({'inputmode':'numeric', 'maxlength':15, 'minlength':11, 'pattern':'[0-9۰-۹٠-٩]{11}', 'oninput':'validateCustomerPhone(this)', 'onblur':'validateCustomerPhone(this, true)'})
         self.fields['notes'].required = True
         if self.instance and self.instance.pk and self.instance.birth_date:
             g = self.instance.birth_date
@@ -259,7 +260,7 @@ CUSTOMER_STATUS_CHOICES = DECLARED_CUSTOMER_STATUS_CHOICES
 
 class HubCallForm(forms.Form):
     mobile = forms.CharField(label='شماره تماس', max_length=15, required=True,
-        widget=forms.TextInput(attrs={'class': 'w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-lg font-mono tracking-widest bg-white', 'dir': 'ltr', 'placeholder': '09123456789', 'id': 'hub_call_mobile', 'inputmode': 'numeric', 'minlength': 11, 'maxlength': 11, 'pattern': '[0-9۰-۹٠-٩]{11}', '@input.debounce.500ms': 'checkMobile()'}))
+        widget=forms.TextInput(attrs={'class': 'w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-lg font-mono tracking-widest bg-white', 'dir': 'ltr', 'placeholder': '09123456789', 'id': 'hub_call_mobile', 'inputmode': 'numeric', 'minlength': 11, 'maxlength': 15, 'pattern': '[0-9۰-۹٠-٩]{11}', '@input': 'validateMobile($el)', '@blur': 'validateMobile($el, true)', '@input.debounce.500ms': 'checkMobile()', ':aria-invalid': "mobileInvalid ? 'true' : 'false'", 'aria-describedby': 'hub_call_mobile_error'}))
     name = forms.CharField(label='نام و نام خانوادگی', max_length=200, required=True,
         widget=forms.TextInput(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all', 'id': 'hub_call_name', 'autocomplete': 'name', 'placeholder': 'مثلاً: مریم احمدی', 'pattern': r'[^\p{N}]+', 'title': 'نام و نام خانوادگی نباید شامل عدد باشد.', '@input': 'validateName($el)', ':aria-invalid': "nameInvalid ? 'true' : 'false'", 'aria-describedby': 'hub_call_name_error'}))
     
@@ -301,7 +302,8 @@ class HubCallForm(forms.Form):
                 self.fields['purpose'].choices = [
                     choice for choice in self.fields['purpose'].choices if choice[0] != 'info'
                 ]
-        for field in ('purpose', 'call_status', 'customer_analysis', 'requested_condition'):
+        for field in ('purpose', 'call_status', 'customer_analysis', 'requested_condition', 'source'):
+            self.fields[field].required = True
             self.fields[field].widget.attrs['class'] = (
                 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl '
                 'focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500'

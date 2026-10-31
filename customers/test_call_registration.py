@@ -1,3 +1,4 @@
+from ads.models import AdSource
 """New-call registration: validation, independent choices, case prefill and SMS intent."""
 from unittest.mock import patch
 from datetime import datetime, timezone as datetime_timezone
@@ -22,7 +23,9 @@ class CallRegistrationTest(TestCase):
     def setUp(self):
         self.client.force_login(self.admin)
         self.url = reverse('customers:hub_submit_call')
+        self.source = AdSource.objects.create(phone_number='09129999888', label='تست')
         self.data = {
+            'source':self.source.pk,
             'mobile': '09123456789', 'name': 'مشتری جدید', 'call_type': 'incoming',
             'notes': 'توضیحات تماس', 'purpose': 'sale', 'call_status': 'answered',
             'customer_analysis': 'lead', 'requested_condition': 'cheque',

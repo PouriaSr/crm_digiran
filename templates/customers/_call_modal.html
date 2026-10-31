@@ -53,7 +53,7 @@
                                         <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                                     </span>
                                 </div>
-                                <p class="mt-2 text-xs text-slate-400">۱۱ رقم؛ اعداد فارسی و انگلیسی پذیرفته می‌شوند.</p>
+                                <p id="hub_call_mobile_error" class="mt-2 text-xs" :class="mobileInvalid ? 'text-red-600' : 'text-slate-400'" aria-live="polite" x-text="mobileInvalid ? 'شماره تماس باید دقیقاً ۱۱ رقم باشد؛ شماره را کامل کنید.' : '۱۱ رقم؛ اعداد فارسی و انگلیسی پذیرفته می‌شوند.'"></p>
                             </div>
                             <div>
                                 <label for="hub_call_name" class="block text-sm font-medium text-slate-700 mb-2">نام و نام خانوادگی <span class="text-red-500">*</span></label>
@@ -70,24 +70,24 @@
                         <h3 id="call-details-heading" class="font-bold text-slate-800 text-sm mb-4">جزئیات و نتیجه تماس</h3>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label for="id_call_type" class="block text-sm font-medium text-slate-700 mb-2">نوع تماس</label>
+                                <label for="id_call_type" class="block text-sm font-medium text-slate-700 mb-2">نوع تماس <span class="text-red-500">*</span></label>
                                 {{ call_form.call_type }}
                             </div>
                             <div>
-                                <label for="id_source" class="block text-sm font-medium text-slate-700 mb-2">منبع تماس</label>
+                                <label for="id_source" class="block text-sm font-medium text-slate-700 mb-2">منبع تماس <span class="text-red-500">*</span></label>
                                 {{ call_form.source }}
                             </div>
                             <div>
-                                <label for="id_purpose" class="block text-sm font-medium text-slate-700 mb-2">هدف تماس</label>
+                                <label for="id_purpose" class="block text-sm font-medium text-slate-700 mb-2">هدف تماس <span class="text-red-500">*</span></label>
                                 {{ call_form.purpose }}
                             </div>
                             <div>
-                                <label for="id_call_status" class="block text-sm font-medium text-slate-700 mb-2">وضعیت تماس</label>
+                                <label for="id_call_status" class="block text-sm font-medium text-slate-700 mb-2">وضعیت تماس <span class="text-red-500">*</span></label>
                                 {{ call_form.call_status }}
                             </div>
                             <div>
                                 <div class="flex items-center justify-between mb-2 gap-2">
-                                    <label for="id_customer_analysis" class="block text-sm font-medium text-slate-700">تحلیل مشتری</label>
+                                    <label for="id_customer_analysis" class="block text-sm font-medium text-slate-700">تحلیل مشتری <span class="text-red-500">*</span></label>
                                     <span class="rounded-full px-2.5 py-0.5 text-xs font-bold"
                                           :class="customerAnalysis === 'potential' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'"
                                           x-text="customerAnalysis === 'potential' ? 'بالقوه' : 'سرنخ'"></span>
@@ -95,7 +95,7 @@
                                 {{ call_form.customer_analysis }}
                             </div>
                             <div>
-                                <label for="id_requested_condition" class="block text-sm font-medium text-slate-700 mb-2">شرایط درخواستی</label>
+                                <label for="id_requested_condition" class="block text-sm font-medium text-slate-700 mb-2">شرایط درخواستی <span class="text-red-500">*</span></label>
                                 {{ call_form.requested_condition }}
                                 <p class="mt-2 text-xs text-slate-400">در مرحله تکمیل پرونده، پیش‌پر می‌شود.</p>
                             </div>
@@ -163,6 +163,7 @@ function callModalWidget() {
         existingCustomer: null,
         checking: false,
         nameInvalid: false,
+        mobileInvalid: false,
         submitting: false,
         systemTime: '',
         serverClockBase: Date.parse("{% now 'c' %}"),
@@ -193,6 +194,13 @@ function callModalWidget() {
             this.sendAddress = this.needsFollowup;
         },
 
+        validateMobile(input, blur = false) {
+            const value = normalizeDigitsFa(input.value.trim());
+            const valid = /^[0-9]{11}$/.test(value);
+            this.mobileInvalid = !valid && (value.length > 0 || blur);
+            input.setCustomValidity(valid ? '' : 'شماره تماس باید دقیقاً ۱۱ رقم باشد.');
+        },
+
         validateName(input) {
             this.nameInvalid = /\p{N}/u.test(input.value);
             input.setCustomValidity(this.nameInvalid ? 'نام و نام خانوادگی نباید شامل عدد باشد.' : '');
@@ -206,6 +214,7 @@ function callModalWidget() {
             this.updateSystemTime();
             this.sendAddress = false;
             this.nameInvalid = false;
+            this.mobileInvalid = false;
             this.submitting = false;
             this.customerAnalysis = 'lead';
             this.callType = d.call_type || 'incoming';
@@ -232,6 +241,8 @@ function callModalWidget() {
                 if (m) {
                     // در پاس‌های بعدی فقط اگر کاربر چیزی تایپ نکرده باشد
                     if (force || !m.value) m.value = wantMobile;
+                    m.setCustomValidity('');
+                    if (m.value) self.validateMobile(m);
                     m.readOnly = !!d.lock;
                     m.classList.toggle('bg-gray-100', !!d.lock);
                 }

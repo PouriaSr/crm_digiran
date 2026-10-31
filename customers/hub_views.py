@@ -31,8 +31,10 @@ def parse_jalali(value):
     value = (value or '').strip()
     if not value:
         return None
-    fa = str.maketrans('۰۱۲۳۴۵۶۷۸۹', '0123456789')
-    value = value.translate(fa).replace('-', '/')
+    from crm.duplicate_check import normalize_digits
+    value = normalize_digits(value).replace('-', '/').replace('.', '/')
+    for mark in ('\u200e', '\u200f', '\u202a', '\u202c'):
+        value = value.replace(mark, '')
     parts = [p for p in value.split('/') if p.strip()]
     if len(parts) != 3:
         return None
@@ -206,7 +208,9 @@ def customer_hub(request):
         customers = customers.filter(open_fu_due__gt=today)
     elif priority == 'none':
         customers = customers.filter(open_fu_due__isnull=True)
-    date_field = request.GET.get('date_field', 'followup')
+    date_field = request.GET.get('date_field', 'created')
+    if date_field not in ('created', 'followup'):
+        date_field = 'created'
     field = 'created_at__date' if date_field == 'created' else 'open_fu_due'
     date_from, date_to = request.GET.get('date_from', ''), request.GET.get('date_to', '')
     start, end = parse_jalali(date_from), parse_jalali(date_to)

@@ -36,7 +36,7 @@ class HubSubmitCallAdSourceTest(TestCase):
 
     def test_hub_call_saves_ad_source(self):
         self.client.force_login(self.admin)
-        self.client.post(reverse('customers:hub_submit_call'), {
+        self.client.post(reverse('customers:hub_submit_call'), {'purpose':'sale', 'call_status':'answered', 'customer_analysis':'lead', 'requested_condition':'cash',
             'mobile': '09129999002',
             'name': 'مشتری از آگهی',
             'call_type': 'incoming',

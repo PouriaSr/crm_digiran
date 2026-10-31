@@ -1,3 +1,4 @@
+from ads.models import AdSource
 """تست ماندگار: دکمه ثبت تماس در صفحه‌ی مشتری همان مودال تب اطلاعات است."""
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -39,33 +40,33 @@ class DetailCallButtonParityTest(TestCase):
 
     # ── بازگشت ──
     def test_submit_returns_to_customer_page(self):
-        r = self.client.post(reverse('customers:hub_submit_call'), {
+        r = self.client.post(reverse('customers:hub_submit_call'), {'purpose':'sale', 'call_status':'answered', 'customer_analysis':'lead', 'requested_condition':'cash',
             'mobile': '09121400002', 'name': 'مشتری از صفحه', 'call_type': 'incoming',
-            'notes': 'ثبت از صفحه مشتری', 'source': '',
+            'notes': 'ثبت از صفحه مشتری', 'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'next': f'/customers/{self.customer.pk}/',
         })
         self.assertEqual(r.status_code, 302)
         self.assertEqual(r.headers['Location'], f'/customers/{self.customer.pk}/')
 
     def test_external_next_is_blocked(self):
-        r = self.client.post(reverse('customers:hub_submit_call'), {
+        r = self.client.post(reverse('customers:hub_submit_call'), {'purpose':'sale', 'call_status':'answered', 'customer_analysis':'lead', 'requested_condition':'cash',
             'mobile': '09121400003', 'name': 'تست امنیت', 'call_type': 'incoming',
-            'notes': 'تست', 'source': '',
+            'notes': 'تست', 'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'next': 'https://evil.example.com/',
         })
         self.assertEqual(r.headers['Location'], '/customers/hub/?tab=call')
 
     def test_no_next_goes_to_hub(self):
-        r = self.client.post(reverse('customers:hub_submit_call'), {
+        r = self.client.post(reverse('customers:hub_submit_call'), {'purpose':'sale', 'call_status':'answered', 'customer_analysis':'lead', 'requested_condition':'cash',
             'mobile': '09121400005', 'name': 'بدون next', 'call_type': 'incoming',
-            'notes': 'تست', 'source': '',
+            'notes': 'تست', 'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
         })
         self.assertEqual(r.headers['Location'], '/customers/hub/?tab=call')
 
     # ── پیگیری از همان مسیر ──
     def test_followup_created_from_detail_path(self):
         mobile = '09121400004'
-        self.client.post(reverse('customers:hub_submit_call'), {
+        self.client.post(reverse('customers:hub_submit_call'), {'purpose':'sale', 'call_status':'answered', 'customer_analysis':'lead', 'requested_condition':'cash', 'source':AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'mobile': mobile, 'name': 'با پیگیری', 'call_type': 'incoming',
             'notes': 'نیاز به پیگیری', 'needs_followup': 'on',
             'follow_up_time': '10:30', 'follow_up_date': '1405/08/20', 'next': f'/customers/{self.customer.pk}/',

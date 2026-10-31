@@ -22,7 +22,7 @@ class CustomerFormTest(TestCase):
             'notes': 'یادداشت تستی',
         })
         self.assertEqual(response.status_code, 302) # باید موفق باشد و ریدایرکت شود
-        
+
         customer = Customer.objects.get(mobile='09121111111')
         self.assertEqual(customer.source, 'ads')
         self.assertEqual(customer.ad_source, self.ad_source)
@@ -51,7 +51,7 @@ class HubCallFormTest(TestCase):
 
     def test_hub_call_outgoing(self):
         # تست ثبت تماس خروجی
-        response = self.client.post(reverse('customers:hub_submit_call'), {
+        response = self.client.post(reverse('customers:hub_submit_call'), {'purpose':'sale', 'call_status':'answered', 'customer_analysis':'lead', 'requested_condition':'cash',
             'mobile': '09123333333',
             'name': 'مشتری خروجی',
             'call_type': 'followup',
@@ -70,7 +70,7 @@ class HubCallFormTest(TestCase):
 
     def test_hub_call_incoming_missed(self):
         # تست ثبت تماس از دست رفته
-        response = self.client.post(reverse('customers:hub_submit_call'), {
+        response = self.client.post(reverse('customers:hub_submit_call'), {'purpose':'sale', 'call_status':'missed', 'customer_analysis':'lead', 'requested_condition':'cash',
             'mobile': '09124444444',
             'name': 'مشتری از دست رفته',
             'call_type': 'missed',

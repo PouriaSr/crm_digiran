@@ -1,3 +1,4 @@
+from ads.models import AdSource
 """تست ماندگار: چرخه پیگیری (تاریخ، باز/انجام‌شده، پیگیری جدید)."""
 from datetime import timedelta
 
@@ -26,7 +27,7 @@ class FollowUpCycleTest(TestCase):
 
     def _create_with_followup(self, mobile='09121350001', days=3):
         due = timezone.localdate() + timedelta(days=days)
-        self.client.post(reverse('customers:hub_submit_call'), {
+        self.client.post(reverse('customers:hub_submit_call'), {'purpose':'sale', 'call_status':'answered', 'customer_analysis':'lead', 'requested_condition':'cash', 'source':AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'mobile': mobile, 'name': 'مشتری پیگیری', 'call_type': 'incoming',
             'notes': 'نیاز به پیگیری', 'needs_followup': 'on',
             'follow_up_time': '10:30', 'follow_up_date': jdate(due),
@@ -44,7 +45,7 @@ class FollowUpCycleTest(TestCase):
 
     def test_followup_requires_date(self):
         mobile = '09121350009'
-        self.client.post(reverse('customers:hub_submit_call'), {
+        self.client.post(reverse('customers:hub_submit_call'), {'purpose':'sale', 'call_status':'answered', 'customer_analysis':'lead', 'requested_condition':'cash', 'source':AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'mobile': mobile, 'name': 'بدون تاریخ', 'call_type': 'incoming',
             'notes': 'تست', 'needs_followup': 'on', 'follow_up_time': '10:30', 'follow_up_date': '',
         })

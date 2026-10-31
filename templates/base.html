@@ -1692,5 +1692,16 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 
+<script>
+function validateCustomerPhone(input, blur = false) {
+    const digits = input.value.trim().replace(/[۰-۹]/g,c=>String(c.charCodeAt(0)-1776)).replace(/[٠-٩]/g,c=>String(c.charCodeAt(0)-1632));
+    const invalid = !/^[0-9]{11}$/.test(digits);
+    input.setCustomValidity(invalid ? 'شماره تماس باید دقیقاً ۱۱ رقم باشد.' : '');
+    input.setAttribute('aria-invalid',invalid && (digits.length > 0 || blur) ? 'true' : 'false');
+    let message=input.parentElement.querySelector('[data-phone-error]');
+    if (!message) { message=document.createElement('p'); message.dataset.phoneError=''; message.className='text-xs text-red-600 mt-2'; message.setAttribute('aria-live','polite'); input.after(message); }
+    message.textContent=invalid && (digits.length > 0 || blur) ? 'شماره تماس باید دقیقاً ۱۱ رقم باشد؛ شماره را کامل کنید.' : '';
+}
+</script>
 </body>
 </html>
