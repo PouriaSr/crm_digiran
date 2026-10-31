@@ -43,7 +43,7 @@
 
 {# Template مخفی برای افزودن سطر جدید #}
 <template id="empty-row-template">
-    <tr class="item-row border-b border-gray-100 hover:bg-gray-50">
+    <tr class="item-row crm-invoice-row border-b border-gray-100 hover:bg-gray-50">
         <td class="py-3 px-2">
             {{ formset.empty_form.id }}
             <div class="product-autocomplete" data-row>
@@ -60,8 +60,8 @@
                 </div>
             </div>
         </td>
-        <td class="py-3 px-2">{{ formset.empty_form.quantity }}</td>
-        <td class="py-3 px-2">{{ formset.empty_form.unit_price }}</td>
+        <td data-invoice-field class="py-3 px-2">{{ formset.empty_form.quantity }}</td>
+        <td data-invoice-field class="py-3 px-2">{{ formset.empty_form.unit_price }}</td>
         <td class="py-3 px-2 text-right font-bold text-gray-700 row-total" dir="ltr">0</td>
         <td class="py-3 px-2 text-center">
             <button type="button"
@@ -76,27 +76,10 @@
     </tr>
 </template>
 
-<form method="post" class="space-y-6" id="invoice-form">
+<form data-crm-form method="post" class="space-y-6" id="invoice-form">
     {% csrf_token %}
 
-    {% if form.errors or formset.errors %}
-    <div class="bg-red-50 text-red-700 p-4 rounded-lg text-sm">
-        <strong>لطفاً خطاهای زیر را برطرف کنید:</strong>
-        <ul class="mt-2 list-disc list-inside">
-            {% for field, errors in form.errors.items %}
-                {% for error in errors %}<li>{{ field }}: {{ error }}</li>{% endfor %}
-            {% endfor %}
-            {% for f_errs in formset.errors %}
-                {% for field, errors in f_errs.items %}
-                    {% for error in errors %}<li>قلم فاکتور {{ field }}: {{ error }}</li>{% endfor %}
-                {% endfor %}
-            {% endfor %}
-            {% if formset.non_form_errors %}
-                {% for error in formset.non_form_errors %}<li>{{ error }}</li>{% endfor %}
-            {% endif %}
-        </ul>
-    </div>
-    {% endif %}
+    {% include 'includes/_form_errors.html' %}
 
     <!-- ═══ سربرگ فاکتور ═══ -->
     <div class="bg-white rounded-xl shadow-sm p-6">
@@ -148,7 +131,7 @@
 
         {{ formset.management_form }}
 
-        <div class="overflow-x-auto">
+        <div class="crm-invoice-items overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-gray-600 border-b border-gray-200">
@@ -161,7 +144,7 @@
                 </thead>
                 <tbody id="items-container">
                     {% for item_form in formset %}
-                    <tr class="item-row border-b border-gray-100 hover:bg-gray-50">
+                    <tr class="item-row crm-invoice-row border-b border-gray-100 hover:bg-gray-50">
                         <td class="py-3 px-2">
                             {{ item_form.id }}
                             <div class="product-autocomplete" data-row>
@@ -179,8 +162,8 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="py-3 px-2">{{ item_form.quantity }}</td>
-                        <td class="py-3 px-2">{{ item_form.unit_price }}</td>
+                        <td data-invoice-field class="py-3 px-2">{{ item_form.quantity }}</td>
+                        <td data-invoice-field class="py-3 px-2">{{ item_form.unit_price }}</td>
                         <td class="py-3 px-2 text-right font-bold text-gray-700 row-total" dir="ltr">0</td>
                         <td class="py-3 px-2 text-center">
                             {% if item_form.instance.pk %}
@@ -252,7 +235,7 @@
     </div>
 
     <!-- دکمه‌ها -->
-    <div class="flex gap-3">
+    <div class="crm-form-actions flex gap-3">
         <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
             {{ submit_label }}
         </button>

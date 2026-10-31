@@ -883,6 +883,9 @@ window.apexMobileMerge = function (options) {
     </style>
 
 
+    {% include 'includes/_form_styles.html' %}
+    {% include 'includes/_surface_styles.html' %}
+    {% include 'includes/_chart_ui.html' %}
     {% block extra_head %}{% endblock %}
 {% include 'includes/_numerals.html' %}
 </head>
@@ -1549,6 +1552,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 {% include 'includes/_live_search.html' %}
+{% include 'includes/_form_client.html' %}
 {% block extra_js %}{% endblock %}
 
 

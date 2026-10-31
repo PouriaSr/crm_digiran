@@ -1,4 +1,4 @@
-<form class="wf-search" method="get" role="search">
+<form class="crm-filter-form wf-search" method="get" role="search">
     <input type="hidden" name="tab" value="{{ search_tab }}">
     {% for field in workflow_filters %}{% if field.value %}<input type="hidden" name="{{ field.html_name }}" value="{{ field.value }}">{% endif %}{% endfor %}
     <input type="search" name="workflow_q" value="{{ workflow_query }}" placeholder="جستجوی نام یا شماره..." aria-label="جستجو در {{ search_label }}">

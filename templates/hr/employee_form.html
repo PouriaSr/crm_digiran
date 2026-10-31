@@ -10,42 +10,31 @@
 
 <h1 class="text-2xl font-bold text-gray-800 mb-6">{{ title }}</h1>
 
-<form method="post" class="bg-white rounded-xl shadow-sm p-6">
+<form data-crm-form data-crm-page method="post" class="crm-form-page bg-white rounded-xl shadow-sm p-6">
     {% csrf_token %}
 
-    {% if form.errors %}
-    <div class="bg-red-50 text-red-700 p-4 rounded-lg mb-6 text-sm">
-        <ul class="list-disc list-inside">
-            {% for field, errors in form.errors.items %}{% for error in errors %}<li>{{ field }}: {{ error }}</li>{% endfor %}{% endfor %}
-        </ul>
-    </div>
-    {% endif %}
+    {% include 'includes/_form_errors.html' %}
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">کاربر مرتبط <span class="text-xs text-gray-400">(اختیاری)</span></label>
-            {{ form.user }}
-        </div>
-        <div><label class="block text-sm font-medium text-gray-700 mb-1.5">نام <span class="text-red-500">*</span></label>{{ form.first_name }}</div>
-        <div><label class="block text-sm font-medium text-gray-700 mb-1.5">نام خانوادگی <span class="text-red-500">*</span></label>{{ form.last_name }}</div>
-        <div><label class="block text-sm font-medium text-gray-700 mb-1.5">کد ملی</label>{{ form.national_id }}</div>
-        <div><label class="block text-sm font-medium text-gray-700 mb-1.5">موبایل</label>{{ form.mobile }}</div>
-        <div><label class="block text-sm font-medium text-gray-700 mb-1.5">ایمیل</label>{{ form.email }}</div>
-        <div><label class="block text-sm font-medium text-gray-700 mb-1.5">تاریخ تولد</label>{{ form.birth_date }}</div>
-        <div><label class="block text-sm font-medium text-gray-700 mb-1.5">سمت</label>{{ form.position }}</div>
-        <div><label class="block text-sm font-medium text-gray-700 mb-1.5">نوع قرارداد</label>{{ form.contract_type }}</div>
-        
-        <div><label class="block text-sm font-medium text-gray-700 mb-1.5">حقوق پایه (تومان)</label>{{ form.salary }}</div>
-        <div class="flex items-end pb-3">
-            <label class="flex items-center gap-2 text-sm cursor-pointer">
-                {{ form.is_active }} <span>کارمند فعال</span>
-            </label>
-        </div>
-        <div class="md:col-span-2"><label class="block text-sm font-medium text-gray-700 mb-1.5">آدرس</label>{{ form.address }}</div>
-        <div class="md:col-span-2"><label class="block text-sm font-medium text-gray-700 mb-1.5">یادداشت</label>{{ form.notes }}</div>
-    </div>
-
-    <div class="flex gap-3 mt-8 pt-6 border-t border-gray-100">
+    <section class="crm-form-section"><header class="crm-form-section-head"><span>1</span><div><h2>هویت و ارتباط</h2><p>نام و اطلاعات تماس همکار.</p></div></header><div class="crm-form-grid">
+{% include 'includes/_form_field.html' with field=form.first_name %}
+{% include 'includes/_form_field.html' with field=form.last_name %}
+{% include 'includes/_form_field.html' with field=form.national_id %}
+{% include 'includes/_form_field.html' with field=form.mobile %}
+{% include 'includes/_form_field.html' with field=form.email %}
+{% include 'includes/_form_field.html' with field=form.birth_date %}
+</div></section>
+<section class="crm-form-section"><header class="crm-form-section-head"><span>2</span><div><h2>اطلاعات همکاری</h2><p>حساب مرتبط، سمت و شرایط همکاری.</p></div></header><div class="crm-form-grid">
+{% include 'includes/_form_field.html' with field=form.user %}
+{% include 'includes/_form_field.html' with field=form.position %}
+{% include 'includes/_form_field.html' with field=form.contract_type %}
+{% include 'includes/_form_field.html' with field=form.salary %}
+{% include 'includes/_form_field.html' with field=form.is_active %}
+</div></section>
+<section class="crm-form-section"><header class="crm-form-section-head"><span>3</span><div><h2>نشانی و یادداشت</h2><p>اطلاعات تکمیلی پرونده همکار.</p></div></header><div class="crm-form-grid">
+{% include 'includes/_form_field.html' with field=form.address wide=True %}
+{% include 'includes/_form_field.html' with field=form.notes wide=True %}
+</div></section>
+<div class="crm-form-actions flex gap-3 mt-8 pt-6 border-t border-gray-100">
         <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">{{ submit_label }}</button>
         <a href="{% url 'hr:employee_list' %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">انصراف</a>
     </div>

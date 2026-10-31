@@ -5,6 +5,7 @@
 {% block mobile_title %}گزارش BI{% endblock %}
 
 {% block content %}
+<div class="crm-report-intro"><strong>محدوده گزارش و خواندن نمودارها</strong>شاخص‌ها و نمودارها مربوط به محدوده دسترسی و کارمند انتخاب‌شده‌اند. جدول داده‌های هر نمودار، مقادیر دقیق را نشان می‌دهد.</div>
 
 <!-- ═══ سربرگ ═══ -->
 <div class="page-header">
@@ -32,7 +33,7 @@
 <!-- ═══ فیلتر کاربر (فقط مدیرها) ═══ -->
 {% if is_manager_view %}
 <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
-    <form method="get" class="flex flex-wrap gap-3 items-center">
+    <form method="get" class="crm-filter-form flex flex-wrap gap-3 items-center">
         <label class="text-sm font-medium text-gray-700 whitespace-nowrap">نمایش داده‌های:</label>
         <select name="employee" onchange="this.form.submit()"
                 class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">

@@ -95,7 +95,7 @@
     <!-- TAB 1: INFO -->
     <div x-show="tab === 'info'" x-transition.opacity class="space-y-4">
         <div class="flex flex-col md:flex-row justify-between items-center gap-3">
-            <form method="get" class="w-full md:w-1/2 relative group">
+            <form method="get" class="crm-filter-form w-full md:w-1/2 relative group">
             <input type="hidden" name="tab" value="info">
             <input type="text" name="q" id="hub-search-input" x-model="searchQuery" placeholder="جستجوی نام یا شماره..."
                    class="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm shadow-sm group-hover:border-gray-300">
@@ -202,7 +202,7 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
-        <form id="reassign-form" method="post" action="" class="p-5 space-y-4">
+        <form data-crm-form id="reassign-form" method="post" action="" class="p-5 space-y-4">
             {% csrf_token %}
             <input type="hidden" name="next" value="hub">
             <p class="text-sm text-gray-600">

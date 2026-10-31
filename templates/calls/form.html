@@ -10,21 +10,11 @@
 
 <h1 class="text-2xl font-bold text-gray-800 mb-6">{{ title }}</h1>
 
-<form method="post" class="bg-white rounded-xl shadow-sm p-6">
+<form data-crm-form data-crm-page method="post" class="crm-form-page bg-white rounded-xl shadow-sm p-6">
     {% csrf_token %}
 
-    {% if form.errors %}
-    <div class="bg-red-50 text-red-700 p-4 rounded-lg mb-6 text-sm">
-        <strong>لطفاً خطاهای زیر را برطرف کنید:</strong>
-        <ul class="mt-2 list-disc list-inside">
-            {% for field, errors in form.errors.items %}
-                {% for error in errors %}
-                    <li>{{ field }}: {{ error }}</li>
-                {% endfor %}
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
+    {% include 'includes/_form_errors.html' %}
+<div class="crm-form-intro"><div><strong>ثبت جزئیات تماس</strong><p>مخاطب، منبع و نتیجه تماس را ثبت کنید؛ زمان پیگیری در بخش جداگانه قرار دارد.</p></div><span>فیلدهای * الزامی‌اند</span></div>
 
     <!-- مشتری مرتبط (اختیاری) -->
     <div class="mb-5">
@@ -89,7 +79,7 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">تاریخ پیگیری</label>
                 {{ form.follow_up_date }}
-<label class="block text-sm font-bold mt-3">ساعت پیگیری</label>{{ form.follow_up_time }}{{ form.follow_up_time.errors }}
+</div><div><label for="{{ form.follow_up_time.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1.5">ساعت پیگیری</label>{{ form.follow_up_time }}{{ form.follow_up_time.errors }}
             </div>
             <div class="flex items-end pb-3">
                 <label id="followup-label" class="flex items-center gap-2 text-sm cursor-pointer">
@@ -107,7 +97,7 @@
     </div>
 
     <!-- دکمه‌ها -->
-    <div class="flex gap-3 mt-8 pt-6 border-t border-gray-100">
+    <div class="crm-form-actions flex gap-3 mt-8 pt-6 border-t border-gray-100">
         <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
             {{ submit_label }}
         </button>

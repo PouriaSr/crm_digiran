@@ -9,7 +9,7 @@
     <p class="text-sm text-gray-500 mt-1">شماره و برچسب منابع تماس و تبلیغات. تغییر منبع فقط برای ثبت‌های بعدی اعمال می‌شود؛ سوابق قبلی با مشخصات هنگام ثبت باقی می‌مانند.</p>
   </div>
 
-  <form method="post" class="bg-white rounded-xl shadow-sm p-5 mb-6">
+  <form data-crm-form method="post" class="bg-white rounded-xl shadow-sm p-5 mb-6">
     {% csrf_token %}
     <h2 class="font-bold text-gray-700 mb-4">{% if editing_source %}ویرایش منبع{% else %}افزودن منبع{% endif %}</h2>
     <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
@@ -53,7 +53,7 @@
           <td class="px-4 py-3 text-gray-600">{{ item.ads.count }}</td>
           <td class="px-4 py-3 text-center">
             <a class="text-blue-600 hover:text-blue-800 text-xs font-medium ml-3" href="{% url 'ads:source_edit' item.pk %}">ویرایش</a>
-            <form method="post" action="{% url 'ads:source_delete' item.pk %}" class="inline" onsubmit="return confirm('حذف شود؟');">
+            <form data-crm-form method="post" action="{% url 'ads:source_delete' item.pk %}" class="inline" onsubmit="return confirm('حذف شود؟');">
               {% csrf_token %}
               <button type="submit" class="text-red-600 hover:text-red-800 text-xs font-medium">حذف</button>
             </form>

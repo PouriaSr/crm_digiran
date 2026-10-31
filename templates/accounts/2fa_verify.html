@@ -9,6 +9,7 @@
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" />
     <style>body { font-family: 'Vazirmatn', sans-serif; }</style>
 {% include 'includes/_numerals.html' %}
+{% include 'includes/_form_styles.html' %}
 </head>
 <body class="min-h-screen bg-gray-100 flex items-center justify-center p-6">
 
@@ -44,7 +45,7 @@
             {% endfor %}
         {% endif %}
 
-        <form method="post" class="space-y-5">
+        <form data-crm-form method="post" class="space-y-5">
             {% csrf_token %}
 
             <div>
@@ -71,5 +72,6 @@
     </div>
 </div>
 
+{% include 'includes/_form_client.html' %}
 </body>
 </html>

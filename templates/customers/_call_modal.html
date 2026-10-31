@@ -32,7 +32,7 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <form method="post" action="{% url 'customers:hub_submit_call' %}"
+            <form data-crm-form method="post" action="{% url 'customers:hub_submit_call' %}"
                   @submit="if ($el.checkValidity()) submitting = true"
                   class="flex flex-col flex-1 min-h-0">
                 {% csrf_token %}
@@ -137,7 +137,7 @@
                         {{ call_form.notes }}
                     </section>
                 </div>
-                <div class="shrink-0 rounded-b-3xl border-t border-slate-200 px-4 sm:px-6 py-4 bg-white flex items-center gap-3">
+                <div class="crm-call-actions shrink-0 rounded-b-3xl border-t border-slate-200 px-4 sm:px-6 py-4 bg-white flex items-center gap-3">
                     <button type="submit" :disabled="submitting"
                             class="flex-1 py-3.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-60 disabled:cursor-wait focus-visible:ring-4 focus-visible:ring-blue-200 transition shadow-sm"
                             x-text="submitting ? 'در حال ثبت…' : 'ثبت تماس'">ثبت تماس</button>

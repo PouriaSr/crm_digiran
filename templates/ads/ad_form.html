@@ -8,8 +8,9 @@
     <h1 class="text-2xl font-bold text-gray-800 mt-2">{{ title }}</h1>
   </div>
 
-  <form method="post" class="bg-white rounded-xl shadow-sm p-6 space-y-5">
+  <form data-crm-form data-crm-page method="post" class="crm-form-page bg-white rounded-xl shadow-sm p-6 space-y-5">
     {% csrf_token %}
+<div class="crm-form-intro"><div><strong>اطلاعات آگهی و هزینه</strong><p>عنوان و فرآیند را انتخاب کنید؛ مبلغ‌ها به تومان ثبت می‌شوند.</p></div><span>فیلدهای * الزامی‌اند</span></div>
 
     {% if form.non_field_errors %}
       <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
@@ -65,7 +66,7 @@
       {{ form.note }}
     </div>
 
-    <div class="flex gap-3 pt-3 border-t border-gray-100">
+    <div class="crm-form-actions flex gap-3 pt-3 border-t border-gray-100">
       <button type="submit"
               class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium">
         ذخیره

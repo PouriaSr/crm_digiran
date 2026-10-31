@@ -1,0 +1,17 @@
+<section class="crm-form-section"><header class="crm-form-section-head"><span>۱</span><div><h2>اطلاعات اصلی مشتری</h2><p>ابتدا نام و شماره تماس را وارد کنید تا هویت فرد مشخص شود.</p></div></header><div class="crm-form-grid">
+ {% include 'includes/_form_field.html' with field=form.name %}
+ {% include 'includes/_form_field.html' with field=form.mobile help='شماره تماس باید دقیقاً ۱۱ رقم باشد؛ اعداد فارسی و انگلیسی پذیرفته می‌شوند.' %}
+</div></section>
+<section class="crm-form-section"><header class="crm-form-section-head"><span>۲</span><div><h2>منبع آشنایی و مسئول پیگیری</h2><p>نحوه آشنایی، تحلیل مشتری و مسئول رسیدگی را مشخص کنید.</p></div></header><div class="crm-form-grid">
+ {% include 'includes/_form_field.html' with field=form.source %}
+ {% include 'includes/_form_field.html' with field=form.stage %}
+ <div x-show="sourceVal === 'ads' || sourceVal === 'divar'" x-cloak>{% include 'includes/_form_field.html' with field=form.ad_source conditional_required=True %}</div>
+ {% include 'includes/_form_field.html' with field=form.assigned_to %}
+</div></section>
+{% if form.email or form.national_id or form.birth_date or form.address %}<section class="crm-form-section"><header class="crm-form-section-head"><span>۳</span><div><h2>مشخصات تکمیلی</h2><p>اطلاعات هویتی و راه‌های ارتباطی تکمیلی فرد.</p></div></header><div class="crm-form-grid">
+ {% include 'includes/_form_field.html' with field=form.national_id %}
+ {% include 'includes/_form_field.html' with field=form.birth_date %}
+ {% include 'includes/_form_field.html' with field=form.email wide=True %}
+ {% include 'includes/_form_field.html' with field=form.address wide=True %}
+</div></section>{% endif %}
+{% if form.notes %}<section class="crm-form-section"><header class="crm-form-section-head"><span>＋</span><div><h2>یادداشت و نکات تکمیلی</h2><p>نکاتی که برای رسیدگی بعدی به این مشتری مفید است.</p></div></header>{% include 'includes/_form_field.html' with field=form.notes %}</section>{% endif %}

@@ -74,7 +74,7 @@
 {% if 'hr.manage_tasks' in user_permissions %}
 <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
     <h2 class="font-bold text-gray-700 mb-3 text-sm">تغییر سریع وضعیت</h2>
-    <form method="post" action="{% url 'hr:task_toggle' task.pk %}" class="flex flex-wrap gap-2">
+    <form data-crm-form method="post" action="{% url 'hr:task_toggle' task.pk %}" class="flex flex-wrap gap-2">
         {% csrf_token %}
         <button type="submit" name="status" value="pending"
                 class="px-4 py-2 rounded-lg text-sm {% if task.status == 'pending' %}bg-gray-500 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">

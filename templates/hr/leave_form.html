@@ -10,41 +10,23 @@
 
 <h1 class="text-2xl font-bold text-gray-800 mb-6">{{ title }}</h1>
 
-<form method="post" class="bg-white rounded-xl shadow-sm p-6">
+<form data-crm-form data-crm-page method="post" class="crm-form-page bg-white rounded-xl shadow-sm p-6">
     {% csrf_token %}
 
-    {% if form.errors %}
-    <div class="bg-red-50 text-red-700 p-4 rounded-lg mb-6 text-sm">
-        <ul class="list-disc list-inside">
-            {% for field, errors in form.errors.items %}{% for error in errors %}<li>{{ field }}: {{ error }}</li>{% endfor %}{% endfor %}
-        </ul>
-    </div>
-    {% endif %}
+    {% include 'includes/_form_errors.html' %}
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">کارمند <span class="text-red-500">*</span></label>
-            {{ form.employee }}
-        </div>
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">نوع مرخصی</label>
-            {{ form.leave_type }}
-        </div>
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">از تاریخ <span class="text-red-500">*</span></label>
-            {{ form.start_date }}
-        </div>
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">تا تاریخ <span class="text-red-500">*</span></label>
-            {{ form.end_date }}
-        </div>
-        <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">علت</label>
-            {{ form.reason }}
-        </div>
-    </div>
-
-    <div class="flex gap-3 mt-8 pt-6 border-t border-gray-100">
+    <section class="crm-form-section"><header class="crm-form-section-head"><span>1</span><div><h2>مشخصات درخواست</h2><p>کارمند و نوع مرخصی را انتخاب کنید.</p></div></header><div class="crm-form-grid">
+{% include 'includes/_form_field.html' with field=form.employee %}
+{% include 'includes/_form_field.html' with field=form.leave_type %}
+</div></section>
+<section class="crm-form-section"><header class="crm-form-section-head"><span>2</span><div><h2>بازه مرخصی</h2><p>تاریخ‌ها را به صورت شمسی وارد کنید.</p></div></header><div class="crm-form-grid">
+{% include 'includes/_form_field.html' with field=form.start_date %}
+{% include 'includes/_form_field.html' with field=form.end_date %}
+</div></section>
+<section class="crm-form-section"><header class="crm-form-section-head"><span>3</span><div><h2>علت درخواست</h2><p>توضیحی برای بررسی درخواست بنویسید.</p></div></header><div class="crm-form-grid">
+{% include 'includes/_form_field.html' with field=form.reason wide=True %}
+</div></section>
+<div class="crm-form-actions flex gap-3 mt-8 pt-6 border-t border-gray-100">
         <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">{{ submit_label }}</button>
         <a href="{% url 'hr:leave_list' %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">انصراف</a>
     </div>

@@ -9,7 +9,7 @@
             </button>
         </div>
 
-        <form id="ce-form" method="post" action="" class="p-5 space-y-4" autocomplete="off">
+        <form data-crm-form id="ce-form" method="post" action="" class="p-5 space-y-4" autocomplete="off">
             {% csrf_token %}
             <input type="hidden" name="next" id="ce-next" value="">
             <input type="hidden" name="kind" id="ce-kind" value="new">
@@ -104,7 +104,7 @@
                           placeholder="شرح مکالمه..."></textarea>
             </div>
 
-            <div class="flex gap-2 pt-1">
+            <div class="crm-form-actions flex gap-2 pt-1">
                 <button type="submit"
                         class="flex-1 py-2.5 bg-slate-700 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition">
                     ذخیره تغییرات

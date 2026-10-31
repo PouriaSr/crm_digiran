@@ -94,7 +94,7 @@
 
 <!-- Filters -->
 <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
-    <form method="get" class="space-y-3">
+    <form method="get" class="crm-filter-form space-y-3">
         <div class="flex flex-col sm:flex-row flex-wrap gap-3 sm:items-center">
             <div class="flex-1 min-w-[200px]">
                 <input type="text" name="q" value="{{ search }}"
@@ -225,7 +225,7 @@
                 <td class="px-4 py-3 text-right">
                     <a href="{% url 'customers:detail' customer.pk %}" class="text-blue-600 hover:text-blue-800 text-xs">جزئیات</a>
                     {% if 'customers.delete' in user_permissions %}
-                    <form method="post" action="{% url 'customers:deactivate' customer.pk %}" class="inline"
+                    <form data-crm-form method="post" action="{% url 'customers:deactivate' customer.pk %}" class="inline"
                           onsubmit="return confirm('مشتری «{{ customer.name }}» غیرفعال شود؟');">
                         {% csrf_token %}
                         <button type="submit" class="text-red-600 hover:text-red-800 text-xs mr-2">غیرفعال</button>
@@ -299,7 +299,7 @@
                 مشاهده جزئیات
             </a>
             {% if 'customers.delete' in user_permissions %}
-            <form method="post" action="{% url 'customers:deactivate' customer.pk %}" class="flex-1"
+            <form data-crm-form method="post" action="{% url 'customers:deactivate' customer.pk %}" class="flex-1"
                   onsubmit="return confirm('مشتری «{{ customer.name }}» غیرفعال شود؟');">
                 {% csrf_token %}
                 <button type="submit" class="w-full text-center py-2.5 bg-red-50 text-red-700 rounded-xl text-sm font-medium active:bg-red-100 transition">

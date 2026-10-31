@@ -1,5 +1,5 @@
 <dialog id="reception-referral-dialog" class="wf-referral-dialog" aria-labelledby="referral-title">
-    <form method="post" action="{% url 'customers:reception_action' %}">
+    <form data-crm-form method="post" action="{% url 'customers:reception_action' %}">
         {% csrf_token %}<input type="hidden" name="action" value="refer"><input type="hidden" name="reception" id="referral-reception-id">
         <div class="flex items-center justify-between gap-3"><h3 id="referral-title" class="wf-title">ارجاع مراجعه‌کننده</h3><button type="button" onclick="this.closest('dialog').close()" class="text-gray-400 p-1" aria-label="بستن">✕</button></div>
         <p id="referral-person-name" class="mt-4 text-sm font-bold text-gray-700"></p><p id="referral-destination" class="wf-subtitle"></p>

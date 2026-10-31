@@ -1,6 +1,6 @@
 {% load fa_numbers card_access %}
 <div id="customer-table-container" data-live-results data-show-new="{{ show_new|yesno:'true,false' }}">
-<form method="get" id="hub-filter-form" class="bg-white rounded-2xl border border-slate-200 p-4 mb-4 grid grid-cols-2 lg:grid-cols-6 gap-3 text-xs">
+<form method="get" id="hub-filter-form" class="crm-filter-form bg-white rounded-2xl border border-slate-200 p-4 mb-4 grid grid-cols-2 lg:grid-cols-6 gap-3 text-xs">
  <input type="hidden" name="tab" value="info"><input type="hidden" name="q" value="{{ search }}">
  <label>بازه بر اساس<select name="date_field" class="w-full mt-1 border rounded-lg p-2 no-search"><option value="followup" {% if table_filters.date_field == 'followup' %}selected{% endif %}>نزدیک‌ترین پیگیری</option><option value="created" {% if table_filters.date_field == 'created' %}selected{% endif %}>تاریخ ثبت مشتری</option></select></label>
  <label>از تاریخ<input type="text" name="date_from" value="{{ table_filters.date_from }}" data-jdp data-jdp-time="false" placeholder="۱۴۰۵/۰۸/۰۱" autocomplete="off" class="w-full mt-1 border rounded-lg p-2"></label>
@@ -75,7 +75,7 @@
 
                         {% if c.is_deleted %}
                             {% if 'customers.delete' in user_permissions %}
-                            <form method="post" action="{% url 'customers:restore' c.pk %}" class="inline"
+                            <form data-crm-form method="post" action="{% url 'customers:restore' c.pk %}" class="inline"
                                   onsubmit="return confirm('مشتری «{{ c.name|escapejs }}» بازگردانی شود؟');">
                                 {% csrf_token %}
                                 <button type="submit" title="بازگردانی مشتری"
@@ -135,7 +135,7 @@
                             {% endif %}
 
                             {% if 'customers.delete' in user_permissions %}
-                            <form method="post" action="{% url 'customers:deactivate' c.pk %}" class="inline"
+                            <form data-crm-form method="post" action="{% url 'customers:deactivate' c.pk %}" class="inline"
                                   onsubmit="return confirm('مشتری «{{ c.name|escapejs }}» غیرفعال شود؟');">
                                 {% csrf_token %}
                                 <button type="submit" title="غیرفعال‌سازی" aria-label="غیرفعال‌سازی"
@@ -200,7 +200,7 @@
             <div class="mt-2 flex items-center gap-2 flex-wrap">
                 {% if c.is_deleted %}
                     {% if 'customers.delete' in user_permissions %}
-                    <form method="post" action="{% url 'customers:restore' c.pk %}">
+                    <form data-crm-form method="post" action="{% url 'customers:restore' c.pk %}">
                         {% csrf_token %}
                         <button class="text-xs px-2 py-1 bg-emerald-50 text-emerald-700 rounded-lg">بازگردانی</button>
                     </form>

@@ -17,21 +17,11 @@
 </div>
 {% endif %}
 
-<form method="post" class="bg-white rounded-xl shadow-sm p-6">
+<form data-crm-form data-crm-page method="post" class="crm-form-page bg-white rounded-xl shadow-sm p-6">
     {% csrf_token %}
 
-    {% if form.errors %}
-    <div class="bg-red-50 text-red-700 p-4 rounded-lg mb-6 text-sm">
-        <strong>لطفاً خطاهای زیر را برطرف کنید:</strong>
-        <ul class="mt-2 list-disc list-inside">
-            {% for field, errors in form.errors.items %}
-                {% for error in errors %}
-                    <li>{{ field }}: {{ error }}</li>
-                {% endfor %}
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
+    {% include 'includes/_form_errors.html' %}
+<div class="crm-form-intro"><div><strong>حساب و سطح دسترسی</strong><p>ابتدا حساب و نقش را مشخص کنید؛ تنظیمات پیشرفته دسترسی در بخش جداگانه قرار دارند.</p></div><span>فیلدهای * الزامی‌اند</span></div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div class="md:col-span-2">
@@ -190,7 +180,7 @@
     {% endif %}
 
     <!-- دکمه‌ها -->
-    <div class="flex gap-3 mt-8 pt-6 border-t border-gray-100">
+    <div class="crm-form-actions flex gap-3 mt-8 pt-6 border-t border-gray-100">
         <button type="submit"
                 class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
             {{ submit_label }}

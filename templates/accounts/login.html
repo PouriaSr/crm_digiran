@@ -48,6 +48,7 @@
         }
     </style>
 {% include 'includes/_numerals.html' %}
+{% include 'includes/_form_styles.html' %}
 </head>
 <body class="min-h-screen">
 
@@ -206,7 +207,7 @@
             {% endif %}
 
             <!-- فرم -->
-            <form method="post" class="space-y-5">
+            <form data-crm-form method="post" class="space-y-5">
                 {% csrf_token %}
 
                 <!-- نام کاربری -->
@@ -286,5 +287,6 @@
 <!-- Alpine.js برای toggle رمز -->
 <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
+{% include 'includes/_form_client.html' %}
 </body>
 </html>

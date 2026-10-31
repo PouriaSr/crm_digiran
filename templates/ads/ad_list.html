@@ -75,7 +75,7 @@
     </div>
   </div>
 
-  <form method="get" class="bg-white rounded-xl shadow-sm p-4 mb-6">
+  <form method="get" class="crm-filter-form bg-white rounded-xl shadow-sm p-4 mb-6">
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:items-end">
       <div class="sm:col-span-2">
         <input type="text" name="q" value="{{ q }}"
@@ -151,7 +151,7 @@
                 <a href="{% url 'ads:edit' ad.pk %}" class="text-blue-600 hover:text-blue-800 text-xs font-medium">مشاهده</a>
             {% endif %}
             {% if can_delete %}
-              <form method="post" action="{% url 'ads:delete' ad.pk %}" class="inline" onsubmit="return confirm('مطمئنید؟');">
+              <form data-crm-form method="post" action="{% url 'ads:delete' ad.pk %}" class="inline" onsubmit="return confirm('مطمئنید؟');">
                 {% csrf_token %}
                 <button type="submit" class="text-red-600 hover:text-red-800 text-xs font-medium">حذف</button>
               </form>
@@ -226,7 +226,7 @@
     </div>
 
     <form method="get" action="{% url 'ads:list' %}#report"
-          class="bg-white rounded-xl shadow-sm p-4 mb-4">
+          class="crm-filter-form bg-white rounded-xl shadow-sm p-4 mb-4">
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:items-end">
         <div>
           <label class="block text-xs font-medium text-gray-600 mb-1">از تاریخ</label>
@@ -344,7 +344,6 @@
   </div>
 
   {% if report.chart_values %}
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <script>
   document.addEventListener('DOMContentLoaded', function() {
     const el = document.querySelector('#adsReportChart');

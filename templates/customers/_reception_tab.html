@@ -4,7 +4,7 @@
     <section class="wf-panel">
         <header class="wf-panel-head"><div><h2 class="wf-title">پذیرش مراجعه‌کننده</h2><p class="wf-subtitle">تاریخ و ساعت ورود ثبت می‌شود؛ سپس فرد را به مسئول پرونده یا استخدام ارجاع دهید.</p></div><span class="wf-badge wf-badge-neutral">مشتری ← پرونده · مصاحبه‌کننده ← استخدام</span></header>
         {% if "customers.reception_add" in user_permissions %}
-        <form method="post" enctype="multipart/form-data" data-arrival-form action="{% url 'customers:reception_action' %}" class="wf-panel-body wf-arrival-fields">
+        <form data-crm-form method="post" enctype="multipart/form-data" data-arrival-form action="{% url 'customers:reception_action' %}" class="wf-panel-body wf-arrival-fields">
             {% csrf_token %}<input type="hidden" name="action" value="arrive">
             <div><label for="arrival-customer" class="wf-label">مراجعه‌کننده</label><select id="arrival-customer" name="customer" required autocomplete="off" data-placeholder="جستجوی نام یا شماره مراجعه‌کننده" class="w-full rounded-xl border border-gray-200 p-2.5 text-sm"><option value="">انتخاب کنید...</option>{% for person in reception_customers %}<option value="{{ person.pk }}">{{ person.name }} — {{ person.mobile }}</option>{% endfor %}</select></div>
             <fieldset><legend class="wf-label">مراجعه‌کننده، مشتری است یا مصاحبه‌کننده؟</legend><div class="grid grid-cols-2 gap-2"><label class="wf-choice"><input type="radio" name="person_type" value="customer" required {% if request.POST.person_type == 'customer' %}checked{% endif %}>مشتری</label><label class="wf-choice"><input type="radio" name="person_type" value="interviewer" required {% if request.POST.person_type == 'interviewer' %}checked{% endif %}>مصاحبه‌کننده</label></div></fieldset>

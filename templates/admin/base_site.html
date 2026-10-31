@@ -1,2 +1,2 @@
 {% extends "admin/base_site.html" %}
-{% block extrahead %}{{ block.super }}{% include 'includes/_live_search.html' %}{% endblock %}
+{% block extrahead %}{{ block.super }}{% include 'includes/_live_search.html' %}{% include 'includes/_form_styles.html' %}{% include 'includes/_form_client.html' %}<script>document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('#content form[method=post]').forEach(form=>form.setAttribute('data-crm-form',''));window.CRMForms?.prepare();});</script>{% endblock %}

@@ -3,7 +3,7 @@
     {% include 'customers/_workflow_filters.html' with filter_tab='case' %}
     <section class="wf-panel">
         <header class="wf-panel-head"><div><h2 class="wf-title">پرونده مشتریان ارجاع‌شده</h2><p class="wf-subtitle">مشتری را انتخاب و فیلدهای باقی‌مانده را تکمیل کنید؛ مشخصات قبلی حفظ شده‌اند.</p></div></header>
-        <div class="wf-picker"><label for="case-person" class="wf-label">انتخاب مشتری برای تکمیل پرونده</label><form method="get"><input type="hidden" name="tab" value="case"><input type="hidden" name="edit_case" value="1"><select id="case-person" name="r" onchange="this.form.submit()" data-placeholder="جستجوی مشتری ارجاع‌شده" class="w-full rounded-xl border border-gray-200 p-2.5 text-sm"><option value="">انتخاب کنید...</option>{% for rec in case_choices %}<option value="{{ rec.pk }}" {% if case_record.pk == rec.pk %}selected{% endif %}>{{ rec.customer.name }} — {{ rec.customer.mobile }}</option>{% endfor %}</select></form></div>
+        <div class="wf-picker"><label for="case-person" class="wf-label">انتخاب مشتری برای تکمیل پرونده</label><form method="get" class="crm-filter-form"><input type="hidden" name="tab" value="case"><input type="hidden" name="edit_case" value="1"><select id="case-person" name="r" onchange="this.form.submit()" data-placeholder="جستجوی مشتری ارجاع‌شده" class="w-full rounded-xl border border-gray-200 p-2.5 text-sm"><option value="">انتخاب کنید...</option>{% for rec in case_choices %}<option value="{{ rec.pk }}" {% if case_record.pk == rec.pk %}selected{% endif %}>{{ rec.customer.name }} — {{ rec.customer.mobile }}</option>{% endfor %}</select></form></div>
     </section>
     {% if case_record and case_form and "customers.case_edit" in user_permissions %}
     <details id="case-editor" class="wf-editor" data-open-case="{% url 'customers:case_open' case_record.pk %}" {% if not case_record.case_completed_at or case_form.errors or request.GET.edit_case %}open{% endif %}>
@@ -22,7 +22,7 @@
                 {% endif %}
             </div>
 
-            <form method="post" action="{% url 'customers:case_save' %}"
+            <form data-crm-form method="post" action="{% url 'customers:case_save' %}"
                   x-data="{ cond: '{{ case_form.condition.value|default:''|escapejs }}', owner: '{{ case_form.cheque_owner.value|default:''|escapejs }}' }"
                   class="space-y-5">
                 {% csrf_token %}

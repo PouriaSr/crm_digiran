@@ -2,7 +2,7 @@
 <div id="hiring-modal" class="hr-overlay" role="dialog" aria-modal="true" aria-labelledby="interview-title">
  <section class="hr-dialog">
   <header class="hr-dialog-head"><div><p class="wf-eyebrow">جلسه {{ session.round_number|fa_num }} · {{ rec.customer.name }}</p><h2 id="interview-title">{% if editing_session %}ویرایش اطلاعات جلسه{% elif session.kind == 'repeat' %}مصاحبه مجدد{% else %}شروع مصاحبه{% endif %}</h2></div><button type="button" class="hr-close" data-close-hiring aria-label="بستن">×</button></header>
-  <form method="post" enctype="multipart/form-data" action="{% if editing_session %}{% url 'customers:interview_edit' session.pk %}{% else %}{% url 'customers:interview_save' session.pk %}{% endif %}" data-interview-form>
+  <form data-crm-form method="post" enctype="multipart/form-data" action="{% if editing_session %}{% url 'customers:interview_edit' session.pk %}{% else %}{% url 'customers:interview_save' session.pk %}{% endif %}" data-interview-form>
    {% csrf_token %}
    <div class="hr-dialog-body">
     <div class="hr-alert" role="status" data-hiring-message>{% if editing_session %}زمان‌های ثبت‌شده این جلسه حفظ می‌شوند.{% else %}انتظار این جلسه ثبت شد؛ مصاحبه شروع شده است.{% endif %}</div>

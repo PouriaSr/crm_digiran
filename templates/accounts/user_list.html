@@ -41,7 +41,7 @@
 </div>
 
 <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
-    <form method="get" class="filters-row">
+    <form method="get" class="crm-filter-form filters-row">
         <div class="flex-1 min-w-[200px]">
             <input type="text" name="q" value="{{ search }}"
                    placeholder="جستجو نام کاربری، نام یا ایمیل..."
@@ -145,7 +145,7 @@
                        class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50"
                        title="تغییر رمز">رمز</a>
                     {% if item.user != request.user %}
-                        <form method="post" action="{% url 'accounts:user_toggle' item.user.pk %}" class="inline-flex items-center justify-center">
+                        <form data-crm-form method="post" action="{% url 'accounts:user_toggle' item.user.pk %}" class="inline-flex items-center justify-center">
                             {% csrf_token %}
                             <button type="submit"
                                     class="text-orange-600 hover:text-orange-800 text-xs px-2 py-1 rounded hover:bg-orange-50"

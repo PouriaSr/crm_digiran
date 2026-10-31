@@ -1,0 +1,43 @@
+<script>
+(function(){
+ 'use strict';if(window.CRMForms)return;
+ let serial=0;
+ function focusField(field){if(!field)return;if(field.tagName==='SELECT'&&field.closest('.product-autocomplete'))field=field.closest('.product-autocomplete').querySelector('.product-search')||field;for(let node=field.parentElement;node;node=node.parentElement)if(node.tagName==='DETAILS')node.open=true;field.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});if(field.tomselect)field.tomselect.focus();else field.focus({preventScroll:true});}
+ function labelFor(field,form){if(field.id){const explicit=Array.from(form.querySelectorAll('label')).find(label=>label.htmlFor===field.id);if(explicit)return explicit;}let parent=field.parentElement;for(let i=0;parent&&parent!==form&&i<3;i++,parent=parent.parentElement){const labels=Array.from(parent.querySelectorAll(':scope>label'));if(labels.length===1 && !labels[0].htmlFor)return labels[0];}return null;}
+ function prepare(root=document){
+  const forms=[...(root.matches?.('form[data-crm-form]')?[root]:[]),...root.querySelectorAll('form[data-crm-form]')];
+  forms.forEach(form=>{
+   form.classList.add('crm-form');
+   form.querySelectorAll('input:not([type=hidden]),select,textarea').forEach(field=>{
+    if(field.classList.contains('dropdown-input')||field.closest('.ts-control,.ts-dropdown'))return;
+    if(!field.id)field.id='crm-form-field-'+(++serial);
+    if(field.classList.contains('product-search'))field.setAttribute('aria-label','جستجوی کالای ردیف فاکتور');
+    if(form.id==='invoice-form'&&/-(quantity|unit_price)$/.test(field.name))field.setAttribute('aria-label',field.name.endsWith('-quantity')?'تعداد کالا در این ردیف':'قیمت واحد این ردیف به تومان');
+    const label=labelFor(field,form);if(!label&&field.name?.startsWith('perm__')){const title=field.closest('tr')?.querySelector('td')?.textContent.trim();if(title)field.setAttribute('aria-label','تنظیم دسترسی '+title);}
+    if(label&&!label.contains(field))label.htmlFor=field.id;
+    if(label&&field.required&&!['checkbox','radio'].includes(field.type)&&!label.querySelector('.crm-required,.text-red-500,.text-red-600')&&!label.textContent.includes('*')){const star=document.createElement('span');star.className='crm-required';star.textContent='*';star.setAttribute('aria-label','الزامی');label.appendChild(star);}
+    const help=form.querySelector('[id="'+CSS.escape(field.id)+'-help"]'),error=form.querySelector('[id="'+CSS.escape(field.id)+'-errors"]');
+    const descriptions=new Set((field.getAttribute('aria-describedby')||'').split(/\s+/).filter(Boolean));[help,error].filter(Boolean).forEach(node=>descriptions.add(node.id));if(descriptions.size)field.setAttribute('aria-describedby',Array.from(descriptions).join(' '));if(error)field.setAttribute('aria-invalid','true');
+    if(field.tagName==='SELECT' && document.readyState!=='loading' && window.TomSelect && !field.tomselect && !field.classList.contains('no-search')){
+     const options={create:false,plugins:['dropdown_input'],dropdownParent:'body',maxOptions:1000,placeholder:label?.textContent.replace(/[*]/g,'').trim()||'انتخاب کنید…',score:function(query){const convert=value=>window.CRMNumerals?CRMNumerals.ascii(value):value;const score=this.getScoreFunction(convert(query));return item=>score(Object.fromEntries(Object.entries(item).map(([key,value])=>[key,typeof value==='string'?convert(value):value])));}};
+     if(field.dataset.sourceSearch==='label-first')window.CRMSourceSearch?.configure(field,options);new TomSelect(field,options);
+    }
+    if(field.type==='password'&&!field.dataset.crmPassword&&!field.hasAttribute(':type')&&!field.hasAttribute('x-bind:type')){
+     field.dataset.crmPassword='1';const wrapper=document.createElement('div');wrapper.className='crm-password-wrap';field.before(wrapper);wrapper.appendChild(field);const toggle=document.createElement('button');toggle.type='button';toggle.className='crm-password-toggle';toggle.textContent='نمایش';toggle.setAttribute('aria-controls',field.id);toggle.setAttribute('aria-label','نمایش رمز عبور');toggle.setAttribute('aria-pressed','false');toggle.addEventListener('click',()=>{const show=field.type==='password',start=field.selectionStart,end=field.selectionEnd;field.type=show?'text':'password';toggle.textContent=show?'پنهان':'نمایش';toggle.setAttribute('aria-label',show?'پنهان کردن رمز عبور':'نمایش رمز عبور');toggle.setAttribute('aria-pressed',String(show));field.focus({preventScroll:true});if(start!==null)field.setSelectionRange(start,end);});wrapper.appendChild(toggle);
+    }
+    if(field.type==='file'&&!field.dataset.crmFile){field.dataset.crmFile='1';const summary=document.createElement('p');summary.className='crm-file-selection';summary.setAttribute('aria-live','polite');field.after(summary);field.addEventListener('change',()=>{summary.textContent=Array.from(field.files||[]).map(file=>file.name+' · '+(file.size/1024/1024>=1?(file.size/1024/1024).toFixed(1)+' مگابایت':Math.max(1,Math.round(file.size/1024))+' کیلوبایت')).join('، ');});}
+   });
+   const errors=form.querySelector('[data-form-error-summary]');if(errors&&!form.dataset.crmErrorsShown&&errors.getClientRects().length){form.dataset.crmErrorsShown='1';requestAnimationFrame(()=>{errors.focus({preventScroll:true});errors.scrollIntoView({block:'center'});});}
+  });
+ }
+ document.addEventListener('click',event=>{const link=event.target.closest('[data-form-error-link]');if(!link)return;const form=link.closest('form'),id=link.getAttribute('href').slice(1),field=Array.from((form||document).querySelectorAll('[id]')).find(el=>el.id===id);if(field){event.preventDefault();focusField(field);}});
+ document.addEventListener('invalid',event=>{const field=event.target;if(!field.closest('form[data-crm-form]'))return;field.setAttribute('aria-invalid','true');for(let node=field.parentElement;node;node=node.parentElement)if(node.tagName==='DETAILS')node.open=true;if(field.tomselect)field.tomselect.focus();},true);
+ document.addEventListener('input',event=>{const field=event.target;if(field.closest('form[data-crm-form]')&&field.validity?.valid)field.removeAttribute('aria-invalid');});
+ document.addEventListener('change',event=>{const field=event.target;if(field.closest('form[data-crm-form]')&&field.validity?.valid)field.removeAttribute('aria-invalid');});
+ document.addEventListener('DOMContentLoaded',()=>prepare());
+ document.addEventListener('htmx:afterSwap',event=>prepare(event.detail?.target||document));document.addEventListener('crm:results-updated',event=>prepare(event.detail?.root||document));
+ let queued=false;new MutationObserver(records=>{if(!records.some(record=>Array.from(record.addedNodes).some(node=>node.nodeType===1&&(node.matches?.('form[data-crm-form]')||node.querySelector?.('form[data-crm-form]')||node.closest?.('form[data-crm-form]')))))return;if(!queued){queued=true;requestAnimationFrame(()=>{queued=false;prepare();});}}).observe(document.documentElement,{childList:true,subtree:true});
+ if(window.visualViewport){const keyboard=()=>document.documentElement.classList.toggle('crm-keyboard-open',innerHeight-visualViewport.height>140 && /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName));visualViewport.addEventListener('resize',keyboard);document.addEventListener('focusout',()=>setTimeout(keyboard,100));}
+ window.CRMForms={prepare,focusField};prepare();
+})();
+</script>

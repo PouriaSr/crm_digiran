@@ -1,0 +1,8 @@
+{% if field %}<div class="crm-field{% if wide %} crm-field-wide{% endif %}{% if field.errors %} crm-field-error{% endif %}">
+ {% if field.is_hidden %}{{ field }}{% elif field.field.widget.input_type == "checkbox" %}<label class="crm-check-choice">{{ field }}<span>{{ field.label }}</span></label>{% if field.errors %}<ul class="crm-field-errors" id="{{ field.id_for_label }}-errors">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}{% else %}
+ <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required or conditional_required %}<span class="crm-required" aria-label="الزامی">*</span>{% else %}<span class="crm-optional">اختیاری</span>{% endif %}</label>
+ {{ field }}
+ {% if help %}<p class="crm-field-help" id="{{ field.id_for_label }}-help">{{ help }}</p>{% elif field.help_text %}<div class="crm-field-help" id="{{ field.id_for_label }}-help">{{ field.help_text }}</div>{% endif %}
+ {% if field.errors %}<ul class="crm-field-errors" id="{{ field.id_for_label }}-errors" role="alert">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
+ {% endif %}
+</div>{% endif %}

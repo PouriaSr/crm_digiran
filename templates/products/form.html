@@ -10,77 +10,30 @@
 
 <h1 class="text-2xl font-bold text-gray-800 mb-6">{{ title }}</h1>
 
-<form method="post" class="bg-white rounded-xl shadow-sm p-6">
+<form data-crm-form data-crm-page method="post" class="crm-form-page bg-white rounded-xl shadow-sm p-6">
     {% csrf_token %}
 
-    {% if form.errors %}
-    <div class="bg-red-50 text-red-700 p-4 rounded-lg mb-6 text-sm">
-        <strong>لطفاً خطاهای زیر را برطرف کنید:</strong>
-        <ul class="mt-2 list-disc list-inside">
-            {% for field, errors in form.errors.items %}
-                {% for error in errors %}
-                    <li>{{ field }}: {{ error }}</li>
-                {% endfor %}
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
+    {% include 'includes/_form_errors.html' %}
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">نام کالا <span class="text-red-500">*</span></label>
-            {{ form.name }}
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">کد کالا (SKU) <span class="text-red-500">*</span></label>
-            {{ form.code }}
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">دسته‌بندی</label>
-            {{ form.category }}
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">قیمت فروش (تومان)</label>
-            {{ form.price }}
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">قیمت خرید (تومان)</label>
-            {{ form.cost_price }}
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">موجودی</label>
-            {{ form.stock }}
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">واحد</label>
-            {{ form.unit }}
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">حداقل موجودی (هشدار)</label>
-            {{ form.min_stock }}
-        </div>
-
-        <div class="flex items-end pb-3">
-            <label class="flex items-center gap-2 text-sm cursor-pointer">
-                {{ form.is_active }}
-                <span>کالای فعال</span>
-            </label>
-        </div>
-
-        <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">توضیحات</label>
-            {{ form.description }}
-        </div>
-    </div>
-
-    <div class="flex gap-3 mt-8 pt-6 border-t border-gray-100">
+    <section class="crm-form-section"><header class="crm-form-section-head"><span>1</span><div><h2>مشخصات کالا</h2><p>نام، کد و دسته‌بندی برای شناسایی کالا.</p></div></header><div class="crm-form-grid">
+{% include 'includes/_form_field.html' with field=form.name %}
+{% include 'includes/_form_field.html' with field=form.code %}
+{% include 'includes/_form_field.html' with field=form.category %}
+</div></section>
+<section class="crm-form-section"><header class="crm-form-section-head"><span>2</span><div><h2>قیمت‌گذاری</h2><p>همه مبلغ‌ها به تومان هستند.</p></div></header><div class="crm-form-grid">
+{% include 'includes/_form_field.html' with field=form.price %}
+{% include 'includes/_form_field.html' with field=form.cost_price %}
+</div></section>
+<section class="crm-form-section"><header class="crm-form-section-head"><span>3</span><div><h2>موجودی و وضعیت</h2><p>تعداد، واحد و حداقل موجودی برای هشدار.</p></div></header><div class="crm-form-grid">
+{% include 'includes/_form_field.html' with field=form.stock %}
+{% include 'includes/_form_field.html' with field=form.unit %}
+{% include 'includes/_form_field.html' with field=form.min_stock %}
+{% include 'includes/_form_field.html' with field=form.is_active %}
+</div></section>
+<section class="crm-form-section"><header class="crm-form-section-head"><span>4</span><div><h2>توضیحات</h2><p>نکات تکمیلی این کالا.</p></div></header><div class="crm-form-grid">
+{% include 'includes/_form_field.html' with field=form.description wide=True %}
+</div></section>
+<div class="crm-form-actions flex gap-3 mt-8 pt-6 border-t border-gray-100">
         <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
             {{ submit_label }}
         </button>
