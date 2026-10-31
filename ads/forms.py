@@ -52,7 +52,8 @@ class AdForm(DuplicateCheckMixin, StyledFormMixin, forms.ModelForm):
         self.fields['ad_number'].required = False
 
         self.fields['platform'].queryset = AdPlatform.objects.filter(is_active=True)
-        self.fields['source'].queryset = AdSource.objects.filter(is_active=True)
+        from django.db.models import Q
+        self.fields['source'].queryset = AdSource.objects.filter(Q(is_active=True) | Q(pk=self.instance.source_id))
 
         if self.instance.pk and self.instance.platform_id:
             self.fields['process'].queryset = AdProcess.objects.filter(
@@ -155,9 +156,13 @@ class AdSourceForm(DuplicateCheckMixin, StyledFormMixin, forms.ModelForm):
         fields = ['phone_number', 'label', 'is_active']
 
     def clean_phone_number(self):
-        phone = self.cleaned_data['phone_number'].strip()
-        if AdSource.objects.filter(phone_number=phone).exclude(
-            pk=self.instance.pk
-        ).exists():
+        from crm.duplicate_check import normalize_phone, find_exact_match
+        raw = self.cleaned_data['phone_number'].strip()
+        if any(character not in '+- ()0123456789۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩' for character in raw):
+            raise ValidationError('شماره منبع باید فقط شامل رقم و علائم متداول شماره تلفن باشد.')
+        phone = normalize_phone(raw)
+        if not phone:
+            raise ValidationError('شماره منبع را وارد کنید.')
+        if find_exact_match(AdSource, 'phone_number', phone, normalize_phone, self.instance.pk):
             raise ValidationError('این شماره قبلاً ثبت شده است.')
         return phone

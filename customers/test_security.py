@@ -5,6 +5,7 @@
   • صفحه‌ی جزئیات مشتری برای کاربر ناشناس باز بود (افشای پروفایل)
   • ثبت مراجعه (hub_submit_visit) هیچ محافظتی نداشت
 """
+from ads.models import AdSource
 from django.contrib.auth.models import Group, User
 from django.test import TestCase
 from django.urls import reverse
@@ -52,7 +53,7 @@ class QuickCallPermissionTest(TestCase):
         self.client.force_login(self.outsider)
         before = Call.objects.count()
         self.client.post(reverse('customers:quick_call', args=[self.customer.pk]),
-                         {'kind': 'followup', 'notes': 'تلاش غیرمجاز'})
+                         {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk, 'kind': 'followup', 'notes': 'تلاش غیرمجاز'})
         self.assertEqual(Call.objects.count(), before)
         self.customer.refresh_from_db()
         self.assertNotEqual(self.customer.notes, 'تلاش غیرمجاز')

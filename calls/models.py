@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from customers.models import Customer, CustomerCase
+from crm.source_snapshots import SourceSnapshotMixin
 
 
 # وضعیت مشتری که اپراتور در فرم ثبت تماس اعلام می‌کند (تک‌منبع حقیقت)
@@ -12,7 +13,7 @@ DECLARED_CUSTOMER_STATUS_CHOICES = [
 ]
 
 
-class Call(models.Model):
+class Call(SourceSnapshotMixin):
     """مدل تماس — ثبت هر تماس تلفنی"""
 
     CALL_TYPE_CHOICES = [
@@ -61,6 +62,10 @@ class Call(models.Model):
     # ═══ اطلاعات تماس ═══
     caller_name = models.CharField('نام تماس‌گیرنده', max_length=200, db_index=True)
     call_number = models.CharField('شماره تماس', max_length=15, db_index=True)
+    source = models.ForeignKey(
+        'ads.AdSource', on_delete=models.PROTECT, null=True, blank=True,
+        related_name='calls', verbose_name='منبع تماس',
+    )
 
     # ═══ وضعیت و نوع ═══
     call_type = models.CharField('نوع تماس', max_length=20,
@@ -138,6 +143,8 @@ class Call(models.Model):
         return f'{hours} ساعت و {mins} دقیقه'
 
     def save(self, *args, **kwargs):
+        if self._state.adding and not self.source_id and self.customer_id:
+            self.source_id = Customer.all_objects.filter(pk=self.customer_id).values_list('ad_source_id', flat=True).first()
         # ⭐ اگر «پیگیری انجام شده»، وضعیت نباید «نیاز به پیگیری» باشه
         if self.is_followed_up and self.status == 'followup':
             self.status = 'answered'

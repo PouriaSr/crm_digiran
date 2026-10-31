@@ -78,6 +78,7 @@
     <div class="bg-white rounded-xl shadow-sm p-6">
         <h2 class="font-bold text-gray-700 mb-4">اطلاعات تماس</h2>
         <dl class="space-y-3 text-sm">
+            <div class="flex justify-between gap-4"><dt class="text-gray-500">منبع هنگام ثبت:</dt><dd class="text-gray-800">{{ call.source_display }}</dd></div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">تاریخ تماس:</dt>
                 <dd class="text-gray-800" dir="ltr">{{ call.call_date|jdate:"Y/m/d H:i" }}</dd>
@@ -88,11 +89,11 @@
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">انجام‌دهنده:</dt>
-                <dd class="text-gray-800">{{ call.called_by.get_full_name|default:call.called_by.username|default:"—" }}</dd>
+                <dd class="text-gray-800">{% if call.called_by %}{{ call.called_by.get_full_name|default:call.called_by.username }}{% else %}ثبت نشده{% endif %}</dd>
             </div>
             <div class="flex justify-between">
                 <dt class="text-gray-500">ثبت‌کننده:</dt>
-                <dd class="text-gray-800">{{ call.created_by.get_full_name|default:call.created_by.username|default:"—" }}</dd>
+                <dd class="text-gray-800">{% if call.created_by %}{{ call.created_by.get_full_name|default:call.created_by.username }}{% else %}ثبت نشده{% endif %}</dd>
             </div>
         </dl>
     </div>

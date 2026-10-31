@@ -138,7 +138,7 @@
           <td class="px-4 py-3 text-center font-medium text-gray-800" data-label="عنوان">{{ ad.platform.name }}</td>
           <td class="px-4 py-3 text-center text-gray-600" data-label="فرآیند">{{ ad.process.name }}</td>
           <td class="px-4 py-3 text-center text-gray-800 font-medium" data-label="هزینه">{{ ad.cost|fa_num }} تومان</td>
-          <td class="px-4 py-3 text-center text-gray-600" data-label="منبع" dir="ltr">{{ ad.source.phone_number }}</td>
+          <td class="px-4 py-3 text-center text-gray-600" data-label="منبع"><bdi dir="ltr">{{ ad.source_phone_snapshot }}</bdi>{% if ad.source_label_snapshot %}<span class="block text-xs text-gray-500">{{ ad.source_label_snapshot }}</span>{% endif %}</td>
           <td class="px-4 py-3 text-center text-gray-600" data-label="محصول">{% if ad.product %}{{ ad.product.name }}{% else %}--{% endif %}</td>
           <td class="px-4 py-3 text-center text-gray-600" data-label="شناسه آگهی" dir="ltr">{{ ad.ad_number }}</td>
           <td class="px-4 py-3 text-center text-gray-600" data-label="کارشناس">{{ ad.created_by.username }}</td>
@@ -274,6 +274,12 @@
       </div>
     </div>
 
+    {% if report.by_source %}
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-4">
+      <div class="p-4 border-b border-gray-100"><h3 class="font-bold text-gray-800">تفکیک منابع هنگام ثبت</h3><p class="text-xs text-gray-500 mt-1">شماره و برچسب هر دوره حفظ می‌شود؛ تغییر منبع روی ردیف‌های قبلی اثر ندارد.</p></div>
+      <table class="responsive-table w-full text-sm"><thead class="bg-gray-50 text-gray-600"><tr><th class="p-3">شماره منبع</th><th class="p-3">برچسب هنگام ثبت</th><th class="p-3">تعداد</th><th class="p-3">هزینه (تومان)</th></tr></thead><tbody class="divide-y divide-gray-100">{% for item in report.by_source %}<tr><td class="p-3" data-label="شماره منبع"><bdi dir="ltr">{{ item.source_phone_snapshot }}</bdi></td><td class="p-3" data-label="برچسب هنگام ثبت">{{ item.source_label_snapshot|default:'بدون برچسب' }}</td><td class="p-3" data-label="تعداد">{{ item.count|fa_num }}</td><td class="p-3" data-label="هزینه">{{ item.total|fa_num }}</td></tr>{% endfor %}</tbody></table>
+    </div>
+    {% endif %}
     {% if report.chart_values %}
     <div class="bg-white rounded-xl shadow-sm p-5 mb-4">
       <h3 class="text-sm font-medium text-gray-700 mb-4 text-center">هزینه بر اساس پلتفرم (تومان)</h3>

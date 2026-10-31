@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from crm.source_snapshots import SourceSnapshotMixin
 
 
 class CustomerManager(models.Manager):
@@ -9,7 +10,8 @@ class CustomerManager(models.Manager):
         return super().get_queryset().filter(is_deleted=False)
 
 
-class Customer(models.Model):
+class Customer(SourceSnapshotMixin):
+    source_snapshot_relation = 'ad_source'
     # is_lead یک property است (پایین‌تر) — فیلد جداگانه لازم نیست
     CUSTOMER_TYPE_CHOICES = [
         ('none', 'فاقد شرایط'),

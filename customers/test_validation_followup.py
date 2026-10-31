@@ -1,4 +1,5 @@
 """تست ماندگار: اعتبارسنجی کد ملی/موبایل + هم‌خوانی وضعیت پیگیری."""
+from ads.models import AdSource
 from datetime import timedelta
 
 import jdatetime
@@ -111,7 +112,7 @@ class FollowUpStatusConsistencyTest(TestCase):
 
     def test_followup_call_records_done_even_without_open(self):
         """اگر پیگیری بازی نبود (داده قدیمی)، تماس پیگیری باز هم رکورد می‌سازد"""
-        r = self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {
+        r = self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'kind': 'followup', 'notes': 'نتیجه ثبت شد',
             'follow_up_time': '10:30', 'follow_up_date': jdate(timezone.localdate()),
         })
@@ -132,7 +133,7 @@ class FollowUpStatusConsistencyTest(TestCase):
     def test_closing_followup_then_list_shows_done(self):
         FollowUp.objects.create(customer=self.customer,
                                 due_date=timezone.localdate())
-        self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {
+        self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'kind': 'followup', 'notes': 'بسته شد',
             'follow_up_time': '10:30', 'follow_up_date': jdate(timezone.localdate()),
         })

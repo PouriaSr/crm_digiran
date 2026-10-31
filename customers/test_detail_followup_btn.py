@@ -1,4 +1,5 @@
 """تست ماندگار: دکمه «ثبت پیگیری» در صفحه‌ی مشتری."""
+from ads.models import AdSource
 import jdatetime
 from django.contrib.auth.models import Group, User
 from django.test import TestCase
@@ -49,7 +50,7 @@ class DetailFollowUpButtonTest(TestCase):
     def test_followup_call_closes_followup(self):
         fu = FollowUp.objects.create(customer=self.with_fu,
                                      due_date=timezone.localdate())
-        r = self.client.post(reverse('customers:quick_call', args=[self.with_fu.pk]), {
+        r = self.client.post(reverse('customers:quick_call', args=[self.with_fu.pk]), {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'kind': 'followup', 'notes': 'پیگیری انجام شد',
             'follow_up_time': '10:30', 'follow_up_date': jdatetime.date.fromgregorian(date=timezone.localdate()).strftime('%Y/%m/%d'),
             'next': f'/customers/{self.with_fu.pk}/',

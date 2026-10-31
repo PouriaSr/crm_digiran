@@ -1,6 +1,6 @@
 <div class="font-bold text-gray-800">{{ person.name }}</div>
 <div class="mt-1 text-sm text-gray-500 font-mono" dir="ltr">{{ person.mobile }}</div>
-<div class="mt-2 text-xs text-gray-500">{{ person.get_source_display }}{% if person.ad_source %} · {{ person.ad_source }}{% endif %} · {{ person.get_stage_display }}</div>
+<div class="mt-2 text-xs text-gray-500">{{ person.get_source_display }}{% if person.source_phone_snapshot %} · {{ person.source_display }}{% endif %} · {{ person.get_stage_display }}</div>
 {% if person.notes %}<p class="mt-2 text-sm text-gray-600 whitespace-pre-line break-words">{{ person.notes }}</p>{% endif %}
 {% for call in person.latest_contact %}
 <details class="mt-3 text-xs text-gray-600"><summary class="cursor-pointer text-blue-700 font-bold">آخرین تماس و شرایط درخواستی</summary><div class="mt-2 flex flex-wrap gap-2"><span>{{ call.get_contact_type_display }}</span><span>هدف: {{ call.get_purpose_display }}</span><span>وضعیت: {{ call.get_status_display }}</span>{% if call.requested_condition %}<span>شرایط: {{ call.get_requested_condition_display }}</span>{% endif %}</div>{% if call.notes %}<p class="mt-2 whitespace-pre-line break-words">{{ call.notes }}</p>{% endif %}</details>

@@ -238,7 +238,7 @@ def customer_hub(request):
     filter_customers = (Customer.all_objects
                         .annotate(n_calls=Count('calls'))
                         .order_by('name', 'id')[:1000])
-    filter_sources = AdSource.objects.order_by('phone_number')
+    filter_sources = AdSource.objects.filter(is_active=True).order_by('phone_number')
     reassign_users = (User.objects.filter(is_active=True)
                       .order_by('first_name', 'username'))
 
@@ -341,6 +341,7 @@ def hub_submit_call(request):
         customer.save()
 
         call = Call.objects.create(
+            source=source,
             customer=customer, caller_name=customer.name, call_number=mobile,
             call_date=timezone.now(),
             call_type='outgoing' if contact_type == 'followup' else 'incoming',
@@ -607,6 +608,11 @@ def hub_quick_call(request, pk):
         messages.error(request, 'شرح مکالمه اجباری است؛ ثبت انجام نشد.')
         return redirect(back)
 
+    source = AdSource.objects.filter(pk=request.POST.get('source')).first() if (request.POST.get('source') or '').isdigit() else None
+    if source is None or not source.is_active:
+        messages.error(request, 'منبع تماس فعال را انتخاب کنید؛ تماس ثبت نشد.')
+        return redirect(back)
+
     if kind == 'followup':
         source_id = request.POST.get('source') or ''
         if source_id.isdigit() and has_permission(request.user, 'customers.edit') and can_edit_card(request.user, customer):
@@ -631,6 +637,7 @@ def hub_quick_call(request, pk):
         customer.save(update_fields=['notes', 'stage', 'ad_source', 'updated_at'])
 
         Call.objects.create(
+            source=source,
             customer=customer,
             caller_name=customer.name,
             call_number=customer.mobile,
@@ -699,6 +706,7 @@ def hub_quick_call(request, pk):
         if contact_type not in dict(Call.CONTACT_TYPE_CHOICES) or contact_type == 'followup':
             contact_type = 'incoming'
         Call.objects.create(
+            source=source,
             customer=customer,
             caller_name=customer.name,
             call_number=customer.mobile,

@@ -19,6 +19,7 @@
   {% if history_call_editable %}<button type="button" onclick="openCallEdit(this)" title="ویرایش این تماس" aria-label="ویرایش تماس" class="wf-action">ویرایش تماس</button>{% endif %}
  </header>
  <dl class="wf-call-facts"><div title="هدف تماس"><dt>هدف:</dt><dd>{{ call.get_purpose_display }}</dd></div><div title="وضعیت تماس"><dt>وضعیت:</dt><dd><span class="wf-badge {% if call.status == 'answered' %}wf-badge-done{% elif call.status == 'busy' %}wf-badge-wait bg-amber-50 text-amber-700{% else %}wf-badge-neutral{% endif %}">{{ call.get_status_display }}</span></dd></div>{% if call.requested_condition %}<div><dt>شرایط درخواستی</dt><dd>{{ call.get_requested_condition_display }}</dd></div>{% endif %}{% if call.is_followed_up %}<div><dt>نتیجه پیگیری</dt><dd class="text-emerald-700">پیگیری انجام شد</dd></div>{% endif %}</dl>
+ <dl class="wf-call-facts"><div><dt>منبع هنگام ثبت</dt><dd>{{ call.source_display }}</dd></div></dl>
  <div class="wf-note-box"><h5>شرح مکالمه</h5><p>{{ call.notes|default:"شرحی ثبت نشده است." }}</p></div>
  <footer class="wf-call-footer"><span>ثبت‌کننده: <strong>{% if call.called_by %}{{ call.called_by.get_full_name|default:call.called_by.username }}{% else %}ثبت نشده{% endif %}</strong></span>{% if call.follow_up_date %}<span title="تاریخ پیگیری">پیگیری: <bdi dir="ltr">{{ call.follow_up_date|jdate:"Y/m/d" }} {% if call.follow_up_time %}{{ call.follow_up_time|time:"H:i" }}{% else %}· بدون ساعت{% endif %}</bdi></span>{% endif %}</footer>
 </article>

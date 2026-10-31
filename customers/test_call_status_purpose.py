@@ -1,4 +1,5 @@
 """تست ماندگار: وضعیت و هدف تماس در فرم سبز ثبت تماس جدید."""
+from ads.models import AdSource
 from django.contrib.auth.models import Group, User
 from django.test import TestCase
 from django.urls import reverse
@@ -54,7 +55,7 @@ class CallStatusPurposeTest(TestCase):
 
     # ── ذخیره ──
     def test_saves_selected_values(self):
-        self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {
+        self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'kind': 'new', 'notes': 'پشتیبانی', 'status': 'busy', 'purpose': 'support',
         })
         call = Call.objects.filter(customer=self.customer).order_by('-id').first()
@@ -62,7 +63,7 @@ class CallStatusPurposeTest(TestCase):
         self.assertEqual(call.purpose, 'support')
 
     def test_invalid_values_fall_back(self):
-        self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {
+        self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'kind': 'new', 'notes': 'نامعتبر', 'status': 'x', 'purpose': 'y',
         })
         call = Call.objects.filter(customer=self.customer).order_by('-id').first()
@@ -71,7 +72,7 @@ class CallStatusPurposeTest(TestCase):
 
     def test_operator_cannot_use_info_purpose(self):
         self.client.force_login(self.operator)
-        self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {
+        self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'kind': 'new', 'notes': 'تلاش', 'purpose': 'info',
         })
         call = Call.objects.filter(customer=self.customer).order_by('-id').first()
@@ -79,7 +80,7 @@ class CallStatusPurposeTest(TestCase):
 
     def test_manager_can_use_info_purpose(self):
         self.client.force_login(self.manager)
-        self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {
+        self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'kind': 'new', 'notes': 'اطلاعات', 'purpose': 'info',
         })
         call = Call.objects.filter(customer=self.customer).order_by('-id').first()

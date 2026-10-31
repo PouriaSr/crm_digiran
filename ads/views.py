@@ -90,7 +90,8 @@ def ad_list(request):
             digit_contains('ad_number', q)
             | digit_contains('platform__name', q)
             | digit_contains('process__name', q)
-            | digit_contains('source__phone_number', q)
+            | digit_contains('source_phone_snapshot', q)
+            | digit_contains('source_label_snapshot', q)
             | digit_contains('product__name', q)
             | digit_contains('note', q)
         )
@@ -155,6 +156,7 @@ def ad_list(request):
         'summary': report_summary,
         'by_platform': by_platform,
         'by_user': by_user,
+        'by_source': list(report_qs.values('source_phone_snapshot', 'source_label_snapshot').annotate(count=Count('id'), total=Sum('cost')).order_by('-total')),
         'chart_labels': [item['platform__name'] for item in by_platform],
         'chart_values': [float(item['total']) for item in by_platform],
     }
@@ -234,7 +236,7 @@ def ad_export_report(request):
             ad.platform.name,
             ad.process.name,
             float(ad.cost),
-            ad.source.phone_number,
+            ad.source_display,
             ad.product.name if ad.product else '—',
             ad.ad_number,
             ad.created_by.username,
@@ -284,6 +286,15 @@ def ad_export_report(request):
                 float(item['total'] or 0),
             ])
 
+    source_sheet = wb.create_sheet('تفکیک منبع هنگام ثبت')
+    source_sheet.sheet_view.rightToLeft = True
+    source_sheet.append(['شماره منبع هنگام ثبت', 'برچسب هنگام ثبت', 'تعداد', 'جمع هزینه (تومان)'])
+    for cell in source_sheet[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+    for item in qs.values('source_phone_snapshot', 'source_label_snapshot').annotate(count=Count('id'), total=Sum('cost')).order_by('-total'):
+        source_sheet.append([item['source_phone_snapshot'], item['source_label_snapshot'], item['count'], float(item['total'] or 0)])
+
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
@@ -316,7 +327,7 @@ def ad_create(request):
                         'platform': [None, ad.platform.name],
                         'process': [None, ad.process.name],
                         'cost': [None, str(ad.cost)],
-                        'source': [None, ad.source.phone_number],
+                        'source': [None, ad.source_display],
                         'product': [None, ad.product.name if ad.product else '—'],
                         'ad_number': [None, ad.ad_number],
                     },
@@ -360,7 +371,7 @@ def ad_edit(request, pk):
             'platform': ad.platform.name,
             'process': ad.process.name,
             'cost': str(ad.cost),
-            'source': ad.source.phone_number,
+            'source': ad.source_display,
             'product': ad.product.name if ad.product else '—',
             'ad_number': ad.ad_number,
         }
@@ -374,7 +385,7 @@ def ad_edit(request, pk):
                     'platform': updated.platform.name,
                     'process': updated.process.name,
                     'cost': str(updated.cost),
-                    'source': updated.source.phone_number,
+                    'source': updated.source_display,
                     'product': updated.product.name if updated.product else '—',
                     'ad_number': updated.ad_number,
                 }
@@ -517,14 +528,29 @@ def source_list(request):
 
 
 @login_required
+@perm_required('ads.manage_defs')
+@require_http_methods(['GET', 'POST'])
+def source_edit(request, pk):
+    source = get_object_or_404(AdSource, pk=pk)
+    form = AdSourceForm(request.POST or None, instance=source)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'منبع به‌روزرسانی شد؛ شماره و برچسب ثبت‌شده در سوابق قبلی حفظ شدند.')
+        return redirect('ads:source_list')
+    return render(request, 'ads/source_list.html', {
+        'form': form, 'items': AdSource.objects.all(), 'editing_source': source,
+    })
+
+
+@login_required
 
 
 @perm_required('ads.manage_defs')
 @require_http_methods(['POST'])
 def source_delete(request, pk):
     obj = get_object_or_404(AdSource, pk=pk)
-    if obj.ads.exists():
-        messages.error(request, 'این منبع در تبلیغات استفاده شده و قابل حذف نیست.')
+    if obj.ads.exists() or obj.calls.exists() or obj.customer_set.exists():
+        messages.error(request, 'این منبع در سوابق استفاده شده است؛ برای توقف استفاده، آن را غیرفعال کنید.')
     else:
         obj.delete()
         messages.success(request, 'منبع حذف شد.')

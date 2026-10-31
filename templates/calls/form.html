@@ -53,6 +53,13 @@
         </div>
 
         <div>
+            <label for="{{ form.source.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1.5">منبع تماس{% if form.source.field.required %} <span class="text-red-500">*</span>{% endif %}</label>
+            {{ form.source }}
+            {% if form.source.errors %}<p class="text-xs text-red-600 mt-1">{{ form.source.errors.0 }}</p>{% endif %}
+            {% if call.source_phone_snapshot %}<p class="text-xs text-gray-500 mt-1">منبع هنگام ثبت: {{ call.source_display }}</p>{% endif %}
+        </div>
+
+        <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">وضعیت</label>
             {{ form.status }}
         </div>

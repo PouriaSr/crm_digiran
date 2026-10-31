@@ -95,6 +95,7 @@ def customer_detail(request, pk):
         'can_view_invoices': can_view_invoices,
         'show_full_profile': has_permission(request.user, 'customers.profile_full'),
         'call_form': HubCallForm(user=request.user),
+        'filter_sources': __import__('ads.models', fromlist=['AdSource']).AdSource.objects.filter(is_active=True),
     }
     return render(request, 'customers/detail.html', context)
 

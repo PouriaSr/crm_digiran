@@ -1,3 +1,4 @@
+from ads.models import AdSource
 from django.test import TestCase
 from django.contrib.auth.models import User, Group
 from django.urls import reverse
@@ -96,7 +97,7 @@ class OperationPermissionsTest(TestCase):
 
     def test_call_creation_does_not_change_profile_when_edit_denied(self):
         self.permission(self.owner,'customers.edit',False)
-        response=self.client.post(reverse('customers:quick_call',args=[self.customer.pk]),{'kind':'new','notes':'تماس تازه'})
+        response=self.client.post(reverse('customers:quick_call',args=[self.customer.pk]),{'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk, 'kind':'new','notes':'تماس تازه'})
         self.assertEqual(response.status_code,302)
         self.customer.refresh_from_db();self.assertEqual(self.customer.notes,'شرح اصلی')
         self.assertTrue(Call.objects.filter(customer=self.customer,notes='تماس تازه').exists())

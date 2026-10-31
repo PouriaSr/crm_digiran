@@ -1,4 +1,5 @@
 """تست ماندگار: صفحه‌ی مشتری از فرم سبز (quick call) برای ثبت تماس استفاده می‌کند."""
+from ads.models import AdSource
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
@@ -36,7 +37,7 @@ class DetailUsesQuickCallModalTest(TestCase):
     # ── ثبت و بازگشت ──
     def test_submit_new_call_returns_to_customer(self):
         before = Call.objects.filter(customer=self.customer).count()
-        r = self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {
+        r = self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'kind': 'new', 'notes': 'تماس از صفحه مشتری',
             'next': f'/customers/{self.customer.pk}/',
         })
@@ -47,13 +48,13 @@ class DetailUsesQuickCallModalTest(TestCase):
         self.assertEqual(r.headers['Location'], f'/customers/{self.customer.pk}/')
 
     def test_invalid_next_blocked(self):
-        r = self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {
+        r = self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'kind': 'new', 'notes': 'تست امنیت', 'next': '//evil.com',
         })
         self.assertEqual(r.headers['Location'], '/customers/hub/?tab=info')
 
     def test_submit_without_next_goes_to_hub(self):
-        r = self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {
+        r = self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'kind': 'new', 'notes': 'بدون next',
         })
         self.assertEqual(r.headers['Location'], '/customers/hub/?tab=info')

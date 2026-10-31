@@ -90,7 +90,7 @@ class CardWorkflowTest(TestCase):
         self.assertEqual(self.customer.assigned_to_id, self.owner.pk)
 
     def test_peer_can_add_call_with_independent_type_purpose_and_status(self):
-        response = self.client.post(self.quick, {'kind':'new','contact_type':'divar','purpose':'support','status':'busy','notes':'تماس همکار'})
+        response = self.client.post(self.quick, {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk, 'kind':'new','contact_type':'divar','purpose':'support','status':'busy','notes':'تماس همکار'})
         self.assertEqual(response.status_code, 302)
         call = Call.objects.latest('pk')
         self.assertEqual((call.contact_type,call.purpose,call.status), ('divar','support','busy'))
@@ -102,9 +102,9 @@ class CardWorkflowTest(TestCase):
         for index, group in enumerate(('اپراتور', 'حسابدار', 'مسئول تبلیغات')):
             user = self.user(f'cw-extra-{index}', group)
             self.client.force_login(user)
-            self.client.post(self.quick, {'kind':'new', 'notes':'تماس همکار', 'contact_type':'incoming'})
+            self.client.post(self.quick, {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk, 'kind':'new', 'notes':'تماس همکار', 'contact_type':'incoming'})
             self.assertEqual(Call.objects.latest('pk').called_by_id, user.pk)
-            self.client.post(self.quick, {'kind':'followup', 'notes':'پیگیری همکار', 'follow_up_date':jdate(timezone.localdate()), 'follow_up_time':'12:30'})
+            self.client.post(self.quick, {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk, 'kind':'followup', 'notes':'پیگیری همکار', 'follow_up_date':jdate(timezone.localdate()), 'follow_up_time':'12:30'})
             call = Call.objects.latest('pk')
             self.assertEqual(call.called_by_id, user.pk)
             self.assertEqual(call.contact_type, 'followup')
@@ -115,7 +115,7 @@ class CardWorkflowTest(TestCase):
     def test_followup_requires_both_date_and_time_before_any_write(self):
         for date, clock in [(jdate(timezone.localdate()),''), ('','14:30'), (jdate(timezone.localdate()),'25:00'), (jdate(timezone.localdate()),'14:99')]:
             with self.subTest(date=date,clock=clock):
-                self.client.post(self.quick, {'kind':'followup','notes':'باید رد شود','follow_up_date':date,'follow_up_time':clock})
+                self.client.post(self.quick, {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk, 'kind':'followup','notes':'باید رد شود','follow_up_date':date,'follow_up_time':clock})
                 self.assertEqual(Call.objects.count(),1)
                 self.assertFalse(FollowUp.objects.exists())
         self.customer.refresh_from_db()
@@ -123,7 +123,7 @@ class CardWorkflowTest(TestCase):
 
     def test_followup_records_due_time_separately_from_server_creation_time(self):
         before = timezone.now()
-        self.client.post(self.quick, {'kind':'followup','notes':'پیگیری همکار','follow_up_date':jdate(timezone.localdate()),'follow_up_time':'۱۴:۳۰','call_date':'2000-01-01','needs_next':'1','next_follow_up_date':jdate(timezone.localdate()+timedelta(days=2)),'next_follow_up_time':'09:15'})
+        self.client.post(self.quick, {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk, 'kind':'followup','notes':'پیگیری همکار','follow_up_date':jdate(timezone.localdate()),'follow_up_time':'۱۴:۳۰','call_date':'2000-01-01','needs_next':'1','next_follow_up_date':jdate(timezone.localdate()+timedelta(days=2)),'next_follow_up_time':'09:15'})
         call = Call.objects.latest('pk')
         self.assertEqual(call.follow_up_time, time(14,30))
         self.assertGreaterEqual(call.call_date,before)
@@ -136,7 +136,7 @@ class CardWorkflowTest(TestCase):
 
     def test_missing_next_time_does_not_close_existing_task(self):
         fu = FollowUp.objects.create(customer=self.customer,due_date=timezone.localdate(),due_time=time(10))
-        self.client.post(self.quick, {'kind':'followup','notes':'رد','follow_up_date':jdate(timezone.localdate()),'follow_up_time':'10:00','needs_next':'1','next_follow_up_date':jdate(timezone.localdate()+timedelta(days=1))})
+        self.client.post(self.quick, {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk, 'kind':'followup','notes':'رد','follow_up_date':jdate(timezone.localdate()),'follow_up_time':'10:00','needs_next':'1','next_follow_up_date':jdate(timezone.localdate()+timedelta(days=1))})
         fu.refresh_from_db()
         self.assertFalse(fu.is_done)
         self.assertEqual(Call.objects.count(),1)

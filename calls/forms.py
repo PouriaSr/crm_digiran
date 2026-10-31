@@ -35,7 +35,7 @@ class CallForm(forms.ModelForm):
     class Meta:
         model = Call
         fields = [
-            'customer', 'caller_name', 'call_number',
+            'customer', 'caller_name', 'call_number', 'source',
             'call_type', 'status', 'purpose',
             'duration',
             'follow_up_date', 'follow_up_time', 'is_followed_up',
@@ -82,6 +82,15 @@ class CallForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)# ═══ مقدار اولیه برای تاریخ پیگیری ═══
+        from ads.models import AdSource
+        from django.db.models import Q
+        self.fields['source'].queryset = AdSource.objects.filter(Q(is_active=True) | Q(pk=self.instance.source_id))
+        self.fields['source'].required = not self.instance.pk or bool(self.instance.source_id)
+        self.fields['source'].widget.attrs['class'] = 'w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm'
+        # Older edit clients omit this field; preserve that call's own source.
+        if self.is_bound and self.instance.pk and 'source' not in self.data:
+            self.data = self.data.copy()
+            self.data['source'] = self.instance.source_id or ''
         if self.instance and self.instance.pk and self.instance.follow_up_date:
             g = self.instance.follow_up_date
             j = jdatetime.date.fromgregorian(date=g)

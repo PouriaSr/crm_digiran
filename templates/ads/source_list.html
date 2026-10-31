@@ -6,11 +6,12 @@
   <div class="mb-6">
     <a href="{% url 'ads:list' %}" class="text-sm text-blue-600 hover:underline">← بازگشت به تبلیغات</a>
     <h1 class="text-2xl font-bold text-gray-800 mt-2">📞 مدیریت منابع</h1>
-    <p class="text-sm text-gray-500 mt-1">شماره‌های تماسی که آگهی‌ها با آن‌ها تعریف می‌شوند.</p>
+    <p class="text-sm text-gray-500 mt-1">شماره و برچسب منابع تماس و تبلیغات. تغییر منبع فقط برای ثبت‌های بعدی اعمال می‌شود؛ سوابق قبلی با مشخصات هنگام ثبت باقی می‌مانند.</p>
   </div>
 
   <form method="post" class="bg-white rounded-xl shadow-sm p-5 mb-6">
     {% csrf_token %}
+    <h2 class="font-bold text-gray-700 mb-4">{% if editing_source %}ویرایش منبع{% else %}افزودن منبع{% endif %}</h2>
     <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">شماره تماس <span class="text-red-500">*</span></label>
@@ -20,13 +21,15 @@
       <div class="md:col-span-2">
         <label class="block text-sm font-medium text-gray-700 mb-1">برچسب (اختیاری)</label>
         {{ form.label }}
+        {% if form.label.errors %}<p class="text-red-500 text-xs mt-1">{{ form.label.errors.0 }}</p>{% endif %}
       </div>
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-2">{{ form.is_active }}<label class="text-sm text-gray-700">فعال</label></div>
-        <button type="submit" class="ml-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">افزودن</button>
+        <button type="submit" class="ml-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">{% if editing_source %}ذخیره تغییرات{% else %}افزودن{% endif %}</button>
       </div>
     </div>
   </form>
+  {% if editing_source %}<a class="inline-block text-sm text-blue-600 mb-4" href="{% url 'ads:source_list' %}">انصراف از ویرایش</a>{% endif %}
 
   <div class="bg-white rounded-xl shadow-sm overflow-hidden">
     <table class="responsive-table w-full text-sm">
@@ -49,6 +52,7 @@
           <td class="px-4 py-3">{% if item.is_active %}<span class="text-green-600 text-xs">✓ فعال</span>{% else %}<span class="text-gray-400 text-xs">غیرفعال</span>{% endif %}</td>
           <td class="px-4 py-3 text-gray-600">{{ item.ads.count }}</td>
           <td class="px-4 py-3 text-center">
+            <a class="text-blue-600 hover:text-blue-800 text-xs font-medium ml-3" href="{% url 'ads:source_edit' item.pk %}">ویرایش</a>
             <form method="post" action="{% url 'ads:source_delete' item.pk %}" class="inline" onsubmit="return confirm('حذف شود؟');">
               {% csrf_token %}
               <button type="submit" class="text-red-600 hover:text-red-800 text-xs font-medium">حذف</button>

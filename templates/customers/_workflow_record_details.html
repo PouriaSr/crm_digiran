@@ -11,7 +11,7 @@
                 <div><dt>نام و نام خانوادگی</dt><dd>{{ rec.customer.name }}</dd></div>
                 <div><dt>شماره تماس</dt><dd><bdi dir="ltr">{{ rec.customer.mobile }}</bdi></dd></div>
                 <div><dt>منبع جذب</dt><dd>{{ rec.customer.get_source_display }}</dd></div>
-                {% if rec.customer.ad_source %}<div><dt>منبع آگهی</dt><dd>{{ rec.customer.ad_source }}</dd></div>{% endif %}
+                {% if rec.customer.source_phone_snapshot %}<div><dt>منبع ثبت‌شده مشتری</dt><dd>{{ rec.customer.source_display }}</dd></div>{% endif %}
                 <div><dt>تحلیل مشتری</dt><dd><span class="wf-badge {% if rec.customer.stage == 'potential' %}wf-badge-wait{% else %}wf-badge-neutral{% endif %}">{{ rec.customer.get_stage_display }}</span></dd></div>
                 <div><dt>کارشناس مسئول</dt><dd>{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% else %}<span class="wf-unset">تعیین نشده</span>{% endif %}</dd></div>
                 <div><dt>ثبت اولیه</dt><dd><bdi dir="ltr">{{ rec.customer.created_at|jdate:'Y/m/d · H:i' }}</bdi></dd></div>
@@ -33,6 +33,7 @@
         <section class="wf-info-section">
             <header class="wf-section-heading"><h4>آخرین تماس و شرایط درخواستی</h4><time><bdi dir="ltr">{{ call.call_date|jdate:'Y/m/d · H:i' }}</bdi></time></header>
             <dl class="wf-fields"><div><dt>نوع تماس</dt><dd>{{ call.get_contact_type_display }}</dd></div><div><dt>هدف تماس</dt><dd>{{ call.get_purpose_display }}</dd></div><div><dt>وضعیت تماس</dt><dd><span class="wf-badge {% if call.status == 'answered' %}wf-badge-done{% else %}wf-badge-wait{% endif %}">{{ call.get_status_display }}</span></dd></div>{% if call.requested_condition %}<div><dt>شرایط درخواستی</dt><dd>{{ call.get_requested_condition_display }}</dd></div>{% endif %}{% if call.called_by %}<div><dt>کارشناس تماس</dt><dd>{{ call.called_by.get_full_name|default:call.called_by.username }}</dd></div>{% endif %}</dl>
+            <dl class="wf-fields"><div><dt>منبع هنگام ثبت تماس</dt><dd>{{ call.source_display }}</dd></div></dl>
             <div class="wf-note-box"><h5>شرح مکالمه</h5><p>{{ call.notes|default:'شرحی ثبت نشده است.' }}</p></div>
         </section>
         {% endfor %}{% endif %}

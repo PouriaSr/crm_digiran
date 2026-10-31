@@ -27,6 +27,8 @@ def call_list(request):
         calls = calls.filter(
             digit_contains('caller_name', search) |
             digit_contains('call_number', search) |
+            digit_contains('source_phone_snapshot', search) |
+            digit_contains('source_label_snapshot', search) |
             digit_contains('notes', search)
         )
 

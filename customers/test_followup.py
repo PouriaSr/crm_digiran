@@ -67,7 +67,7 @@ class FollowUpCycleTest(TestCase):
     # ── بستن ──
     def test_followup_call_closes_record(self):
         customer, _ = self._create_with_followup()
-        self.client.post(reverse('customers:quick_call', args=[customer.pk]), {
+        self.client.post(reverse('customers:quick_call', args=[customer.pk]), {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'kind': 'followup', 'notes': 'نتیجه ثبت شد',
             'follow_up_time': '10:30', 'follow_up_date': jdate(timezone.localdate()),
         })
@@ -83,7 +83,7 @@ class FollowUpCycleTest(TestCase):
     def test_followup_call_with_next_creates_new_open(self):
         customer, _ = self._create_with_followup()
         next_due = timezone.localdate() + timedelta(days=10)
-        self.client.post(reverse('customers:quick_call', args=[customer.pk]), {
+        self.client.post(reverse('customers:quick_call', args=[customer.pk]), {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'kind': 'followup', 'notes': 'پیگیری بعدی',
             'follow_up_time': '10:30', 'follow_up_date': jdate(timezone.localdate()),
             'needs_next': '1', 'next_follow_up_time': '10:30', 'next_follow_up_date': jdate(next_due),
@@ -97,7 +97,7 @@ class FollowUpCycleTest(TestCase):
     def test_next_followup_requires_date(self):
         customer, _ = self._create_with_followup()
         before = FollowUp.objects.filter(customer=customer, is_done=False).count()
-        self.client.post(reverse('customers:quick_call', args=[customer.pk]), {
+        self.client.post(reverse('customers:quick_call', args=[customer.pk]), {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'kind': 'followup', 'notes': 'بدون تاریخ بعدی',
             'follow_up_time': '10:30', 'follow_up_date': jdate(timezone.localdate()),
             'needs_next': '1', 'next_follow_up_time': '10:30', 'next_follow_up_date': '',
@@ -107,7 +107,7 @@ class FollowUpCycleTest(TestCase):
 
     def test_followup_call_requires_date(self):
         customer, _ = self._create_with_followup()
-        r = self.client.post(reverse('customers:quick_call', args=[customer.pk]), {
+        r = self.client.post(reverse('customers:quick_call', args=[customer.pk]), {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'kind': 'followup', 'notes': 'بدون تاریخ',
         })
         self.assertEqual(r.status_code, 302)

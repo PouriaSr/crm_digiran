@@ -139,6 +139,7 @@
             <tr class="hover:bg-gray-50 transition">
                 <td class="px-3 py-3 text-right">
                     <div class="font-medium text-gray-800">{{ call.caller_name }}</div>
+                    <div class="text-xs text-gray-500 mt-1">منبع: {{ call.source_display }}</div>
                     {% if call.customer %}
                     <div class="text-xs text-gray-400">مشتری: {{ call.customer.name }}</div>
                     {% endif %}
@@ -191,7 +192,7 @@
                 </td>
 
                 <td class="px-3 py-3 text-right text-gray-600 whitespace-nowrap">
-                    {{ call.called_by.get_full_name|default:call.called_by.username|default:"--" }}
+                    {% if call.called_by %}{{ call.called_by.get_full_name|default:call.called_by.username }}{% else %}ثبت نشده{% endif %}
                 </td>
                 <td class="px-3 py-3 text-right text-gray-500 text-xs whitespace-nowrap">
                     <div>{{ call.call_date|jdate:"Y/m/d" }}</div>
@@ -244,6 +245,7 @@
             </div>
             <div class="flex-1 min-w-0">
                 <div class="font-bold text-gray-900 truncate">{{ call.caller_name }}</div>
+                <div class="text-xs text-gray-500 mt-1">منبع: {{ call.source_display }}</div>
                 {% if call.customer %}<div class="text-xs text-gray-500 truncate">مشتری: {{ call.customer.name }}</div>{% endif %}
             </div>
             {% if call.status == 'answered' %}
@@ -277,7 +279,7 @@
             </div>
             <div class="flex justify-between text-xs gap-3">
                 <span class="text-gray-400">کارمند</span>
-                <span class="font-medium text-gray-800 truncate">{{ call.called_by.get_full_name|default:call.called_by.username|default:"--" }}</span>
+                <span class="font-medium text-gray-800 truncate">{% if call.called_by %}{{ call.called_by.get_full_name|default:call.called_by.username }}{% else %}ثبت نشده{% endif %}</span>
             </div>
             <div class="flex justify-between text-xs gap-3">
                 <span class="text-gray-400">تاریخ</span>

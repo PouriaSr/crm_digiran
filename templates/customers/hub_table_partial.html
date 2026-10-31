@@ -52,7 +52,7 @@
                     <td class="p-3 font-mono text-gray-600 text-center" dir="ltr">{{ c.mobile }}</td>
                     <td class="p-3 text-xs text-gray-600 text-center">
                         {{ c.get_source_display|default:"—" }}
-                        {% if c.ad_source %}<div class="text-[11px] text-gray-400">{{ c.ad_source }}</div>{% endif %}
+                        {% if c.source_phone_snapshot %}<div class="text-[11px] text-gray-400">{{ c.source_display }}</div>{% endif %}
                     </td>
                     <td class="p-3 text-center">
                         {% if c.open_fu_due %}

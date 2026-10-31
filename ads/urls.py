@@ -20,6 +20,7 @@ urlpatterns = [
     path('manage/processes/', views.process_list, name='process_list'),
     path('manage/processes/<int:pk>/delete/', views.process_delete, name='process_delete'),
     path('manage/sources/', views.source_list, name='source_list'),
+    path('manage/sources/<int:pk>/edit/', views.source_edit, name='source_edit'),
     path('manage/sources/<int:pk>/delete/', views.source_delete, name='source_delete'),
 
     # API

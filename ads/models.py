@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
+from crm.source_snapshots import SourceSnapshotMixin
 
 
 class AdPlatform(models.Model):
@@ -97,7 +98,7 @@ class AdSource(models.Model):
         return self.phone_number
 
 
-class Ad(models.Model):
+class Ad(SourceSnapshotMixin):
     """رکورد اصلی تبلیغ"""
     platform = models.ForeignKey(
         AdPlatform,

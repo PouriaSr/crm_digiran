@@ -25,7 +25,7 @@
                 <div class="text-sm text-gray-500 font-mono" dir="ltr">{{ call.call_number }}</div>
                 <div class="text-xs text-gray-400 mt-1">
                     انجام‌دهنده فعلی:
-                    <strong>{{ call.called_by.get_full_name|default:call.called_by.username|default:"—" }}</strong>
+                    <strong>{% if call.called_by %}{{ call.called_by.get_full_name|default:call.called_by.username }}{% else %}ثبت نشده{% endif %}</strong>
                 </div>
             </div>
         </div>

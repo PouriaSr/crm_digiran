@@ -1,3 +1,4 @@
+from ads.models import AdSource
 from datetime import timedelta
 """تست ماندگار: هم‌خوانی وضعیت پیگیری بین لیست، تاریخچه و مودال ویرایش."""
 import jdatetime
@@ -30,7 +31,7 @@ class FollowUpConsistencyTest(TestCase):
         FollowUp.objects.create(customer=self.customer,
                                 due_date=timezone.localdate())
         due = timezone.localdate() + timedelta(days=days)
-        self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {
+        self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
             'kind': 'followup', 'notes': 'نتیجه پیگیری',
             'follow_up_time': '10:30', 'follow_up_date': jdate(timezone.localdate()),
         })
