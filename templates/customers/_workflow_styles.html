@@ -87,4 +87,10 @@
     .wf-arrival-fields>.wf-action { justify-self:start; }
 }
 @media (prefers-reduced-motion:reduce) { .wf-tab,.wf-caret { transition:none; } }
+/* Customer hub column alignment: names right, remaining columns centered. */
+.workflow-hub table th,.workflow-hub table td { text-align:center !important; }
+.workflow-hub table .hub-name-column { text-align:right !important; }
+.wf-summary>.wf-name,.wf-list-head>:first-child { text-align:right; }
+.wf-summary>:not(.wf-name),.wf-list-head>:not(:first-child) { text-align:center; }
+.wf-summary>.wf-actions { justify-content:center; }
 </style>

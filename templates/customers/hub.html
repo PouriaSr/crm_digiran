@@ -173,7 +173,7 @@
                     <thead class="bg-gray-50/50 border-b border-gray-100 text-gray-500 text-xs">
                         <tr>
                             <th class="p-4 font-semibold text-center">شماره فاکتور</th>
-                            <th class="p-4 font-semibold text-center">مشتری</th>
+                            <th class="p-4 font-semibold text-right hub-name-column">مشتری</th>
                             <th class="p-4 font-semibold text-center">مبلغ</th>
                             <th class="p-4 font-semibold text-center">وضعیت</th>
                             <th class="p-4 font-semibold text-center">عملیات</th>
@@ -183,7 +183,7 @@
                         {% for inv in invoices %}
                         <tr class="hover:bg-blue-50/30 transition-colors group">
                             <td class="p-4 font-mono text-xs font-bold text-blue-600 text-center" dir="ltr">{{ inv.number }}</td>
-                            <td class="p-4 font-bold text-gray-800 text-center">{{ inv.customer.name }}</td>
+                            <td class="p-4 font-bold text-gray-800 text-right hub-name-column">{{ inv.customer.name }}</td>
                             <td class="p-4 font-bold text-gray-800 text-center" dir="ltr">{{ inv.total|floatformat:0 }} <span class="text-xs font-normal text-gray-400">تومان</span></td>
                             <td class="p-4 text-center">
                                 {% if inv.status == 'paid' %}<span class="px-3 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700">{{ inv.get_status_display }}</span>

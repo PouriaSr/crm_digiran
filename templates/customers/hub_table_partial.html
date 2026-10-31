@@ -15,7 +15,7 @@
         <table class="w-full text-sm text-center">
             <thead class="bg-gray-50/80 border-b border-gray-100">
                 <tr class="text-gray-600">
-                    <th class="p-3 font-medium text-right">نام مشتری</th>
+                    <th class="p-3 font-medium text-right hub-name-column">نام مشتری</th>
                     <th class="p-3 font-medium">شماره تماس</th>
                     <th class="p-3 font-medium">منبع جذب</th>
                     <th class="p-3 font-medium">وضعیت پیگیری</th>
@@ -28,7 +28,7 @@
                 {% for c in customers %}
                 {% can_edit_card c as card_editable %}
                 <tr class="hover:bg-blue-50/30 transition group {% if c.is_deleted %}opacity-60 bg-gray-50/50{% endif %}">
-                    <td class="p-3 text-right">
+                    <td class="p-3 text-right hub-name-column">
                         <div class="flex items-center justify-start gap-2">
                             <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 flex items-center justify-center font-bold shrink-0">{{ c.name|first|upper }}</div>
                             <div class="text-right">
