@@ -1,6 +1,7 @@
 import jdatetime
 from datetime import datetime
 from django import forms
+from ads.widgets import ContactSourceSelect
 from django.utils import timezone
 from .models import Call
 
@@ -42,6 +43,7 @@ class CallForm(forms.ModelForm):
             'notes', 'called_by',
         ]
         widgets = {
+            'source': ContactSourceSelect(),
             'customer': forms.Select(attrs={
                 'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'
             }),

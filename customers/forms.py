@@ -1,5 +1,6 @@
 import jdatetime
 from django import forms
+from ads.widgets import ContactSourceSelect
 
 from crm.duplicate_check import (
     find_exact_match, find_similar_matches,
@@ -310,7 +311,7 @@ class HubCallForm(forms.Form):
             )
 
     source = forms.ModelChoiceField(label='منبع تماس', queryset=__import__('ads.models', fromlist=['AdSource']).AdSource.objects.filter(is_active=True), required=False,
-        widget=forms.Select(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all'}))
+        widget=ContactSourceSelect(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all'}))
     
     needs_followup = forms.BooleanField(label='نیاز به پیگیری', required=False,
         widget=forms.CheckboxInput(attrs={

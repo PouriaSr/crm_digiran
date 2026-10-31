@@ -1486,6 +1486,28 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             render: { no_results: () => '<div class="p-3 text-gray-500 text-center text-sm">موردی یافت نشد</div>' }
         };
+        if (el.dataset.sourceSearch === 'label-first') {
+            tsConfig.options = Array.from(el.options, option => ({
+                value: option.value, text: option.text,
+                source_label: option.dataset.sourceLabel || '',
+                source_number: option.dataset.sourceNumber || ''
+            }));
+            tsConfig.score = function(search) {
+                const canonical = value => window.CRMNumerals ? CRMNumerals.ascii(value) : value;
+                const query = canonical(search);
+                const fallback = this.getScoreFunction(query);
+                const labelScore = this.sifter.getScoreFunction(query, {fields:['source_label'], conjunction:'and'});
+                const numberScore = this.sifter.getScoreFunction(query, {fields:['source_number'], conjunction:'and'});
+                return item => {
+                    const normalized = Object.fromEntries(Object.entries(item).map(([key, value]) => [key, typeof value === 'string' ? canonical(value) : value]));
+                    if (!query.trim()) return fallback(normalized);
+                    const label = labelScore(normalized), number = numberScore(normalized);
+                    if (label > 0) return 2 + Math.min(label, 1);
+                    if (number > 0) return 1 + Math.min(number, 1);
+                    return Math.min(fallback(normalized), 1) / 2;
+                };
+            };
+        }
         // ⚠️ allowEmptyOption را عمداً true نمی‌کنیم: اگر true باشد، TomSelect
         // گزینه‌ی خالی را انتخاب‌شده می‌گیرد و متنش («همه …») جای placeholder می‌نشیند.
 
