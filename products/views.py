@@ -1,3 +1,4 @@
+from crm.numerals import digit_contains
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -29,9 +30,9 @@ def product_list(request):
     search = request.GET.get('q', '').strip()
     if search:
         products = products.filter(
-            Q(name__icontains=search) |
-            Q(code__icontains=search) |
-            Q(description__icontains=search)
+            digit_contains('name', search) |
+            digit_contains('code', search) |
+            digit_contains('description', search)
         )
 
     category_slug = request.GET.get('category', '')
@@ -212,9 +213,9 @@ def category_list(request):
     search = request.GET.get('q', '').strip()
     if search:
         categories = categories.filter(
-            Q(name__icontains=search) |
-            Q(slug__icontains=search) |
-            Q(description__icontains=search)
+            digit_contains('name', search) |
+            digit_contains('slug', search) |
+            digit_contains('description', search)
         )
 
     status = request.GET.get('status', '')

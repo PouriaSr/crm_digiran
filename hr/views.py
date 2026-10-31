@@ -1,3 +1,4 @@
+from crm.numerals import digit_contains
 import jdatetime
 from datetime import timedelta
 from django.shortcuts import render, get_object_or_404, redirect
@@ -24,10 +25,10 @@ def employee_list(request):
     search = request.GET.get('q', '').strip()
     if search:
         employees = employees.filter(
-            Q(first_name__icontains=search) |
-            Q(last_name__icontains=search) |
-            Q(mobile__icontains=search) |
-            Q(national_id__icontains=search)
+            digit_contains('first_name', search) |
+            digit_contains('last_name', search) |
+            digit_contains('mobile', search) |
+            digit_contains('national_id', search)
         )
 
     position = request.GET.get('position', '')
@@ -174,8 +175,8 @@ def task_list(request):
     search = request.GET.get('q', '').strip()
     if search:
         tasks = tasks.filter(
-            Q(title__icontains=search) |
-            Q(description__icontains=search)
+            digit_contains('title', search) |
+            digit_contains('description', search)
         )
 
     status = request.GET.get('status', '')
@@ -347,9 +348,9 @@ def leave_list(request):
     search = request.GET.get('q', '').strip()
     if search:
         leaves = leaves.filter(
-            Q(employee__first_name__icontains=search) |
-            Q(employee__last_name__icontains=search) |
-            Q(reason__icontains=search)
+            digit_contains('employee__first_name', search) |
+            digit_contains('employee__last_name', search) |
+            digit_contains('reason', search)
         )
 
     stats_qs = LeaveRequest.objects.all()

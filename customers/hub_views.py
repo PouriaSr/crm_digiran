@@ -1,3 +1,4 @@
+from crm.numerals import digit_contains
 from accounts.permissions import require_roles, ROLE_ADMIN, ROLE_SALES_MANAGER
 import jdatetime
 from datetime import timedelta
@@ -181,7 +182,7 @@ def customer_hub(request):
                  .order_by('-created_at'))
 
     if search:
-        customers = customers.filter(Q(name__icontains=search) | Q(mobile__icontains=search))
+        customers = customers.filter(digit_contains('name', search) | digit_contains('mobile', search))
 
     today = timezone.localdate()
     from django.db.models import Case, When, Value, F, TimeField
@@ -281,7 +282,7 @@ def customer_hub(request):
     # دکمه «ثبت تماس جدید»:
     #   جستجو خالی → غیرفعال · مشتری موجود → غیرفعال · مشتری ناموجود → فعال
     show_new = bool(search) and not Customer.all_objects.filter(
-        Q(name__icontains=search) | Q(mobile__icontains=search)
+        digit_contains('name', search) | digit_contains('mobile', search)
     ).exists()
     context['show_new'] = show_new
 

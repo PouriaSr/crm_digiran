@@ -1,3 +1,4 @@
+from crm.numerals import digit_contains
 import jdatetime
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
@@ -265,10 +266,10 @@ def customer_inactive_list(request):
     search = request.GET.get('q', '').strip()
     if search:
         customers = customers.filter(
-            Q(name__icontains=search) |
-            Q(mobile__icontains=search) |
-            Q(email__icontains=search) |
-            Q(national_id__icontains=search)
+            digit_contains('name', search) |
+            digit_contains('mobile', search) |
+            digit_contains('email', search) |
+            digit_contains('national_id', search)
         )
     paginator = Paginator(customers, 20)
     page_obj = paginator.get_page(request.GET.get('page', 1))

@@ -1,4 +1,5 @@
 """Admission -> referral -> case -> profile, with server-side stage/permission gates."""
+from crm.numerals import digit_contains
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -91,8 +92,8 @@ def referral_users(person_type='customer'):
 
 def search_records(records, query):
     if query:
-        records = records.filter(Q(customer__name__icontains=query) |
-                                 Q(customer__mobile__icontains=normalize_digits(query)))
+        records = records.filter(digit_contains('customer__name', query) |
+                                 digit_contains('customer__mobile', normalize_digits(query)))
     return records
 
 

@@ -1,0 +1,77 @@
+{% include 'includes/_numeral_font.html' %}
+<script>
+(function () {
+    'use strict';
+    if (window.CRMNumerals) return;
+    function ascii(value) {
+        return String(value == null ? '' : value)
+            .replace(/[۰-۹]/g, c => String(c.charCodeAt(0) - 1776))
+            .replace(/[٠-٩]/g, c => String(c.charCodeAt(0) - 1632));
+    }
+    function persian(value) {
+        return ascii(value).replace(/[0-9]/g, c => '۰۱۲۳۴۵۶۷۸۹'[Number(c)]);
+    }
+    function numeric(value) {
+        value = ascii(value);
+        if (/^[+-]?(?:\d+|\d{1,3}(?:[,٬]\d{3})+)(?:[.٫]\d+)?$/.test(value.trim())) {
+            return value.replace(/[,٬]/g, '').replace(/٫/g, '.');
+        }
+        return value;
+    }
+    const opaque = /password|token|secret|credential|(?:^|[^a-z0-9])(?:key|signature|username|email|url|uri|next|redirect|redirectto|returnto|session|uidb64|csrfmiddlewaretoken)(?:$|[^a-z0-9])/i;
+    function eligible(el) {
+        return el && el.matches && el.matches('input,textarea') &&
+            !el.closest('[data-digits="preserve"],pre,code,samp,kbd') &&
+            !['password','email','url','file','hidden','checkbox','radio','submit','button','reset','color'].includes(el.type) &&
+            !opaque.test(el.name || '');
+    }
+    function normalize(el) {
+        if (!eligible(el)) return;
+        const value = el.type === 'number' ? numeric(el.value) : ascii(el.value);
+        if (value === el.value) return;
+        const start = el.selectionStart, end = el.selectionEnd, direction = el.selectionDirection;
+        el.value = value;
+        if (start !== null && typeof el.setSelectionRange === 'function') el.setSelectionRange(start, end, direction);
+    }
+    // Native number inputs discard Persian text before the input event. Insert
+    // canonical text at the real caret, preserving native min/max/step validation.
+    let inserting = false;
+    function insertCanonical(event, text) {
+        const el = event.target;
+        if (inserting || !eligible(el) || el.readOnly || el.disabled || !text) return;
+        const converted = el.type === 'number' ? numeric(text) : ascii(text);
+        if (converted === text || !document.queryCommandSupported('insertText')) return;
+        event.preventDefault();
+        inserting = true;
+        try { document.execCommand('insertText', false, converted); }
+        finally { inserting = false; }
+    }
+    document.addEventListener('beforeinput', event => {
+        if (event.cancelable && !event.isComposing) insertCanonical(event, event.data);
+    }, true);
+    document.addEventListener('paste', event => {
+        if (event.clipboardData) insertCanonical(event, event.clipboardData.getData('text/plain'));
+    }, true);
+    // Capture runs before Alpine, amount calculations and phone validators.
+    document.addEventListener('input', event => { if (!event.isComposing) normalize(event.target); }, true);
+    document.addEventListener('compositionend', event => normalize(event.target), true);
+    document.addEventListener('change', event => normalize(event.target), true);
+    document.addEventListener('submit', event => event.target.querySelectorAll('input,textarea').forEach(normalize), true);
+    function scan(root) {
+        if (!root || !root.querySelectorAll) return;
+        const inputs = root.matches && root.matches('input,textarea') ? [root] : [];
+        inputs.push(...root.querySelectorAll('input,textarea'));
+        inputs.forEach(el => {
+            if (eligible(el)) normalize(el);
+            else if (['password','email','url'].includes(el.type) || opaque.test(el.name || '')) el.classList.add('crm-preserve-digits');
+        });
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        scan(document);
+        new MutationObserver(changes => changes.forEach(change => change.addedNodes.forEach(scan)))
+            .observe(document.body, {childList:true, subtree:true});
+    });
+    document.addEventListener('htmx:afterSwap', event => scan(event.detail.target));
+    window.CRMNumerals = {ascii, persian, numeric};
+})();
+</script>

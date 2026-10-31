@@ -1,3 +1,4 @@
+from crm.numerals import digit_contains
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -25,10 +26,10 @@ def user_list(request):
     search = request.GET.get('q', '').strip()
     if search:
         users = users.filter(
-            Q(username__icontains=search) |
-            Q(first_name__icontains=search) |
-            Q(last_name__icontains=search) |
-            Q(email__icontains=search) | Q(role_profile__display_name__icontains=search)
+            digit_contains('username', search) |
+            digit_contains('first_name', search) |
+            digit_contains('last_name', search) |
+            digit_contains('email', search) | digit_contains('role_profile__display_name', search)
         )
 
     role_filter = request.GET.get('role', '')

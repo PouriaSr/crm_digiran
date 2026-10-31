@@ -7,6 +7,7 @@
 """
 import re
 from difflib import SequenceMatcher
+from .numerals import ascii_digits
 
 
 # ═══════════════════════════════════════════════════
@@ -24,13 +25,6 @@ _ARABIC_TO_PERSIAN = {
     'ي': 'ی', 'ك': 'ک', 'ة': 'ه', 'ۀ': 'ه',
     'ؤ': 'و', 'إ': 'ا', 'أ': 'ا',
 }
-_FA_TO_EN_DIGITS = {
-    '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4',
-    '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9',
-    '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
-    '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9',
-}
-
 
 def normalize_text(value, lower=True):
     """نرمال‌سازی متن برای مقایسه (ی/ک عربی، ZWNJ، فاصله)"""
@@ -50,9 +44,7 @@ def normalize_phone(value):
     """فقط ارقام — برای موبایل/تلفن"""
     if not value:
         return ''
-    s = str(value)
-    for fa, en in _FA_TO_EN_DIGITS.items():
-        s = s.replace(fa, en)
+    s = ascii_digits(value)
     return re.sub(r'\D', '', s)
 
 
@@ -60,10 +52,7 @@ def normalize_digits(value):
     """تبدیل ارقام فارسی/عربی به انگلیسی"""
     if not value:
         return ''
-    s = str(value)
-    for fa, en in _FA_TO_EN_DIGITS.items():
-        s = s.replace(fa, en)
-    return s.strip()
+    return ascii_digits(value).strip()
 
 
 def normalize_code(value):

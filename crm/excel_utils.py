@@ -7,6 +7,7 @@ from datetime import date, datetime
 import jdatetime
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from .numerals import ascii_digits, normalize_input
 
 
 # ═══════════════════════════════════════════════════
@@ -20,18 +21,11 @@ class ExcelImportError(Exception):
 # ═══════════════════════════════════════════════════
 # نرمال‌سازی
 # ═══════════════════════════════════════════════════
-PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹'
-ARABIC_DIGITS = '٠١٢٣٤٥٦٧٨٩'
-
-
 def normalize_digits(value):
     """تبدیل اعداد فارسی/عربی به انگلیسی"""
     if value is None:
         return ''
-    s = str(value).strip()
-    for i, (p, a) in enumerate(zip(PERSIAN_DIGITS, ARABIC_DIGITS)):
-        s = s.replace(p, str(i)).replace(a, str(i))
-    return s
+    return ascii_digits(value).strip()
 
 
 def parse_int(value, default=None):
@@ -39,7 +33,7 @@ def parse_int(value, default=None):
     if value is None or value == '':
         return default
     try:
-        return int(float(normalize_digits(value).replace(',', '')))
+        return int(float(normalize_input(value)))
     except (ValueError, TypeError):
         return default
 

@@ -1,3 +1,4 @@
+from crm.numerals import digit_contains
 import json
 import jdatetime
 from datetime import timedelta
@@ -49,8 +50,8 @@ def _apply_audit_filters(qs, request):
     search = request.GET.get('q', '').strip()
     if search:
         qs = qs.filter(
-            Q(object_repr__icontains=search) |
-            Q(description__icontains=search)
+            digit_contains('object_repr', search) |
+            digit_contains('description', search)
         )
 
     from_date_str = request.GET.get('from_date', '').strip()

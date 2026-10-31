@@ -1,3 +1,4 @@
+from crm.numerals import digit_contains
 import io
 import json
 import jdatetime
@@ -457,16 +458,16 @@ def global_search(request):
 
     if query and len(query) >= 2:
         results['customers'] = list(_filtered_customers(owner).filter(
-            Q(name__icontains=query) | Q(mobile__icontains=query) |
-            Q(email__icontains=query) | Q(national_id__icontains=query)
+            digit_contains('name', query) | digit_contains('mobile', query) |
+            digit_contains('email', query) | digit_contains('national_id', query)
         )[:10])
         results['calls'] = list(_filtered_calls(owner).filter(
-            Q(caller_name__icontains=query) | Q(call_number__icontains=query) |
-            Q(notes__icontains=query)
+            digit_contains('caller_name', query) | digit_contains('call_number', query) |
+            digit_contains('notes', query)
         )[:10])
         results['products'] = list(Product.objects.filter(
-            Q(name__icontains=query) | Q(code__icontains=query) |
-            Q(description__icontains=query)
+            digit_contains('name', query) | digit_contains('code', query) |
+            digit_contains('description', query)
         )[:10])
         results['total'] = (len(results['customers']) + len(results['calls'])
                             + len(results['products']))

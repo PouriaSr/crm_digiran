@@ -1,3 +1,4 @@
+from crm.numerals import digit_contains
 from accounts.permissions import require_roles, ROLE_ADMIN, ROLE_SALES_MANAGER
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
@@ -24,9 +25,9 @@ def call_list(request):
     search = request.GET.get('q', '').strip()
     if search:
         calls = calls.filter(
-            Q(caller_name__icontains=search) |
-            Q(call_number__icontains=search) |
-            Q(notes__icontains=search)
+            digit_contains('caller_name', search) |
+            digit_contains('call_number', search) |
+            digit_contains('notes', search)
         )
 
     # ═══ فیلتر وضعیت ═══

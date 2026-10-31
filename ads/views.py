@@ -1,3 +1,4 @@
+from crm.numerals import digit_contains
 import json
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -86,12 +87,12 @@ def ad_list(request):
     q = request.GET.get('q', '').strip()
     if q:
         qs = qs.filter(
-            Q(ad_number__icontains=q)
-            | Q(platform__name__icontains=q)
-            | Q(process__name__icontains=q)
-            | Q(source__phone_number__icontains=q)
-            | Q(product__name__icontains=q)
-            | Q(note__icontains=q)
+            digit_contains('ad_number', q)
+            | digit_contains('platform__name', q)
+            | digit_contains('process__name', q)
+            | digit_contains('source__phone_number', q)
+            | digit_contains('product__name', q)
+            | digit_contains('note', q)
         )
 
     platform_id = request.GET.get('platform')

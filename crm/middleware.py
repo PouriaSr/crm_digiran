@@ -6,6 +6,8 @@ import html
 import threading
 from html.parser import HTMLParser
 
+from .numerals import PERSIAN_DIGITS, normalize_input, preserve_field
+
 
 _thread_locals = threading.local()
 
@@ -43,7 +45,25 @@ class CurrentUserMiddleware:
 # ═══════════════════════════════════════════════════════════
 # تبدیل خودکار اعداد انگلیسی به فارسی در کل سیستم
 # ═══════════════════════════════════════════════════════════
-PERSIAN_DIGITS = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
+class NormalizeNumeralInputsMiddleware:
+    """Normalize HTTP form/search values before validators, views and model lookups.
+
+    Keys, files, JSON bodies, credentials and signed values remain untouched.
+    QueryDict lists are retained (formsets and multi-selects depend on them).
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        for attribute in ('GET', 'POST'):
+            original = getattr(request, attribute)
+            normalized = original.copy()
+            for key, values in original.lists():
+                if not preserve_field(key):
+                    normalized.setlist(key, [normalize_input(value) for value in values])
+            setattr(request, attribute, normalized)
+        return self.get_response(request)
 
 # تگ‌هایی که محتوایشان JavaScript/CSS خام است — هرگز تغییر نمی‌کنند
 _RAW_CONTENT_TAGS = ('script', 'style')
@@ -154,6 +174,8 @@ class PersianDigitsMiddleware:
 
         # به‌روزرسانی محتوای محافظت‌شده‌ی پاسخ
         response.content = parser.get_html().encode('utf-8')
+        if response.has_header('Content-Length'):
+            response['Content-Length'] = str(len(response.content))
         return response
 
 

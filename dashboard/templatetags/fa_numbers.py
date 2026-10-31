@@ -1,22 +1,19 @@
 from django import template
 from decimal import Decimal
 import jdatetime
+from crm.numerals import persian_digits, normalize_input
 
 register = template.Library()
 
-# ═══ نقشه اعداد فارسی ═══
-EN_TO_FA = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
-
-
 def _to_persian_digits(value):
     """تبدیل اعداد انگلیسی به فارسی"""
-    return str(value).translate(EN_TO_FA)
+    return persian_digits(value)
 
 
 def _add_commas(value):
     """افزودن جداکننده هزارگان (۳ رقم ۳ رقم)"""
     try:
-        s = str(value)
+        s = normalize_input(value)
         if '.' in s:
             int_part, dec_part = s.split('.')
         else:

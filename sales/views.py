@@ -1,3 +1,4 @@
+from crm.numerals import digit_contains
 import json
 import jdatetime
 from django.shortcuts import render, get_object_or_404, redirect
@@ -108,9 +109,9 @@ def _apply_invoice_filters(qs, request):
     search = request.GET.get('q', '').strip()
     if search:
         qs = qs.filter(
-            Q(number__icontains=search) |
-            Q(customer__name__icontains=search) |
-            Q(customer__mobile__icontains=search)
+            digit_contains('number', search) |
+            digit_contains('customer__name', search) |
+            digit_contains('customer__mobile', search)
         )
 
     status = request.GET.get('status', '').strip()
