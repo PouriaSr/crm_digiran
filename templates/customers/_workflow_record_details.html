@@ -1,56 +1,50 @@
 {% load fa_numbers %}
-<div class="wf-details">
-    <div class="wf-detail-grid">
-        <section class="wf-detail-card">
-            <h4 class="wf-detail-title">اطلاعات فرد و تماس‌های قبلی</h4>
-            <dl>
-                <dt>نام و نام خانوادگی</dt><dd>{{ rec.customer.name }}</dd>
-                <dt>شماره تماس</dt><dd dir="ltr">{{ rec.customer.mobile }}</dd>
-                <dt>منبع جذب</dt><dd>{{ rec.customer.get_source_display }}</dd>
-                {% if rec.customer.ad_source %}<dt>منبع آگهی</dt><dd>{{ rec.customer.ad_source }}</dd>{% endif %}
-                <dt>برچسب</dt><dd>{{ rec.customer.get_stage_display }}</dd>
-                <dt>کارشناس مسئول</dt><dd>{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% else %}تعیین نشده{% endif %}</dd>
-                <dt>ثبت اولیه</dt><dd>{{ rec.customer.created_at|jdate:'Y/m/d H:i' }}</dd>
+<section class="wf-details wf-expanded" aria-label="جزئیات {{ rec.customer.name }}">
+    <header class="wf-expanded-header">
+        <div><p class="wf-eyebrow">جزئیات مراجعه‌کننده</p><h3>{{ rec.customer.name }}</h3><span class="wf-contact-line"><bdi dir="ltr">{{ rec.customer.mobile }}</bdi><span>·</span>{{ rec.get_person_type_display|default:'مراجعه‌کننده' }}</span></div>
+        <span class="wf-badge {% if rec.registration_completed_at %}wf-badge-done{% elif rec.is_waiting %}wf-badge-wait{% else %}wf-badge-neutral{% endif %}">{% if rec.registration_completed_at %}اطلاعات ثبت شده{% elif rec.case_completed_at %}پرونده ثبت شده{% elif rec.referred_at %}ارجاع انجام شده{% else %}در انتظار ارجاع{% endif %}</span>
+    </header>
+    <div class="wf-info-grid">
+        <section class="wf-info-section">
+            <header class="wf-section-heading"><h4>مشخصات و ارتباط</h4><span>اطلاعات پایه</span></header>
+            <dl class="wf-fields">
+                <div><dt>نام و نام خانوادگی</dt><dd>{{ rec.customer.name }}</dd></div>
+                <div><dt>شماره تماس</dt><dd><bdi dir="ltr">{{ rec.customer.mobile }}</bdi></dd></div>
+                <div><dt>منبع جذب</dt><dd>{{ rec.customer.get_source_display }}</dd></div>
+                {% if rec.customer.ad_source %}<div><dt>منبع آگهی</dt><dd>{{ rec.customer.ad_source }}</dd></div>{% endif %}
+                <div><dt>تحلیل مشتری</dt><dd><span class="wf-badge {% if rec.customer.stage == 'potential' %}wf-badge-wait{% else %}wf-badge-neutral{% endif %}">{{ rec.customer.get_stage_display }}</span></dd></div>
+                <div><dt>کارشناس مسئول</dt><dd>{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% else %}<span class="wf-unset">تعیین نشده</span>{% endif %}</dd></div>
+                <div><dt>ثبت اولیه</dt><dd><bdi dir="ltr">{{ rec.customer.created_at|jdate:'Y/m/d · H:i' }}</bdi></dd></div>
             </dl>
-            {% if rec.customer.notes %}<p class="wf-detail-note">{{ rec.customer.notes }}</p>{% endif %}
-            {% if 'calls.view' in user_permissions %}{% for call in rec.customer.latest_contact %}
-            <div class="wf-detail-note"><h5 class="wf-detail-title">آخرین تماس و شرایط درخواستی</h5><dl>
-                <dt>زمان تماس</dt><dd>{{ call.call_date|jdate:'Y/m/d H:i' }}</dd>
-                <dt>نوع تماس</dt><dd>{{ call.get_contact_type_display }}</dd>
-                <dt>هدف تماس</dt><dd>{{ call.get_purpose_display }}</dd>
-                <dt>وضعیت تماس</dt><dd>{{ call.get_status_display }}</dd>
-                {% if call.requested_condition %}<dt>شرایط درخواستی</dt><dd>{{ call.get_requested_condition_display }}</dd>{% endif %}
-                {% if call.called_by %}<dt>ثبت‌کننده تماس</dt><dd>{{ call.called_by.get_full_name|default:call.called_by.username }}</dd>{% endif %}
-            </dl>{% if call.notes %}<p class="mt-3">{{ call.notes }}</p>{% endif %}</div>
-            {% endfor %}{% endif %}
+            {% if rec.customer.notes %}<div class="wf-note-box"><h5>یادداشت ثبت‌شده مشتری</h5><p>{{ rec.customer.notes }}</p></div>{% endif %}
         </section>
-        <section class="wf-detail-card">
-            <h4 class="wf-detail-title">ورود، انتظار و ارجاع</h4>
-            <dl>
-                <dt>نوع مراجعه</dt><dd>{{ rec.get_person_type_display|default:'—' }}</dd>
-                <dt>لحظه ورود</dt><dd>{{ rec.wait_started_at|jdate:'Y/m/d H:i:s'|default:'—' }}</dd>
-                <dt>ثبت‌کننده ورود</dt><dd>{% if rec.created_by %}{{ rec.created_by.get_full_name|default:rec.created_by.username }}{% else %}—{% endif %}</dd>
-                <dt>زمان ارجاع</dt><dd>{{ rec.referred_at|jdate:'Y/m/d H:i:s'|default:'هنوز ارجاع نشده' }}</dd>
-                <dt>ارجاع به</dt><dd>{% if rec.referred_to %}{{ rec.referred_to.get_full_name|default:rec.referred_to.username }}{% else %}—{% endif %}</dd>
-                <dt>ارجاع‌دهنده</dt><dd>{% if rec.referred_by %}{{ rec.referred_by.get_full_name|default:rec.referred_by.username }}{% else %}—{% endif %}</dd>
-                {% if rec.wait_ended_at %}<dt>پایان انتظار</dt><dd>{{ rec.wait_ended_at|jdate:'Y/m/d H:i:s' }}</dd><dt>مجموع انتظار</dt><dd dir="ltr">{{ rec.wait_display }}</dd>{% endif %}
-                {% if rec.case_completed_at %}<dt>ثبت پرونده</dt><dd>{{ rec.case_completed_at|jdate:'Y/m/d H:i' }}</dd>{% endif %}
-                {% if rec.registration_completed_at %}<dt>ثبت اطلاعات</dt><dd>{{ rec.registration_completed_at|jdate:'Y/m/d H:i' }}</dd>{% endif %}
-            </dl>
+        <section class="wf-info-section">
+            <header class="wf-section-heading"><h4>روند مراجعه</h4><span>ورود، انتظار و ارجاع</span></header>
+            <ol class="wf-journey" role="list">
+                <li class="is-complete"><div class="wf-journey-heading"><h5>{% if rec.wait_started_at %}ورود مراجعه‌کننده{% else %}ثبت سابقه{% endif %}</h5><time><bdi dir="ltr">{{ rec.wait_started_at|default:rec.created_at|jdate:'Y/m/d · H:i:s' }}</bdi></time></div><p>ثبت‌کننده: {% if rec.created_by %}{{ rec.created_by.get_full_name|default:rec.created_by.username }}{% else %}ثبت نشده{% endif %}</p></li>
+                <li class="{% if rec.referred_at %}is-complete{% else %}is-current{% endif %}"><div class="wf-journey-heading"><h5>ارجاع به کارشناس</h5>{% if rec.referred_at %}<time><bdi dir="ltr">{{ rec.referred_at|jdate:'Y/m/d · H:i:s' }}</bdi></time>{% else %}<span class="wf-badge wf-badge-wait">هنوز ارجاع نشده</span>{% endif %}</div>{% if rec.referred_to %}<p>ارجاع به: <strong>{{ rec.referred_to.get_full_name|default:rec.referred_to.username }}</strong></p>{% endif %}{% if rec.referred_by %}<p>توسط {{ rec.referred_by.get_full_name|default:rec.referred_by.username }}</p>{% endif %}{% if rec.wait_ended_at %}<p>پایان انتظار: <bdi dir="ltr">{{ rec.wait_ended_at|jdate:'H:i:s' }}</bdi><span class="wf-duration">مجموع انتظار <bdi dir="ltr">{{ rec.wait_display }}</bdi></span></p>{% endif %}</li>
+                {% if rec.person_type == 'customer' %}
+                <li class="{% if rec.case_completed_at %}is-complete{% elif rec.referred_at %}is-current{% endif %}"><div class="wf-journey-heading"><h5>ثبت پرونده</h5>{% if rec.case_completed_at %}<time><bdi dir="ltr">{{ rec.case_completed_at|jdate:'Y/m/d · H:i' }}</bdi></time>{% else %}<span class="wf-unset">تکمیل نشده</span>{% endif %}</div>{% if rec.case_completed_by %}<p>{{ rec.case_completed_by.get_full_name|default:rec.case_completed_by.username }}</p>{% endif %}</li>
+                <li class="{% if rec.registration_completed_at %}is-complete{% elif rec.case_completed_at %}is-current{% endif %}"><div class="wf-journey-heading"><h5>ثبت اطلاعات تکمیلی</h5>{% if rec.registration_completed_at %}<time><bdi dir="ltr">{{ rec.registration_completed_at|jdate:'Y/m/d · H:i' }}</bdi></time>{% else %}<span class="wf-unset">تکمیل نشده</span>{% endif %}</div>{% if rec.registration_completed_by %}<p>{{ rec.registration_completed_by.get_full_name|default:rec.registration_completed_by.username }}</p>{% endif %}</li>
+                {% endif %}
+            </ol>
         </section>
+        {% if 'calls.view' in user_permissions %}{% for call in rec.customer.latest_contact %}
+        <section class="wf-info-section">
+            <header class="wf-section-heading"><h4>آخرین تماس و شرایط درخواستی</h4><time><bdi dir="ltr">{{ call.call_date|jdate:'Y/m/d · H:i' }}</bdi></time></header>
+            <dl class="wf-fields"><div><dt>نوع تماس</dt><dd>{{ call.get_contact_type_display }}</dd></div><div><dt>هدف تماس</dt><dd>{{ call.get_purpose_display }}</dd></div><div><dt>وضعیت تماس</dt><dd><span class="wf-badge {% if call.status == 'answered' %}wf-badge-done{% else %}wf-badge-wait{% endif %}">{{ call.get_status_display }}</span></dd></div>{% if call.requested_condition %}<div><dt>شرایط درخواستی</dt><dd>{{ call.get_requested_condition_display }}</dd></div>{% endif %}{% if call.called_by %}<div><dt>کارشناس تماس</dt><dd>{{ call.called_by.get_full_name|default:call.called_by.username }}</dd></div>{% endif %}</dl>
+            <div class="wf-note-box"><h5>شرح مکالمه</h5><p>{{ call.notes|default:'شرحی ثبت نشده است.' }}</p></div>
+        </section>
+        {% endfor %}{% endif %}
+        {% if rec.customer.case %}{% if 'customers.case' in user_permissions %}
+        <section class="wf-info-section"><header class="wf-section-heading"><h4>پرونده و شرایط خرید</h4><span>اطلاعات ثبت‌شده پرونده</span></header>{% include 'customers/_workflow_case_summary.html' with case=rec.customer.case %}</section>
+        {% endif %}{% endif %}
         {% if 'customers.profile_full' in user_permissions %}
-        <section class="wf-detail-card">
-            <h4 class="wf-detail-title">مشخصات تکمیلی</h4>
-            <dl><dt>کد ملی</dt><dd>{{ rec.customer.national_id|default:'—' }}</dd>
-                <dt>تاریخ تولد</dt><dd>{{ rec.customer.birth_date|jdate:'Y/m/d'|default:'—' }}</dd>
-                <dt>ایمیل</dt><dd>{{ rec.customer.email|default:'—' }}</dd>
-                <dt>آدرس</dt><dd>{{ rec.customer.address|default:'—' }}</dd>
-            </dl>
+        <section class="wf-info-section">
+            <header class="wf-section-heading"><h4>مشخصات تکمیلی</h4><span>هویتی و نشانی</span></header>
+            <dl class="wf-fields"><div><dt>کد ملی</dt><dd>{% if rec.customer.national_id %}<bdi dir="ltr">{{ rec.customer.national_id }}</bdi>{% else %}<span class="wf-unset">ثبت نشده</span>{% endif %}</dd></div><div><dt>تاریخ تولد</dt><dd>{% if rec.customer.birth_date %}<bdi dir="ltr">{{ rec.customer.birth_date|jdate:'Y/m/d' }}</bdi>{% else %}<span class="wf-unset">ثبت نشده</span>{% endif %}</dd></div><div><dt>ایمیل</dt><dd>{% if rec.customer.email %}<bdi dir="ltr">{{ rec.customer.email }}</bdi>{% else %}<span class="wf-unset">ثبت نشده</span>{% endif %}</dd></div><div class="wf-field-long"><dt>آدرس</dt><dd>{{ rec.customer.address|default:'ثبت نشده' }}</dd></div></dl>
         </section>
         {% endif %}
-        {% if rec.customer.case %}{% if 'customers.case' in user_permissions %}
-        <section class="wf-detail-card"><h4 class="wf-detail-title">اطلاعات ثبت‌شده پرونده</h4><div class="space-y-3">{% include 'customers/_workflow_case_summary.html' with case=rec.customer.case %}</div></section>
-        {% endif %}{% endif %}
     </div>
-    <div class="mt-3">{% include 'customers/_workflow_updates.html' %}</div>
-</div>
+    {% include 'customers/_workflow_updates.html' %}
+</section>

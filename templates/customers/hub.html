@@ -190,9 +190,10 @@
                                 {% else %}<span class="px-3 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700">{{ inv.get_status_display }}</span>{% endif %}
                             </td>
                             <td class="p-4 text-center">
-                                <a href="{% url 'sales:detail' inv.pk %}" class="text-blue-600 hover:text-blue-800 text-xs px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 font-medium">جزئیات</a>
+                                <button type="button" class="wf-action" aria-expanded="false" aria-controls="invoice-preview-{{ inv.pk }}" onclick="toggleInvoicePreview(this)">جزئیات فاکتور</button>
                             </td>
                         </tr>
+                        <tr id="invoice-preview-{{ inv.pk }}" hidden><td colspan="5" class="p-0">{% include 'customers/_invoice_hub_details.html' %}</td></tr>
                         {% empty %}
                         <tr><td colspan="5" class="p-12 text-center text-gray-400">هیچ فاکتوری یافت نشد.</td></tr>
                         {% endfor %}
@@ -296,6 +297,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const active = document.querySelector('#hub-tabs [aria-current="page"]');
     if (active) active.scrollIntoView({block: 'nearest', inline: 'center'});
 });
+function toggleInvoicePreview(button) {
+    const row = document.getElementById(button.getAttribute('aria-controls'));
+    if (!row) return;
+    row.hidden = !row.hidden;
+    button.setAttribute('aria-expanded', String(!row.hidden));
+}
 function openCustomerModal(url) {
     // باز کردن مودال مشتری (جدید یا ویرایش) با آدرس دلخواه
     var old = document.getElementById('new-customer-modal-backdrop');

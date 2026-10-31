@@ -13,6 +13,8 @@
 
 {% block mobile_title %}{{ customer.name }}{% endblock %}
 
+{% block extra_head %}{{ block.super }}{% include 'customers/_workflow_styles.html' %}{% endblock %}
+
 {% block content %}
 {% can_edit_card customer as card_editable %}
 

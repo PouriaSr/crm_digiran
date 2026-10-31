@@ -1,7 +1,11 @@
-<div><span class="text-gray-400">شرایط: </span>{{ case.get_condition_display|default:'—' }}</div>
-<div><span class="text-gray-400">شغل: </span>{{ case.get_job_display|default:'—' }}</div>
-<div><span class="text-gray-400">رتبه اعتباری: </span>{{ case.credit_rank|default:'—' }}</div>
-<div><span class="text-gray-400">وام‌ها: </span>{{ case.loans_display|default:'—' }}</div>
-<div><span class="text-gray-400">کالا: </span>{{ case.product|default:'—' }}{% if case.product %} × {{ case.quantity }}{% endif %}</div>
-<div><span class="text-gray-400">نتیجه مراجعه: </span>{{ case.get_visit_result_display|default:'—' }}</div>
-{% if case.condition == 'cheque' %}<div><span class="text-gray-400">چک برای: </span>{{ case.get_cheque_owner_display|default:'—' }}</div>{% if case.cheque_owner == 'other' %}<div><span class="text-gray-400">صاحب چک: </span>{{ case.cheque_other_name }}</div><div><span class="text-gray-400">شماره صاحب چک: </span>{{ case.cheque_other_phone }}</div>{% endif %}{% endif %}
+{% load fa_numbers %}
+<dl class="wf-fields">
+    <div><dt>شرایط خرید</dt><dd>{{ case.get_condition_display|default:'تعیین نشده' }}</dd></div>
+    <div><dt>شغل</dt><dd>{{ case.get_job_display|default:'ثبت نشده' }}</dd></div>
+    <div><dt>رتبه اعتباری</dt><dd>{% if case.credit_rank %}<bdi class="wf-credit-rank" dir="ltr">{{ case.credit_rank }}</bdi>{% else %}<span class="wf-unset">ثبت نشده</span>{% endif %}</dd></div>
+    <div><dt>وام‌های فعال</dt><dd>{{ case.loans_display|default:'ثبت نشده' }}</dd></div>
+    <div><dt>کالا</dt><dd>{{ case.product|default:'انتخاب نشده' }}</dd></div>
+    {% if case.product %}<div><dt>تعداد</dt><dd>{{ case.quantity|fa_num }} عدد</dd></div>{% endif %}
+    <div><dt>نتیجه مراجعه</dt><dd>{{ case.get_visit_result_display|default:'ثبت نشده' }}</dd></div>
+    {% if case.condition == 'cheque' %}<div><dt>چک برای</dt><dd>{{ case.get_cheque_owner_display|default:'تعیین نشده' }}</dd></div>{% if case.cheque_owner == 'other' %}<div><dt>نام صاحب چک</dt><dd>{{ case.cheque_other_name|default:'ثبت نشده' }}</dd></div><div><dt>شماره صاحب چک</dt><dd><bdi dir="ltr">{{ case.cheque_other_phone|default:'ثبت نشده' }}</bdi></dd></div>{% endif %}{% endif %}
+</dl>

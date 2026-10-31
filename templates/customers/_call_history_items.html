@@ -1,8 +1,8 @@
 {% if 'calls.view' in user_permissions %}
 {% load fa_numbers card_access %}
-<div class="space-y-3 border-r-2 border-blue-100 pr-3">
+<div class="wf-call-history">
 {% for call in history_calls %}{% can_edit_call call as history_call_editable %}
-<article class="bg-white rounded-xl border border-slate-200 p-4 text-right shadow-sm"
+<article class="wf-call-card"
  data-call-id="{{ call.pk }}"
  data-call-type="{{ call.contact_type }}"
  data-call-type-label="{{ call.get_contact_type_display }}"
@@ -14,21 +14,13 @@
  data-call-fu-date="{% if call.follow_up_date %}{{ call.follow_up_date|jdate:'Y/m/d' }}{% endif %}"
  data-call-fu-time="{{ call.follow_up_time|time:'H:i' }}"
  data-call-fu-done="{% if call.is_followed_up %}1{% else %}0{% endif %}">
- <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
-  <div class="flex items-center gap-2"><span class="font-bold rounded-lg px-2 py-1 bg-blue-50 text-blue-700">{{ call.get_contact_type_display }}</span><span class="text-slate-500" dir="ltr" title="تاریخ و ساعت ثبت">{{ call.call_date|jdate:"Y/m/d H:i:s" }}</span></div>
-  {% if history_call_editable %}<button type="button" onclick="openCallEdit(this)" title="ویرایش این تماس" aria-label="ویرایش تماس" class="rounded-lg px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-100">ویرایش تماس</button>{% endif %}
- </div>
- <div class="flex flex-wrap gap-2 text-xs mt-3 text-slate-600">
-  <span title="هدف تماس" class="rounded-md bg-violet-50 px-2 py-1">هدف: {{ call.get_purpose_display }}</span>
-  <span title="وضعیت تماس" class="rounded-md px-2 py-1 {% if call.status == 'answered' %}bg-emerald-50 text-emerald-700{% elif call.status == 'busy' %}bg-amber-50 text-amber-700{% else %}bg-slate-100{% endif %}">وضعیت: {{ call.get_status_display }}</span>
-  {% if call.is_followed_up %}<span class="rounded-md bg-emerald-50 text-emerald-700 px-2 py-1">پیگیری انجام شد</span>{% endif %}
- </div>
- <div class="mt-3 text-xs text-slate-400">شرح مکالمه</div>
- <p class="mt-1 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">{{ call.notes|default:"شرحی ثبت نشده است." }}</p>
- <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap justify-between gap-2 text-xs text-slate-500">
-  <span>ثبت‌کننده: {% if call.called_by %}{{ call.called_by.get_full_name|default:call.called_by.username }}{% else %}—{% endif %}</span>
-  {% if call.follow_up_date %}<span title="تاریخ پیگیری" class="rounded-md bg-amber-50 text-amber-800 px-2 py-1">پیگیری: <span dir="ltr">{{ call.follow_up_date|jdate:"Y/m/d" }} {% if call.follow_up_time %}{{ call.follow_up_time|time:"H:i" }}{% else %}· بدون ساعت{% endif %}</span></span>{% endif %}
- </div>
+ <header class="wf-call-heading">
+  <div><span class="wf-badge wf-badge-neutral">{{ call.get_contact_type_display }}</span><time title="تاریخ و ساعت ثبت"><bdi dir="ltr">{{ call.call_date|jdate:"Y/m/d · H:i:s" }}</bdi></time></div>
+  {% if history_call_editable %}<button type="button" onclick="openCallEdit(this)" title="ویرایش این تماس" aria-label="ویرایش تماس" class="wf-action">ویرایش تماس</button>{% endif %}
+ </header>
+ <dl class="wf-call-facts"><div title="هدف تماس"><dt>هدف:</dt><dd>{{ call.get_purpose_display }}</dd></div><div title="وضعیت تماس"><dt>وضعیت:</dt><dd><span class="wf-badge {% if call.status == 'answered' %}wf-badge-done{% elif call.status == 'busy' %}wf-badge-wait bg-amber-50 text-amber-700{% else %}wf-badge-neutral{% endif %}">{{ call.get_status_display }}</span></dd></div>{% if call.requested_condition %}<div><dt>شرایط درخواستی</dt><dd>{{ call.get_requested_condition_display }}</dd></div>{% endif %}{% if call.is_followed_up %}<div><dt>نتیجه پیگیری</dt><dd class="text-emerald-700">پیگیری انجام شد</dd></div>{% endif %}</dl>
+ <div class="wf-note-box"><h5>شرح مکالمه</h5><p>{{ call.notes|default:"شرحی ثبت نشده است." }}</p></div>
+ <footer class="wf-call-footer"><span>ثبت‌کننده: <strong>{% if call.called_by %}{{ call.called_by.get_full_name|default:call.called_by.username }}{% else %}ثبت نشده{% endif %}</strong></span>{% if call.follow_up_date %}<span title="تاریخ پیگیری">پیگیری: <bdi dir="ltr">{{ call.follow_up_date|jdate:"Y/m/d" }} {% if call.follow_up_time %}{{ call.follow_up_time|time:"H:i" }}{% else %}· بدون ساعت{% endif %}</bdi></span>{% endif %}</footer>
 </article>
 {% empty %}<p class="text-sm text-slate-400 py-4">هنوز تماسی برای این مشتری ثبت نشده است.</p>{% endfor %}
 </div>
