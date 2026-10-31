@@ -1,0 +1,23 @@
+{% load fa_numbers %}
+<div x-show="tab === 'hiring'" style="display:none" class="space-y-5">
+    <section class="wf-panel">
+        <header class="wf-panel-head"><div><h2 class="wf-title">استخدام <span class="wf-tab-count">{{ hiring_records.paginator.count|fa_num }}</span></h2><p class="wf-subtitle">مصاحبه‌کننده‌های ثبت‌شده در پذیرش؛ اطلاعات موجود هر فرد در جزئیات همان ردیف قابل مشاهده است.</p></div>{% include 'customers/_workflow_search.html' with search_tab='hiring' search_label='استخدام' %}</header>
+        <div id="hiring-list" class="wf-list" data-workflow-clock data-clock-url="{% url 'customers:hiring_clock' %}" data-server-now="{% now 'c' %}">
+            <div class="wf-list-head" aria-hidden="true"><span>نام مصاحبه‌کننده</span><span>شماره تماس</span><span>وضعیت مراجعه</span><span>زمان ورود</span><span>مدت انتظار</span><span>کارشناس مسئول</span><span>اطلاعات فرد</span></div>
+            {% for rec in hiring_records %}
+            <details class="wf-record" data-reception-id="{{ rec.pk }}">
+                <summary class="wf-summary">
+                    {% include 'customers/_workflow_row_name.html' %}
+                    <span class="wf-state"><span class="wf-badge wf-badge-hiring">{% if rec.workflow_version == 1 %}سابقه قبلی{% elif rec.referred_at %}ارجاع استخدام{% else %}در انتظار{% endif %}</span></span>
+                    <time class="wf-time" data-label="ورود:" title="{{ rec.wait_started_at|default:rec.created_at|jdate:'Y/m/d H:i:s' }}">{{ rec.wait_started_at|default:rec.created_at|jdate:'Y/m/d H:i' }}</time>
+                    <span class="wf-metric">{% if rec.workflow_version == 2 %}<time class="wf-timer text-violet-700" dir="ltr" {% if rec.is_waiting %}data-wait-start="{{ rec.wait_started_at|date:'c' }}"{% endif %}>{{ rec.wait_display }}</time>{% elif rec.wait_minutes_total != None %}<span class="text-xs">{{ rec.wait_minutes_total|fa_num }} دقیقه</span>{% else %}—{% endif %}</span>
+                    <span class="wf-owner" title="{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% endif %}">{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% else %}تعیین نشده{% endif %}</span>
+                    <span class="wf-actions">{% include 'customers/_workflow_row_toggle.html' %}</span>
+                </summary>
+                {% include 'customers/_workflow_record_details.html' with full_profile=True %}
+            </details>
+            {% empty %}<p class="wf-empty">{% if workflow_query %}مصاحبه‌کننده‌ای با این نام یا شماره پیدا نشد.{% else %}هنوز مصاحبه‌کننده‌ای در پذیرش ثبت نشده است.{% endif %}</p>{% endfor %}
+        </div>
+        {% include 'customers/_workflow_pagination.html' with page=hiring_records page_key='hiring_page' page_tab='hiring' %}
+    </section>
+</div>

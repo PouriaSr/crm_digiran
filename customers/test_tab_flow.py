@@ -17,7 +17,7 @@ class TabOrderAndCaseLockTest(TestCase):
 
     def test_tab_order(self):
         items = self.client.get(self.hub).context['hub_tab_items']
-        self.assertEqual([item['key'] for item in items], ['info', 'reception', 'case', 'registration', 'invoice'])
+        self.assertEqual([item['key'] for item in items], ['info', 'reception', 'case', 'registration', 'hiring', 'invoice'])
 
     def test_registration_locked_before_case(self):
         response = self.client.get(self.hub)

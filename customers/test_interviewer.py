@@ -1,4 +1,4 @@
-"""Interview visitors share the same staged workflow as customers."""
+"""Interview visitors are routed to hiring while retaining their admission records."""
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
@@ -30,12 +30,13 @@ class InterviewerFlowTest(TestCase):
         ids = [row.pk for row in self.client.get(self.hub).context['customers']]
         self.assertIn(self.cand.pk, ids); self.assertIn(self.other.pk, ids)
 
-    def test_case_selector_requires_referral_for_interviewers(self):
+    def test_interviewers_do_not_enter_customer_case_selector(self):
         rec = self.arrive()
         response = self.client.get(self.hub, {'tab': 'case'})
         self.assertFalse(response.context['case_choices'].exists())
         self.client.post(self.action, {'action': 'refer', 'reception': rec.pk, 'user': self.user.pk})
-        self.assertIn(rec, self.client.get(self.hub, {'tab': 'case'}).context['case_choices'])
+        self.assertNotIn(rec, self.client.get(self.hub, {'tab': 'case'}).context['case_choices'])
+        self.assertIn(rec, self.client.get(self.hub, {'tab': 'hiring'}).context['hiring_records'])
 
     def test_reception_has_same_question_and_clock_for_both_types(self):
         self.arrive()
@@ -44,11 +45,11 @@ class InterviewerFlowTest(TestCase):
         self.assertContains(response, 'data-wait-start=')
         self.assertNotContains(response, 'name="has_visit"')
 
-    def test_old_recruitment_url_opens_registration(self):
+    def test_old_recruitment_url_opens_hiring(self):
         self.arrive()
         response = self.client.get(self.hub, {'tab': 'recruitment'})
-        self.assertEqual(response.context['active_tab'], 'registration')
-        self.assertContains(response, 'این مرحله پس از ثبت اولین پرونده')
+        self.assertEqual(response.context['active_tab'], 'hiring')
+        self.assertContains(response, self.cand.name)
 
     def test_interviewers_are_not_ready_for_registration_just_on_arrival(self):
         self.arrive()

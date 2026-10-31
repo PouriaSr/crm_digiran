@@ -159,9 +159,10 @@ def customer_hub(request):
     if not tabs:
         raise PermissionDenied('دسترسی به تب‌های مرکز مشتریان ندارید.')
     tab = request.GET.get('tab') or tabs[0]
-    tab = {'call': 'info', 'followup': 'info', 'visit': 'info', 'recruitment': 'registration'}.get(tab, tab)
+    tab = {'call': 'info', 'followup': 'info', 'visit': 'info', 'recruitment': 'hiring'}.get(tab, tab)
     if tab not in tabs:
         raise PermissionDenied('دسترسی این تب برای شما فعال نیست.')
+    request._hub_tab = tab
     search = request.GET.get('q', '').strip()
     
     from django.db.models import Prefetch

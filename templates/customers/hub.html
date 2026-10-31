@@ -5,6 +5,8 @@
 {% endblock %}
 {% block mobile_title %}مرکز مشتریان{% endblock %}
 
+{% block extra_head %}{{ block.super }}{% include 'customers/_workflow_styles.html' %}{% endblock %}
+
 {% block content %}
 <div x-data="{ 
         tab: '{{ active_tab|escapejs }}',
@@ -62,9 +64,9 @@
             window.dispatchEvent(new CustomEvent('open-call-modal'));
         },
     }"
-     class="w-full max-w-7xl mx-auto pb-10 overflow-x-hidden">
+     class="workflow-hub w-full max-w-7xl mx-auto pb-10 overflow-x-hidden">
     
-    {% if "info" in allowed_hub_tabs %}
+    {% if active_tab == "info" and "info" in allowed_hub_tabs %}
     <!-- Premium KPI Cards -->
     <div x-show="tab === 'info'" class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
 
@@ -93,18 +95,22 @@
     </div>
 
     {% endif %}
-    <nav id="hub-tabs" aria-label="مراحل مرکز مشتریان" class="bg-gray-100/80 p-2 rounded-2xl border border-gray-200 mb-6 flex overflow-x-auto gap-2">
-        {% for item in hub_tab_items %}
-        {% if item.key == 'registration' and not registration_unlocked %}
-        <button disabled title="پس از ثبت یک پرونده، این مرحله فعال می‌شود" class="shrink-0 px-5 py-3 rounded-xl text-sm font-bold text-gray-400 cursor-not-allowed">🔒 ثبت اطلاعات</button>
-        {% else %}
-        <a href="{% url 'customers:hub' %}?tab={{ item.key }}" data-hub-tab="{{ item.key }}" {% if active_tab == item.key %}aria-current="page"{% endif %}
-           class="shrink-0 px-5 py-3 rounded-xl text-sm font-bold transition {% if active_tab == item.key %}bg-white text-blue-700 shadow-sm{% else %}text-gray-500 hover:bg-white{% endif %}">{{ item.icon }} {{ item.label }}</a>
-        {% endif %}
-        {% endfor %}
-    </nav>
+    <div class="wf-tabs-shell">
+        <nav id="hub-tabs" aria-label="مراحل مرکز مشتریان" class="wf-tabs">
+            {% for item in hub_tab_items %}
+            {% if item.key == 'registration' and not registration_unlocked %}
+            <button disabled title="پس از ثبت یک پرونده، این مرحله فعال می‌شود" class="wf-tab">🔒 ثبت اطلاعات</button>
+            {% else %}
+            <a href="{% url 'customers:hub' %}?tab={{ item.key }}" data-hub-tab="{{ item.key }}" {% if active_tab == item.key %}aria-current="page"{% endif %} class="wf-tab">
+                {% include 'customers/_workflow_tab_icon.html' with tab_key=item.key %}
+                <span>{{ item.label }}</span>{% if item.count != None %}<span class="wf-tab-count">{{ item.count|fa_num }}</span>{% endif %}
+            </a>
+            {% endif %}
+            {% endfor %}
+        </nav>
+    </div>
 
-    {% if "info" in allowed_hub_tabs %}
+    {% if active_tab == "info" and "info" in allowed_hub_tabs %}
     <!-- TAB 1: INFO -->
     <div x-show="tab === 'info'" x-transition.opacity class="space-y-4">
         <div class="flex flex-col md:flex-row justify-between items-center gap-3">
@@ -145,7 +151,7 @@
 
     <!-- TAB 5: INVOICE -->
     {% endif %}
-    {% if "invoice" in allowed_hub_tabs %}
+    {% if active_tab == "invoice" and "invoice" in allowed_hub_tabs %}
     <div x-show="tab === 'invoice'" x-transition.opacity style="display: none;">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 md:mb-6">
             <div>
@@ -193,9 +199,11 @@
     </div>
 
     {% endif %}
-    {% if "reception" in allowed_hub_tabs %}{% include "customers/_reception_tab.html" %}{% endif %}
-    {% if "case" in allowed_hub_tabs %}{% include "customers/_case_tab.html" %}{% endif %}
-    {% if "registration" in allowed_hub_tabs %}{% include "customers/_registration_tab.html" %}{% endif %}
+    {% if active_tab == "reception" and "reception" in allowed_hub_tabs %}{% include "customers/_reception_tab.html" %}{% endif %}
+    {% if active_tab == "case" and "case" in allowed_hub_tabs %}{% include "customers/_case_tab.html" %}{% endif %}
+    {% if active_tab == "registration" and "registration" in allowed_hub_tabs %}{% include "customers/_registration_tab.html" %}{% endif %}
+    {% if active_tab == "hiring" and "hiring" in allowed_hub_tabs %}{% include "customers/_hiring_tab.html" %}{% endif %}
+    {% include 'customers/_workflow_clocks.html' %}
     {% include "customers/_call_modal.html" %}
 {% include "customers/_quick_call_modal.html" %}
 {% include "customers/_call_edit_modal.html" %}

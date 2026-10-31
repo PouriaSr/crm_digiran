@@ -1,0 +1,56 @@
+{% load fa_numbers %}
+<div class="wf-details">
+    <div class="wf-detail-grid">
+        <section class="wf-detail-card">
+            <h4 class="wf-detail-title">اطلاعات فرد و تماس‌های قبلی</h4>
+            <dl>
+                <dt>نام و نام خانوادگی</dt><dd>{{ rec.customer.name }}</dd>
+                <dt>شماره تماس</dt><dd dir="ltr">{{ rec.customer.mobile }}</dd>
+                <dt>منبع جذب</dt><dd>{{ rec.customer.get_source_display }}</dd>
+                {% if rec.customer.ad_source %}<dt>منبع آگهی</dt><dd>{{ rec.customer.ad_source }}</dd>{% endif %}
+                <dt>برچسب</dt><dd>{{ rec.customer.get_stage_display }}</dd>
+                <dt>کارشناس مسئول</dt><dd>{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% else %}تعیین نشده{% endif %}</dd>
+                <dt>ثبت اولیه</dt><dd>{{ rec.customer.created_at|jdate:'Y/m/d H:i' }}</dd>
+            </dl>
+            {% if rec.customer.notes %}<p class="wf-detail-note">{{ rec.customer.notes }}</p>{% endif %}
+            {% for call in rec.customer.latest_contact %}
+            <div class="wf-detail-note"><h5 class="wf-detail-title">آخرین تماس و شرایط درخواستی</h5><dl>
+                <dt>زمان تماس</dt><dd>{{ call.call_date|jdate:'Y/m/d H:i' }}</dd>
+                <dt>نوع تماس</dt><dd>{{ call.get_contact_type_display }}</dd>
+                <dt>هدف تماس</dt><dd>{{ call.get_purpose_display }}</dd>
+                <dt>وضعیت تماس</dt><dd>{{ call.get_status_display }}</dd>
+                {% if call.requested_condition %}<dt>شرایط درخواستی</dt><dd>{{ call.get_requested_condition_display }}</dd>{% endif %}
+                {% if call.called_by %}<dt>ثبت‌کننده تماس</dt><dd>{{ call.called_by.get_full_name|default:call.called_by.username }}</dd>{% endif %}
+            </dl>{% if call.notes %}<p class="mt-3">{{ call.notes }}</p>{% endif %}</div>
+            {% endfor %}
+        </section>
+        <section class="wf-detail-card">
+            <h4 class="wf-detail-title">ورود، انتظار و ارجاع</h4>
+            <dl>
+                <dt>نوع مراجعه</dt><dd>{{ rec.get_person_type_display|default:'—' }}</dd>
+                <dt>لحظه ورود</dt><dd>{{ rec.wait_started_at|jdate:'Y/m/d H:i:s'|default:'—' }}</dd>
+                <dt>ثبت‌کننده ورود</dt><dd>{% if rec.created_by %}{{ rec.created_by.get_full_name|default:rec.created_by.username }}{% else %}—{% endif %}</dd>
+                <dt>زمان ارجاع</dt><dd>{{ rec.referred_at|jdate:'Y/m/d H:i:s'|default:'هنوز ارجاع نشده' }}</dd>
+                <dt>ارجاع به</dt><dd>{% if rec.referred_to %}{{ rec.referred_to.get_full_name|default:rec.referred_to.username }}{% else %}—{% endif %}</dd>
+                <dt>ارجاع‌دهنده</dt><dd>{% if rec.referred_by %}{{ rec.referred_by.get_full_name|default:rec.referred_by.username }}{% else %}—{% endif %}</dd>
+                {% if rec.wait_ended_at %}<dt>پایان انتظار</dt><dd>{{ rec.wait_ended_at|jdate:'Y/m/d H:i:s' }}</dd><dt>مجموع انتظار</dt><dd dir="ltr">{{ rec.wait_display }}</dd>{% endif %}
+                {% if rec.case_completed_at %}<dt>ثبت پرونده</dt><dd>{{ rec.case_completed_at|jdate:'Y/m/d H:i' }}</dd>{% endif %}
+                {% if rec.registration_completed_at %}<dt>ثبت اطلاعات</dt><dd>{{ rec.registration_completed_at|jdate:'Y/m/d H:i' }}</dd>{% endif %}
+            </dl>
+        </section>
+        {% if full_profile or 'customers.profile_full' in user_permissions %}
+        <section class="wf-detail-card">
+            <h4 class="wf-detail-title">مشخصات تکمیلی</h4>
+            <dl><dt>کد ملی</dt><dd>{{ rec.customer.national_id|default:'—' }}</dd>
+                <dt>تاریخ تولد</dt><dd>{{ rec.customer.birth_date|jdate:'Y/m/d'|default:'—' }}</dd>
+                <dt>ایمیل</dt><dd>{{ rec.customer.email|default:'—' }}</dd>
+                <dt>آدرس</dt><dd>{{ rec.customer.address|default:'—' }}</dd>
+            </dl>
+        </section>
+        {% endif %}
+        {% if rec.customer.case %}{% if full_profile or 'customers.case' in user_permissions %}
+        <section class="wf-detail-card"><h4 class="wf-detail-title">اطلاعات ثبت‌شده پرونده</h4><div class="space-y-3">{% include 'customers/_workflow_case_summary.html' with case=rec.customer.case %}</div></section>
+        {% endif %}{% endif %}
+    </div>
+    <div class="mt-3">{% include 'customers/_workflow_updates.html' %}</div>
+</div>

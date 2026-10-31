@@ -1,87 +1,34 @@
 {% load fa_numbers %}
 <div x-show="tab === 'reception'" class="space-y-5" style="display:none">
-    <div class="rounded-2xl bg-emerald-50 border border-emerald-100 p-5">
-        <h2 class="font-bold text-emerald-900">پذیرش مراجعه‌کننده</h2>
-        <p class="text-sm text-emerald-700 mt-2">فرد را انتخاب و ورودش را ثبت کنید. زمان ورود و انتظار به‌صورت خودکار ثبت می‌شوند.</p>
-    </div>
-    <form method="post" action="{% url 'customers:reception_action' %}" class="bg-white rounded-2xl border border-gray-100 p-5 space-y-5 shadow-sm">
-        {% csrf_token %}<input type="hidden" name="action" value="arrive">
-        <div>
-            <label for="arrival-customer" class="block text-sm font-bold text-gray-700 mb-2">مراجعه‌کننده</label>
-            <select id="arrival-customer" name="customer" required autocomplete="off" class="w-full rounded-xl border border-gray-200 p-3 text-sm bg-gray-50">
-                <option value="">انتخاب نام و شماره تماس...</option>
-                {% for person in reception_customers %}<option value="{{ person.pk }}">{{ person.name }} — {{ person.mobile }}</option>{% endfor %}
-            </select>
-        </div>
-        <fieldset><legend class="text-sm font-bold text-gray-700 mb-3">مراجعه‌کننده، مشتری است یا مصاحبه‌کننده؟</legend>
-            <div class="grid grid-cols-2 gap-3">
-                <label class="cursor-pointer flex items-center gap-3 p-4 rounded-xl border border-gray-200 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50"><input type="radio" name="person_type" value="customer" required class="accent-emerald-600">مشتری</label>
-                <label class="cursor-pointer flex items-center gap-3 p-4 rounded-xl border border-gray-200 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50"><input type="radio" name="person_type" value="interviewer" required class="accent-emerald-600">مصاحبه‌کننده</label>
-            </div>
-        </fieldset>
-        <button class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl px-8 py-3">ثبت ورود و شروع انتظار</button>
-    </form>
-    <section class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-        <div class="p-5 border-b border-gray-100"><h3 class="font-bold text-gray-800">مراجعه‌کنندگان و وضعیت انتظار</h3><p class="mt-2 text-xs text-gray-500">با ارجاع، تایمر متوقف می‌شود و کاربر انتخاب‌شده مسئول کارت و تکمیل پرونده خواهد بود.</p></div>
-        <div id="admission-queue" data-clock-url="{% url 'customers:reception_clock' %}" data-server-now="{% now 'c' %}" class="divide-y divide-gray-100">
+    <section class="wf-panel">
+        <header class="wf-panel-head"><div><h2 class="wf-title">پذیرش مراجعه‌کننده</h2><p class="wf-subtitle">ورود را ثبت کنید؛ زمان سیستم، مبنای شمارش انتظار است.</p></div><span class="wf-badge wf-badge-neutral">مشتری ← پرونده · مصاحبه‌کننده ← استخدام</span></header>
+        <form method="post" action="{% url 'customers:reception_action' %}" class="wf-panel-body wf-arrival-fields">
+            {% csrf_token %}<input type="hidden" name="action" value="arrive">
+            <div><label for="arrival-customer" class="wf-label">مراجعه‌کننده</label><select id="arrival-customer" name="customer" required autocomplete="off" data-placeholder="جستجوی نام یا شماره مراجعه‌کننده" class="w-full rounded-xl border border-gray-200 p-2.5 text-sm"><option value="">انتخاب کنید...</option>{% for person in reception_customers %}<option value="{{ person.pk }}">{{ person.name }} — {{ person.mobile }}</option>{% endfor %}</select></div>
+            <fieldset><legend class="wf-label">مراجعه‌کننده، مشتری است یا مصاحبه‌کننده؟</legend><div class="grid grid-cols-2 gap-2"><label class="wf-choice"><input type="radio" name="person_type" value="customer" required>مشتری</label><label class="wf-choice"><input type="radio" name="person_type" value="interviewer" required>مصاحبه‌کننده</label></div></fieldset>
+            <button class="wf-action wf-primary" style="padding:12px 20px">ثبت ورود و شروع انتظار</button>
+        </form>
+    </section>
+    <section class="wf-panel">
+        <header class="wf-panel-head"><div><h3 class="wf-title">مراجعه‌کنندگان و وضعیت انتظار <span class="wf-tab-count">{{ reception_records.paginator.count|fa_num }}</span></h3><p class="wf-subtitle">هر ردیف یک مراجعه است؛ برای اطلاعات بیشتر، ردیف یا «جزئیات» را باز کنید.</p></div>{% include 'customers/_workflow_search.html' with search_tab='reception' search_label='پذیرش' %}</header>
+        <div id="admission-queue" class="wf-list" data-workflow-clock data-clock-url="{% url 'customers:reception_clock' %}" data-server-now="{% now 'c' %}">
+            <div class="wf-list-head" aria-hidden="true"><span>نام مراجعه‌کننده</span><span>شماره تماس</span><span>مسیر / وضعیت</span><span>زمان ورود</span><span>مدت انتظار</span><span>کارشناس مسئول</span><span>عملیات</span></div>
             {% for rec in reception_records %}
-            <article class="p-4 sm:p-5 space-y-4" data-reception-id="{{ rec.pk }}">
-                <div class="flex flex-wrap items-start justify-between gap-4">
-                    <div>{% include 'customers/_workflow_person.html' with person=rec.customer %}<span class="inline-block mt-2 text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-1 rounded-lg">{{ rec.get_person_type_display }}</span></div>
-                    <div class="text-sm text-gray-600 space-y-1"><div>ورود: <time>{{ rec.wait_started_at|jdate:'Y/m/d H:i:s' }}</time></div><div>ثبت‌کننده: {% if rec.created_by %}{{ rec.created_by.get_full_name|default:rec.created_by.username }}{% else %}—{% endif %}</div></div>
-                    <div class="text-center rounded-xl px-5 py-3 {% if rec.is_waiting %}bg-amber-50 text-amber-800{% else %}bg-gray-50 text-gray-600{% endif %}">
-                        <div class="text-xs mb-1">{% if rec.is_waiting %}مدت انتظار{% else %}انتظار پایان‌یافته{% endif %}</div>
-                        <time class="text-xl font-bold font-mono" dir="ltr" {% if rec.is_waiting %}data-wait-start="{{ rec.wait_started_at|date:'c' }}"{% endif %}>{{ rec.wait_display }}</time>
-                    </div>
-                </div>
-                {% if rec.is_waiting %}
-                <form method="post" action="{% url 'customers:reception_action' %}" class="rounded-xl bg-gray-50 p-3 flex flex-wrap gap-3 items-end">
-                    {% csrf_token %}<input type="hidden" name="action" value="refer"><input type="hidden" name="reception" value="{{ rec.pk }}">
-                    <div class="flex-1 min-w-[180px]"><label for="refer-{{ rec.pk }}" class="block text-xs font-bold text-gray-600 mb-2">ارجاع به کاربر</label>
-                    <select id="refer-{{ rec.pk }}" name="user" required class="w-full rounded-lg p-2.5 text-sm border border-gray-200 bg-white"><option value="">انتخاب کاربر مسئول...</option>{% for operator in referral_users %}<option value="{{ operator.pk }}">{{ operator.get_full_name|default:operator.username }}</option>{% endfor %}</select></div>
-                    <button class="px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700">ارجاع به کاربر</button>
-                </form>
-                {% else %}<div class="rounded-xl bg-blue-50 p-3 text-xs text-blue-800">ارجاع به {% if rec.referred_to %}{{ rec.referred_to.get_full_name|default:rec.referred_to.username }}{% else %}کاربر حذف‌شده{% endif %} در {{ rec.referred_at|jdate:'Y/m/d H:i:s' }}{% if rec.registration_completed_at %} · ثبت اطلاعات تکمیل شده{% elif rec.case_completed_at %} · پرونده ثبت شده{% else %} · در انتظار تکمیل پرونده{% endif %}</div>{% endif %}
-                {% include 'customers/_workflow_updates.html' %}
-            </article>
-            {% empty %}<p class="p-10 text-center text-sm text-gray-400">هنوز مراجعه‌ای در این جریان ثبت نشده است.</p>{% endfor %}
+            <details class="wf-record" data-reception-id="{{ rec.pk }}">
+                <summary class="wf-summary">
+                    {% include 'customers/_workflow_row_name.html' %}
+                    <span class="wf-state"><span class="wf-badge {% if rec.person_type == 'interviewer' %}wf-badge-hiring{% elif rec.is_waiting %}wf-badge-wait{% else %}wf-badge-done{% endif %}">{% if rec.person_type == 'interviewer' %}استخدام{% else %}مشتری{% endif %} · {% if rec.is_waiting %}منتظر{% else %}ارجاع شد{% endif %}</span></span>
+                    <time class="wf-time" data-label="ورود:" title="{{ rec.wait_started_at|jdate:'Y/m/d H:i:s' }}">{{ rec.wait_started_at|jdate:'Y/m/d H:i' }}</time>
+                    <span class="wf-metric"><time class="wf-timer {% if rec.is_waiting %}text-amber-700{% else %}text-gray-500{% endif %}" dir="ltr" {% if rec.is_waiting %}data-wait-start="{{ rec.wait_started_at|date:'c' }}"{% endif %}>{{ rec.wait_display }}</time></span>
+                    <span class="wf-owner" title="{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% endif %}">{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% else %}تعیین نشده{% endif %}</span>
+                    <span class="wf-actions">{% if rec.is_waiting %}<button type="button" class="wf-action" data-reception="{{ rec.pk }}" data-name="{{ rec.customer.name }}" data-person-type="{{ rec.person_type }}" onclick="event.preventDefault(); event.stopPropagation(); openReceptionReferral(this)">ارجاع به کاربر</button>{% endif %}{% include 'customers/_workflow_row_toggle.html' %}</span>
+                </summary>
+                {% include 'customers/_workflow_record_details.html' %}
+            </details>
+            {% empty %}<p class="wf-empty">{% if workflow_query %}فردی با این نام یا شماره پیدا نشد.{% else %}هنوز مراجعه‌ای ثبت نشده است.{% endif %}</p>{% endfor %}
         </div>
         {% include 'customers/_workflow_pagination.html' with page=reception_records page_key='reception_page' page_tab='reception' %}
     </section>
-    {% if legacy_receptions %}<details class="rounded-2xl border border-gray-200 bg-white p-5"><summary class="cursor-pointer text-sm font-bold text-gray-600">بایگانی پذیرش‌های نسخه قبل</summary><div class="mt-4 space-y-3">{% for rec in legacy_receptions %}<div class="text-sm border-t border-gray-100 pt-3">{{ rec.customer.name }} · {{ rec.get_person_type_display|default:'—' }} · {{ rec.created_at|jdate:'Y/m/d H:i' }}{% if rec.wait_minutes_total != None %} · انتظار {{ rec.wait_minutes_total|fa_num }} دقیقه{% endif %}</div>{% endfor %}</div></details>{% endif %}
+    {% if legacy_receptions %}<details class="wf-panel"><summary class="p-4 cursor-pointer text-xs font-bold text-gray-500">بایگانی پذیرش‌های نسخه قبل</summary><div class="px-4 pb-4 divide-y divide-gray-100">{% for rec in legacy_receptions %}<div class="flex flex-wrap gap-x-5 gap-y-2 py-3 text-xs text-gray-500"><strong class="text-gray-700">{{ rec.customer.name }}</strong><span>{{ rec.get_person_type_display|default:'—' }}</span><span>{{ rec.created_at|jdate:'Y/m/d H:i' }}</span>{% if rec.wait_minutes_total != None %}<span>انتظار {{ rec.wait_minutes_total|fa_num }} دقیقه</span>{% endif %}</div>{% endfor %}</div></details>{% endif %}
 </div>
-<script>
-(function () {
-    const queue = document.getElementById('admission-queue');
-    if (!queue) return;
-    let base = Date.parse(queue.dataset.serverNow), anchor = performance.now();
-    const pad = n => String(n).padStart(2, '0');
-    function tick() {
-        const now = base + performance.now() - anchor;
-        queue.querySelectorAll('[data-wait-start]').forEach(el => {
-            const seconds = Math.max(0, Math.floor((now - Date.parse(el.dataset.waitStart)) / 1000));
-            el.textContent = pad(Math.floor(seconds / 3600)) + ':' + pad(Math.floor(seconds / 60) % 60) + ':' + pad(seconds % 60);
-        });
-    }
-    tick(); setInterval(tick, 1000);
-    setInterval(async () => {
-        if (document.hidden || !queue.querySelector('[data-wait-start]')) return;
-        try {
-            const response = await fetch(queue.dataset.clockUrl, {headers: {'Accept': 'application/json'}});
-            if (!response.ok) return;
-            const data = await response.json();
-            base = Date.parse(data.server_now); anchor = performance.now();
-            const waiting = new Set(data.waiting.map(row => String(row.pk)));
-            // Another user may have referred this visit. Fetch the final timing/state.
-            if (Array.from(queue.querySelectorAll('[data-wait-start]')).some(el => !waiting.has(el.closest('[data-reception-id]').dataset.receptionId))) {
-                const page = await fetch(window.location.href);
-                if (!page.ok) return;
-                const dom = new DOMParser().parseFromString(await page.text(), 'text/html');
-                const updated = dom.getElementById('admission-queue');
-                if (updated) queue.innerHTML = updated.innerHTML;
-            }
-            tick();
-        } catch (_) { /* A temporary network failure does not reset the clock. */ }
-    }, 15000);
-})();
-</script>
+{% include 'customers/_reception_referral_dialog.html' %}

@@ -23,7 +23,7 @@ class RegistrationTabPermissionTest(TestCase):
 
     def test_manager_has_all_hub_tabs(self):
         self.client.force_login(self.manager)
-        self.assertEqual(set(self.client.get(self.hub).context['allowed_hub_tabs']), {'info', 'reception', 'case', 'registration', 'invoice'})
+        self.assertEqual(set(self.client.get(self.hub).context['allowed_hub_tabs']), {'info', 'reception', 'case', 'registration', 'hiring', 'invoice'})
 
     def test_support_does_not_see_registration(self):
         self.client.force_login(self.support)

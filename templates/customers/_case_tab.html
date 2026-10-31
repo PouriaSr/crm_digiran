@@ -1,12 +1,13 @@
 {% load fa_numbers %}
-{# ═══ تب پرونده مشتری ═══ #}
-<div x-show="tab === 'case'" x-transition.opacity style="display: none;">
-
-    <div class="rounded-2xl bg-indigo-50 border border-indigo-100 p-5 mb-5"><h2 class="font-bold text-indigo-900">تکمیل پرونده مراجعه‌کنندگان ارجاع‌شده</h2><p class="mt-2 text-sm text-indigo-700">اطلاعات قبلی حفظ شده‌اند؛ فیلدهای باقی‌مانده را تکمیل و «ثبت اطلاعات» را بزنید تا مرحله بعد فعال شود.</p></div>
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
-        <form method="get"><input type="hidden" name="tab" value="case"><label for="case-person" class="block text-sm font-bold text-gray-700 mb-2">انتخاب مراجعه‌کننده ارجاع‌شده</label><select id="case-person" name="r" onchange="this.form.submit()" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm"><option value="">انتخاب کنید...</option>{% for rec in case_choices %}<option value="{{ rec.pk }}" {% if case_record.pk == rec.pk %}selected{% endif %}>{{ rec.customer.name }} — {{ rec.customer.mobile }} · {{ rec.get_person_type_display }} · {{ rec.wait_started_at|jdate:'Y/m/d H:i' }}</option>{% endfor %}</select></form>
-    </div>
+<div x-show="tab === 'case'" x-transition.opacity style="display:none" class="space-y-5">
+    <section class="wf-panel">
+        <header class="wf-panel-head"><div><h2 class="wf-title">پرونده مشتریان ارجاع‌شده</h2><p class="wf-subtitle">مشتری را انتخاب و فیلدهای باقی‌مانده را تکمیل کنید؛ مشخصات قبلی حفظ شده‌اند.</p></div></header>
+        <div class="wf-picker"><label for="case-person" class="wf-label">انتخاب مشتری برای تکمیل پرونده</label><form method="get"><input type="hidden" name="tab" value="case"><select id="case-person" name="r" onchange="this.form.submit()" data-placeholder="جستجوی مشتری ارجاع‌شده" class="w-full rounded-xl border border-gray-200 p-2.5 text-sm"><option value="">انتخاب کنید...</option>{% for rec in case_choices %}<option value="{{ rec.pk }}" {% if case_record.pk == rec.pk %}selected{% endif %}>{{ rec.customer.name }} — {{ rec.customer.mobile }}</option>{% endfor %}</select></form></div>
+    </section>
     {% if case_record and case_form %}
+    <details id="case-editor" class="wf-editor" {% if not case_record.case_completed_at or case_form.errors or request.GET.edit_case %}open{% endif %}>
+        <summary>{% if case_record.case_completed_at %}ویرایش پرونده{% else %}تکمیل پرونده{% endif %} — {{ case_customer.name }} <span class="font-normal text-xs text-gray-400 mr-2">برای باز و بسته کردن فرم کلیک کنید</span></summary>
+        <div class="wf-editor-content">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -132,12 +133,28 @@
         </div>
     </div>
 
-    {% else %}
-    <div class="bg-white rounded-2xl border border-gray-100 p-10 text-center text-gray-400 text-sm">
-        برای تکمیل پرونده، فرد ارجاع‌شده را از بالا انتخاب کنید.
-    </div>
+        </div>
+    </details>
     {% endif %}
-
-    <section class="mt-5 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"><h3 class="p-5 font-bold text-gray-800 border-b border-gray-100">فهرست پرونده‌ها و اطلاعات این مرحله</h3><div class="divide-y divide-gray-100">{% for rec in case_records %}<article class="p-5 space-y-4"><div class="flex flex-wrap justify-between gap-3"><div>{% include 'customers/_workflow_person.html' with person=rec.customer %}</div><div class="space-y-2 text-xs"><span class="inline-block px-3 py-1.5 rounded-lg {% if rec.case_completed_at %}bg-emerald-50 text-emerald-700{% else %}bg-amber-50 text-amber-700{% endif %}">{% if rec.case_completed_at %}پرونده ثبت شده{% else %}در انتظار تکمیل پرونده{% endif %}</span><div>{{ rec.get_person_type_display }} · ارجاع: {{ rec.referred_at|jdate:'Y/m/d H:i' }}</div><a class="block text-indigo-600 font-bold" href="?tab=case&r={{ rec.pk }}">انتخاب و تکمیل پرونده</a></div></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">{% include 'customers/_workflow_case_summary.html' with case=rec.customer.case %}</div>{% include 'customers/_workflow_updates.html' %}</article>{% empty %}<p class="p-10 text-center text-sm text-gray-400">هنوز فردی به پرونده‌های قابل دسترس شما ارجاع نشده است.</p>{% endfor %}</div>{% include 'customers/_workflow_pagination.html' with page=case_records page_key='case_page' page_tab='case' %}</section>
-    {% if legacy_cases %}<details class="mt-5 rounded-2xl bg-white border border-gray-200 p-5"><summary class="text-sm font-bold text-gray-600 cursor-pointer">بایگانی پرونده‌های نسخه قبل</summary>{% for case in legacy_cases %}<div class="mt-4 border-t border-gray-100 pt-3"><div class="font-bold text-gray-700 mb-3">{{ case.customer.name }} · {{ case.customer.mobile }}</div><div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">{% include 'customers/_workflow_case_summary.html' %}</div></div>{% endfor %}</details>{% endif %}
+    <section class="wf-panel">
+        <header class="wf-panel-head"><div><h3 class="wf-title">فهرست پرونده‌ها و اطلاعات این مرحله <span class="wf-tab-count">{{ case_records.paginator.count|fa_num }}</span></h3><p class="wf-subtitle">جزئیات هر پرونده به‌صورت کشویی در همان ردیف نمایش داده می‌شود.</p></div>{% include 'customers/_workflow_search.html' with search_tab='case' search_label='پرونده‌ها' %}</header>
+        <div class="wf-list">
+            <div class="wf-list-head" aria-hidden="true"><span>نام مشتری</span><span>شماره تماس</span><span>وضعیت پرونده</span><span>زمان ارجاع</span><span>شرایط</span><span>کارشناس مسئول</span><span>عملیات</span></div>
+            {% for rec in case_records %}
+            <details class="wf-record" data-reception-id="{{ rec.pk }}">
+                <summary class="wf-summary">
+                    {% include 'customers/_workflow_row_name.html' %}
+                    <span class="wf-state"><span class="wf-badge {% if rec.case_completed_at %}wf-badge-done{% else %}wf-badge-wait{% endif %}">{% if rec.case_completed_at %}پرونده ثبت شده{% else %}در انتظار تکمیل{% endif %}</span></span>
+                    <time class="wf-time" data-label="ارجاع:" title="{{ rec.referred_at|jdate:'Y/m/d H:i:s' }}">{{ rec.referred_at|jdate:'Y/m/d H:i' }}</time>
+                    <span class="wf-metric text-xs">{{ rec.customer.case.get_condition_display|default:'تعیین نشده' }}</span>
+                    <span class="wf-owner" title="{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% endif %}">{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% else %}تعیین نشده{% endif %}</span>
+                    <span class="wf-actions"><a class="wf-action" href="?tab=case&r={{ rec.pk }}&edit_case=1#case-editor" onclick="event.stopPropagation()">{% if rec.case_completed_at %}ویرایش پرونده{% else %}تکمیل پرونده{% endif %}</a>{% include 'customers/_workflow_row_toggle.html' %}</span>
+                </summary>
+                {% include 'customers/_workflow_record_details.html' %}
+            </details>
+            {% empty %}<p class="wf-empty">{% if workflow_query %}مشتری با این نام یا شماره پیدا نشد.{% else %}هنوز مشتری‌ای به پرونده‌های قابل دسترس شما ارجاع نشده است.{% endif %}</p>{% endfor %}
+        </div>
+        {% include 'customers/_workflow_pagination.html' with page=case_records page_key='case_page' page_tab='case' %}
+    </section>
+    {% if legacy_cases %}<details class="wf-panel"><summary class="p-4 text-xs font-bold text-gray-500 cursor-pointer">بایگانی پرونده‌های نسخه قبل</summary><div class="px-4 pb-4">{% for case in legacy_cases %}<details class="border-t border-gray-100"><summary class="py-3 cursor-pointer text-sm text-gray-600">{{ case.customer.name }} · {{ case.customer.mobile }}</summary><div class="wf-detail-grid pb-4"><div class="wf-detail-card space-y-3">{% include 'customers/_workflow_case_summary.html' %}</div></div></details>{% endfor %}</div></details>{% endif %}
 </div>

@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Prefetch
+from django.db.models import Prefetch, OuterRef, Subquery, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -17,10 +17,12 @@ from .access import can_edit_card, is_card_manager
 from .forms import CustomerCaseForm, CustomerForm
 from .models import Customer, CustomerCase, Reception, RecordUpdate
 from calls.models import Call
+from crm.duplicate_check import normalize_digits
 
 TAB_PERMISSIONS = {
     'info': 'customers.info', 'reception': 'customers.reception',
     'case': 'customers.case', 'registration': 'customers.registration',
+    'hiring': 'customers.hiring',
     'invoice': 'customers.invoices',
 }
 
@@ -60,10 +62,38 @@ def attach_updates(request, page, scope):
     page.object_list = records
 
 
-def referral_users():
+def hiring_records(user):
+    """One row per interview visitor, including the preserved earlier versions."""
+    latest = Reception.objects.filter(
+        customer_id=OuterRef('customer_id'), person_type='interviewer',
+    ).order_by('-created_at', '-pk').values('pk')[:1]
+    # Hiring also includes archived records; the same owner boundary applies.
+    records = Reception.objects.filter(
+        customer__is_deleted=False, person_type='interviewer', pk=Subquery(latest),
+    ).select_related('customer', 'customer__assigned_to', 'customer__ad_source',
+                     'customer__case', 'customer__case__product', 'created_by',
+                     'referred_to', 'referred_by', 'case_completed_by', 'registration_completed_by')
+    records = records.prefetch_related(Prefetch(
+        'customer__calls', queryset=Call.objects.select_related('called_by').order_by('-call_date', '-pk')[:1],
+        to_attr='latest_contact',
+    ))
+    if not is_card_manager(user):
+        records = records.filter(customer__assigned_to=user)
+    return records.order_by('-created_at', '-pk')
+
+
+def referral_users(person_type='customer'):
     # Honor effective per-user overrides, including explicit denials.
     users = User.objects.filter(is_active=True).prefetch_related('groups', 'permission_overrides').order_by('first_name', 'username')
-    return [user for user in users if has_permission(user, 'customers.case')]
+    permission = 'customers.hiring' if person_type == 'interviewer' else 'customers.case'
+    return [user for user in users if has_permission(user, permission)]
+
+
+def search_records(records, query):
+    if query:
+        records = records.filter(Q(customer__name__icontains=query) |
+                                 Q(customer__mobile__icontains=normalize_digits(query)))
+    return records
 
 
 def selected_record(request, records):
@@ -90,22 +120,26 @@ def case_initial(customer, case):
 def build_workflow_context(request):
     tabs = allowed_tabs(request.user)
     labels = {'info': ('👥', 'اطلاعات'), 'reception': ('🤝', 'پذیرش'), 'case': ('📁', 'پرونده'),
-              'registration': ('📝', 'ثبت اطلاعات'), 'invoice': ('📄', 'فاکتورها')}
-    context = {'allowed_hub_tabs': tabs, 'registration_unlocked': False,
+              'registration': ('📝', 'ثبت اطلاعات'), 'hiring': ('🧑‍💼', 'استخدام'), 'invoice': ('📄', 'فاکتورها')}
+    query = request.GET.get('workflow_q', '').strip()[:200]
+    active = getattr(request, '_hub_tab', request.GET.get('tab', 'info'))
+    def paginated(records, tab, page_key):
+        return Paginator(search_records(records, query if active == tab else ''), 30).get_page(request.GET.get(page_key))
+    context = {'allowed_hub_tabs': tabs, 'registration_unlocked': False, 'workflow_query': query,
                'hub_tab_items': [{'key': tab, 'icon': labels[tab][0], 'label': labels[tab][1]} for tab in tabs]}
     visible = editable_records(request.user)
     if 'registration' in tabs:
-        ready = visible.filter(case_completed_at__isnull=False).order_by('-case_completed_at', '-pk')
-        context.update(registration_unlocked=ready.exists(), registration_choices=ready, registration_records=Paginator(ready, 30).get_page(request.GET.get('registration_page')),
+        ready = visible.filter(person_type='customer', case_completed_at__isnull=False).order_by('-case_completed_at', '-pk')
+        context.update(registration_unlocked=ready.exists(), registration_choices=ready, registration_records=paginated(ready, 'registration', 'registration_page'),
                        registration_record=selected_record(request, ready))
     if 'reception' in tabs:
         records = workflow_records().order_by('-wait_started_at', '-pk')
         context.update(reception_customers=Customer.objects.order_by('name'),
-                       reception_records=Paginator(records, 30).get_page(request.GET.get('reception_page')), referral_users=referral_users(),
+                       reception_records=paginated(records, 'reception', 'reception_page'), referral_users=referral_users() if active == 'reception' else [], hiring_referral_users=referral_users('interviewer') if active == 'reception' else [],
                        legacy_receptions=Reception.objects.filter(workflow_version=1, customer__is_deleted=False)
                        .select_related('customer', 'created_by').order_by('-created_at')[:100])
     if 'case' in tabs:
-        records = visible.filter(referred_at__isnull=False).order_by('-referred_at', '-pk')
+        records = visible.filter(person_type='customer', referred_at__isnull=False).order_by('-referred_at', '-pk')
         rec = selected_record(request, records)
         case = getattr(rec.customer, 'case', None) if rec else None
         form = None
@@ -117,12 +151,18 @@ def build_workflow_context(request):
         legacy_cases = CustomerCase.objects.filter(customer__is_deleted=False, customer__receptions__workflow_version=1)
         if not is_card_manager(request.user):
             legacy_cases = legacy_cases.filter(customer__assigned_to=request.user)
-        context.update(case_choices=records, case_records=Paginator(records, 30).get_page(request.GET.get('case_page')), case_record=rec,
+        context.update(case_choices=records, case_records=paginated(records, 'case', 'case_page'), case_record=rec,
                        case_customer=rec.customer if rec else None, customer_case=case,
                        case_form=form,
                        legacy_cases=legacy_cases.distinct().select_related('customer', 'product').order_by('-updated_at')[:100])
+    if 'hiring' in tabs:
+        context['hiring_records'] = paginated(hiring_records(request.user), 'hiring', 'hiring_page')
+    for item in context['hub_tab_items']:
+        records = context.get(item['key'] + '_records')
+        if records is not None:
+            item['count'] = records.paginator.count
     for name, scope in (('reception_records', 'reception'), ('case_records', 'case')):
-        if name in context:
+        if name in context and active == name.removesuffix('_records'):
             attach_updates(request, context[name], scope)
     return context
 
@@ -135,6 +175,11 @@ def posted_pk(request, key):
 def back_to(tab, rec=None):
     url = f"{reverse('customers:hub')}?tab={tab}"
     return f'{url}&r={rec.pk}' if rec else url
+
+
+def admission_destination(user, rec):
+    tab = 'hiring' if rec.person_type == 'interviewer' and has_permission(user, 'customers.hiring') else 'reception'
+    return back_to(tab, rec)
 
 
 def record_change(rec, user, changes):
@@ -156,14 +201,14 @@ def reception_action(request):
                                            registration_completed_at__isnull=True).first()
         if current:
             messages.info(request, 'این فرد یک مراجعه در جریان دارد؛ زمان ورود قبلی حفظ شد.')
-            return redirect(back_to('reception', current))
+            return redirect(admission_destination(request.user, current))
         now = timezone.now()
         rec = Reception.objects.create(customer=customer, person_type=person, wait_started_at=now,
                                        is_waiting=True, created_by=request.user)
         customer.is_interviewer = person == 'interviewer'
         customer.save(update_fields=['is_interviewer', 'updated_at'])
         messages.success(request, 'ورود ثبت شد؛ شمارش انتظار از زمان سیستم شروع شد.')
-        return redirect(back_to('reception', rec))
+        return redirect(admission_destination(request.user, rec))
 
     if action != 'refer':
         return HttpResponse('عملیات پذیرش معتبر نیست.', status=400)
@@ -174,8 +219,9 @@ def reception_action(request):
         messages.info(request, 'این مراجعه قبلاً ارجاع شده است؛ زمان و مسئول قبلی حفظ شدند.')
         return redirect(back_to('reception', rec))
     target = get_object_or_404(User.objects, pk=posted_pk(request, 'user'), is_active=True)
-    if not has_permission(target, 'customers.case'):
-        return HttpResponse('کاربر انتخاب‌شده دسترسی تب پرونده ندارد.', status=400)
+    permission = 'customers.hiring' if rec.person_type == 'interviewer' else 'customers.case'
+    if not has_permission(target, permission):
+        return HttpResponse('کاربر انتخاب‌شده دسترسی مرحله بعد این مراجعه را ندارد.', status=400)
     now = timezone.now()
     rec.referred_to, rec.referred_by, rec.referred_at = target, request.user, now
     rec.wait_ended_at, rec.is_waiting = now, False
@@ -185,8 +231,9 @@ def reception_action(request):
     customer.save(update_fields=['assigned_to', 'updated_at'])
     record_change(rec, request.user, [{'label': 'ارجاع پذیرش', 'old': 'در انتظار',
                                      'new': target.get_full_name() or target.username}])
-    messages.success(request, 'ارجاع ثبت و تایمر متوقف شد؛ فرد در تب پرونده کاربر مسئول قرار گرفت.')
-    return redirect(back_to('reception', rec))
+    destination = 'استخدام' if rec.person_type == 'interviewer' else 'پرونده'
+    messages.success(request, f'ارجاع ثبت و تایمر متوقف شد؛ فرد در تب {destination} کاربر مسئول قرار گرفت.')
+    return redirect(admission_destination(request.user, rec))
 
 
 @login_required
@@ -195,6 +242,16 @@ def reception_action(request):
 def reception_clock(request):
     """Only timing/state fields, never customer details; used for multi-user timer sync."""
     rows = workflow_records().filter(is_waiting=True, wait_started_at__isnull=False).values('pk', 'wait_started_at')
+    return JsonResponse({'server_now': timezone.now().isoformat(), 'waiting': list(rows)},
+                        headers={'Cache-Control': 'no-store'})
+
+
+@login_required
+@require_permission('customers.hiring')
+@require_GET
+def hiring_clock(request):
+    rows = hiring_records(request.user).filter(workflow_version=2, is_waiting=True,
+                                              wait_started_at__isnull=False).values('pk', 'wait_started_at')
     return JsonResponse({'server_now': timezone.now().isoformat(), 'waiting': list(rows)},
                         headers={'Cache-Control': 'no-store'})
 
@@ -218,6 +275,8 @@ def case_save(request):
     customer = get_object_or_404(Customer.objects.select_for_update(), pk=rec.customer_id)
     if not can_edit_card(request.user, customer):
         raise PermissionDenied('پرونده فقط برای مسئول کارت، سرپرست و ادمین قابل تکمیل است.')
+    if rec.person_type != 'customer':
+        return HttpResponse('این مراجعه در مسیر استخدام قرار دارد.', status=409)
     if not rec.referred_at:
         return HttpResponse('ابتدا مراجعه‌کننده را از پذیرش ارجاع دهید.', status=409)
     case = CustomerCase.objects.filter(customer=customer).first()
@@ -257,6 +316,8 @@ def registration_form(request, pk):
     customer = get_object_or_404(Customer.objects.select_for_update(), pk=rec.customer_id)
     if not can_edit_card(request.user, customer):
         raise PermissionDenied('ثبت اطلاعات فقط برای مسئول کارت، سرپرست و ادمین مجاز است.')
+    if rec.person_type != 'customer':
+        return HttpResponse('اطلاعات این فرد در تب استخدام نمایش داده می‌شود.', status=409)
     if not rec.referred_at or not rec.case_completed_at:
         return HttpResponse('ابتدا ارجاع و ثبت پرونده را تکمیل کنید.', status=409)
     # Same profile popup, fully prefilled. The tab permission authorizes this stage.

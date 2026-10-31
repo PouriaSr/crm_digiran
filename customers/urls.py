@@ -30,6 +30,7 @@ urlpatterns = [
     path('<int:pk>/edit/', views.customer_edit, name='edit'),
     path('hub/case/save/', hub_views.hub_case_save, name='case_save'),
     path('hub/reception/clock/', reception_workflow.reception_clock, name='reception_clock'),
+    path('hub/hiring/clock/', reception_workflow.hiring_clock, name='hiring_clock'),
     path('hub/registration/<int:pk>/', reception_workflow.registration_form, name='registration_form'),
     path('hub/reception/action/', hub_views.hub_reception_action, name='reception_action'),
     path('<int:pk>/quick-call/', hub_views.hub_quick_call, name='quick_call'),

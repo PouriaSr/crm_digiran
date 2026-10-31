@@ -57,9 +57,9 @@ class ReceptionWorkflowTest(TestCase):
 
     def test_default_tab_access_and_direct_urls(self):
         for user, tabs in [(self.secretary, {'info', 'reception'}), (self.operator, {'info'}),
-                           (self.manager, {'info', 'reception', 'case', 'registration', 'invoice'})]:
+                           (self.manager, {'info', 'reception', 'case', 'registration', 'hiring', 'invoice'})]:
             self.client.force_login(user)
-            for tab in ('info', 'reception', 'case', 'registration', 'invoice'):
+            for tab in ('info', 'reception', 'case', 'registration', 'hiring', 'invoice'):
                 response = self.client.get(self.hub, {'tab': tab})
                 self.assertEqual(response.status_code, 200 if tab in tabs else 403, (user.username, tab))
                 if response.status_code == 200:
@@ -145,28 +145,23 @@ class ReceptionWorkflowTest(TestCase):
         page = self.client.get(self.hub, {'tab': 'reception'})
         self.assertNotIn(self.manager, page.context['referral_users'])
 
-    def test_both_person_types_complete_same_stages_without_potential_requirement(self):
-        for kind in ('customer', 'interviewer'):
-            self.client.force_login(self.secretary)
-            rec = self.arrive(kind)
-            self.assertEqual(self.refer(rec).status_code, 302)
-            self.client.force_login(self.manager)
-            before = self.client.get(self.hub, {'tab': 'registration'})
-            self.assertFalse(before.context['registration_unlocked'] if kind == 'customer' else False)
-            self.assertEqual(self.save_case(rec).status_code, 302)
-            page = self.client.get(self.hub, {'tab': 'registration'})
-            self.assertTrue(page.context['registration_unlocked'])
-            self.assertIn(rec.pk, [x.pk for x in page.context['registration_choices']])
-            popup = reverse('customers:registration_form', args=[rec.pk])
-            self.assertContains(self.client.get(popup), f'value="{self.customer.mobile}"')
-            response = self.client.post(popup, self.profile_data(), HTTP_HX_REQUEST='true')
-            self.assertEqual(response.status_code, 204)
-            self.assertIn('tab=registration', response['HX-Redirect'])
-            rec.refresh_from_db(); self.customer.refresh_from_db()
-            self.assertIsNotNone(rec.registration_completed_at)
-            self.assertEqual(self.customer.address, 'آدرس کامل')
-            self.assertEqual(rec.person_type, kind)
-        self.assertEqual(Reception.objects.count(), 2)
+    def test_customer_completes_stages_without_potential_requirement(self):
+        rec = self.arrive('customer')
+        self.assertEqual(self.refer(rec).status_code, 302)
+        self.client.force_login(self.manager)
+        self.assertFalse(self.client.get(self.hub, {'tab': 'registration'}).context['registration_unlocked'])
+        self.assertEqual(self.save_case(rec).status_code, 302)
+        page = self.client.get(self.hub, {'tab': 'registration'})
+        self.assertTrue(page.context['registration_unlocked'])
+        self.assertIn(rec.pk, [x.pk for x in page.context['registration_choices']])
+        popup = reverse('customers:registration_form', args=[rec.pk])
+        self.assertContains(self.client.get(popup), f'value="{self.customer.mobile}"')
+        response = self.client.post(popup, self.profile_data(), HTTP_HX_REQUEST='true')
+        self.assertEqual(response.status_code, 204)
+        self.assertIn('tab=registration', response['HX-Redirect'])
+        rec.refresh_from_db(); self.customer.refresh_from_db()
+        self.assertIsNotNone(rec.registration_completed_at)
+        self.assertEqual(self.customer.address, 'آدرس کامل')
 
     def test_case_and_registration_direct_post_cannot_skip_stages(self):
         rec = self.arrive()

@@ -1,0 +1,42 @@
+<script>
+(function () {
+    const pad = n => String(n).padStart(2, '0');
+    document.querySelectorAll('[data-workflow-clock]').forEach(container => {
+        let base = Date.parse(container.dataset.serverNow), anchor = performance.now();
+        function tick() {
+            const now = base + performance.now() - anchor;
+            container.querySelectorAll('[data-wait-start]').forEach(el => {
+                const seconds = Math.max(0, Math.floor((now - Date.parse(el.dataset.waitStart)) / 1000));
+                el.textContent = pad(Math.floor(seconds / 3600)) + ':' + pad(Math.floor(seconds / 60) % 60) + ':' + pad(seconds % 60);
+            });
+        }
+        async function sync() {
+            if (document.hidden || !container.getClientRects().length || !container.querySelector('[data-wait-start]')) return;
+            const dialog = document.getElementById('reception-referral-dialog');
+            if (dialog && dialog.open) return;
+            try {
+                const response = await fetch(container.dataset.clockUrl, {headers:{'Accept':'application/json'}});
+                if (!response.ok) return;
+                const data = await response.json();
+                base = Date.parse(data.server_now); anchor = performance.now();
+                const waiting = new Set(data.waiting.map(row => String(row.pk)));
+                if (Array.from(container.querySelectorAll('[data-wait-start]')).some(el => !waiting.has(el.closest('[data-reception-id]').dataset.receptionId))) {
+                    const page = await fetch(window.location.href);
+                    if (!page.ok) return;
+                    const dom = new DOMParser().parseFromString(await page.text(), 'text/html');
+                    const updated = dom.getElementById(container.id);
+                    if (updated) {
+                        const opened = new Set(Array.from(container.querySelectorAll('details[open][data-reception-id]')).map(el => el.dataset.receptionId));
+                        container.innerHTML = updated.innerHTML;
+                        container.querySelectorAll('details[data-reception-id]').forEach(el => {el.open = opened.has(el.dataset.receptionId);});
+                    }
+                }
+                tick();
+            } catch (_) { /* Keep the original server baseline during a temporary network failure. */ }
+        }
+        tick(); setInterval(tick,1000);
+        document.addEventListener('DOMContentLoaded',sync,{once:true});
+        setInterval(sync,15000);
+    });
+})();
+</script>
