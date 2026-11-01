@@ -231,7 +231,7 @@ def reception_action(request):
             if current.person_type == person == 'interviewer':
                 application, _ = HiringApplication.objects.get_or_create(reception=current, defaults={'current_arrived_at':current.arrived_at or current.created_at})
                 latest = application.latest_session
-                if application.status == 'repeat' and latest and (not application.current_arrived_at or application.current_arrived_at <= latest.saved_at):
+                if application.status == 'repeat' and latest and not application.sessions.filter(saved_at__isnull=True).exists() and (not application.current_arrived_at or application.current_arrived_at <= latest.saved_at):
                     now = timezone.now()
                     application.current_arrived_at = now
                     current.wait_started_at, current.wait_ended_at, current.is_waiting, current.wait_minutes_total = now, None, True, None

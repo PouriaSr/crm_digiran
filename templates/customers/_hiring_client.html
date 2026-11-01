@@ -4,7 +4,7 @@
  let previousFocus=null;
  const timers=new WeakMap();
  function removeModal(){const modal=document.getElementById('hiring-modal');if(!modal)return;modal.querySelectorAll('select').forEach(el=>el.tomselect?.destroy());if(window.Alpine?.destroyTree)Alpine.destroyTree(modal);modal.remove();}
- function close(){removeModal();document.body.style.overflow='';previousFocus?.focus();}
+ function close(){removeModal();document.body.style.overflow='';previousFocus?.focus();const search=document.querySelector('input[name=workflow_q]:not([type=hidden])');if(search?.form)window.CRMLiveSearch?.search(search.form);}
  function message(text,error=false){const el=document.querySelector('#hiring-modal [data-hiring-message]');if(el){el.textContent=text;el.className=error?'hr-errors':'hr-alert';}else alert(text);}
  function conditions(form){
   if(!form?.matches('[data-interview-form]'))return;
@@ -20,12 +20,13 @@
   if(window.Alpine) Alpine.initTree(modal);
   if(window.TomSelect)modal.querySelectorAll('select:not(.no-search)').forEach(el=>{if(el.tomselect)return;new TomSelect(el,{create:false,plugins:['dropdown_input'],dropdownParent:'body',maxOptions:1000,score:function(search){const convert=v=>window.CRMNumerals?CRMNumerals.ascii(v):v;const score=this.getScoreFunction(convert(search));return item=>score(Object.fromEntries(Object.entries(item).map(([key,value])=>[key,typeof value==='string'?convert(value):value])));}});});
   if(window.jalaliDatepicker)jalaliDatepicker.startWatch({time:false});
+  const errors=modal.querySelector('[data-form-error-summary]');if(errors){requestAnimationFrame(()=>{errors.focus({preventScroll:true});errors.scrollIntoView({block:'center'});});return;}
   const first=modal.querySelector('input:not([type=hidden]),select,textarea');if(first?.tomselect)first.tomselect.focus();else first?.focus();
  }
  async function show(response){
   if(response.redirected){window.location.assign(response.url);return;}
   const text=await response.text(),doc=new DOMParser().parseFromString(text,'text/html'),node=doc.getElementById('hiring-modal');
-  if(!node)throw new Error(response.status===403?'برای این عملیات دسترسی ندارید.':'فرم باز نشد؛ صفحه را تازه و دوباره تلاش کنید.');
+  if(!node){const detail=doc.body.textContent.trim();throw new Error(response.status===403?'برای این عملیات دسترسی ندارید.':response.status===409&&detail?detail:'فرم باز نشد؛ صفحه را تازه و دوباره تلاش کنید.');}
   removeModal();document.body.appendChild(node);document.body.style.overflow='hidden';install(node);
  }
  document.addEventListener('click',async event=>{

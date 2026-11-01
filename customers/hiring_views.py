@@ -28,7 +28,7 @@ def hiring_context(request, records):
     from .hub_views import parse_jalali
     active = InterviewSession.objects.filter(application__reception_id=OuterRef('pk'), saved_at__isnull=True)
     records = records.annotate(current_arrival=Coalesce('hiring__current_arrived_at', 'arrived_at', 'wait_started_at', 'created_at'),
-                               has_active_interview=Exists(active))
+                               has_active_interview=Exists(active), active_interview_kind=Subquery(active.values('kind')[:1]))
     choices = records
     query = request.GET.get('workflow_q', '').strip()[:200]
     if query:
@@ -161,6 +161,21 @@ def session_form_response(request, rec, application, session, form=None, editing
     }, status=status)
 
 
+def finish_applicant_wait(rec, session):
+    # Migrated version-two arrivals can still have a genuine running wait.
+    # Stop at the recorded session start, including when an older open session
+    # is resumed; preserve completed historical waits and interview timestamps.
+    if (rec.is_waiting and rec.wait_started_at and not rec.wait_ended_at
+            and (rec.workflow_version == 2 or rec.timing_version >= 3)
+            and rec.wait_started_at <= session.started_at):
+        rec.wait_ended_at, rec.is_waiting = session.started_at, False
+        seconds = session.waiting_seconds
+        if seconds is None:
+            seconds = max(0, int((session.started_at - rec.wait_started_at).total_seconds()))
+        rec.wait_minutes_total = seconds // 60
+        rec.save(update_fields=['wait_ended_at', 'is_waiting', 'wait_minutes_total', 'updated_at'])
+
+
 @login_required
 @require_permission('customers.hiring')
 @require_permission('customers.hiring_interview')
@@ -174,6 +189,9 @@ def interview_open(request, pk):
         return HttpResponse('نوع جلسه معتبر نیست.', status=400)
     session = application.sessions.filter(saved_at__isnull=True).first()
     if session:
+        if kind == 'repeat' and session.kind != 'repeat':
+            return HttpResponse('جلسه اول هنوز ثبت نشده است؛ ابتدا نتیجه و زمان مصاحبه مجدد را در همان جلسه ثبت کنید.', status=409)
+        finish_applicant_wait(rec, session)
         return session_form_response(request, rec, application, session)
     if kind == 'repeat' and application.status != 'repeat':
         return HttpResponse('مصاحبه مجدد فقط برای کارجوی دارای وضعیت مصاحبه مجدد فعال است.', status=409)
@@ -193,10 +211,7 @@ def interview_open(request, pk):
     session = InterviewSession.objects.create(application=application, round_number=number, kind=kind,
         started_at=now, arrived_at=arrived, waiting_seconds=waiting,
         interviewer=request.user, job_ad=application.job_ad, **initial)
-    if rec.timing_version >= 3 and rec.is_waiting:
-        rec.wait_ended_at, rec.is_waiting = now, False
-        rec.wait_minutes_total = waiting // 60
-        rec.save(update_fields=['wait_ended_at', 'is_waiting', 'wait_minutes_total', 'updated_at'])
+    finish_applicant_wait(rec, session)
     log_hiring(rec, request.user, 'شروع جلسه مصاحبه', '', str(number))
     return session_form_response(request, rec, application, session)
 
@@ -238,6 +253,8 @@ def interview_clock(request):
 def persist_session(request, rec, application, session, editing=False):
     if session.saved_at and not editing:
         return redirect(destination(rec))
+    if editing and application.sessions.filter(saved_at__isnull=True).exclude(pk=session.pk).exists():
+        return HttpResponse('ابتدا اطلاعات جلسه در حال انجام را ثبت کنید؛ سپس می‌توانید آخرین جلسه را ویرایش کنید.', status=409)
     if editing and application.latest_session_id != session.pk:
         return HttpResponse('جلسات قبلی فقط در تاریخچه قابل مشاهده‌اند.', status=409)
     form = InterviewForm(request.POST, instance=session, customer=rec.customer,
@@ -263,6 +280,7 @@ def persist_session(request, rec, application, session, editing=False):
         session.saved_at = max(now, session.ended_at)
     session.saved_by = request.user
     session.save()
+    finish_applicant_wait(rec, session)
     if 'national_id' in form.cleaned_data:
         customer = Customer.all_objects.select_for_update().get(pk=rec.customer_id)
         customer.national_id = form.cleaned_data['national_id']
@@ -296,6 +314,8 @@ def interview_edit(request, pk):
     if request.method not in ('GET', 'POST'):
         return HttpResponse(status=405)
     rec, application, session = authorized_session(request, pk)
+    if application.sessions.filter(saved_at__isnull=True).exclude(pk=session.pk).exists():
+        return HttpResponse('ابتدا اطلاعات جلسه در حال انجام را ثبت کنید؛ سپس می‌توانید آخرین جلسه را ویرایش کنید.', status=409)
     if not session.saved_at or application.latest_session_id != session.pk:
         return HttpResponse('این جلسه برای ویرایش نهایی آماده نیست.', status=409)
     if request.method == 'POST':

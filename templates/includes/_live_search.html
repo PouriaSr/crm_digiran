@@ -52,10 +52,11 @@
  }
  function replaceResults(current,next){
   // Keep expanded rows when the same person remains in the result.
+  const focusUrl=current.contains(document.activeElement)?document.activeElement.dataset.openHiring:null;
   const opened=new Set(Array.from(current.querySelectorAll('details[open][data-reception-id]')).map(el=>el.dataset.receptionId));
   destroy(current);current.replaceChildren(...Array.from(next.childNodes));
   for(const attr of ['data-show-new'])if(next.hasAttribute(attr))current.setAttribute(attr,next.getAttribute(attr));
-  current.querySelectorAll('details[data-reception-id]').forEach(el=>{el.open=opened.has(el.dataset.receptionId);});prepare(current);
+  current.querySelectorAll('details[data-reception-id]').forEach(el=>{el.open=opened.has(el.dataset.receptionId);});prepare(current);if(focusUrl)Array.from(current.querySelectorAll('[data-open-hiring]')).find(el=>el.dataset.openHiring===focusUrl)?.focus({preventScroll:true});
   if(current.id==='customer-table-container'){
    const scope=current.closest('[x-data]');if(window.Alpine&&scope)Alpine.$data(scope).showNewBtn=current.dataset.showNew==='true';
   }
@@ -81,7 +82,7 @@
    const doc=new DOMParser().parseFromString(await response.text(),'text/html');if(state.version!==version)return;
    const next=doc.getElementById(cfg.global?'global-search-results':cfg.id);if(!next)throw new Error('نتیجه دریافت نشد؛ دوباره تلاش کنید.');
    if(cfg.global){replaceResults(target,next);placePopup(form,cfg.input);target.hidden=false;cfg.input.setAttribute('aria-expanded','true');}
-   else {replaceResults(target,next);if(cfg.id==='hiring-ad-results'||cfg.id==='workflow-hiring-results'){for(const name of ['ad_q','workflow_q']){const field=document.querySelector('input[name="'+name+'"]:not([type=hidden])');if(field)url.searchParams.set(name,normalize(field.value));}}history.replaceState(history.state,'',url);}
+   else {replaceResults(target,next);if(cfg.id==='workflow-hiring-results'){const selection=document.querySelector('[data-hiring-selection]'),updated=doc.querySelector('[data-hiring-selection]');if(selection&&updated)replaceResults(selection,updated);}if(cfg.id==='hiring-ad-results'||cfg.id==='workflow-hiring-results'){for(const name of ['ad_q','workflow_q']){const field=document.querySelector('input[name="'+name+'"]:not([type=hidden])');if(field)url.searchParams.set(name,normalize(field.value));}}history.replaceState(history.state,'',url);}
    if(!cfg.global)document.querySelectorAll('input[type=hidden][name="'+cfg.input.name+'"]').forEach(el=>{el.value=cfg.input.value;});status(form,'نتایج به‌روز شد.');
   }catch(error){if(error.name!=='AbortError' && state.version===version)status(form,error.message,true);}
   finally{if(state.version===version)target.removeAttribute('aria-busy');}

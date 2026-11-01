@@ -1,7 +1,8 @@
 {% if 'customers.hiring_interview' in user_permissions %}
- {% if rec.has_active_interview %}<button class="wf-action wf-primary" type="button" data-open-hiring="{% url 'customers:interview_open' rec.pk %}" data-method="POST" data-kind="first">ادامه مصاحبه</button>
- {% elif not rec.hiring.latest_session_id %}<button class="wf-action wf-primary" type="button" data-open-hiring="{% url 'customers:interview_open' rec.pk %}" data-method="POST" data-kind="first">شروع مصاحبه</button>
- {% elif rec.hiring.status == 'repeat' %}<button class="wf-action wf-primary" type="button" data-open-hiring="{% url 'customers:interview_open' rec.pk %}" data-method="POST" data-kind="repeat">مصاحبه مجدد</button>{% endif %}
- {% if rec.hiring.latest_session_id %}<button class="wf-action" type="button" data-open-hiring="{% url 'customers:interview_edit' rec.hiring.latest_session_id %}">ویرایش جلسه</button>{% endif %}
+ {% if rec.has_active_interview %}<button class="wf-action wf-primary" type="button" data-open-hiring="{% url 'customers:interview_open' rec.pk %}" data-method="POST" data-kind="{{ rec.active_interview_kind|default:'first' }}">{% if rec.active_interview_kind == 'repeat' %}ادامه مصاحبه مجدد{% else %}ادامه مصاحبه{% endif %}</button>
+ {% elif not rec.hiring.latest_session_id %}<button class="wf-action wf-primary" type="button" data-open-hiring="{% url 'customers:interview_open' rec.pk %}" data-method="POST" data-kind="first">شروع مصاحبه</button>{% endif %}
+ {% if not rec.has_active_interview and rec.hiring.status == 'repeat' and rec.hiring.latest_session_id %}<button class="wf-action wf-primary" type="button" data-open-hiring="{% url 'customers:interview_open' rec.pk %}" data-method="POST" data-kind="repeat">مصاحبه مجدد</button>
+ {% elif rec.active_interview_kind != 'repeat' and show_repeat_unavailable %}<button class="wf-action" type="button" disabled title="ابتدا در جلسه مصاحبه، نتیجه «مصاحبه مجدد» و تاریخ و ساعت آن را انتخاب و ثبت اطلاعات کنید.">مصاحبه مجدد</button>{% endif %}
+ {% if rec.hiring.latest_session_id and not rec.has_active_interview %}<button class="wf-action" type="button" data-open-hiring="{% url 'customers:interview_edit' rec.hiring.latest_session_id %}">ویرایش جلسه</button>{% endif %}
 {% endif %}
 {% if 'customers.hiring_refer' in user_permissions %}<button class="wf-action" type="button" data-open-hiring="{% url 'customers:hiring_refer' rec.pk %}">ارجاع</button>{% endif %}

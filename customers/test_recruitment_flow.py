@@ -295,3 +295,79 @@ class NewRecruitmentFlowTests(TestCase):
         self.assertEqual(list(response.context['reception_records']),[rec])
         response=self.client.get(reverse('customers:hub'),{'tab':'reception','workflow_from':'۱۴۰۵/۱۳/۰۱'})
         self.assertTrue(response.context['workflow_filters'].errors)
+
+    def test_repeat_action_is_visible_disabled_until_valid_repeat_result_then_enabled(self):
+        from html.parser import HTMLParser
+        def repeat_buttons(content):
+            class Buttons(HTMLParser):
+                def __init__(self):
+                    super().__init__();self.current=None;self.text='';self.items=[]
+                def handle_starttag(self,tag,attrs):
+                    if tag=='button':self.current=dict(attrs);self.text=''
+                def handle_data(self,data):
+                    if self.current is not None:self.text+=data
+                def handle_endtag(self,tag):
+                    if tag=='button' and self.current is not None:
+                        if self.text.strip()=='مصاحبه مجدد':self.items.append(self.current)
+                        self.current=None
+            parser=Buttons();parser.feed(content.decode());return parser.items
+        rec=self.arrive();self.refer(rec)
+        page=self.client.get(reverse('customers:hub'),{'tab':'hiring','r':rec.pk})
+        buttons=repeat_buttons(page.content)
+        self.assertTrue(buttons)
+        self.assertTrue(all(('disabled' in button) for button in buttons))
+        session=self.start(rec)
+        denied=self.client.post(reverse('customers:interview_open',args=[rec.pk]),{'kind':'repeat'})
+        self.assertEqual(denied.status_code,409)
+        self.assertEqual(InterviewSession.objects.count(),1)
+        invalid=self.client.post(reverse('customers:interview_save',args=[session.pk]),self.assessment(result='repeat',next_date='',next_time=''))
+        self.assertEqual(invalid.status_code,400)
+        self.assertContains(invalid,'data-form-error-summary',status_code=400)
+        session.refresh_from_db();self.assertIsNone(session.saved_at)
+        data=self.assessment(result='repeat',next_date=jday(self.now+timedelta(days=1)),next_time='۱۰:۳۰')
+        self.assertEqual(self.client.post(reverse('customers:interview_save',args=[session.pk]),data).status_code,302)
+        page=self.client.get(reverse('customers:hub'),{'tab':'hiring','r':rec.pk})
+        buttons=repeat_buttons(page.content)
+        self.assertTrue(buttons)
+        self.assertTrue(all(not ('disabled' in button) and button['data-kind']=='repeat' for button in buttons))
+        self.start(rec,'repeat',offset=10)
+        page=self.client.get(reverse('customers:hub'),{'tab':'hiring','r':rec.pk})
+        self.assertContains(page,'ادامه مصاحبه مجدد')
+        self.assertNotContains(page,'>ویرایش جلسه</button>')
+
+    def test_previous_saved_session_cannot_be_edited_during_repeat_session(self):
+        rec=self.arrive();self.refer(rec);first=self.start(rec)
+        data=self.assessment(result='repeat',next_date=jday(self.now+timedelta(days=1)),next_time='10:30')
+        self.client.post(reverse('customers:interview_save',args=[first.pk]),data)
+        self.start(rec,'repeat',offset=10)
+        edit=reverse('customers:interview_edit',args=[first.pk])
+        self.assertEqual(self.client.get(edit).status_code,409)
+        self.assertEqual(self.client.post(edit,self.assessment(result='accepted')).status_code,409)
+        first.refresh_from_db();self.assertEqual(first.result,'repeat')
+        self.assertEqual(first.application.status,'repeat')
+
+    def test_repeat_arrival_during_open_interview_does_not_restart_wait(self):
+        rec=self.arrive();self.refer(rec);first=self.start(rec)
+        data=self.assessment(result='repeat',next_date=jday(self.now+timedelta(days=1)),next_time='10:30')
+        self.client.post(reverse('customers:interview_save',args=[first.pk]),data)
+        second=self.start(rec,'repeat',offset=10)
+        rec.refresh_from_db();before=(rec.wait_started_at,rec.wait_ended_at,rec.hiring.current_arrived_at)
+        with patch('django.utils.timezone.now',return_value=self.now+timedelta(days=1)):
+            self.client.post(reverse('customers:reception_action'),{'action':'arrive','customer':self.customer.pk,'person_type':'interviewer'})
+        rec.refresh_from_db();self.assertEqual(before,(rec.wait_started_at,rec.wait_ended_at,rec.hiring.current_arrived_at))
+        self.assertFalse(rec.is_waiting)
+        self.assertEqual(InterviewSession.objects.filter(saved_at__isnull=True).get().pk,second.pk)
+
+    def test_migrated_running_wait_finishes_when_interview_starts_or_resumes(self):
+        rec=self.arrive();self.refer(rec)
+        Reception.objects.filter(pk=rec.pk).update(timing_version=2)
+        session=self.start(rec)
+        rec.refresh_from_db();self.assertFalse(rec.is_waiting)
+        self.assertEqual(rec.wait_ended_at,session.started_at)
+        # An already-open session from an older release is repaired at its own
+        # start time rather than now; its original timing and assessment remain.
+        Reception.objects.filter(pk=rec.pk).update(is_waiting=True,wait_ended_at=None)
+        again=self.start(rec,offset=20)
+        rec.refresh_from_db();self.assertEqual(again.pk,session.pk)
+        self.assertEqual(rec.wait_ended_at,session.started_at)
+        self.assertFalse(rec.is_waiting)
