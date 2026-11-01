@@ -1,0 +1,32 @@
+<style>
+.ts-dropdown .ts-dropdown-content{overflow-y:auto;overscroll-behavior-y:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+</style>
+<script>
+(function(){
+ 'use strict';if(window.CRMDropdowns)return;
+ const opened=new Set(),bound=new WeakSet();let frame=null;
+ function scrollParent(control){for(let node=control.parentElement;node&&node!==document.body;node=node.parentElement){const css=getComputedStyle(node);if(/auto|scroll/.test(css.overflowY)&&node.scrollHeight>node.clientHeight+1)return node;}return null;}
+ function bounds(control){const viewport=window.visualViewport;let top=viewport?.offsetTop||0,bottom=top+(viewport?.height||innerHeight);for(let node=control.parentElement;node&&node!==document.body;node=node.parentElement){const css=getComputedStyle(node);if(/auto|scroll/.test(css.overflowY)&&node.scrollHeight>node.clientHeight+1){const r=node.getBoundingClientRect();top=Math.max(top,r.top);bottom=Math.min(bottom,r.bottom);}}
+  const dialog=control.closest('.hr-dialog,.crm-modal-shell,[role="dialog"],dialog');if(dialog){dialog.querySelectorAll('.hr-dialog-head,.crm-modal-head,.hr-dialog-foot,.crm-form-actions').forEach(node=>{if(!node.getClientRects().length||!['sticky','fixed'].includes(getComputedStyle(node).position))return;const r=node.getBoundingClientRect();if(node.matches('.hr-dialog-head,.crm-modal-head'))top=Math.max(top,r.bottom);else bottom=Math.min(bottom,r.top);});}return {top:top+8,bottom:bottom-8};}
+ function place(instance){const control=instance.control,dropdown=instance.dropdown;if(!instance.isOpen||!control?.isConnected||!control.getClientRects().length){if(instance.isOpen&&!instance._crmOpening)instance.close();return;}
+  const r=control.getBoundingClientRect(),limit=bounds(control);if(r.top<limit.top-1||r.bottom>limit.bottom+1){if(!instance._crmOpening)instance.close();return;}
+  const gap=6,below=Math.max(0,limit.bottom-r.bottom-gap),above=Math.max(0,r.top-limit.top-gap),content=instance.dropdown_content;
+  dropdown.style.position='fixed';dropdown.style.width=Math.min(r.width,innerWidth-16)+'px';dropdown.style.setProperty('margin-top','0','important');dropdown.style.left=Math.max(8,Math.min(r.left,innerWidth-dropdown.offsetWidth-8))+'px';
+  const header=dropdown.querySelector('.dropdown-input-wrap'),headerHeight=header?.getBoundingClientRect().height||0,desired=Math.min(280,content.scrollHeight)+headerHeight+14;
+  const up=below<desired&&above>below,space=up?above:below;
+  content.style.maxHeight=Math.max(24,Math.min(280,space-headerHeight-14))+'px';dropdown.style.top=(up?r.top-gap-dropdown.offsetHeight:r.bottom+gap)+'px';
+ }
+ function schedule(){if(frame!==null)return;frame=requestAnimationFrame(()=>{frame=null;for(const instance of opened){if(!instance.input?.isConnected){opened.delete(instance);instance.close();continue;}instance.positionDropdown();}});}
+ function bind(instance){if(bound.has(instance))return;bound.add(instance);const input=instance.dropdown.querySelector('.dropdown-input');if(input&&/select an option|^\s*-+\s*$/i.test(input.placeholder))input.placeholder='جستجو در گزینه‌ها…';instance.dropdown.addEventListener('wheel',event=>{if(event.ctrlKey||!event.deltaY||!instance.isOpen)return;const content=instance.dropdown_content;const delta=event.deltaY*(event.deltaMode===1?20:event.deltaMode===2?content.clientHeight:1);if(content.scrollHeight>content.clientHeight+1){content.scrollTop+=delta;event.preventDefault();event.stopPropagation();}else {const parent=scrollParent(instance.control);if(parent){const before=parent.scrollTop;parent.scrollTop+=delta;if(parent.scrollTop!==before){event.preventDefault();event.stopPropagation();schedule();}}}}, {passive:false});}
+ function install(){const prototype=window.TomSelect?.prototype;if(!prototype||prototype._crmDropdowns)return;prototype._crmDropdowns=true;const position=prototype.positionDropdown,open=prototype.open,close=prototype.close,destroy=prototype.destroy;
+  prototype.positionDropdown=function(){if(this.settings.dropdownParent==='body')place(this);else position.apply(this,arguments);};
+  prototype.open=function(){this._crmOpening=true;let result;try{result=open.apply(this,arguments);}finally{this._crmOpening=false;}if(this.isOpen){opened.add(this);bind(this);this.positionDropdown();}return result;};
+  prototype.close=function(){opened.delete(this);return close.apply(this,arguments);};
+  prototype.destroy=function(){opened.delete(this);return destroy.apply(this,arguments);};
+ }
+ document.addEventListener('scroll',event=>{if(event.target?.closest?.('.ts-dropdown'))return;schedule();},true);
+ window.addEventListener('resize',schedule,{passive:true});window.visualViewport?.addEventListener('resize',schedule,{passive:true});window.visualViewport?.addEventListener('scroll',schedule,{passive:true});
+ document.addEventListener('DOMContentLoaded',install);document.addEventListener('pointerdown',install,true);document.addEventListener('focusin',install,true);
+ window.CRMDropdowns={install};install();
+})();
+</script>
