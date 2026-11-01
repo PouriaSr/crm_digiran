@@ -50,6 +50,9 @@ ROLE_TO_GROUP = {
 # تعریف دسترسی‌ها
 # ═══════════════════════════════════════════════════════════
 PERMISSIONS = {
+    'communications.view': [ROLE_ADMIN, ROLE_SALES_MANAGER],
+    'communications.manage': [ROLE_ADMIN],
+    'communications.test': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'customers.view':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
     'customers.add':    [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR, ROLE_SECRETARY],
     'customers.edit':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
@@ -108,6 +111,9 @@ PERMISSIONS = {
 
 # ─── متادیتای نمایش دسترسی‌ها ───
 PERMISSION_META = {
+    'communications.view': ('اعلان', 'مشاهده مرکز اعلان', 'مشاهده تنظیمات و سوابق شبیه‌سازی پیامک، ایمیل، واتساپ و VoIP'),
+    'communications.manage': ('اعلان', 'پیکربندی و قالب پیام', 'ذخیره تنظیمات پیشنهادی سرویس و قالب‌ها؛ ارسال واقعی هنوز فعال نیست'),
+    'communications.test': ('اعلان', 'اجرای آزمایش', 'بررسی تنظیمات و اجرای شبیه‌سازی پیام و تماس، بدون ارسال واقعی'),
     'customers.view':   ('مشتریان', 'مشاهده', 'مشاهده‌ی لیست و جزئیات مشتریان'),
     'customers.add':    ('مشتریان', 'ایجاد', 'افزودن مشتری جدید'),
     'customers.edit':   ('مشتریان', 'ویرایش', 'ویرایش اطلاعات فقط برای مسئول کارت، سرپرست و ادمین'),

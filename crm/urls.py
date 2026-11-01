@@ -15,6 +15,7 @@ urlpatterns = [
     path('hr/', include('hr.urls')),
     path('audit/', include('audit.urls')),
     path('ads/', include('ads.urls')),
+    path('notifications/', include('communications.urls')),
     
     # ⛔ خط setup/run-command/ کاملاً حذف شد.
 ]

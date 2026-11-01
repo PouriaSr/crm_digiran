@@ -934,6 +934,11 @@ window.apexMobileMerge = function (options) {
 
             
 
+            {% if 'communications.view' in user_permissions %}
+            <a href="{% url 'communications:center' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'communications' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span>اعلان</span>
+            </a>
+            {% endif %}
             {% if 'products.view' in user_permissions %}
             <a href="{% url 'products:list' %}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'products' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition">
@@ -1242,6 +1247,11 @@ window.apexMobileMerge = function (options) {
         </a>
         {% endif %}
 
+        {% if 'communications.view' in user_permissions %}
+        <a href="{% url 'communications:center' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]">
+          <div class="w-11 h-11 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></div><span class="text-xs font-medium text-gray-700">اعلان</span>
+        </a>
+        {% endif %}
         {% if 'categories.view' in user_permissions %}
         <a href="{% url 'products:category_list' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]">
             <div class="w-11 h-11 bg-pink-100 text-pink-600 rounded-xl flex items-center justify-center">

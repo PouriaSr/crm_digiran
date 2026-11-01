@@ -3,6 +3,7 @@
 """
 
 AUDIT_MODELS = {
+    'communications.ChannelConfiguration': ['channel', 'provider', 'sender', 'credential_env', 'connection', 'subject', 'message_template'],
     # ─── مشتریان ───
     'customers.Customer': [
         'name', 'mobile', 'email', 'national_id',
