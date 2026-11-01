@@ -138,7 +138,7 @@ class InterviewForm(HiringStyledForm, forms.ModelForm):
         if self.instance.proposed_role and self.instance.proposed_role not in dict(choices):
             choices.append((self.instance.proposed_role, self.instance.proposed_role_title))
         self.fields['proposed_role'].choices = [('', 'انتخاب سمت…')] + choices
-        if can_documents:
+        if can_documents and self.instance.kind != 'repeat':
             self.initial['national_id'] = customer.national_id
         else:
             self.fields.pop('national_id')
@@ -171,3 +171,18 @@ class InterviewForm(HiringStyledForm, forms.ModelForm):
         if not data.get('invite'):
             data['will_attend'], data['collaboration'] = '', ''
         return data
+
+
+class InterviewTaskForm(HiringStyledForm, forms.Form):
+    next_date = forms.CharField(label='تاریخ جلسه بعد', widget=forms.TextInput(attrs={'data-jdp':'','autocomplete':'off'}))
+    next_time = forms.CharField(label='ساعت جلسه بعد', widget=forms.TimeInput(attrs={'type':'time'}))
+
+    def __init__(self,*args,appointment=None,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.initial['next_date'],self.initial['next_time']=local_parts(appointment)
+        self.style()
+
+    def clean(self):
+        values=super().clean()
+        values['appointment']=parse_appointment(self,'next',True)
+        return values

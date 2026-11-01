@@ -31,6 +31,7 @@ urlpatterns = [
     path('hub/case/save/', hub_views.hub_case_save, name='case_save'),
     path('hub/case/<int:pk>/open/', reception_workflow.case_open, name='case_open'),
     path('hub/case/clock/', reception_workflow.case_clock, name='case_clock'),
+    path('hub/hiring/<int:pk>/task/', hiring_views.hiring_task, name='hiring_task'),
     path('hub/hiring/sessions/clock/', hiring_views.interview_clock, name='interview_clock'),
     path('hub/hiring/<int:pk>/interview/open/', hiring_views.interview_open, name='interview_open'),
     path('hub/hiring/session/<int:pk>/end/', hiring_views.interview_end, name='interview_end'),

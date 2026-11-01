@@ -36,6 +36,8 @@ def hiring_context(request, records):
         if has_permission(request.user, 'customers.hiring_documents'):
             search |= digit_contains('customer__national_id', query)
         records = records.filter(search)
+    from hr.models import Task
+    from hr.task_access import overdue_condition
     owner_ids = choices.values_list('customer__assigned_to_id', flat=True)
     class Filters(forms.Form):
         hiring_status = forms.ChoiceField(label='وضعیت استخدام', required=False, choices=[('', 'همه وضعیت‌ها'), ('active', 'در حال مصاحبه')] + HiringApplication.STATUSES)
@@ -44,6 +46,7 @@ def hiring_context(request, records):
         hiring_ad = forms.ModelChoiceField(label='آگهی / سمت', required=False, queryset=HiringAd.objects.all())
         hiring_grade = forms.ChoiceField(label='امتیاز', required=False, choices=[('', 'همه امتیازها')] + [(x,x) for x in 'ABCDE'])
         hiring_result = forms.ChoiceField(label='نتیجه مصاحبه', required=False, choices=[('', 'همه نتایج')] + InterviewSession.RESULTS)
+        hiring_task_status = forms.ChoiceField(label='تسک مصاحبه مجدد', required=False, choices=[('', 'همه تسک‌ها'), ('pending', 'در انتظار انجام'), ('in_progress', 'در حال انجام'), ('overdue', 'عقب‌افتاده'), ('done', 'انجام‌شده')])
         hiring_date_basis = forms.ChoiceField(label='بازه تاریخ بر اساس', required=False, choices=[('arrival', 'آخرین ورود'), ('interview', 'مصاحبه ثبت‌شده'), ('next', 'مصاحبه مجدد'), ('invite', 'دعوت به همکاری')])
         hiring_from = forms.CharField(label='از تاریخ', required=False, widget=forms.TextInput(attrs={'data-jdp':'', 'autocomplete':'off'}))
         hiring_to = forms.CharField(label='تا تاریخ', required=False, widget=forms.TextInput(attrs={'data-jdp':'', 'autocomplete':'off'}))
@@ -67,6 +70,10 @@ def hiring_context(request, records):
         for key, lookup in [('hiring_owner','customer__assigned_to'), ('hiring_platform','hiring__job_ad__platform'), ('hiring_ad','hiring__job_ad'), ('hiring_grade','hiring__latest_session__grade'), ('hiring_result','hiring__latest_session__result')]:
             if selected.get(key):
                 records = records.filter(**{lookup:selected[key]})
+        if selected.get('hiring_task_status'):
+            tasks = Task.objects.filter(hiring_session__application__reception_id=OuterRef('pk'))
+            tasks = tasks.filter(overdue_condition()) if selected['hiring_task_status']=='overdue' else tasks.filter(status=selected['hiring_task_status'])
+            records = records.annotate(matching_task=Exists(tasks)).filter(matching_task=True)
         fields = {'arrival':'current_arrival', 'interview':'hiring__latest_session__started_at', 'next':'hiring__latest_session__next_interview_at', 'invite':'hiring__latest_session__invitation_at'}
         start, end = None, None
         for name, op in [('hiring_from','gte'), ('hiring_to','lte')]:
@@ -90,6 +97,7 @@ def hiring_context(request, records):
         records = records.none()
     selected_pk = request.GET.get('r', '')
     selected_record = choices.filter(pk=selected_pk).first() if selected_pk.isascii() and selected_pk.isdigit() and len(selected_pk) < 16 else None
+    selected_task = Task.objects.filter(hiring_session__application__reception=selected_record).select_related('assigned_user','assigned_to').order_by('-hiring_session__round_number').first() if selected_record else None
     page = Paginator(records, 30).get_page(request.GET.get('hiring_page'))
     ad_scope = Q(applications__reception__customer__is_deleted=False)
     if not is_card_manager(request.user):
@@ -106,7 +114,7 @@ def hiring_context(request, records):
                 condition |= Q(platform=value)
         ads = ads.filter(condition)
     ads_page = Paginator(ads.order_by('-created_at','-pk'), 15).get_page(request.GET.get('ad_page'))
-    return {'hiring_records': page, 'hiring_choices': choices, 'hiring_selected': selected_record,
+    return {'hiring_records': page, 'hiring_choices': choices, 'hiring_selected': selected_record, 'hiring_selected_task': selected_task,
             'hiring_ads': ads_page, 'hiring_ad_query': ad_query, 'hiring_filters': form, 'hiring_filters_active': any(request.GET.get(k) for k in form.fields),
             'can_hiring_documents': has_permission(request.user, 'customers.hiring_documents')}
 
@@ -212,6 +220,9 @@ def interview_open(request, pk):
         started_at=now, arrived_at=arrived, waiting_seconds=waiting,
         interviewer=request.user, job_ad=application.job_ad, **initial)
     finish_applicant_wait(rec, session)
+    if kind == 'repeat':
+        from .recruitment_tasks import begin_interview_task
+        begin_interview_task(application, session)
     log_hiring(rec, request.user, 'شروع جلسه مصاحبه', '', str(number))
     return session_form_response(request, rec, application, session)
 
@@ -290,6 +301,10 @@ def persist_session(request, rec, application, session, editing=False):
     application.latest_session = session
     application.status = 'invited' if session.invite else {'accepted': 'interviewed', 'repeat': 'repeat', 'rejected': 'rejected'}[session.result]
     application.save()
+    from .recruitment_tasks import finish_interview_task, sync_interview_task
+    if not editing:
+        finish_interview_task(session)
+    sync_interview_task(session, request.user)
     if resume_form:
         save_resume(application, resume_form, request.user)
     log_hiring(rec, request.user, f'نتیجه جلسه {session.round_number}', before, application.get_status_display())
@@ -393,6 +408,8 @@ def hiring_refer(request, pk):
                 HiringReferral.objects.create(application=application, from_user=old_user, to_user=target, actor=request.user, note=request.POST.get('note', '').strip())
                 rec.customer.assigned_to = target
                 rec.customer.save(update_fields=['assigned_to', 'updated_at'])
+                from .recruitment_tasks import reassign_interview_tasks
+                reassign_interview_tasks(application, target)
                 log_hiring(rec, request.user, 'ارجاع استخدام', str(old_user or ''), str(target))
             messages.success(request, 'کارجو ارجاع شد؛ این عملیات تایمری شروع نمی‌کند.')
             return redirect(destination(rec))
@@ -421,3 +438,37 @@ def hiring_ad_create(request):
         messages.success(request, f'آگهی استخدام {ad.get_platform_display()} با شناسه {ad.number} ثبت شد.')
         return redirect(f"{reverse('customers:hub')}?tab=hiring")
     return render(request, 'customers/_hiring_ad_modal.html', {'form': form, 'ads': HiringAd.objects.select_related('created_by').order_by('-created_at')[:30]}, status=400 if form.errors else 200)
+
+
+@login_required
+@require_permission('customers.hiring')
+@transaction.atomic
+def hiring_task(request, pk):
+    can_manage = has_permission(request.user, 'customers.hiring_interview')
+    if request.method == 'POST' and not can_manage:
+        raise PermissionDenied('برای تغییر موعد تسک، مجوز مصاحبه لازم است.')
+    if request.method=='GET' and request.headers.get('X-Requested-With')!='XMLHttpRequest':
+        return redirect(destination(owned_reception(request,pk))+'#repeat-task')
+    from .hiring_forms import InterviewTaskForm
+    from .recruitment_tasks import sync_interview_task
+    from hr.models import Task
+    if request.method not in ('GET','POST'):
+        return HttpResponse(status=405)
+    rec=owned_reception(request,pk,lock=request.method=='POST')
+    application=get_object_or_404(HiringApplication,reception=rec)
+    task=Task.objects.filter(hiring_session__application=application).select_related('hiring_session','assigned_user','assigned_to').order_by('-hiring_session__round_number').first()
+    if not task:
+        return HttpResponse('برای این فرد تسک مصاحبه مجدد ثبت نشده است.',status=404)
+    form=InterviewTaskForm(request.POST if request.method=='POST' else None,appointment=task.hiring_session.next_interview_at)
+    if request.method=='POST':
+        if task.status!='pending' or task.performed_session_id or application.status!='repeat':
+            return HttpResponse('فقط موعد تسک در انتظار انجام قابل تغییر است.',status=409)
+        if form.is_valid():
+            session=task.hiring_session
+            before=str(session.next_interview_at)
+            session.next_interview_at=form.cleaned_data['appointment']
+            session.save(update_fields=['next_interview_at'])
+            sync_interview_task(session,request.user)
+            log_hiring(rec,request.user,'تغییر موعد تسک مصاحبه مجدد',before,str(session.next_interview_at))
+            return redirect(destination(rec))
+    return render(request,'customers/_interview_task_modal.html',{'rec':rec,'application':application,'task':task,'form':form,'can_manage_task':can_manage},status=400 if form.errors else 200)

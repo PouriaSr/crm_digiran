@@ -11,13 +11,9 @@ def get_notifications(user):
 
     # ۱. هشدار وظایف عقب‌افتاده
     if has_permission(user, 'hr.view_tasks'):
-        from hr.models import Task
-        overdue_tasks = Task.objects.filter(due_date__lt=today).exclude(status__in=['done', 'cancelled'])
-        
-        # اگر کاربر مدیر کل نیست، فقط وظایف خودش را ببیند
-        if not user.is_superuser and not has_permission(user, 'hr.manage_tasks'):
-            overdue_tasks = overdue_tasks.filter(assigned_to__user=user)
-            
+        from hr.task_access import visible_tasks, overdue_condition
+        overdue_tasks = visible_tasks(user).filter(overdue_condition())
+
         count = overdue_tasks.count()
         if count > 0:
             notifications.append({

@@ -74,7 +74,7 @@ def hiring_records(user):
     ).filter(Q(workflow_version=1) | Q(referred_at__isnull=False)).select_related('customer', 'customer__assigned_to', 'customer__ad_source',
                      'customer__case', 'customer__case__product', 'created_by',
                      'referred_to', 'referred_by', 'case_completed_by', 'registration_completed_by',
-                     'hiring', 'hiring__job_ad', 'hiring__latest_session', 'hiring__latest_session__invited_by')
+                     'hiring', 'hiring__job_ad', 'hiring__latest_session', 'hiring__latest_session__invited_by','hiring__latest_session__next_task','hiring__latest_session__next_task__assigned_user','hiring__latest_session__next_task__assigned_to')
     records = records.prefetch_related(Prefetch(
         'customer__calls', queryset=Call.objects.select_related('called_by').order_by('-call_date', '-pk')[:1],
         to_attr='latest_contact',

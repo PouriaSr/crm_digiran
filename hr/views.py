@@ -66,12 +66,14 @@ def employee_list(request):
 def employee_detail(request, pk):
     employee = get_object_or_404(Employee, pk=pk)
 
-    open_tasks = employee.tasks.filter(
+    from .task_access import restrict_hiring_tasks
+    tasks = restrict_hiring_tasks(employee.tasks.all(), request.user)
+    open_tasks = tasks.filter(
         status__in=['pending', 'in_progress']
     ).order_by('due_date')[:10]
 
-    done_tasks_count = employee.tasks.filter(status='done').count()
-    open_tasks_count = employee.tasks.filter(
+    done_tasks_count = tasks.filter(status='done').count()
+    open_tasks_count = tasks.filter(
         status__in=['pending', 'in_progress']
     ).count()
 
@@ -160,17 +162,12 @@ def employee_delete(request, pk):
 @require_permission('hr.view_tasks')
 def task_list(request):
     # ⭐ متغیر today به بالای تابع منتقل شد تا در فیلترها قابل استفاده باشد
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     can_manage = has_permission(request.user, 'hr.manage_tasks')
-    base_qs = Task.objects.all()
-    if not can_manage:
-        if hasattr(request.user, 'employee_profile'):
-            base_qs = base_qs.filter(assigned_to=request.user.employee_profile)
-        else:
-            base_qs = base_qs.none()
-
-    tasks = base_qs.select_related('assigned_to', 'created_by')
+    from .task_access import visible_tasks, overdue_condition
+    base_qs = visible_tasks(request.user)
+    tasks = base_qs.select_related('assigned_to','assigned_user','created_by','hiring_session__application__reception')
 
     search = request.GET.get('q', '').strip()
     if search:
@@ -191,24 +188,32 @@ def task_list(request):
     if employee:
         tasks = tasks.filter(assigned_to_id=employee)
 
-    # ⭐ فیلتر جدید برای اعلان‌ها
+    responsible = request.GET.get('responsible', '')
+    if responsible:
+        tasks = tasks.filter(Q(assigned_user_id=responsible) | Q(assigned_to__user_id=responsible)) if responsible.isascii() and responsible.isdigit() and len(responsible)<16 else tasks.none()
+
+    # مهلت انجام، هماهنگ با نشان عقب‌افتاده و اعلان‌ها
     due = request.GET.get('due', '')
     if due == 'overdue':
-        tasks = tasks.filter(due_date__lt=today).exclude(status__in=['done', 'cancelled'])
+        tasks = tasks.filter(overdue_condition())
+    elif due == 'today':
+        tasks = tasks.filter(due_date=today).exclude(status__in=['done','cancelled'])
+    elif due == 'upcoming':
+        tasks = tasks.filter(due_date__gte=today).exclude(overdue_condition()).exclude(status__in=['done','cancelled'])
 
     stats = {
         'total': base_qs.count(),
         'pending': base_qs.filter(status='pending').count(),
         'in_progress': base_qs.filter(status='in_progress').count(),
-        'overdue': base_qs.filter(
-            due_date__lt=today
-        ).exclude(status__in=['done', 'cancelled']).count(),
+        'overdue': base_qs.filter(overdue_condition()).count(),
     }
 
     paginator = Paginator(tasks, 20)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
     employees = Employee.objects.filter(is_active=True)
+    from django.contrib.auth.models import User
+    responsible_users = User.objects.filter(Q(direct_tasks__in=base_qs) | Q(employee_profile__tasks__in=base_qs)).distinct().order_by('username')
 
     context = {
         'page_obj': page_obj,
@@ -217,6 +222,7 @@ def task_list(request):
         'current_status': status,
         'current_priority': priority,
         'current_employee': employee,
+        'current_responsible': responsible, 'responsible_users': responsible_users, 'current_due': due,
         'employees': employees,
         'status_choices': Task.STATUS_CHOICES,
         'priority_choices': Task.PRIORITY_CHOICES,
@@ -227,12 +233,16 @@ def task_list(request):
 @login_required
 @require_permission('hr.view_tasks')
 def task_detail(request, pk):
+    from .task_access import visible_tasks
     task = get_object_or_404(Task, pk=pk)
-    if not has_permission(request.user, 'hr.manage_tasks'):
-        if (not hasattr(request.user, 'employee_profile')
-                or task.assigned_to_id != request.user.employee_profile.pk):
-            messages.error(request, 'شما به این وظیفه دسترسی ندارید.')
-            return redirect('hr:task_list')
+    if not visible_tasks(request.user).filter(pk=pk).exists():
+        if task.hiring_session_id:
+            from django.http import Http404
+            raise Http404
+        messages.error(request, 'شما به این وظیفه دسترسی ندارید.')
+        return redirect('hr:task_list')
+    if task.hiring_session_id:
+        return redirect(task.recruitment_url)
     return render(request, 'hr/task_detail.html', {'task': task})
 
 
@@ -261,6 +271,15 @@ def task_create(request):
 @require_permission('hr.manage_tasks')
 def task_edit(request, pk):
     task = get_object_or_404(Task, pk=pk)
+    if task.hiring_session_id:
+        from .task_access import visible_tasks
+        task=get_object_or_404(visible_tasks(request.user),pk=pk)
+        if not has_permission(request.user,'customers.hiring_interview'):
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied('برای مدیریت این تسک، مجوز مصاحبه لازم است.')
+        messages.info(request,'تسک مصاحبه از بخش استخدام مدیریت می‌شود.')
+        return redirect(task.recruitment_url)
+
     if request.method == 'POST':
         form = TaskForm(request.POST, instance=task)
         if form.is_valid():
@@ -282,6 +301,15 @@ def task_edit(request, pk):
 @require_permission('hr.manage_tasks')
 def task_delete(request, pk):
     task = get_object_or_404(Task, pk=pk)
+    if task.hiring_session_id:
+        from .task_access import visible_tasks
+        task=get_object_or_404(visible_tasks(request.user),pk=pk)
+        if not has_permission(request.user,'customers.hiring_interview'):
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied('برای مدیریت این تسک، مجوز مصاحبه لازم است.')
+        messages.info(request,'تسک مصاحبه از بخش استخدام مدیریت می‌شود.')
+        return redirect(task.recruitment_url)
+
     if request.method == 'POST':
         title = task.title
         task.delete()
@@ -297,6 +325,15 @@ def task_toggle_status(request, pk):
     ⭐ Fix #18: برای status نامعتبر هم بازخورد می‌دهد (قبلاً سکوت می‌کرد).
     """
     task = get_object_or_404(Task, pk=pk)
+    if task.hiring_session_id:
+        from .task_access import visible_tasks
+        task=get_object_or_404(visible_tasks(request.user),pk=pk)
+        if not has_permission(request.user,'customers.hiring_interview'):
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied('برای مدیریت این تسک، مجوز مصاحبه لازم است.')
+        messages.info(request,'تسک مصاحبه از بخش استخدام مدیریت می‌شود.')
+        return redirect(task.recruitment_url)
+
     if request.method == 'POST':
         new_status = request.POST.get('status', '').strip()
         valid_statuses = dict(Task.STATUS_CHOICES)
@@ -673,11 +710,13 @@ def my_profile(request):
     invoices_count = request.user.created_invoices.count()
     created_customers_count = request.user.created_customers.count()
 
-    open_tasks = employee.tasks.filter(
+    from .task_access import restrict_hiring_tasks
+    tasks = restrict_hiring_tasks(employee.tasks.all(), request.user)
+    open_tasks = tasks.filter(
         status__in=['pending', 'in_progress']
     ).order_by('due_date')
 
-    done_tasks = employee.tasks.filter(
+    done_tasks = tasks.filter(
         status='done'
     ).order_by('-completed_at')[:5]
 

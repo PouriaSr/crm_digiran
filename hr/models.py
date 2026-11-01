@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth.models import User
@@ -92,7 +93,7 @@ class Task(models.Model):
     description = models.TextField('توضیحات', blank=True, null=True)
 
     assigned_to = models.ForeignKey(
-        Employee, on_delete=models.CASCADE,
+        Employee, on_delete=models.CASCADE, null=True, blank=True,
         related_name='tasks', verbose_name='مسئول'
     )
     created_by = models.ForeignKey(
@@ -107,6 +108,11 @@ class Task(models.Model):
                                choices=STATUS_CHOICES, default='pending', db_index=True)
 
     due_date = models.DateField('مهلت انجام', null=True, blank=True, db_index=True)
+    due_time = models.TimeField('ساعت انجام', null=True, blank=True)
+    assigned_user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='direct_tasks', verbose_name='کاربر مسئول')
+    hiring_session = models.OneToOneField('customers.InterviewSession', null=True, blank=True, on_delete=models.CASCADE, related_name='next_task', verbose_name='جلسه تعیین‌کننده موعد')
+    performed_session = models.OneToOneField('customers.InterviewSession', null=True, blank=True, on_delete=models.SET_NULL, related_name='scheduled_task', verbose_name='جلسه انجام‌شده')
+
     completed_at = models.DateTimeField('تاریخ اتمام', null=True, blank=True)
 
     created_at = models.DateTimeField('تاریخ ایجاد', auto_now_add=True)
@@ -121,9 +127,22 @@ class Task(models.Model):
         return self.title
 
     @property
+    def responsible_display(self):
+        if self.assigned_user_id:
+            return self.assigned_user.get_full_name() or self.assigned_user.username
+        return self.assigned_to.full_name if self.assigned_to_id else 'تعیین نشده'
+
+    @property
+    def recruitment_url(self):
+        from django.urls import reverse
+        return reverse('customers:hiring_task', args=[self.hiring_session.application.reception_id])
+
+    @property
     def is_overdue(self):
+        if self.due_date and self.due_time and self.status not in ('done', 'cancelled'):
+            return timezone.make_aware(datetime.combine(self.due_date, self.due_time)) < timezone.now()
         if self.due_date and self.status not in ('done', 'cancelled'):
-            return self.due_date < timezone.now().date()
+            return self.due_date < timezone.localdate()
         return False
 
     @property

@@ -164,6 +164,7 @@ class TaskForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['assigned_to'].required = True
         self.fields['assigned_to'].queryset = Employee.objects.filter(is_active=True)
 
         if self.instance and self.instance.pk and self.instance.due_date:

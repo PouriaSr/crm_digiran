@@ -350,22 +350,16 @@ def _get_dashboard_data(user, from_date=None, to_date=None, filter_user_id=None)
             'values': [float(sales_last_month), float(sales_this_month), float(sales_last_year)],
         }
 
+    from hr.task_access import visible_tasks, overdue_condition
+    tasks = visible_tasks(user)
     if owner is not None:
-        open_tasks = Task.objects.filter(
-            status__in=['pending', 'in_progress'], assigned_to__user=owner
-        ).count()
-        overdue_tasks = Task.objects.filter(
-            due_date__lt=today, assigned_to__user=owner
-        ).exclude(status__in=['done', 'cancelled']).count()
-        pending_leaves = LeaveRequest.objects.filter(
-            status='pending', employee__user=owner
-        ).count()
-    else:
-        open_tasks = Task.objects.filter(status__in=['pending', 'in_progress']).count()
-        overdue_tasks = Task.objects.filter(due_date__lt=today).exclude(
-            status__in=['done', 'cancelled']
-        ).count()
-        pending_leaves = LeaveRequest.objects.filter(status='pending').count()
+        tasks = tasks.filter(Q(assigned_user=owner) | Q(assigned_to__user=owner))
+    open_tasks = tasks.filter(status__in=['pending', 'in_progress']).count()
+    overdue_tasks = tasks.filter(overdue_condition()).count()
+    leaves = LeaveRequest.objects.filter(status='pending')
+    if owner is not None:
+        leaves = leaves.filter(employee__user=owner)
+    pending_leaves = leaves.count()
 
     filter_users_list = _get_employee_choices() if is_mgr else []
 

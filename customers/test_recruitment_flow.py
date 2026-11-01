@@ -308,7 +308,7 @@ class NewRecruitmentFlowTests(TestCase):
                     if self.current is not None:self.text+=data
                 def handle_endtag(self,tag):
                     if tag=='button' and self.current is not None:
-                        if self.text.strip()=='مصاحبه مجدد':self.items.append(self.current)
+                        if self.text.strip() in ('مصاحبه مجدد', 'تسک مصاحبه مجدد'):self.items.append(self.current)
                         self.current=None
             parser=Buttons();parser.feed(content.decode());return parser.items
         rec=self.arrive();self.refer(rec)
@@ -329,10 +329,10 @@ class NewRecruitmentFlowTests(TestCase):
         page=self.client.get(reverse('customers:hub'),{'tab':'hiring','r':rec.pk})
         buttons=repeat_buttons(page.content)
         self.assertTrue(buttons)
-        self.assertTrue(all(not ('disabled' in button) and button['data-kind']=='repeat' for button in buttons))
+        self.assertTrue(all(not ('disabled' in button) and button['data-open-hiring']==reverse('customers:hiring_task',args=[rec.pk]) for button in buttons))
         self.start(rec,'repeat',offset=10)
         page=self.client.get(reverse('customers:hub'),{'tab':'hiring','r':rec.pk})
-        self.assertContains(page,'ادامه مصاحبه مجدد')
+        self.assertContains(page,'تسک در حال انجام')
         self.assertNotContains(page,'>ویرایش جلسه</button>')
 
     def test_previous_saved_session_cannot_be_edited_during_repeat_session(self):
@@ -371,3 +371,119 @@ class NewRecruitmentFlowTests(TestCase):
         rec.refresh_from_db();self.assertEqual(again.pk,session.pk)
         self.assertEqual(rec.wait_ended_at,session.started_at)
         self.assertFalse(rec.is_waiting)
+
+    def schedule_repeat(self):
+        rec=self.arrive();self.refer(rec);source=self.start(rec)
+        data=self.assessment(result='repeat',next_date=jday(self.now+timedelta(days=1)),next_time='۱۰:۳۰')
+        response=self.client.post(reverse('customers:interview_save',args=[source.pk]),data)
+        self.assertEqual(response.status_code,302)
+        source.refresh_from_db()
+        from hr.models import Task
+        return rec,source,Task.objects.get(hiring_session=source)
+
+    def test_repeat_task_lifecycle_and_short_scheduling_popup(self):
+        from hr.models import Employee,Task
+        rec,source,task=self.schedule_repeat()
+        self.assertEqual(task.status,'pending')
+        self.assertEqual(task.assigned_user_id,self.manager.pk)
+        self.assertIsNone(task.assigned_to_id)
+        self.assertEqual(Employee.objects.count(),0)
+        self.assertEqual(task.due_time.strftime('%H:%M'),'10:30')
+        url=reverse('customers:hiring_task',args=[rec.pk])
+        response=self.client.get(url,HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertContains(response,'تغییر موعد تسک')
+        self.assertNotContains(response,'name="national_id"')
+        self.assertNotContains(response,'name="behavior"')
+        self.assertEqual(InterviewSession.objects.count(),1)
+        self.assertEqual(self.client.post(url,{'next_date':jday(self.now+timedelta(days=2)),'next_time':'۱۲:۱۵'}).status_code,302)
+        task.refresh_from_db();source.refresh_from_db()
+        self.assertEqual(task.due_time.strftime('%H:%M'),'12:15')
+        self.assertEqual(task.due_date,timezone.localtime(source.next_interview_at).date())
+        self.assertEqual(Task.objects.count(),1)
+        second=self.start(rec,'repeat',offset=10)
+        task.refresh_from_db();self.assertEqual(task.status,'in_progress')
+        self.assertEqual(task.performed_session_id,second.pk)
+        self.assertEqual(self.client.post(url,{'next_date':jday(self.now),'next_time':'11:00'}).status_code,409)
+        data=self.assessment(result='accepted');data.pop('national_id')
+        response=self.client.post(reverse('customers:interview_save',args=[second.pk]),data)
+        self.assertEqual(response.status_code,302)
+        task.refresh_from_db();self.assertEqual(task.status,'done')
+        self.assertIsNotNone(task.completed_at)
+        source.refresh_from_db();self.assertEqual(source.result,'repeat')
+        self.assertEqual(Task.objects.count(),1)
+        # Double submission cannot create a task or change the completed appointment.
+        self.client.post(reverse('customers:interview_save',args=[second.pk]),data)
+        self.assertEqual(Task.objects.count(),1)
+        page=self.client.get(reverse('customers:hub'),{'tab':'hiring','r':rec.pk})
+        self.assertContains(page,'id="repeat-task"')
+
+    def test_repeat_task_edits_cancel_reactivate_and_referral_reassigns(self):
+        from hr.models import Task
+        rec,source,task=self.schedule_repeat()
+        edit=reverse('customers:interview_edit',args=[source.pk])
+        self.assertEqual(self.client.post(edit,self.assessment()).status_code,302)
+        task.refresh_from_db();self.assertEqual(task.status,'cancelled')
+        data=self.assessment(result='repeat',next_date=jday(self.now+timedelta(days=3)),next_time='13:45')
+        self.assertEqual(self.client.post(edit,data).status_code,302)
+        task.refresh_from_db();self.assertEqual(task.status,'pending')
+        self.assertEqual(task.due_time.strftime('%H:%M'),'13:45')
+        self.assertEqual(Task.objects.count(),1)
+        response=self.client.post(reverse('customers:hiring_refer',args=[rec.pk]),{'user':self.outsider.pk})
+        self.assertEqual(response.status_code,302)
+        task.refresh_from_db();self.assertEqual(task.assigned_user_id,self.outsider.pk)
+
+    def test_repeat_task_permissions_visibility_and_due_time(self):
+        from hr.task_access import visible_tasks,overdue_condition
+        from hr.models import Task
+        rec,source,task=self.schedule_repeat()
+        self.client.force_login(self.outsider)
+        url=reverse('customers:hiring_task',args=[rec.pk])
+        self.assertEqual(self.client.get(url,HTTP_X_REQUESTED_WITH='XMLHttpRequest').status_code,404)
+        self.assertFalse(visible_tasks(self.outsider).filter(pk=task.pk).exists())
+        self.assertTrue(visible_tasks(self.manager).filter(pk=task.pk).exists())
+        now=timezone.localtime(self.now)
+        task.due_date=now.date();task.due_time=(now-timedelta(minutes=1)).time().replace(tzinfo=None);task.save()
+        with patch('django.utils.timezone.now',return_value=self.now):
+            self.assertTrue(task.is_overdue)
+            self.assertTrue(Task.objects.filter(overdue_condition(),pk=task.pk).exists())
+        self.client.force_login(self.admin)
+        page=self.client.get(reverse('customers:hub'),{'tab':'hiring','hiring_task_status':'overdue'})
+        self.assertEqual(list(page.context['hiring_records']),[rec])
+        UserPermissionOverride.objects.create(user=self.manager,permission_key='customers.hiring',granted=False)
+        self.assertFalse(visible_tasks(self.manager).filter(pk=task.pk).exists())
+
+    def test_task_read_access_without_interview_write_permission(self):
+        rec,source,task=self.schedule_repeat()
+        UserPermissionOverride.objects.create(user=self.manager,permission_key='customers.hiring_interview',granted=False)
+        self.client.force_login(self.manager)
+        url=reverse('customers:hiring_task',args=[rec.pk])
+        response=self.client.get(url,HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertContains(response,'موعد جلسه')
+        self.assertNotContains(response,'name="next_date"')
+        self.assertNotContains(response,'data-kind="repeat"')
+        self.assertEqual(self.client.post(url,{'next_date':jday(self.now),'next_time':'10:00'}).status_code,403)
+        task.refresh_from_db();self.assertEqual(task.status,'pending')
+
+    def test_task_filters_notifications_and_no_generic_edit_of_hiring_task(self):
+        from accounts.notifications import get_notifications
+        from hr.forms import TaskForm
+        rec,source,task=self.schedule_repeat()
+        self.assertTrue(TaskForm().fields['assigned_to'].required)
+        now=timezone.localtime(self.now)
+        task.due_date=now.date();task.due_time=(now-timedelta(minutes=1)).time().replace(tzinfo=None);task.save()
+        with patch('django.utils.timezone.now',return_value=self.now):
+            self.assertTrue(any('وظیفه عقب‌افتاده' in n['title'] for n in get_notifications(self.admin)))
+            response=self.client.get(reverse('hr:task_list'),{'due':'overdue','responsible':self.manager.pk})
+            self.assertEqual(list(response.context['page_obj']),[task])
+        response=self.client.post(reverse('hr:task_edit',args=[task.pk]),{'title':'نباید ذخیره شود'})
+        self.assertRedirects(response,reverse('customers:hiring_task',args=[rec.pk]),fetch_redirect_response=False)
+        task.refresh_from_db();self.assertNotEqual(task.title,'نباید ذخیره شود')
+
+    def test_incompatible_repeat_and_invitation_cannot_create_task(self):
+        rec=self.arrive();self.refer(rec);source=self.start(rec)
+        data=self.assessment(result='repeat',next_date=jday(self.now+timedelta(days=1)),next_time='11:00',invite='on',will_attend='yes',invitation_date=jday(self.now+timedelta(days=2)),invitation_time='12:00')
+        response=self.client.post(reverse('customers:interview_save',args=[source.pk]),data)
+        self.assertContains(response,'دعوت به همکاری فقط برای نتیجه قبول',status_code=400)
+        from hr.models import Task
+        self.assertFalse(Task.objects.filter(hiring_session=source).exists())
+        source.refresh_from_db();self.assertIsNone(source.saved_at)

@@ -116,8 +116,8 @@
   </form>
 
   <div id="crm-list-results" data-live-results>
-<div class="bg-white rounded-xl shadow-sm overflow-x-auto">
-    <table class="responsive-table w-full text-sm">
+<div tabindex="0" aria-label="فهرست؛ برای مشاهده ستون‌های بیشتر پیمایش کنید" class="crm-list-scroll bg-white rounded-xl shadow-sm overflow-x-auto">
+    <table class="crm-data-table responsive-table w-full text-sm">
       <thead class="bg-gray-50 text-gray-600 border-b border-gray-100">
         <tr>
           <th class="px-4 py-3 text-center font-medium">#</th>
@@ -279,7 +279,7 @@
     {% if report.by_source %}
     <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-4">
       <div class="p-4 border-b border-gray-100"><h3 class="font-bold text-gray-800">تفکیک منابع هنگام ثبت</h3><p class="text-xs text-gray-500 mt-1">شماره و برچسب هر دوره حفظ می‌شود؛ تغییر منبع روی ردیف‌های قبلی اثر ندارد.</p></div>
-      <table class="responsive-table w-full text-sm"><thead class="bg-gray-50 text-gray-600"><tr><th class="p-3">شماره منبع</th><th class="p-3">برچسب هنگام ثبت</th><th class="p-3">تعداد</th><th class="p-3">هزینه (تومان)</th></tr></thead><tbody class="divide-y divide-gray-100">{% for item in report.by_source %}<tr><td class="p-3" data-label="شماره منبع"><bdi dir="ltr">{{ item.source_phone_snapshot }}</bdi></td><td class="p-3" data-label="برچسب هنگام ثبت">{{ item.source_label_snapshot|default:'بدون برچسب' }}</td><td class="p-3" data-label="تعداد">{{ item.count|fa_num }}</td><td class="p-3" data-label="هزینه">{{ item.total|fa_num }}</td></tr>{% endfor %}</tbody></table>
+      <table class="crm-data-table responsive-table w-full text-sm"><thead class="bg-gray-50 text-gray-600"><tr><th class="p-3">شماره منبع</th><th class="p-3">برچسب هنگام ثبت</th><th class="p-3">تعداد</th><th class="p-3">هزینه (تومان)</th></tr></thead><tbody class="divide-y divide-gray-100">{% for item in report.by_source %}<tr><td class="p-3" data-label="شماره منبع"><bdi dir="ltr">{{ item.source_phone_snapshot }}</bdi></td><td class="p-3" data-label="برچسب هنگام ثبت">{{ item.source_label_snapshot|default:'بدون برچسب' }}</td><td class="p-3" data-label="تعداد">{{ item.count|fa_num }}</td><td class="p-3" data-label="هزینه">{{ item.total|fa_num }}</td></tr>{% endfor %}</tbody></table>
     </div>
     {% endif %}
     {% if report.chart_values %}
@@ -294,7 +294,7 @@
       <div class="px-4 py-3 border-b border-gray-100">
         <h3 class="text-sm font-medium text-gray-700 text-center">تفکیک بر اساس پلتفرم</h3>
       </div>
-      <table class="w-full text-sm">
+      <table class="crm-data-table w-full text-sm">
         <thead class="bg-gray-50 text-gray-600">
           <tr>
             <th class="px-4 py-2 text-center font-medium">عنوان</th>
@@ -320,7 +320,7 @@
       <div class="px-4 py-3 border-b border-gray-100">
         <h3 class="text-sm font-medium text-gray-700 text-center">تفکیک بر اساس کارشناس</h3>
       </div>
-      <table class="w-full text-sm">
+      <table class="crm-data-table w-full text-sm">
         <thead class="bg-gray-50 text-gray-600">
           <tr>
             <th class="px-4 py-2 text-center font-medium">کارشناس</th>

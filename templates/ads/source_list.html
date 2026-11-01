@@ -31,8 +31,8 @@
   </form>
   {% if editing_source %}<a class="inline-block text-sm text-blue-600 mb-4" href="{% url 'ads:source_list' %}">انصراف از ویرایش</a>{% endif %}
 
-  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-    <table class="responsive-table w-full text-sm">
+  <div tabindex="0" aria-label="فهرست؛ برای مشاهده ستون‌های بیشتر پیمایش کنید" class="crm-list-scroll bg-white rounded-xl shadow-sm overflow-hidden">
+    <table class="crm-data-table responsive-table w-full text-sm">
       <thead class="bg-gray-50 text-gray-600 border-b border-gray-100">
         <tr>
           <th class="px-4 py-3 text-right font-medium">#</th>
