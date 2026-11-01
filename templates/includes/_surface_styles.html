@@ -12,17 +12,19 @@
 </style>
 <style>
 /* Row actions are allowed to wrap; no table/card clips its own controls. */
-.responsive-table td:last-child{white-space:normal;overflow-wrap:anywhere}.responsive-table td:last-child :is(a,button){max-width:100%;white-space:normal}.responsive-table td:last-child .flex{flex-wrap:wrap;gap:6px}.wf-summary>.wf-actions{flex-wrap:wrap;white-space:normal;gap:6px}.wf-actions>.wf-action{white-space:normal;overflow-wrap:anywhere}.wf-details-label{flex-shrink:0}
-@container (min-width:980px){.workflow-hub .wf-summary,.workflow-hub .wf-list-head{grid-template-columns:minmax(120px,1.25fr) 104px 110px 112px 80px minmax(75px,.85fr) minmax(150px,220px)}.wf-summary>.wf-actions{justify-content:center}}
-@container (max-width:979px){.workflow-hub .wf-summary{grid-template-columns:minmax(0,1fr) minmax(110px,45%)}.wf-summary>.wf-actions{grid-column:1/-1;grid-row:4;justify-content:flex-start!important}.wf-summary>.wf-time{grid-row:3}.wf-summary>.wf-name{grid-column:1;grid-row:1}.wf-summary>.wf-state{grid-column:2;grid-row:1}.wf-summary>.wf-mobile{grid-column:1;grid-row:2}.wf-summary>.wf-metric{grid-column:2;grid-row:2}}
+.responsive-table td:last-child{white-space:normal;overflow-wrap:anywhere}.responsive-table td:last-child :is(a,button){max-width:100%;white-space:normal}.responsive-table td:last-child .flex{flex-wrap:wrap;gap:6px}.wf-details-label{flex-shrink:0}
 </style>
 
 <style>
-.crm-list-scroll{min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}.crm-list-scroll:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}.crm-data-table td{overflow-wrap:anywhere}.crm-data-table td:last-child:has(:is(a,button,form)){white-space:normal;min-width:120px}.crm-data-table td:last-child :is(a,button){white-space:normal;max-width:100%;overflow-wrap:anywhere}.crm-data-table td:last-child .flex{flex-wrap:wrap;gap:6px}.crm-data-table td:last-child :is(a,button) svg{flex-shrink:0}.crm-data-table td:last-child a,.crm-data-table td:last-child button{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-height:34px}
+.crm-list-scroll{min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}.crm-list-scroll:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}.crm-data-table{border-collapse:separate;border-spacing:0;line-height:1.8}.crm-data-table th{white-space:nowrap}.crm-data-table :is(td,th){vertical-align:middle}.crm-data-table td{overflow-wrap:anywhere}.crm-data-table td> :is(span.block,small){margin-top:5px}.crm-data-table td:last-child :is(a,button){margin:3px 4px}.crm-data-table td:last-child:has(:is(a,button,form)){white-space:normal;min-width:120px}.crm-data-table td:last-child :is(a,button){white-space:normal;max-width:100%;overflow-wrap:anywhere}.crm-data-table td:last-child .flex{flex-wrap:wrap;gap:6px}.crm-data-table td:last-child :is(a,button) svg{flex-shrink:0}.crm-data-table td:last-child a,.crm-data-table td:last-child button{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-height:34px}
 @media(max-width:1023px){.crm-data-table.responsive-table,.crm-data-table.responsive-table tbody{width:100%;min-width:0}.crm-data-table.responsive-table td{min-width:0;white-space:normal}.crm-data-table.responsive-table td[data-label]{flex-wrap:wrap;gap:8px!important}.crm-data-table.responsive-table td[data-label]:before{max-width:45%;white-space:normal}.crm-data-table.responsive-table td[data-label]>*{min-width:0;max-width:100%;overflow-wrap:anywhere}.crm-data-table.responsive-table td:last-child:has(:is(a,button,form)){min-width:0}.crm-data-table.responsive-table td:last-child :is(a,button){min-height:44px}}
 </style>
 
 <style>
 .crm-pagination a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 14px;border:1px solid #dbeafe;border-radius:10px;background:#eff6ff;color:#2563eb}.crm-pagination a:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}#hub-filter-form{grid-template-columns:repeat(2,minmax(0,1fr))}#hub-filter-form>p{grid-column:1/-1}#hub-filter-form>div{grid-column:span 2}
 @media(min-width:1100px){#hub-filter-form{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style>
+
+<style>
+@media(min-width:1024px){.crm-list-scroll>.crm-data-table{width:100%;min-width:760px}.crm-list-scroll>.crm-data-table th,.crm-list-scroll>.crm-data-table td{padding:14px 18px;min-width:110px;max-width:320px}.crm-list-scroll>.crm-data-table th:first-child,.crm-list-scroll>.crm-data-table td:first-child{min-width:64px}.crm-list-scroll>.crm-data-table:has(th:nth-child(9)){min-width:1180px}.crm-list-scroll>.crm-data-table td:last-child{min-width:150px}}
 </style>

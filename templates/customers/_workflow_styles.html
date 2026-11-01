@@ -25,22 +25,28 @@
 .wf-list-head { display:none; }
 .wf-record { border-bottom:1px solid #eef2f6; }
 .wf-record:last-child { border-bottom:0; }
-.wf-summary { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 12px; align-items:center; padding:14px 16px; cursor:pointer; list-style:none; color:#334155; font-size:12px; }
+.wf-summary { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-areas:'name name' 'mobile metric' 'state state' 'time owner' 'actions actions'; gap:10px 18px; align-items:start; padding:20px; cursor:pointer; list-style:none; color:#334155; font-size:12px; line-height:1.85; }
 .wf-summary::-webkit-details-marker { display:none; }
-.wf-summary:hover { background:#f8fafc; }
+.wf-summary:hover { background:#fafbfd; }
 .wf-record[open]>.wf-summary { background:#f0f7ff; }
-.wf-summary>* { min-width:0; }
-.wf-name { grid-column:1; grid-row:1; font-weight:800; font-size:13px; color:#1e293b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.wf-mobile { grid-column:1; grid-row:2; font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; }
-.wf-state { grid-column:2; grid-row:1; text-align:left; white-space:nowrap; }
-.wf-time { grid-column:1; grid-row:3; font-size:11px; color:#64748b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.wf-time::before { content:attr(data-label) ' '; }
-.wf-metric { grid-column:2; grid-row:2; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wf-summary>* { min-width:0; max-width:100%; overflow-wrap:anywhere; }
+.wf-name { grid-area:name; font-weight:800; font-size:13px; color:#1e293b; white-space:normal; }
+.wf-mobile { grid-area:mobile; font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; unicode-bidi:isolate; }
+.wf-state { grid-area:state; display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-start; gap:7px; white-space:normal; text-align:right; }
+.wf-state :is(.wf-badge,.hr-chip) { max-width:100%; white-space:normal; line-height:1.7; margin:0; }
+.wf-state .hr-job-inline { flex-basis:100%; margin:0; white-space:normal; overflow:visible; text-overflow:clip; line-height:1.9; overflow-wrap:anywhere; }
+.wf-time { grid-area:time; font-size:11px; color:#64748b; white-space:normal; font-variant-numeric:tabular-nums; }
+.wf-time::before { content:attr(data-label) ' '; color:#94a3b8; }
+.wf-time>span { display:inline-block; margin-inline-end:5px; }
+.wf-metric { grid-area:metric; display:flex; flex-direction:column; gap:4px; align-items:flex-end; white-space:normal; }
 .wf-timer { font-variant-numeric:tabular-nums; font-weight:800; font-size:13px; letter-spacing:.03em; }
-.wf-owner { display:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.wf-actions { grid-column:2; grid-row:3; display:flex; align-items:center; justify-content:flex-end; gap:8px; white-space:nowrap; }
-.wf-details-label { display:inline-flex; gap:4px; align-items:center; color:#64748b; font-size:11px; }
-.wf-caret { width:14px; height:14px; transition:transform .15s; }
+.wf-owner { grid-area:owner; display:block; white-space:normal; color:#475569; }
+.wf-owner::before { content:'مسئول: '; color:#94a3b8; font-size:11px; }
+.wf-actions { grid-area:actions; display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-start; gap:10px; border-top:1px solid #eef2f6; padding-top:13px; margin-top:3px; white-space:normal; }
+.wf-actions>.wf-action { min-height:38px; white-space:normal; overflow-wrap:anywhere; }
+.wf-details-label { display:inline-flex; gap:6px; align-items:center; color:#64748b; font-size:11px; min-height:36px; padding:5px 8px; border-radius:8px; }
+.wf-details-label:hover { background:#eef2f6; color:#334155; }
+.wf-caret { width:14px; height:14px; flex:none; transition:transform .15s; }
 .wf-record[open]>.wf-summary .wf-caret { transform:rotate(180deg); }
 .wf-action { display:inline-flex; align-items:center; justify-content:center; gap:5px; padding:7px 11px; border-radius:8px; font-size:11px; font-weight:700; background:#eff6ff; border:1px solid #dbeafe; color:#1d4ed8; line-height:1.5; }
 .wf-action:hover { background:#dbeafe; }
@@ -73,14 +79,17 @@
 .wf-referral-dialog::backdrop { background:#0f172a88; backdrop-filter:blur(3px); }
 .wf-referral-dialog form { padding:22px; }
 .wf-referral-dialog select { width:100%; border:1px solid #cbd5e1; border-radius:10px; padding:11px; font-size:13px; margin-top:10px; background:#fff; }
-@container (min-width:980px) {
-    .wf-summary,.wf-list-head { display:grid; grid-template-columns:minmax(130px,1.25fr) 108px 120px 125px 96px minmax(90px,.85fr) 168px; gap:10px; align-items:center; padding-inline:16px; }
-    .wf-summary { min-height:68px; padding-block:13px; }
-    .wf-summary>* { grid-column:auto; grid-row:auto; }
-    .wf-owner { display:block; }
-    .wf-mobile,.wf-state,.wf-time,.wf-metric { text-align:right; }
-    .wf-time::before { content:none; }
-    .wf-list-head { padding-block:10px; background:#f8fafc; color:#94a3b8; font-size:11px; border-bottom:1px solid #eef2f6; }
+@container (min-width:1100px) {
+    .wf-summary,.wf-list-head { display:grid; grid-template-columns:minmax(110px,1.15fr) 112px minmax(150px,1.55fr) 120px 85px minmax(95px,1fr) minmax(165px,1.25fr); gap:18px; align-items:center; padding-inline:22px; }
+    .wf-summary { grid-template-areas:'name mobile state time metric owner actions'; min-height:96px; padding-block:18px; }
+    .wf-state { justify-content:center; text-align:center; }
+    .wf-metric { align-items:center; }
+    .wf-owner::before,.wf-time::before { content:none; }
+    .wf-time,.wf-mobile { text-align:center; }
+    .wf-time>span { display:block; margin:0; }
+    .wf-actions { flex-direction:column; gap:6px; border-top:0; padding-top:0; margin-top:0; }
+    .wf-actions>.wf-action { width:100%; max-width:180px; }
+    .wf-list-head { padding-block:14px; background:#f8fafc; color:#64748b; font-size:11px; border-bottom:1px solid #eef2f6; }
 }
 @media (max-width:900px) {
     .wf-arrival-fields { grid-template-columns:1fr; gap:18px; }
@@ -91,8 +100,8 @@
 .workflow-hub table th,.workflow-hub table td { text-align:center !important; }
 .workflow-hub table .hub-name-column { text-align:right !important; }
 .wf-summary>.wf-name,.wf-list-head>:first-child { text-align:right; }
-.wf-summary>:not(.wf-name),.wf-list-head>:not(:first-child) { text-align:center; }
-.wf-summary>.wf-actions { justify-content:center; }
+.wf-list-head>:not(:first-child) { text-align:center; }
+
 .workflow-hub tr[hidden] { display:none !important; }
 /* Readable detail panels; primary row alignment remains separate. */
 .wf-expanded { padding:20px; background:#f5f7fb; text-align:right; }
