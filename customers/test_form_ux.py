@@ -15,12 +15,12 @@ class SharedFormExperienceTests(TestCase):
 
     def setUp(self):self.client.force_login(self.admin)
 
-    def test_invalid_product_has_human_error_links_and_preserves_entered_values(self):
+    def test_invalid_product_has_field_local_errors_and_preserves_entered_values(self):
         result=self.client.post(reverse('products:create'),{'name':'کالای باقی‌مانده در فرم','code':'KEEP-01','price':'-1','cost_price':0,'stock':2,'unit':'عدد','min_stock':0,'is_active':'on'})
         self.assertEqual(result.status_code,200)
         self.assertFalse(Product.objects.exists())
         self.assertContains(result,'data-form-error-summary')
-        self.assertContains(result,'href="#id_price"')
+        self.assertContains(result,'data-error-for="id_price"')
         self.assertContains(result,'کالای باقی‌مانده در فرم')
         self.assertContains(result,'value="KEEP-01"')
         self.assertContains(result,'crm-form-actions')

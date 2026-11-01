@@ -150,7 +150,7 @@
         <tr class="hover:bg-gray-50/50" data-perm-key="{{ item.key }}">
             <td class="px-4 py-2">
                 <div class="text-gray-700">{{ item.label }}</div>
-                {% if item.description %}<div class="text-xs text-gray-400 mt-0.5">{{ item.description }}</div>{% endif %}
+                {% if item.description %}<button type="button" class="crm-filter-help" data-filter-help="{{ item.description }}" aria-label="راهنمای {{ item.label }}" aria-expanded="false">i</button>{% endif %}
             </td>
             <td class="px-4 py-2 text-center" data-role-status-cell>
                 {% if item.role_status %}<span class="text-xs text-green-600 font-bold">✓</span>{% else %}<span class="text-xs text-gray-300">✗</span>{% endif %}

@@ -36,6 +36,7 @@
   function merge(other){if(!other)return;for(const key of new Set(Array.from(other.elements).map(el=>el.name).filter(Boolean)))url.searchParams.delete(key);for(const [key,value] of new FormData(other)){if(typeof value==='string')url.searchParams.append(key,normalize(value));}}
   if(cfg.id==='customer-table-container')merge(document.getElementById('hub-filter-form'));
   merge(form);
+  if(cfg.id==='customer-table-container'&&url.searchParams.has('display_mode')){url.searchParams.delete('sort');url.searchParams.delete('date_field');}
   if(cfg.id?.startsWith('workflow-')){merge(document.querySelector('form[data-workflow-filters]'));url.searchParams.set(cfg.input.name,normalize(cfg.input.value));}
   const pageKey=cfg.id==='hiring-ad-results'?'ad_page':cfg.id?.startsWith('workflow-')?cfg.id.replace('workflow-','').replace('-results','')+'_page':cfg.id==='changelist-form'?'p':'page';url.searchParams.delete(pageKey);if(cfg.global||cfg.id==='global-search-results')for(const key of Array.from(url.searchParams.keys()))if(key.endsWith('_page'))url.searchParams.delete(key);if(!cfg.global)for(const key of Array.from(url.searchParams.keys()))if(/^(contact|work|sessions|referrals|updates)_.*_page$/.test(key))url.searchParams.delete(key);
   if(cfg.id==='hiring-ad-results'){const other=document.querySelector('input[name=workflow_q]:not([type=hidden])');if(other)url.searchParams.set('workflow_q',normalize(other.value));}
@@ -45,8 +46,9 @@
  }
  function destroy(node){node.querySelectorAll('select').forEach(el=>el.tomselect?.destroy());window.Alpine?.destroyTree?.(node);}
  function prepare(node){
+  window.CRMFilterUI?.prepare(node);
   window.Alpine?.initTree?.(node);window.htmx?.process(node);
-  if(window.TomSelect)node.querySelectorAll('select:not(.no-search)').forEach(el=>{if(el.tomselect)return;const options={create:false,plugins:['dropdown_input'],dropdownParent:'body',maxOptions:1000,score:function(search){const score=this.getScoreFunction(normalize(search));return item=>score(Object.fromEntries(Object.entries(item).map(([key,value])=>[key,typeof value==='string'?normalize(value):value])));}};if(el.dataset.sourceSearch==='label-first')window.CRMSourceSearch?.configure(el,options);new TomSelect(el,options);});
+  if(window.TomSelect)node.querySelectorAll('select:not(.no-search)').forEach(el=>{if(el.tomselect)return;const options={placeholder:window.CRMFilterUI?.placeholder(el)||'انتخاب کنید…',create:false,plugins:['dropdown_input'],dropdownParent:'body',maxOptions:1000,score:function(search){const score=this.getScoreFunction(normalize(search));return item=>score(Object.fromEntries(Object.entries(item).map(([key,value])=>[key,typeof value==='string'?normalize(value):value])));}};if(el.dataset.sourceSearch==='label-first')window.CRMSourceSearch?.configure(el,options);new TomSelect(el,options);});
   if(window.Actions && node.querySelector('.action-select'))window.Actions(node.querySelectorAll('.action-select'));
   document.dispatchEvent(new CustomEvent('crm:results-updated',{detail:{root:node}}));
  }
@@ -84,6 +86,7 @@
    if(!response.ok)throw new Error('جستجو انجام نشد؛ دوباره تلاش کنید.');
    const doc=new DOMParser().parseFromString(await response.text(),'text/html');if(state.version!==version)return;
    const next=doc.getElementById(cfg.global?'global-search-results':cfg.id);if(!next)throw new Error('نتیجه دریافت نشد؛ دوباره تلاش کنید.');
+   for(const queue of doc.querySelectorAll('template[data-feedback-queue]'))next.appendChild(queue);
    if(cfg.global){replaceResults(target,next);placePopup(form,cfg.input);target.hidden=false;cfg.input.setAttribute('aria-expanded','true');}
    else {replaceResults(target,next);if(cfg.id==='workflow-hiring-results'){const selection=document.querySelector('[data-hiring-selection]'),updated=doc.querySelector('[data-hiring-selection]');if(selection&&updated)replaceResults(selection,updated);}if(cfg.id==='hiring-ad-results'||cfg.id==='workflow-hiring-results'){for(const name of ['ad_q','workflow_q']){const field=document.querySelector('input[name="'+name+'"]:not([type=hidden])');if(field)url.searchParams.set(name,normalize(field.value));}}history.replaceState(history.state,'',url);}
    if(!cfg.global)document.querySelectorAll('input[type=hidden][name="'+cfg.input.name+'"]').forEach(el=>{el.value=cfg.input.value;});status(form,'نتایج به‌روز شد.');

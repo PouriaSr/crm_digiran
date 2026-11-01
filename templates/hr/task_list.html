@@ -83,7 +83,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for task in page_obj %}
-            <tr class="hover:bg-gray-50 {% if task.is_overdue %}bg-red-50{% endif %}">
+            <tr data-feedback-record="task:{{ task.pk }}" class="hover:bg-gray-50 {% if task.is_overdue %}bg-red-50{% endif %}">
                 <td class="px-4 py-3 text-right">
                     <a href="{% url 'hr:task_detail' task.pk %}" class="font-medium text-gray-800 hover:text-blue-600">{{ task.title }}</a>
                     {% if task.description %}<div class="text-xs text-gray-400 mt-0.5">{{ task.description|truncatechars:50 }}</div>{% endif %}

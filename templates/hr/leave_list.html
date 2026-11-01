@@ -79,7 +79,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for leave in page_obj %}
-            <tr class="hover:bg-gray-50">
+            <tr data-feedback-record="leave:{{ leave.pk }}" class="hover:bg-gray-50">
                 <td class="px-4 py-3 text-right">
                     <div class="font-medium text-gray-800">{{ leave.employee.full_name }}</div>
                 </td>

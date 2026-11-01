@@ -109,6 +109,7 @@ def employee_create(request):
                         'برای کیفیت داده بهتر است کد ملی این کارمند را تکمیل کنید.'
                     )
 
+            request.feedback_context = {'record': 'employee:'+str(employee.pk)}
             messages.success(request, f'کارمند «{employee.full_name}» اضافه شد.')
             return redirect('hr:employee_detail', pk=employee.pk)
     else:
@@ -256,6 +257,7 @@ def task_create(request):
             task = form.save(commit=False)
             task.created_by = request.user
             task.save()
+            request.feedback_context = {'record': 'task:'+str(task.pk)}
             messages.success(request, f'وظیفه «{task.title}» ثبت شد.')
             return redirect('hr:task_detail', pk=task.pk)
     else:

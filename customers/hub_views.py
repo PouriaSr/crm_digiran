@@ -1,3 +1,4 @@
+import json
 from crm.pagination import paginate
 from crm.numerals import digit_contains
 from accounts.permissions import require_roles, ROLE_ADMIN, ROLE_SALES_MANAGER
@@ -243,14 +244,20 @@ def customer_hub(request):
         customers = customers.filter(open_fu_due__gt=today)
     elif priority == 'none':
         customers = customers.filter(open_fu_due__isnull=True)
-    date_field = request.GET.get('date_field', 'created')
-    if date_field not in ('created', 'followup'):
-        date_field = 'created'
+    modes = {'recent': ('created','recent'), 'oldest': ('created','oldest'), 'followup': ('followup','priority')}
+    display_mode = request.GET.get('display_mode')
+    if display_mode is None:
+        # Old saved links still resolve to one consistent date basis and order.
+        display_mode = 'followup' if request.GET.get('date_field') == 'followup' or request.GET.get('sort') == 'priority' else 'oldest' if request.GET.get('sort') == 'oldest' else 'recent'
+    if display_mode not in modes:
+        display_mode = 'recent'
+    date_field, sort = modes[display_mode]
     field = 'created_at__date' if date_field == 'created' else 'open_fu_due'
     date_from, date_to = request.GET.get('date_from', ''), request.GET.get('date_to', '')
     start, end = parse_jalali(date_from), parse_jalali(date_to)
     if (date_from and not start) or (date_to and not end) or (start and end and start > end):
-        messages.error(request, 'بازه تاریخ معتبر نیست؛ تاریخ شمسی شروع و پایان را بررسی کنید.')
+        error_field = 'date_from' if date_from and not start else 'date_to'
+        messages.error(request, 'بازه تاریخ معتبر نیست؛ تاریخ شمسی شروع و پایان را بررسی کنید.', extra_tags=json.dumps({'field': error_field}))
         customers = customers.none()
     else:
         if start:
@@ -262,9 +269,6 @@ def customer_hub(request):
         customers = customers.filter(assigned_to__isnull=True)
     elif expert:
         customers = customers.filter(assigned_to_id=expert) if expert.isascii() and expert.isdigit() and len(expert)<16 else customers.none()
-    sort = request.GET.get('sort') or 'recent'
-    if sort not in ('oldest', 'recent', 'priority'):
-        sort = 'recent'
     if sort == 'oldest':
         customers = customers.order_by('created_at', 'pk')
     elif sort == 'recent':
@@ -300,7 +304,7 @@ def customer_hub(request):
     context = {
         'active_tab': tab,
         'search': search,
-        'table_filters': {'priority': priority, 'date_field': date_field, 'date_from': date_from, 'date_to': date_to, 'sort': sort, 'contact_expert': expert},
+        'table_filters': {'priority': priority, 'date_field': date_field, 'date_from': date_from, 'date_to': date_to, 'sort': sort, 'display_mode': display_mode, 'contact_expert': expert},
         'stats': {
             'total_customers': total_customers,
             'total_leads': total_leads,
@@ -353,7 +357,8 @@ def hub_submit_call(request):
         for field, errors in form.errors.items():
             label = form.fields[field].label if field in form.fields else ''
             for error in errors:
-                messages.error(request, f'{label}: {error}')
+                target = {'field': form[field].id_for_label} if field in form.fields else {'form': '#call-modal-root form'}
+                messages.error(request, f'{label}: {error}', extra_tags=json.dumps(target))
         return redirect(back)
 
     data = form.cleaned_data
@@ -409,6 +414,7 @@ def hub_submit_call(request):
         # Test mode only until the SMS provider is configured.
         send_address_sms(customer)
         messages.info(request, 'درخواست ارسال آدرس آزمایشی ثبت شد؛ پیامک واقعی ارسال نشده است.')
+    request.feedback_context = {'record': 'customer:'+str(customer.pk)}
     messages.success(request, 'تماس با موفقیت ثبت شد.')
 
     nxt = (request.POST.get('next') or '').strip()
@@ -499,7 +505,7 @@ def hub_call_edit(request, pk):
 
     notes = (request.POST.get('notes') or '').strip()
     if not notes:
-        messages.error(request, 'شرح مکالمه اجباری است.')
+        messages.error(request, 'شرح مکالمه اجباری است.', extra_tags=json.dumps({'field':'ce-notes'}))
         return redirect(back)
 
     # تاریخ تماس (شمسی → میلادی)؛ اگر خالی بود، قبلی حفظ می‌شود
@@ -516,7 +522,7 @@ def hub_call_edit(request, pk):
         fu_date = parse_jalali(request.POST.get('follow_up_date'))
         fu_time = parse_followup_time(request.POST.get('follow_up_time'))
         if fu_date is None or fu_time is None:
-            messages.error(request, 'تاریخ و ساعت معتبر پیگیری الزامی است.')
+            messages.error(request, 'تاریخ و ساعت معتبر پیگیری الزامی است.', extra_tags=json.dumps({'field':'ce-fu-date' if fu_date is None else 'ce-fu-time'}))
             return redirect(back)
         call.follow_up_date = fu_date
         call.follow_up_time = fu_time
@@ -543,7 +549,7 @@ def hub_call_edit(request, pk):
             need_due = parse_jalali(request.POST.get('needs_followup_date'))
             need_time = parse_followup_time(request.POST.get('needs_followup_time'))
             if need_due is None or need_time is None:
-                messages.error(request, 'برای «نیاز به پیگیری»، تاریخ پیگیری را وارد کنید.')
+                messages.error(request, 'برای «نیاز به پیگیری»، تاریخ پیگیری را وارد کنید.', extra_tags=json.dumps({'field':'ce-need-date' if need_due is None else 'ce-need-time'}))
                 return redirect(back)
 
             call.contact_type = 'followup'
@@ -649,12 +655,12 @@ def hub_quick_call(request, pk):
         return redirect(back)
 
     if not notes:
-        messages.error(request, 'شرح مکالمه اجباری است؛ ثبت انجام نشد.')
+        messages.error(request, 'شرح مکالمه اجباری است؛ ثبت انجام نشد.', extra_tags=json.dumps({'field':'qc-notes'}))
         return redirect(back)
 
     source = AdSource.objects.filter(pk=request.POST.get('source')).first() if (request.POST.get('source') or '').isdigit() else None
     if source is None or not source.is_active:
-        messages.error(request, 'منبع تماس فعال را انتخاب کنید؛ تماس ثبت نشد.')
+        messages.error(request, 'منبع تماس فعال را انتخاب کنید؛ تماس ثبت نشد.', extra_tags=json.dumps({'field':'qc-source'}))
         return redirect(back)
 
     if kind == 'followup':
@@ -669,10 +675,10 @@ def hub_quick_call(request, pk):
         done_time = parse_followup_time(request.POST.get('follow_up_time'))
         next_time = parse_followup_time(request.POST.get('next_follow_up_time'))
         if done_due is None or done_time is None:
-            messages.error(request, 'برای تماس پیگیری، تاریخ و ساعت معتبر اجباری است.')
+            messages.error(request, 'برای تماس پیگیری، تاریخ و ساعت معتبر اجباری است.', extra_tags=json.dumps({'field':'qc-date' if done_due is None else 'qc-time'}))
             return redirect(back)
         if needs_next and (next_due is None or next_time is None):
-            messages.error(request, 'تاریخ و ساعت پیگیری بعدی را وارد کنید.')
+            messages.error(request, 'تاریخ و ساعت پیگیری بعدی را وارد کنید.', extra_tags=json.dumps({'field':'qc-next-date' if next_due is None else 'qc-next-time'}))
             return redirect(back)
 
         if has_permission(request.user, 'customers.edit') and can_edit_card(request.user, customer):

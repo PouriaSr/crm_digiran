@@ -88,6 +88,7 @@ def user_create(request):
         if form.is_valid():
             user = form.save()
             show_duplicate_warnings(request, form)
+            request.feedback_context = {'record': 'user:'+str(user.pk)}
             messages.success(request, f'کاربر «{user.username}» با موفقیت ساخته شد.')
             return redirect('accounts:user_list')
     else:

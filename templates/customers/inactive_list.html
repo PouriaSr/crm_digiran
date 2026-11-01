@@ -47,7 +47,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for customer in page_obj %}
-            <tr class="hover:bg-gray-50 transition opacity-75">
+            <tr data-feedback-record="customer:{{ customer.pk }}" class="hover:bg-gray-50 transition opacity-75">
                 <td class="px-4 py-3 text-center">
                     <div class="flex items-center justify-center gap-3">
                         <div class="w-9 h-9 bg-red-100 text-red-600 rounded-full flex items-center justify-center font-bold text-sm shrink-0">

@@ -253,6 +253,7 @@ def category_create(request):
         if form.is_valid():
             category = form.save()
             show_duplicate_warnings(request, form)
+            request.feedback_context = {'record': 'category:'+str(category.pk)}
             messages.success(request, f'دسته‌بندی «{category.name}» اضافه شد.')
             return redirect('products:category_list')
     else:

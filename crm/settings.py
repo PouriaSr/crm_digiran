@@ -110,6 +110,7 @@ MIDDLEWARE = [
     'accounts.twofa_middleware.TwoFactorEnforcementMiddleware',
 
     'django.contrib.messages.middleware.MessageMiddleware',
+    'crm.feedback.FeedbackContextMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
 

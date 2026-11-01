@@ -10,6 +10,8 @@
     <style>body { font-family: 'Vazirmatn', sans-serif; }</style>
 {% include 'includes/_numerals.html' %}
 {% include 'includes/_form_styles.html' %}
+{% include 'includes/_filter_ui.html' %}
+{% include 'includes/_feedback_ui.html' %}
 </head>
 <body class="min-h-screen bg-gray-100 flex items-center justify-center p-6">
 
@@ -37,14 +39,7 @@
             </p>
         </div>
 
-        {% if messages %}
-            {% for message in messages %}
-            <div class="mb-4 p-3 rounded-xl {% if message.tags == 'error' %}bg-red-50 border border-red-200 text-red-700{% else %}bg-blue-50 border border-blue-200 text-blue-700{% endif %} text-sm">
-                {{ message }}
-            </div>
-            {% endfor %}
-        {% endif %}
-
+{% include 'includes/_feedback_messages.html' %}
         <form data-crm-form method="post" class="space-y-5">
             {% csrf_token %}
 

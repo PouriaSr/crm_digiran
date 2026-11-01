@@ -101,7 +101,7 @@
 </div>
 
 <!-- ═══ اطلاعات مشتری ═══ -->
-<div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+<div data-feedback-box data-feedback-record="customer:{{ customer.pk }}" class="bg-white rounded-xl shadow-sm p-6 mb-6">
     <div class="flex items-start gap-6">
         <div class="w-20 h-20 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-3xl font-bold">
             {{ customer.name|first|upper }}
@@ -353,14 +353,14 @@
     <!-- فرم ثبت یادداشت جدید -->
     {% if "customers.notes_add" in user_permissions %}
     <div class="px-6 py-4 bg-gray-50 border-b border-gray-100">
-        <form id="note-form" onsubmit="submitNote(event, {{ customer.pk }})">
+        <form data-crm-form method="post" action="{% url 'customers:note_create' customer.pk %}" id="note-form" onsubmit="submitNote(event, {{ customer.pk }})">
             {% csrf_token %}
-            <textarea id="note-text" rows="3" required
+            <label for="note-text" class="block text-sm font-medium text-gray-700 mb-2">متن یادداشت</label><textarea name="text" id="note-text" rows="3" required
                       placeholder="یادداشت جدید..."
                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"></textarea>
             <div class="flex items-center justify-between mt-2">
                 {% if "customers.notes_pin" in user_permissions %}<label class="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-                    <input type="checkbox" id="note-pinned"
+                    <input type="checkbox" name="is_pinned" id="note-pinned"
                            class="w-3.5 h-3.5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                     <span>سنجاق کن</span>
                 </label>{% endif %}
@@ -473,16 +473,19 @@ async function submitNote(event, customerId) {
 
         const data = await response.json();
         if (data.success) {
+            window.CRMFeedback.remember('یادداشت ثبت شد.','success',{field:'note-text'});
             window.location.reload();
         } else {
             msgEl.className = 'mt-2 text-sm p-2 rounded-lg bg-red-50 text-red-700';
             msgEl.textContent = data.error || 'خطا در ثبت';
+            window.CRMFeedback.insert(document.getElementById('note-text'),msgEl);
             btn.disabled = false;
             btn.textContent = 'ثبت یادداشت';
         }
     } catch (error) {
         msgEl.className = 'mt-2 text-sm p-2 rounded-lg bg-red-50 text-red-700';
         msgEl.textContent = 'خطای شبکه: ' + error.message;
+        window.CRMFeedback.insert(document.getElementById('note-text'),msgEl);
         btn.disabled = false;
         btn.textContent = 'ثبت یادداشت';
     }
@@ -500,21 +503,18 @@ async function togglePin(noteId) {
         const data = await response.json();
         if (data.success) window.location.reload();
     } catch (error) {
-        alert('خطا: ' + error.message);
+        window.CRMFeedback.show(document.querySelector('[data-note-id="'+noteId+'"]'),'خطا: '+error.message,'error');
     }
 }
 
 async function editNote(noteId) {
     const row = document.querySelector('[data-note-id="'+noteId+'"]');
-    const current = row.querySelector('.note-content').textContent;
-    const text = window.prompt('ویرایش یادداشت', current);
-    if (text === null || !text.trim()) return;
-    const response = await fetch("{% url 'customers:note_edit' customer.pk 0 %}".replace('/0/', '/'+noteId+'/'), {
-        method:'POST', headers:{'X-CSRFToken':CSRF_TOKEN,'X-Requested-With':'XMLHttpRequest','Content-Type':'application/x-www-form-urlencoded'},
-        body:new URLSearchParams({text:text})
-    });
-    const data = await response.json();
-    if (data.success) window.location.reload(); else alert(data.error || 'ویرایش انجام نشد.');
+    if(row.querySelector('form'))return;
+    const content=row.querySelector('.note-content'),form=document.createElement('form');form.setAttribute('data-crm-form','');form.method='post';
+    const label=document.createElement('label'),field=document.createElement('textarea');field.name='text';field.id='note-edit-'+noteId;field.required=true;field.rows=3;field.value=content.textContent;field.className='w-full border border-gray-300 rounded-lg p-3';label.htmlFor=field.id;label.textContent='ویرایش متن یادداشت';
+    const actions=document.createElement('div');actions.className='flex gap-2 mt-3';const save=document.createElement('button');save.type='submit';save.textContent='ثبت تغییرات';save.className='wf-action';const cancel=document.createElement('button');cancel.type='button';cancel.textContent='انصراف';cancel.className='wf-action';actions.append(save,cancel);form.append(label,field,actions);content.before(form);content.hidden=true;window.CRMForms?.prepare(form);cancel.onclick=()=>{form.remove();content.hidden=false;};
+    form.onsubmit=async event=>{event.preventDefault();save.disabled=true;try{const response=await fetch("{% url 'customers:note_edit' customer.pk 0 %}".replace('/0/', '/'+noteId+'/'),{method:'POST',headers:{'X-CSRFToken':CSRF_TOKEN,'X-Requested-With':'XMLHttpRequest','Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({text:field.value})});const data=await response.json();if(!data.success)throw new Error(data.error||'ویرایش انجام نشد.');window.CRMFeedback.remember('یادداشت ویرایش شد.','success',{record:'note:'+noteId});window.location.reload();}catch(error){window.CRMFeedback.show(field,error.message,'error');save.disabled=false;}};
+    field.focus();
 }
 
 async function deleteNote(noteId) {
@@ -530,7 +530,7 @@ async function deleteNote(noteId) {
         const data = await response.json();
         if (data.success) window.location.reload();
     } catch (error) {
-        alert('خطا: ' + error.message);
+        window.CRMFeedback.show(document.querySelector('[data-note-id="'+noteId+'"]'),'خطا: '+error.message,'error');
     }
 }
 </script>

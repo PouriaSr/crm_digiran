@@ -152,7 +152,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for invoice in page_obj %}
-            <tr class="hover:bg-gray-50 transition">
+            <tr data-feedback-record="invoice:{{ invoice.pk }}" class="hover:bg-gray-50 transition">
                 <td class="px-4 py-3 text-right font-mono text-xs">
                     <a href="{% url 'sales:detail' invoice.pk %}" class="text-blue-600 hover:underline" dir="ltr">{{ invoice.number }}</a>
                 </td>
@@ -196,7 +196,7 @@
 <!-- ===== MOBILE CARDS START ===== -->
 <div class="md:hidden space-y-3">
     {% for invoice in page_obj %}
-    <article class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <article data-feedback-record="invoice:{{ invoice.pk }}" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <!-- Header -->
         <header class="px-4 py-3 flex items-start gap-3 border-b border-gray-100">
             <div class="flex-1 min-w-0">

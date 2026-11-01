@@ -148,7 +148,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for product in page_obj %}
-            <tr class="hover:bg-gray-50 transition {% if product.is_deleted %}opacity-75{% endif %}">
+            <tr data-feedback-record="product:{{ product.pk }}" class="hover:bg-gray-50 transition {% if product.is_deleted %}opacity-75{% endif %}">
                 <td class="px-4 py-3 text-right">
                     <div class="font-medium {% if product.is_deleted %}line-through text-gray-400{% else %}text-gray-800{% endif %}">
                         {{ product.name }}
@@ -233,7 +233,7 @@
 <!-- ===== MOBILE CARDS START ===== -->
 <div class="md:hidden space-y-3">
     {% for product in page_obj %}
-    <article class="bg-white rounded-2xl border shadow-sm overflow-hidden
+    <article data-feedback-record="product:{{ product.pk }}" class="bg-white rounded-2xl border shadow-sm overflow-hidden
         {% if product.is_deleted %}opacity-75 border-red-200
         {% elif product.stock_status == 'out' %}border-red-200
         {% elif product.stock_status == 'low' %}border-yellow-200

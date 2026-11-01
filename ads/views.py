@@ -338,6 +338,7 @@ def ad_create(request):
                         'ad_number': [None, ad.ad_number],
                     },
                 )
+            request.feedback_context = {'record': 'ad:'+str(ad.pk)}
             messages.success(request, 'تبلیغ با موفقیت ثبت شد.')
             return redirect('ads:list')
     else:
@@ -456,7 +457,8 @@ def platform_list(request):
     if request.method == 'POST':
         form = AdPlatformForm(request.POST)
         if form.is_valid():
-            form.save()
+            definition = form.save()
+            request.feedback_context = {'record': 'platform:'+str(definition.pk)}
             messages.success(request, 'عنوان اضافه شد.')
             return redirect('ads:platform_list')
     else:
@@ -504,7 +506,8 @@ def process_list(request):
     if request.method == 'POST':
         form = AdProcessForm(request.POST)
         if form.is_valid():
-            form.save()
+            definition = form.save()
+            request.feedback_context = {'record': 'process:'+str(definition.pk)}
             messages.success(request, 'فرآیند اضافه شد.')
             return redirect('ads:process_list')
     else:
@@ -553,7 +556,8 @@ def source_list(request):
     if request.method == 'POST':
         form = AdSourceForm(request.POST)
         if form.is_valid():
-            form.save()
+            definition = form.save()
+            request.feedback_context = {'record': 'source:'+str(definition.pk)}
             messages.success(request, 'منبع اضافه شد.')
             return redirect('ads:source_list')
     else:

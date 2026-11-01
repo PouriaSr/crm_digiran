@@ -33,7 +33,7 @@
 </div>
 
 <!-- هدر تماس -->
-<div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+<div data-feedback-box data-feedback-record="call:{{ call.pk }}" class="bg-white rounded-xl shadow-sm p-6 mb-6">
     <div class="flex items-start gap-5">
         <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-bold
                     {% if call.status == 'answered' %}bg-green-500

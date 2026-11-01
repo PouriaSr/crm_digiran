@@ -19,7 +19,7 @@
     const help=form.querySelector('[id="'+CSS.escape(field.id)+'-help"]'),error=form.querySelector('[id="'+CSS.escape(field.id)+'-errors"]');
     const descriptions=new Set((field.getAttribute('aria-describedby')||'').split(/\s+/).filter(Boolean));[help,error].filter(Boolean).forEach(node=>descriptions.add(node.id));if(descriptions.size)field.setAttribute('aria-describedby',Array.from(descriptions).join(' '));if(error)field.setAttribute('aria-invalid','true');
     if(field.tagName==='SELECT' && document.readyState!=='loading' && window.TomSelect && !field.tomselect && !field.classList.contains('no-search')){
-     const options={create:false,plugins:['dropdown_input'],dropdownParent:'body',maxOptions:1000,placeholder:label?.textContent.replace(/[*]/g,'').trim()||'انتخاب کنید…',score:function(query){const convert=value=>window.CRMNumerals?CRMNumerals.ascii(value):value;const score=this.getScoreFunction(convert(query));return item=>score(Object.fromEntries(Object.entries(item).map(([key,value])=>[key,typeof value==='string'?convert(value):value])));}};
+     const options={create:false,plugins:['dropdown_input'],dropdownParent:'body',maxOptions:1000,placeholder:window.CRMFilterUI?.placeholder(field)||'انتخاب کنید…',score:function(query){const convert=value=>window.CRMNumerals?CRMNumerals.ascii(value):value;const score=this.getScoreFunction(convert(query));return item=>score(Object.fromEntries(Object.entries(item).map(([key,value])=>[key,typeof value==='string'?convert(value):value])));}};
      if(field.dataset.sourceSearch==='label-first')window.CRMSourceSearch?.configure(field,options);new TomSelect(field,options);
     }
     if(field.type==='password'&&!field.dataset.crmPassword&&!field.hasAttribute(':type')&&!field.hasAttribute('x-bind:type')){
@@ -27,11 +27,13 @@
     }
     if(field.type==='file'&&!field.dataset.crmFile){field.dataset.crmFile='1';const summary=document.createElement('p');summary.className='crm-file-selection';summary.setAttribute('aria-live','polite');field.after(summary);field.addEventListener('change',()=>{summary.textContent=Array.from(field.files||[]).map(file=>file.name+' · '+(file.size/1024/1024>=1?(file.size/1024/1024).toFixed(1)+' مگابایت':Math.max(1,Math.round(file.size/1024))+' کیلوبایت')).join('، ');});}
    });
+   window.CRMFilterUI?.prepareInputs(form);
+   window.CRMFeedback?.prepare(form);
    const errors=form.querySelector('[data-form-error-summary]');if(errors&&!form.dataset.crmErrorsShown&&errors.getClientRects().length){form.dataset.crmErrorsShown='1';requestAnimationFrame(()=>{errors.focus({preventScroll:true});errors.scrollIntoView({block:'center'});});}
   });
  }
  document.addEventListener('click',event=>{const link=event.target.closest('[data-form-error-link]');if(!link)return;const form=link.closest('form'),id=link.getAttribute('href').slice(1),field=Array.from((form||document).querySelectorAll('[id]')).find(el=>el.id===id);if(field){event.preventDefault();focusField(field);}});
- document.addEventListener('invalid',event=>{const field=event.target;if(!field.closest('form[data-crm-form]'))return;field.setAttribute('aria-invalid','true');for(let node=field.parentElement;node;node=node.parentElement)if(node.tagName==='DETAILS')node.open=true;if(field.tomselect)field.tomselect.focus();},true);
+ document.addEventListener('invalid',event=>{const field=event.target;if(!field.closest('form[data-crm-form]'))return;field.setAttribute('aria-invalid','true');for(let node=field.parentElement;node;node=node.parentElement)if(node.tagName==='DETAILS')node.open=true;const first=Array.from(field.form?.elements||[]).find(el=>el.willValidate&&!el.validity.valid);if(first===field&&field.tomselect)field.tomselect.focus();},true);
  document.addEventListener('input',event=>{const field=event.target;if(field.closest('form[data-crm-form]')&&field.validity?.valid)field.removeAttribute('aria-invalid');});
  document.addEventListener('change',event=>{const field=event.target;if(field.closest('form[data-crm-form]')&&field.validity?.valid)field.removeAttribute('aria-invalid');});
  document.addEventListener('DOMContentLoaded',()=>prepare());

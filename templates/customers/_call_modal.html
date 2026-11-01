@@ -32,7 +32,7 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <form data-crm-form method="post" action="{% url 'customers:hub_submit_call' %}"
+            <form data-local-submit data-crm-form method="post" action="{% url 'customers:hub_submit_call' %}"
                   @submit="if ($el.checkValidity()) submitting = true"
                   class="flex flex-col flex-1 min-h-0">
                 {% csrf_token %}
@@ -47,19 +47,21 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label for="hub_call_mobile" class="block text-sm font-medium text-slate-700 mb-2">شماره تماس <span class="text-red-500">*</span></label>
+                                <p id="hub_call_mobile_error" x-show="mobileInvalid" class="mt-2 text-xs" :class="mobileInvalid ? 'text-red-600' : 'text-slate-400'" aria-live="polite" x-text="mobileInvalid ? 'شماره تماس باید دقیقاً ۱۱ رقم باشد؛ شماره را کامل کنید.' : '۱۱ رقم؛ اعداد فارسی و انگلیسی پذیرفته می‌شوند.'"></p>
                                 <div data-input-icon-left class="relative">
                                     {{ call_form.mobile }}
                                     <span x-show="checking" class="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500" aria-label="در حال بررسی شماره">
                                         <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                                     </span>
                                 </div>
-                                <p id="hub_call_mobile_error" class="mt-2 text-xs" :class="mobileInvalid ? 'text-red-600' : 'text-slate-400'" aria-live="polite" x-text="mobileInvalid ? 'شماره تماس باید دقیقاً ۱۱ رقم باشد؛ شماره را کامل کنید.' : '۱۱ رقم؛ اعداد فارسی و انگلیسی پذیرفته می‌شوند.'"></p>
+
                             </div>
                             <div>
                                 <label for="hub_call_name" class="block text-sm font-medium text-slate-700 mb-2">نام و نام خانوادگی <span class="text-red-500">*</span></label>
-                                {{ call_form.name }}
-                                <p id="hub_call_name_error" class="mt-2 text-xs" :class="nameInvalid ? 'text-red-600' : 'text-slate-400'" aria-live="polite"
+                                <p id="hub_call_name_error" x-show="nameInvalid" class="mt-2 text-xs" :class="nameInvalid ? 'text-red-600' : 'text-slate-400'" aria-live="polite"
                                    x-text="nameInvalid ? 'نام و نام خانوادگی نباید شامل عدد باشد.' : 'نام کامل مخاطب را بدون عدد وارد کنید.'"></p>
+                                {{ call_form.name }}
+
                             </div>
                         </div>
                         <div x-show="existingCustomer" x-cloak class="mt-4 text-xs text-emerald-800 bg-emerald-50 px-3 py-2.5 rounded-xl border border-emerald-100" role="status">

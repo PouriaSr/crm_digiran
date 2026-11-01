@@ -137,7 +137,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for call in page_obj %}{% can_edit_call call as call_editable %}
-            <tr class="hover:bg-gray-50 transition">
+            <tr data-feedback-record="call:{{ call.pk }}" class="hover:bg-gray-50 transition">
                 <td class="px-3 py-3 text-right">
                     <div class="font-medium text-gray-800">{{ call.caller_name }}</div>
                     <div class="text-xs text-gray-500 mt-1">منبع: {{ call.source_display }}</div>
@@ -233,7 +233,7 @@
 <!-- ===== MOBILE CARDS START ===== -->
 <div class="md:hidden space-y-3">
     {% for call in page_obj %}{% can_edit_call call as call_editable %}
-    <article class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <article data-feedback-record="call:{{ call.pk }}" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <!-- Header -->
         <header class="px-4 py-3 flex items-start gap-3 border-b border-gray-100">
             <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0
@@ -434,6 +434,8 @@
             if (data.success) {
                 messageEl.className = 'mb-4 text-sm p-3 rounded-lg bg-green-50 text-green-700';
                 messageEl.textContent = data.message;
+                window.CRMFeedback.insert(document.getElementById('reassign-select'),messageEl);
+                window.CRMFeedback.remember(data.message,'success',{record:'call:'+callId});
                 messageEl.classList.remove('hidden');
 
                 setTimeout(() => {
@@ -442,6 +444,7 @@
             } else {
                 messageEl.className = 'mb-4 text-sm p-3 rounded-lg bg-red-50 text-red-700';
                 messageEl.textContent = data.error || 'خطا در ارجاع';
+                window.CRMFeedback.insert(document.getElementById('reassign-select'),messageEl);
                 messageEl.classList.remove('hidden');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'تلاش مجدد';
@@ -449,6 +452,7 @@
         } catch (error) {
             messageEl.className = 'mb-4 text-sm p-3 rounded-lg bg-red-50 text-red-700';
             messageEl.textContent = 'خطای شبکه: ' + error.message;
+            window.CRMFeedback.insert(document.getElementById('reassign-select'),messageEl);
             messageEl.classList.remove('hidden');
             submitBtn.disabled = false;
             submitBtn.textContent = 'تلاش مجدد';

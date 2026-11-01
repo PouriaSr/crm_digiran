@@ -9,7 +9,7 @@
             </button>
         </div>
 
-        <form data-crm-form id="ce-form" method="post" action="" class="p-5 space-y-4" autocomplete="off">
+        <form data-local-submit data-crm-form id="ce-form" method="post" action="" class="p-5 space-y-4" autocomplete="off">
             {% csrf_token %}
             <input type="hidden" name="next" id="ce-next" value="">
             <input type="hidden" name="kind" id="ce-kind" value="new">

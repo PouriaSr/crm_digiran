@@ -10,7 +10,7 @@
   </div>
 
   <form data-crm-form method="post" class="bg-white rounded-xl shadow-sm p-5 mb-6">
-    {% csrf_token %}
+    {% csrf_token %}{% include 'includes/_form_errors.html' %}
     <h2 class="font-bold text-gray-700 mb-4">{% if editing_platform %}ویرایش عنوان{% else %}افزودن عنوان{% endif %}</h2>
     {% if form.non_field_errors %}<div class="text-red-600 text-sm mb-3">{{ form.non_field_errors }}</div>{% endif %}
     <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
@@ -47,7 +47,7 @@
       </thead>
       <tbody class="divide-y divide-gray-100">
         {% for item in items %}
-        <tr class="hover:bg-gray-50">
+        <tr data-feedback-record="platform:{{ item.pk }}" class="hover:bg-gray-50">
           <td class="px-4 py-3 text-center text-gray-500">{{ forloop.counter }}</td>
           <td class="px-4 py-3 text-center font-medium text-gray-800">{{ item.name }}</td>
           <td class="px-4 py-3 text-center text-gray-600">{{ item.ad_number_start }}</td>

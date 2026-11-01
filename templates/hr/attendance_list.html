@@ -83,7 +83,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for att in page_obj %}
-            <tr class="hover:bg-gray-50">
+            <tr data-feedback-record="attendance:{{ att.pk }}" class="hover:bg-gray-50">
                 <td class="px-4 py-3 text-right font-medium">{{ att.employee.full_name }}</td>
                 <td class="px-4 py-3 text-right text-xs" data-label="تاریخ" dir="ltr">{{ att.date|jdate:"Y/m/d" }} <span class="text-gray-400 mx-1">|</span> {{ att.created_at|jdate:"H:i" }}</td>
                 <td class="px-4 py-3 text-right font-mono text-xs" data-label="ورود" dir="ltr">{{ att.check_in|time:"H:i"|default:"--" }}</td>
