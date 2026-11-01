@@ -95,7 +95,7 @@
     <!-- TAB 1: INFO -->
     <div x-show="tab === 'info'" x-transition.opacity class="space-y-4">
         <div class="flex flex-col md:flex-row justify-between items-center gap-3">
-            <form method="get" class="crm-filter-form w-full md:w-1/2 relative group">
+            <form data-input-icon-left="action" method="get" class="crm-filter-form w-full md:w-1/2 relative group">
             <input type="hidden" name="tab" value="info">
             <input type="text" name="q" id="hub-search-input" x-model="searchQuery" placeholder="جستجوی نام یا شماره..."
                    class="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm shadow-sm group-hover:border-gray-300">

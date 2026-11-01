@@ -47,7 +47,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label for="hub_call_mobile" class="block text-sm font-medium text-slate-700 mb-2">شماره تماس <span class="text-red-500">*</span></label>
-                                <div class="relative">
+                                <div data-input-icon-left class="relative">
                                     {{ call_form.mobile }}
                                     <span x-show="checking" class="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500" aria-label="در حال بررسی شماره">
                                         <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
