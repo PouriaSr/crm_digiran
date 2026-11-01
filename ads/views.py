@@ -1,3 +1,4 @@
+from crm.pagination import PAGE_SIZE, paginate
 from crm.numerals import digit_contains
 import json
 from django.contrib import messages
@@ -116,7 +117,7 @@ def ad_list(request):
         'platforms': AdPlatform.objects.filter(is_active=True).count(),
     }
 
-    paginator = Paginator(qs, 10)
+    paginator = Paginator(qs, PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get('page'))
 
     # گزارش
@@ -171,6 +172,10 @@ def ad_list(request):
 
     report['chart_labels_json'] = _json(report.get('chart_labels') or [])
     report['chart_values_json'] = _json(report.get('chart_values') or [])
+
+    for name in ('by_platform','by_user','by_source'):
+        if report[name] is not None:
+            report[name] = paginate(request, report[name], f'{name}_page')
 
     context = {
         'page_obj': page_obj,
@@ -415,7 +420,7 @@ def ad_edit(request, pk):
         'title': 'ویرایش تبلیغ',
         'is_edit': True,
         'ad': ad,
-        'logs': ad.logs.select_related('changed_by').all()[:20],
+        'logs': paginate(request, ad.logs.select_related('changed_by').order_by('-changed_at','-pk'), 'logs_page'),
     })
 
 
@@ -457,7 +462,7 @@ def platform_list(request):
     else:
         form = AdPlatformForm()
     return render(request, 'ads/platform_list.html', {
-        'form': form, 'items': AdPlatform.objects.all(),
+        'form': form, 'items': paginate(request, AdPlatform.objects.order_by('name','pk')),
     })
 
 
@@ -472,7 +477,7 @@ def platform_edit(request, pk):
         messages.success(request, 'عنوان به‌روزرسانی شد؛ اطلاعات گزارش‌های قبلی حفظ شدند.')
         return redirect('ads:platform_list')
     return render(request, 'ads/platform_list.html', {
-        'form': form, 'items': AdPlatform.objects.all(), 'editing_platform': platform,
+        'form': form, 'items': paginate(request, AdPlatform.objects.order_by('name','pk')), 'editing_platform': platform,
     })
 
 
@@ -506,7 +511,7 @@ def process_list(request):
         form = AdProcessForm()
     return render(request, 'ads/process_list.html', {
         'form': form,
-        'items': AdProcess.objects.select_related('platform').all(),
+        'items': paginate(request, AdProcess.objects.select_related('platform').order_by('platform__name','name','pk')),
     })
 
 
@@ -521,7 +526,7 @@ def process_edit(request, pk):
         messages.success(request, 'فرآیند به‌روزرسانی شد؛ هزینه و نام ثبت‌شده در تبلیغات قبلی حفظ شدند.')
         return redirect('ads:process_list')
     return render(request, 'ads/process_list.html', {
-        'form': form, 'items': AdProcess.objects.select_related('platform').all(), 'editing_process': process,
+        'form': form, 'items': paginate(request, AdProcess.objects.select_related('platform').order_by('platform__name','name','pk')), 'editing_process': process,
     })
 
 
@@ -554,7 +559,7 @@ def source_list(request):
     else:
         form = AdSourceForm()
     return render(request, 'ads/source_list.html', {
-        'form': form, 'items': AdSource.objects.all(),
+        'form': form, 'items': paginate(request, AdSource.objects.order_by('phone_number','pk')),
     })
 
 
@@ -569,7 +574,7 @@ def source_edit(request, pk):
         messages.success(request, 'منبع به‌روزرسانی شد؛ شماره و برچسب ثبت‌شده در سوابق قبلی حفظ شدند.')
         return redirect('ads:source_list')
     return render(request, 'ads/source_list.html', {
-        'form': form, 'items': AdSource.objects.all(), 'editing_source': source,
+        'form': form, 'items': paginate(request, AdSource.objects.order_by('phone_number','pk')), 'editing_source': source,
     })
 
 

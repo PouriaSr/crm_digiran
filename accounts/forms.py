@@ -35,7 +35,7 @@ class StyledMixin:
 # ═══════════════════════════════════════════════════════════
 def build_permission_fields(form):
     """فیلدهای perm__ را روی فرم می‌سازد (برای کاربر جدید و موجود)"""
-    from accounts.permissions import PERMISSIONS, PERMISSION_META, PERMISSION_PARENT
+    from accounts.permissions import PERMISSIONS, PERMISSION_META, PERMISSION_PARENT, ROLE_RESTRICTED_PERMISSIONS
 
     if getattr(form, '_perm_fields_built', False):
         return
@@ -74,6 +74,7 @@ def build_permission_fields(form):
             required=False,
             widget=forms.Select(attrs={
                 'data-permission-parent': PERMISSION_PARENT.get(perm_key, ''),
+                'data-allowed-roles': ','.join(sorted(ROLE_RESTRICTED_PERMISSIONS.get(perm_key, []))),
                 'class': 'w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-500'
             }),
         )
@@ -90,7 +91,7 @@ def build_permission_fields(form):
 def save_permission_overrides(user, cleaned_data):
     """overrideهای perm__ را ذخیره می‌کند (سوپریوزر: هیچ)"""
     from accounts.models import UserPermissionOverride
-    from accounts.permissions import PERMISSION_META
+    from accounts.permissions import PERMISSION_META, role_allows_permission
 
     user.permission_overrides.all().delete()
     if user.is_superuser:
@@ -100,6 +101,8 @@ def save_permission_overrides(user, cleaned_data):
     for perm_key in PERMISSION_META.keys():
         field_name = 'perm__' + perm_key.replace('.', '_')
         val = cleaned_data.get(field_name) or 'inherit'
+        if val == 'allow' and not role_allows_permission(get_user_role(user), perm_key):
+            continue
         if val == 'allow':
             to_create.append(UserPermissionOverride(
                 user=user, permission_key=perm_key, granted=True))

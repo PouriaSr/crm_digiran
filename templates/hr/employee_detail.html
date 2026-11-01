@@ -200,7 +200,7 @@
             </tr>
             {% endfor %}
         </tbody>
-    </table>
+    </table>{% include 'includes/_pagination.html' with page=open_tasks %}
     {% else %}
     <div class="text-center py-8 text-gray-400 text-sm">
         وظیفه بازی برای این کارمند نیست

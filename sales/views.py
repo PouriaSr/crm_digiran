@@ -1,3 +1,4 @@
+from crm.pagination import PAGE_SIZE, paginate
 from crm.numerals import digit_contains
 import json
 import jdatetime
@@ -195,7 +196,7 @@ def invoice_list(request):
             'total': qs.aggregate(s=Sum('total'))['s'] or 0,
         }
 
-    paginator = Paginator(qs, 20)
+    paginator = Paginator(qs, PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
     context = {

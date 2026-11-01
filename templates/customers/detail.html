@@ -332,6 +332,7 @@
             {% endfor %}
         </tbody>
     </table>
+    {% include 'includes/_pagination.html' with page=invoices %}
     {% else %}
     <div class="text-center py-8 text-gray-400 text-sm">
         هنوز فاکتوری برای این مشتری صادر نشده
@@ -418,6 +419,7 @@
             </div>
         </div>
         {% endfor %}
+{% include 'includes/_pagination.html' with page=notes %}
     </div>
     {% else %}
     <div class="text-center py-8 text-gray-400 text-sm">

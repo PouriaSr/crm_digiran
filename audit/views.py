@@ -1,3 +1,4 @@
+from crm.pagination import PAGE_SIZE, paginate
 from crm.numerals import digit_contains
 import json
 import jdatetime
@@ -177,7 +178,7 @@ def audit_log_list(request):
         audit_logs__isnull=False
     ).distinct().order_by('first_name', 'last_name', 'username')
 
-    paginator = Paginator(logs, 50)
+    paginator = Paginator(logs, PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
     def _json(obj):

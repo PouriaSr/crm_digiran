@@ -173,8 +173,8 @@ class HiringAndListsTest(TestCase):
         for i in range(31):
             customer = Customer.objects.create(name=f'متقاضی شماره {i}', mobile=f'09130000{i:03d}', assigned_to=self.admin)
             Reception.objects.create(customer=customer, person_type='interviewer', referred_at=timezone.now())
-        page = self.client.get(self.hub, {'tab': 'hiring', 'workflow_q': 'متقاضی', 'hiring_page': '2'})
+        page = self.client.get(self.hub, {'tab': 'hiring', 'workflow_q': 'متقاضی', 'hiring_page': '4'})
         self.assertEqual(page.context['hiring_records'].paginator.count, 32)
         self.assertEqual(len(page.context['hiring_records']), 2)
-        self.assertContains(page, 'hiring_page=1')
+        self.assertContains(page, 'hiring_page=3')
         self.assertContains(page, 'workflow_q=')

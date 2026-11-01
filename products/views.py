@@ -1,3 +1,4 @@
+from crm.pagination import PAGE_SIZE, paginate
 from crm.numerals import digit_contains
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
@@ -60,7 +61,7 @@ def product_list(request):
     )
     stats['deleted'] = Product.all_objects.filter(is_deleted=True).count()
 
-    paginator = Paginator(products, 20)
+    paginator = Paginator(products, PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
     context = {
@@ -97,7 +98,7 @@ def product_detail(request, pk):
         recent_items = (
             base_qs
             .select_related('invoice', 'invoice__customer')
-            .order_by('-invoice__created_at')[:10]
+            .order_by('-invoice__created_at','-pk')
         )
 
         totals = base_qs.aggregate(
@@ -111,7 +112,7 @@ def product_detail(request, pk):
 
     context = {
         'product': product,
-        'recent_items': recent_items,
+        'recent_items': paginate(request, recent_items, 'items_page'),
         'total_sold': totals['total_sold'] or 0,
         'total_revenue': totals['total_revenue'] or 0,
         'invoices_count': totals['invoices_count'] or 0,
@@ -208,7 +209,7 @@ def product_restore(request, pk):
 @login_required
 @require_permission('categories.view')
 def category_list(request):
-    categories = Category.objects.all().order_by('order', 'name')
+    categories = Category.objects.all().order_by('order', 'name','pk')
 
     search = request.GET.get('q', '').strip()
     if search:
@@ -236,7 +237,7 @@ def category_list(request):
     }
 
     context = {
-        'categories': categories,
+        'categories': paginate(request, categories),
         'stats': stats,
         'search': search,
         'current_status': status,

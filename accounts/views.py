@@ -1,3 +1,4 @@
+from crm.pagination import PAGE_SIZE, paginate
 from crm.numerals import digit_contains
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
@@ -58,7 +59,7 @@ def user_list(request):
         'admins': User.objects.filter(is_superuser=True).count(),
     }
 
-    paginator = Paginator(users, 20)
+    paginator = Paginator(users, PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
     users_data = []

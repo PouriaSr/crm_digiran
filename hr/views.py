@@ -1,3 +1,4 @@
+from crm.pagination import PAGE_SIZE, paginate
 from crm.numerals import digit_contains
 import jdatetime
 from datetime import timedelta
@@ -47,7 +48,7 @@ def employee_list(request):
         'inactive': Employee.objects.filter(is_active=False).count(),
     }
 
-    paginator = Paginator(employees, 20)
+    paginator = Paginator(employees, PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
     context = {
@@ -70,7 +71,7 @@ def employee_detail(request, pk):
     tasks = restrict_hiring_tasks(employee.tasks.all(), request.user)
     open_tasks = tasks.filter(
         status__in=['pending', 'in_progress']
-    ).order_by('due_date')[:10]
+    ).order_by('due_date','pk')
 
     done_tasks_count = tasks.filter(status='done').count()
     open_tasks_count = tasks.filter(
@@ -79,7 +80,7 @@ def employee_detail(request, pk):
 
     context = {
         'employee': employee,
-        'open_tasks': open_tasks,
+        'open_tasks': paginate(request, open_tasks, 'open_tasks_page'),
         'done_tasks_count': done_tasks_count,
         'open_tasks_count': open_tasks_count,
     }
@@ -208,7 +209,7 @@ def task_list(request):
         'overdue': base_qs.filter(overdue_condition()).count(),
     }
 
-    paginator = Paginator(tasks, 20)
+    paginator = Paginator(tasks, PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
     employees = Employee.objects.filter(is_active=True)
@@ -404,7 +405,7 @@ def leave_list(request):
         'rejected': stats_qs.filter(status='rejected').count(),
     }
 
-    paginator = Paginator(leaves, 20)
+    paginator = Paginator(leaves, PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
     context = {
@@ -532,7 +533,7 @@ def attendance_list(request):
         ).count(),
     }
 
-    paginator = Paginator(attendances, 30)
+    paginator = Paginator(attendances, PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
     employees = Employee.objects.filter(is_active=True)
@@ -731,8 +732,8 @@ def my_profile(request):
 
     context = {
         'employee': employee,
-        'open_tasks': open_tasks,
-        'done_tasks': done_tasks,
+        'open_tasks': paginate(request, open_tasks, 'open_tasks_page'),
+        'done_tasks': paginate(request, tasks.filter(status='done').order_by('-completed_at','-pk'), 'done_tasks_page'),
         'calls_count': calls_count,
         'invoices_count': invoices_count,
         'created_customers_count': created_customers_count,

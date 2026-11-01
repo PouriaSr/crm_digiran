@@ -37,7 +37,7 @@
   if(cfg.id==='customer-table-container')merge(document.getElementById('hub-filter-form'));
   merge(form);
   if(cfg.id?.startsWith('workflow-')){merge(document.querySelector('form[data-workflow-filters]'));url.searchParams.set(cfg.input.name,normalize(cfg.input.value));}
-  const pageKey=cfg.id==='hiring-ad-results'?'ad_page':cfg.id?.startsWith('workflow-')?cfg.id.replace('workflow-','').replace('-results','')+'_page':cfg.id==='changelist-form'?'p':'page';url.searchParams.delete(pageKey);
+  const pageKey=cfg.id==='hiring-ad-results'?'ad_page':cfg.id?.startsWith('workflow-')?cfg.id.replace('workflow-','').replace('-results','')+'_page':cfg.id==='changelist-form'?'p':'page';url.searchParams.delete(pageKey);if(cfg.global||cfg.id==='global-search-results')for(const key of Array.from(url.searchParams.keys()))if(key.endsWith('_page'))url.searchParams.delete(key);if(!cfg.global)for(const key of Array.from(url.searchParams.keys()))if(/^(contact|work|sessions|referrals|updates)_.*_page$/.test(key))url.searchParams.delete(key);
   if(cfg.id==='hiring-ad-results'){const other=document.querySelector('input[name=workflow_q]:not([type=hidden])');if(other)url.searchParams.set('workflow_q',normalize(other.value));}
   else if(cfg.id==='workflow-hiring-results'){const other=document.querySelector('input[name=ad_q]');if(other)url.searchParams.set('ad_q',normalize(other.value));}
   // Search must never trigger an editor-open navigation.
@@ -54,9 +54,12 @@
   // Keep expanded rows when the same person remains in the result.
   const focusUrl=current.contains(document.activeElement)?document.activeElement.dataset.openHiring:null;
   const opened=new Set(Array.from(current.querySelectorAll('details[open][data-reception-id]')).map(el=>el.dataset.receptionId));
+  const openCallRows=new Set(Array.from(current.querySelectorAll('tr[id^="calls-row-"]:not(.hidden)')).map(el=>el.id));
+  const preserved=new Set(Array.from(current.querySelectorAll('details[open][data-preserve-key]')).map(el=>el.dataset.preserveKey));
   destroy(current);current.replaceChildren(...Array.from(next.childNodes));
   for(const attr of ['data-show-new'])if(next.hasAttribute(attr))current.setAttribute(attr,next.getAttribute(attr));
-  current.querySelectorAll('details[data-reception-id]').forEach(el=>{el.open=opened.has(el.dataset.receptionId);});prepare(current);if(focusUrl)Array.from(current.querySelectorAll('[data-open-hiring]')).find(el=>el.dataset.openHiring===focusUrl)?.focus({preventScroll:true});
+  current.querySelectorAll('tr[id^="calls-row-"]').forEach(el=>{if(openCallRows.has(el.id))el.classList.remove('hidden');});
+  current.querySelectorAll('details[data-reception-id]').forEach(el=>{el.open=opened.has(el.dataset.receptionId);});current.querySelectorAll('details[data-preserve-key]').forEach(el=>{el.open=preserved.has(el.dataset.preserveKey);});prepare(current);if(focusUrl)Array.from(current.querySelectorAll('[data-open-hiring]')).find(el=>el.dataset.openHiring===focusUrl)?.focus({preventScroll:true});
   if(current.id==='customer-table-container'){
    const scope=current.closest('[x-data]');if(window.Alpine&&scope)Alpine.$data(scope).showNewBtn=current.dataset.showNew==='true';
   }

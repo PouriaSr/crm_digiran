@@ -200,7 +200,7 @@ class AuditLogFilterTest(TestCase):
             Customer.objects.create(name=f'م{i}', mobile=f'09120001{i:03d}')
         r = self.client.get(self._url())
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(len(r.context['page_obj']), 50)  # page_size=50
+        self.assertEqual(len(r.context['page_obj']), 10)  # shared page size
 
     def test_filtered_count_displayed(self):
         r = self.client.get(self._url(action='updated'))

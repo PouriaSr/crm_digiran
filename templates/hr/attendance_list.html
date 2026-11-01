@@ -108,13 +108,7 @@
     </table>
 </div>
 
-{% if page_obj.has_other_pages %}
-<div class="flex justify-center mt-6 gap-2">
-    {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm">قبلی</a>{% endif %}
-    <span class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span>
-    {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm">بعدی</a>{% endif %}
-</div>
-{% endif %}
+{% include 'includes/_pagination.html' with page=page_obj %}
 
 {% endblock %}
 

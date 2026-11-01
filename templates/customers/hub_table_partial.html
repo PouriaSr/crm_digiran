@@ -6,6 +6,7 @@
  <label>از تاریخ<input type="text" name="date_from" value="{{ table_filters.date_from }}" data-jdp data-jdp-time="false" placeholder="۱۴۰۵/۰۸/۰۱" autocomplete="off" class="w-full mt-1 border rounded-lg p-2"></label>
  <label>تا تاریخ<input type="text" name="date_to" value="{{ table_filters.date_to }}" data-jdp data-jdp-time="false" placeholder="۱۴۰۵/۰۸/۳۰" autocomplete="off" class="w-full mt-1 border rounded-lg p-2"></label>
  <label>وضعیت تسک<select name="priority" class="w-full mt-1 border rounded-lg p-2 no-search"><option value="">همه</option><option value="overdue" {% if table_filters.priority == 'overdue' %}selected{% endif %}>عقب‌افتاده</option><option value="today" {% if table_filters.priority == 'today' %}selected{% endif %}>سررسید امروز</option><option value="upcoming" {% if table_filters.priority == 'upcoming' %}selected{% endif %}>آینده</option><option value="none" {% if table_filters.priority == 'none' %}selected{% endif %}>بدون پیگیری باز</option></select></label>
+ <label>کارشناس تماس<select name="contact_expert" aria-label="کارشناس تماس" class="w-full mt-1 border rounded-lg p-2"><option value="">همه کارشناسان</option><option value="unassigned" {% if table_filters.contact_expert == 'unassigned' %}selected{% endif %}>بدون مسئول</option>{% for expert in contact_experts %}<option value="{{ expert.pk }}" {% if table_filters.contact_expert == expert.pk|stringformat:'s' %}selected{% endif %}>{{ expert.get_full_name|default:expert.username }}</option>{% endfor %}</select></label>
  <label>مرتب‌سازی<select name="sort" class="w-full mt-1 border rounded-lg p-2 no-search"><option value="priority" {% if table_filters.sort == 'priority' %}selected{% endif %}>اولویت پیگیری</option><option value="recent" {% if table_filters.sort == 'recent' %}selected{% endif %}>جدیدترین مشتری</option><option value="oldest" {% if table_filters.sort == 'oldest' %}selected{% endif %}>قدیمی‌ترین مشتری</option></select></label>
  <div class="flex items-end gap-2"><button type="submit" class="bg-blue-600 text-white font-bold rounded-lg p-2 flex-1">اعمال فیلتر</button><a href="{% url 'customers:hub' %}?tab=info" class="rounded-lg p-2 border text-slate-500">پاک‌کردن</a></div>
  <p class="col-span-2 lg:col-span-6 text-xs text-slate-500">{% if table_filters.date_field == 'followup' %}بازه روی تاریخ نزدیک‌ترین پیگیری باز اعمال می‌شود؛ مشتری بدون پیگیری باز در این بازه نمایش داده نمی‌شود.{% else %}بازه روی تاریخ ثبت مشتری اعمال می‌شود؛ داشتن پیگیری الزامی نیست.{% endif %}</p>
@@ -155,7 +156,7 @@
                         <div class="p-4 text-right">
                             {% if c.history_calls %}
                             <div class="text-xs font-bold text-gray-600 mb-2">
-                                تاریخچه تماس‌ها ({{ c.history_calls|length|fa_num }} مورد)
+                                تاریخچه تماس‌ها ({{ c.history_calls.paginator.count|fa_num }} مورد)
                             </div>
                             {% include 'customers/_call_history_items.html' with history_calls=c.history_calls can_edit_history=card_editable %}
                             {% else %}
@@ -196,7 +197,7 @@
                 <span>کارشناس تماس: {% if c.assigned_to %}{{ c.assigned_to.get_full_name|default:c.assigned_to.username }}{% else %}بدون مسئول{% endif %}</span>
                 <span>{{ c.created_at|jdate:"Y/m/d" }}</span>
             </div>
-            {% if c.history_calls %}<details class="mt-3"><summary class="text-xs text-blue-600 cursor-pointer mb-3">تاریخچه تماس‌ها ({{ c.history_calls|length|fa_num }} مورد)</summary>{% include 'customers/_call_history_items.html' with history_calls=c.history_calls can_edit_history=card_editable %}</details>{% endif %}
+            {% if c.history_calls %}<details class="mt-3" data-preserve-key="contact-{{ c.pk }}"><summary class="text-xs text-blue-600 cursor-pointer mb-3">تاریخچه تماس‌ها ({{ c.history_calls.paginator.count|fa_num }} مورد)</summary>{% include 'customers/_call_history_items.html' with history_calls=c.history_calls can_edit_history=card_editable %}</details>{% endif %}
             <div class="mt-2 flex items-center gap-2 flex-wrap">
                 {% if c.is_deleted %}
                     {% if 'customers.delete' in user_permissions %}
@@ -225,4 +226,5 @@
         <div class="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400 text-sm">هیچ مشتری با این مشخصات یافت نشد.</div>
         {% endfor %}
     </div>
+{% include 'includes/_pagination.html' with page=customers %}
 </div>

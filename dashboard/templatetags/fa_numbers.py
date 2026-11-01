@@ -117,3 +117,11 @@ def jdate(value, arg=None):
         val_str = str(value)
 
     return _to_persian_digits(val_str)
+
+
+@register.simple_tag(takes_context=True)
+def record_page_url(context, key, number):
+    query = context['request'].GET.copy()
+    query.pop('partial', None)
+    query[key or 'page'] = number
+    return '?' + query.urlencode()

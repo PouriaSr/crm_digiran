@@ -112,7 +112,7 @@ PERMISSION_META = {
     'customers.add':    ('مشتریان', 'ایجاد', 'افزودن مشتری جدید'),
     'customers.edit':   ('مشتریان', 'ویرایش', 'ویرایش اطلاعات فقط برای مسئول کارت، سرپرست و ادمین'),
     'customers.profile_full': ('مشتریان', 'پروفایل کامل مشتری', 'نمایش و ویرایش کد ملی، تولد، آدرس و ایمیل؛ فاکتورها مجوز جدا دارند'),
-    'customers.delete': ('مشتریان', 'حذف', 'غیرفعال‌سازی و بازگردانی مشتریان'),
+    'customers.delete': ('مشتریان', 'مشتریان غیرفعال و غیرفعال‌سازی', 'مشاهده غیرفعال‌ها، غیرفعال‌سازی و بازگردانی؛ فقط سرپرست و ادمین، قابل واگذاری به نقش‌های دیگر نیست'),
     'customers.registration': ('تب‌های مرکز مشتریان', 'تب ثبت اطلاعات', 'مشاهده مرحله ثبت اطلاعات؛ ویرایش مجوز جدا دارد'),
     'customers.hiring': ('تب‌های مرکز مشتریان', 'تب استخدام', 'مشاهده اطلاعات مصاحبه‌کننده‌ها و سوابق ورود و ارجاع'),
     'customers.info': ('تب‌های مرکز مشتریان', 'تب اطلاعات', 'فهرست مشتریان، تماس‌ها و پیگیری‌ها'),
@@ -246,6 +246,13 @@ def has_role(user, *roles):
     return get_user_role(user) in roles
 
 
+ROLE_RESTRICTED_PERMISSIONS = {'customers.delete': {ROLE_ADMIN, ROLE_SALES_MANAGER}}
+
+
+def role_allows_permission(role, key):
+    return key not in ROLE_RESTRICTED_PERMISSIONS or role in ROLE_RESTRICTED_PERMISSIONS[key]
+
+
 def has_permission(user, permission_name):
     """
     ترتیب:
@@ -257,6 +264,9 @@ def has_permission(user, permission_name):
         return False
     if user.is_superuser:
         return True
+
+    if not role_allows_permission(get_user_role(user), permission_name):
+        return False
 
     # 1. override
     override = next((item for item in user.permission_overrides.all()
@@ -282,7 +292,7 @@ def get_user_permissions(user):
     user_role = get_user_role(user)
     overrides = {item.permission_key: item.granted for item in user.permission_overrides.all()}
     perms = {key for key, roles in PERMISSIONS.items()
-             if overrides.get(key, overrides.get(PERMISSION_PARENT.get(key), user_role in roles))}
+             if role_allows_permission(user_role, key) and overrides.get(key, overrides.get(PERMISSION_PARENT.get(key), user_role in roles))}
 
     return perms
 

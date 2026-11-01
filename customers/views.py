@@ -1,3 +1,4 @@
+from crm.pagination import PAGE_SIZE, paginate
 from crm.numerals import digit_contains
 import jdatetime
 from django.shortcuts import render, get_object_or_404, redirect
@@ -64,10 +65,10 @@ def customer_detail(request, pk):
     # ⭐ فقط کاربرانی که invoices.view دارند، اطلاعات فاکتور را می‌بینند
     can_view_invoices = has_permission(request.user, 'invoices.view')
 
-    calls = customer.calls.select_related('called_by').order_by('-call_date')[:10]
+    calls = paginate(request, customer.calls.select_related('called_by').order_by('-call_date','-pk'), 'calls_page')
 
     if can_view_invoices:
-        invoices = customer.invoices.order_by('-created_at')[:10]
+        invoices = paginate(request, customer.invoices.order_by('-created_at','-pk'), 'invoices_page')
         paid_count = customer.invoices.filter(status='paid').count()
         issued_count = customer.invoices.filter(status='issued').count()
         total_purchase = customer.invoices.filter(
@@ -80,7 +81,7 @@ def customer_detail(request, pk):
         total_purchase = 0
 
     calls_count = customer.calls.count()
-    notes = customer.notes_new.select_related('created_by').all()
+    notes = paginate(request, customer.notes_new.select_related('created_by').all(), 'notes_page')
 
     context = {
         'customer': customer,
@@ -256,9 +257,9 @@ def customer_restore(request, pk):
 @login_required
 def customer_inactive_list(request):
 
-    if not has_permission(request.user, 'customers.view'):
+    if not has_permission(request.user, 'customers.delete'):
         from django.core.exceptions import PermissionDenied
-        raise PermissionDenied("برای مشاهده لیست غیرفعال‌ها مجوز customers.view لازم است.")
+        raise PermissionDenied('مشاهده مشتریان غیرفعال فقط برای سرپرست و ادمین مجاز است.')
     customers = (
         Customer.all_objects
         .filter(is_deleted=True)
@@ -272,7 +273,7 @@ def customer_inactive_list(request):
             digit_contains('email', search) |
             digit_contains('national_id', search)
         )
-    paginator = Paginator(customers, 20)
+    paginator = Paginator(customers, PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get('page', 1))
     return render(request, 'customers/inactive_list.html', {
         'page_obj': page_obj,

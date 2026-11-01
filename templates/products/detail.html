@@ -220,6 +220,7 @@
             {% endfor %}
         </tbody>
     </table>
+    {% include 'includes/_pagination.html' with page=recent_items %}
     {% else %}
     <div class="text-center py-8 text-gray-400 text-sm">
         این کالا هنوز در هیچ فاکتوری ثبت نشده

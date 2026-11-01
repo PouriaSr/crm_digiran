@@ -1,3 +1,4 @@
+from crm.pagination import PAGE_SIZE, paginate
 from crm.numerals import digit_contains
 from accounts.permissions import require_roles, ROLE_ADMIN, ROLE_SALES_MANAGER
 from django.shortcuts import render, get_object_or_404, redirect
@@ -79,7 +80,7 @@ def call_list(request):
     }
 
     # ═══ صفحه‌بندی ═══
-    paginator = Paginator(calls, 20)
+    paginator = Paginator(calls, PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
     # ═══ dropdown فیلتر: فقط کاربرانی که حداقل یک تماس دارند ═══

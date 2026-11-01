@@ -109,7 +109,7 @@
         <h2 class="font-bold text-gray-700 flex items-center gap-2">
             <span class="w-7 h-7 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center text-sm">✅</span>
             وظایف باز من
-            <span class="text-xs text-gray-400 font-normal">({{ open_tasks|length }})</span>
+            <span class="text-xs text-gray-400 font-normal">({{ open_tasks.paginator.count }})</span>
         </h2>
         <a href="{% url 'hr:task_list' %}" class="text-xs text-blue-600 hover:underline">مشاهده همه</a>
     </div>
@@ -145,7 +145,7 @@
                 </div>
             </div>
         </a>
-        {% endfor %}
+        {% endfor %}{% include 'includes/_pagination.html' with page=open_tasks %}
     </div>
     {% else %}
     <div class="text-center py-10">

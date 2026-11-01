@@ -66,18 +66,18 @@ class PermissionsAuditTest(TestCase):
         self.assertEqual(r.status_code, 403)
         self.assertFalse(self.customer.is_deleted)
 
-    def test_override_can_grant_delete_permission(self):
+    def test_override_cannot_grant_deactivation_outside_supervisor_and_admin(self):
         from accounts.models import UserPermissionOverride
         UserPermissionOverride.objects.create(user=self.sup,
                                               permission_key='customers.delete',
                                               granted=True)
-        self.assertTrue(has_permission(self.sup, 'customers.delete'))
+        self.assertFalse(has_permission(self.sup, 'customers.delete'))
 
     # ── لیست غیرفعال‌ها ──
-    def test_inactive_list_requires_view_permission(self):
+    def test_inactive_list_requires_supervisor_permission(self):
         self.client.force_login(self.sup)
         r = self.client.get('/customers/inactive/')
-        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.status_code, 403)
 
     def test_user_without_view_cannot_open_inactive_list(self):
         outsider = User.objects.create_user('pa_outsider', password='t123456')

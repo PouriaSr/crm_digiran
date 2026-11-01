@@ -1,3 +1,4 @@
+from crm.pagination import paginate
 from crm.numerals import digit_contains
 import io
 import json
@@ -451,20 +452,19 @@ def global_search(request):
     owner = _get_data_owner(request.user)
 
     if query and len(query) >= 2:
-        results['customers'] = list(_filtered_customers(owner).filter(
+        results['customers'] = paginate(request, _filtered_customers(owner).filter(
             digit_contains('name', query) | digit_contains('mobile', query) |
             digit_contains('email', query) | digit_contains('national_id', query)
-        )[:10])
-        results['calls'] = list(_filtered_calls(owner).filter(
+        ), 'customers_page')
+        results['calls'] = paginate(request, _filtered_calls(owner).filter(
             digit_contains('caller_name', query) | digit_contains('call_number', query) |
             digit_contains('notes', query)
-        )[:10])
-        results['products'] = list(Product.objects.filter(
+        ), 'calls_page')
+        results['products'] = paginate(request, Product.objects.filter(
             digit_contains('name', query) | digit_contains('code', query) |
             digit_contains('description', query)
-        )[:10])
-        results['total'] = (len(results['customers']) + len(results['calls'])
-                            + len(results['products']))
+        ), 'products_page')
+        results['total'] = (sum(results[key].paginator.count for key in ('customers','calls','products')))
 
     return render(request, 'dashboard/search.html', {
         'query': query, 'results': results,

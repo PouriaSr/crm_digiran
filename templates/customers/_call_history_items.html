@@ -26,5 +26,5 @@
 </article>
 {% empty %}<p class="text-sm text-slate-400 py-4">هنوز تماسی برای این مشتری ثبت نشده است.</p>{% endfor %}
 </div>
-
+{% include 'includes/_pagination.html' with page=history_calls pagination_label='تماس‌ها' %}
 {% endif %}

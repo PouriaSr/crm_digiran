@@ -37,6 +37,10 @@ class CustomerAdmin(admin.ModelAdmin):
 
     readonly_fields = ('created_at', 'updated_at')
 
+    def has_delete_permission(self, request, obj=None):
+        from accounts.permissions import has_permission
+        return has_permission(request.user, 'customers.delete') and super().has_delete_permission(request, obj)
+
     def save_model(self, request, obj, form, change):
         if not change:
             obj.created_by = request.user
@@ -61,6 +65,10 @@ class CustomerNoteAdmin(admin.ModelAdmin):
     def text_preview(self, obj):
         return obj.text[:60] + ('...' if len(obj.text) > 60 else '')
     text_preview.short_description = 'متن'
+
+    def has_delete_permission(self, request, obj=None):
+        from accounts.permissions import has_permission
+        return has_permission(request.user, 'customers.delete') and super().has_delete_permission(request, obj)
 
     def save_model(self, request, obj, form, change):
         if not change:

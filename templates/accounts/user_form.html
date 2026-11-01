@@ -260,7 +260,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 const parent = document.querySelector('tr[data-perm-key="'+sel.dataset.permissionParent+'"] select');
                 if (parent && parent.value !== 'inherit') v = parent.value;
             }
-            const effective = role === 'admin' || ((v === 'allow') ? true : (v === 'deny') ? false : hasRole);
+            const allowedRoles = (sel.dataset.allowedRoles || '').split(',').filter(Boolean);
+            const roleAllowed = !allowedRoles.length || allowedRoles.includes(role);
+            const allowOption = sel.querySelector('option[value=allow]');
+            if (allowOption) allowOption.disabled = !roleAllowed;
+            if (sel.tomselect?.options.allow) sel.tomselect.updateOption('allow', {...sel.tomselect.options.allow, disabled:!roleAllowed});
+            if (!roleAllowed && sel.value === 'allow') { sel.value = 'inherit'; sel.tomselect?.setValue('inherit', true); v = 'inherit'; }
+            const effective = roleAllowed && (role === 'admin' || ((v === 'allow') ? true : (v === 'deny') ? false : hasRole));
             effCell.innerHTML = effective
                 ? '<span class="text-xs text-green-700 font-bold">\u2713 فعال</span>'
                 : '<span class="text-xs text-red-500 font-bold">\u2717 غیرفعال</span>';

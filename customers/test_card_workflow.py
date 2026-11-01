@@ -190,16 +190,17 @@ class FollowupPriorityFilterTest(TestCase):
         self.assertEqual(response.status_code,200)
         return [c.pk for c in response.context['customers']]
 
-    def test_default_order_is_overdue_today_future_then_no_task(self):
-        self.assertEqual(self.rows(),[c.pk for c in self.cards])
+    def test_default_order_is_newest_and_priority_is_explicit(self):
+        self.assertEqual(self.rows(),[c.pk for c in reversed(self.cards)])
+        self.assertEqual(self.rows(sort='priority'),[c.pk for c in self.cards])
 
     def test_overdue_includes_today_past_hours(self):
-        self.assertEqual(self.rows(priority='overdue'),[c.pk for c in self.cards[:2]])
+        self.assertEqual(self.rows(priority='overdue',sort='priority'),[c.pk for c in self.cards[:2]])
         self.assertEqual(self.rows(priority='none'),[self.cards[4].pk])
 
     def test_date_range_is_inclusive_and_preserves_sort(self):
         day=jdate(self.today)
-        self.assertEqual(self.rows(date_field='followup',date_from=day,date_to=day),[self.cards[1].pk,self.cards[2].pk])
+        self.assertEqual(self.rows(sort='priority',date_field='followup',date_from=day,date_to=day),[self.cards[1].pk,self.cards[2].pk])
         self.assertEqual(self.rows(date_field='followup',date_from=jdate(self.today+timedelta(days=2))),[])
         self.assertEqual(self.rows(date_field='followup',date_from='wrong'),[])
 

@@ -105,6 +105,7 @@
         {% if log.note %}<p class="text-xs text-gray-400 mt-1">{{ log.note }}</p>{% endif %}
       </div>
       {% endfor %}
+      {% include 'includes/_pagination.html' with page=logs %}
     </div>
   </div>
   {% endif %}

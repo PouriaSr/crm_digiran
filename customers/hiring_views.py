@@ -1,3 +1,4 @@
+from crm.pagination import PAGE_SIZE, paginate
 from pathlib import Path
 
 from django.contrib import messages
@@ -98,7 +99,12 @@ def hiring_context(request, records):
     selected_pk = request.GET.get('r', '')
     selected_record = choices.filter(pk=selected_pk).first() if selected_pk.isascii() and selected_pk.isdigit() and len(selected_pk) < 16 else None
     selected_task = Task.objects.filter(hiring_session__application__reception=selected_record).select_related('assigned_user','assigned_to').order_by('-hiring_session__round_number').first() if selected_record else None
-    page = Paginator(records, 30).get_page(request.GET.get('hiring_page'))
+    page = Paginator(records, PAGE_SIZE).get_page(request.GET.get('hiring_page'))
+    for rec in page:
+        application = getattr(rec, 'hiring', None)
+        if application:
+            application.session_history = paginate(request, application.sessions.select_related('job_ad','interviewer','invited_by','saved_by').order_by('-round_number'), f'sessions_{rec.pk}_page')
+            application.referral_history = paginate(request, application.referrals.select_related('from_user','to_user','actor').order_by('-created_at','-pk'), f'referrals_{rec.pk}_page')
     ad_scope = Q(applications__reception__customer__is_deleted=False)
     if not is_card_manager(request.user):
         ad_scope &= Q(applications__reception__customer__assigned_to=request.user)
@@ -113,7 +119,7 @@ def hiring_context(request, records):
             if ad_query in title or ad_query.lower() in value.lower():
                 condition |= Q(platform=value)
         ads = ads.filter(condition)
-    ads_page = Paginator(ads.order_by('-created_at','-pk'), 15).get_page(request.GET.get('ad_page'))
+    ads_page = Paginator(ads.order_by('-created_at','-pk'), PAGE_SIZE).get_page(request.GET.get('ad_page'))
     return {'hiring_records': page, 'hiring_choices': choices, 'hiring_selected': selected_record, 'hiring_selected_task': selected_task,
             'hiring_ads': ads_page, 'hiring_ad_query': ad_query, 'hiring_filters': form, 'hiring_filters_active': any(request.GET.get(k) for k in form.fields),
             'can_hiring_documents': has_permission(request.user, 'customers.hiring_documents')}
@@ -437,7 +443,7 @@ def hiring_ad_create(request):
         ad.save()
         messages.success(request, f'آگهی استخدام {ad.get_platform_display()} با شناسه {ad.number} ثبت شد.')
         return redirect(f"{reverse('customers:hub')}?tab=hiring")
-    return render(request, 'customers/_hiring_ad_modal.html', {'form': form, 'ads': HiringAd.objects.select_related('created_by').order_by('-created_at')[:30]}, status=400 if form.errors else 200)
+    return render(request, 'customers/_hiring_ad_modal.html', {'form': form, 'ads': []}, status=400 if form.errors else 200)
 
 
 @login_required

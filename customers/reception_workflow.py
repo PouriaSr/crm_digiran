@@ -1,3 +1,4 @@
+from crm.pagination import PAGE_SIZE, paginate
 """Admission -> referral -> case -> profile, with server-side stage/permission gates."""
 from crm.numerals import digit_contains
 from django.contrib import messages
@@ -41,7 +42,7 @@ def workflow_records():
         'customer__calls',
         queryset=Call.objects.select_related('called_by').order_by('-call_date', '-pk')[:1],
         to_attr='latest_contact',
-    ), Prefetch('work_sessions', queryset=CaseWorkSession.objects.order_by('-started_at', '-pk')[:1], to_attr='latest_work'), Prefetch('work_sessions', queryset=CaseWorkSession.objects.select_related('started_by','ended_by').order_by('-started_at','-pk')[:20], to_attr='work_history'))
+    ), Prefetch('work_sessions', queryset=CaseWorkSession.objects.order_by('-started_at', '-pk')[:1], to_attr='latest_work'))
 
 
 def editable_records(user):
@@ -55,11 +56,8 @@ def attach_updates(request, page, scope):
     if not has_permission(request.user, 'customers.history'):
         return
     records = list(page.object_list)
-    updates = {}
-    for item in RecordUpdate.objects.filter(scope=scope, customer_id__in=[r.customer_id for r in records]).select_related('edited_by').order_by('-created_at'):
-        updates.setdefault(item.customer_id, []).append(item)
     for rec in records:
-        rec.updates = updates.get(rec.customer_id, [])
+        rec.updates = paginate(request, RecordUpdate.objects.filter(scope=scope,customer_id=rec.customer_id).select_related('edited_by').order_by('-created_at','-pk'), f'updates_{rec.pk}_page')
     page.object_list = records
 
 
@@ -78,7 +76,7 @@ def hiring_records(user):
     records = records.prefetch_related(Prefetch(
         'customer__calls', queryset=Call.objects.select_related('called_by').order_by('-call_date', '-pk')[:1],
         to_attr='latest_contact',
-    ), Prefetch('hiring__sessions', queryset=InterviewSession.objects.select_related('job_ad', 'interviewer', 'invited_by', 'saved_by').order_by('-round_number')[:20], to_attr='session_history'), Prefetch('hiring__referrals', queryset=HiringReferral.objects.select_related('from_user','to_user','actor').order_by('-created_at','-pk')[:20], to_attr='referral_history'))
+    ))
     if not is_card_manager(user):
         records = records.filter(customer__assigned_to=user)
     return records.order_by('-created_at', '-pk')
@@ -132,7 +130,7 @@ def build_workflow_context(request):
             records, filters = filter_workflow_records(request, records, tab)
             context['workflow_filters'] = filters
             context['workflow_filters_active'] = any(request.GET.get(name) for name in filters.fields)
-        return Paginator(search_records(records, query if active == tab else ''), 30).get_page(request.GET.get(page_key))
+        return Paginator(search_records(records, query if active == tab else ''), PAGE_SIZE).get_page(request.GET.get(page_key))
     context = {'allowed_hub_tabs': tabs, 'registration_unlocked': False, 'workflow_query': query,
                'hub_tab_items': [{'key': tab, 'icon': labels[tab][0], 'label': labels[tab][1]} for tab in tabs]}
     visible = editable_records(request.user)
@@ -146,8 +144,8 @@ def build_workflow_context(request):
         context['arrival_resume_form'] = getattr(request, '_arrival_resume_form', None) or ResumeForm()
         context.update(reception_customers=Customer.objects.order_by('name'),
                        reception_records=paginated(records, 'reception', 'reception_page'), referral_users=referral_users() if active == 'reception' else [], hiring_referral_users=referral_users('interviewer') if active == 'reception' else [],
-                       legacy_receptions=Reception.objects.filter(workflow_version=1, customer__is_deleted=False)
-                       .select_related('customer', 'created_by').order_by('-created_at')[:100])
+                       legacy_receptions=paginate(request, Reception.objects.filter(workflow_version=1, customer__is_deleted=False)
+                       .select_related('customer', 'created_by').order_by('-created_at','-pk'), 'legacy_reception_page'))
     if 'case' in tabs:
         records = visible.filter(person_type='customer', referred_at__isnull=False).order_by('-referred_at', '-pk')
         rec = selected_record(request, records)
@@ -164,7 +162,7 @@ def build_workflow_context(request):
         context.update(case_choices=records, case_records=paginated(records, 'case', 'case_page'), case_record=rec,
                        case_customer=rec.customer if rec else None, customer_case=case,
                        case_form=form,
-                       legacy_cases=legacy_cases.distinct().select_related('customer', 'product').order_by('-updated_at')[:100])
+                       legacy_cases=paginate(request, legacy_cases.distinct().select_related('customer', 'product').order_by('-updated_at','-pk'), 'legacy_case_page'))
     if 'hiring' in tabs:
         if active == 'hiring':
             from .hiring_views import hiring_context
@@ -178,6 +176,10 @@ def build_workflow_context(request):
     for name, scope in (('reception_records', 'reception'), ('case_records', 'case')):
         if name in context and active == name.removesuffix('_records'):
             attach_updates(request, context[name], scope)
+    for name in ('reception_records','case_records','registration_records'):
+        if name in context and active == name.removesuffix('_records'):
+            for rec in context[name]:
+                rec.work_history = paginate(request, rec.work_sessions.select_related('started_by','ended_by').order_by('-started_at','-pk'), f'work_{rec.pk}_page')
     return context
 
 

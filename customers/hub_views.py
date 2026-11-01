@@ -1,3 +1,4 @@
+from crm.pagination import paginate
 from crm.numerals import digit_contains
 from accounts.permissions import require_roles, ROLE_ADMIN, ROLE_SALES_MANAGER
 import jdatetime
@@ -154,6 +155,42 @@ def _calls_count_subquery():
     return Coalesce(Subquery(sq, output_field=IntegerField()), 0)
 
 
+def attach_contact_pages(request, customers):
+    """Fetch independent history pages together, without one query per customer."""
+    from django.core.paginator import Paginator
+    from django.db.models import F, Window
+    from django.db.models.functions import RowNumber
+    from crm.pagination import PAGE_SIZE
+
+    cards = list(customers)
+    ids = [card.pk for card in cards]
+    counts = dict(Call.objects.filter(customer_id__in=ids).values('customer_id')
+                  .annotate(total=Count('pk')).values_list('customer_id','total'))
+    ranges = Q(pk__in=[])
+    for card in cards:
+        paginator = Paginator([], PAGE_SIZE)
+        paginator.count = counts.get(card.pk, 0)
+        key = f'contact_{card.pk}_page'
+        page = paginator.get_page(request.GET.get(key))
+        page.page_key = key
+        card.history_calls = page
+        if paginator.count:
+            ranges |= Q(customer_id=card.pk, _history_row__gt=(page.number-1)*PAGE_SIZE,
+                        _history_row__lte=page.number*PAGE_SIZE)
+    if counts:
+        calls = (Call.objects.filter(customer_id__in=ids)
+                 .select_related('called_by','customer','source')
+                 .annotate(_history_row=Window(RowNumber(), partition_by=[F('customer_id')],
+                           order_by=[F('call_date').desc(),F('pk').desc()]))
+                 .filter(ranges).order_by('-call_date','-pk'))
+        by_customer = {}
+        for call in calls:
+            by_customer.setdefault(call.customer_id, []).append(call)
+        for card in cards:
+            card.history_calls.object_list = by_customer.get(card.pk, [])
+    customers.object_list = cards
+
+
 @never_cache
 @login_required
 def customer_hub(request):
@@ -172,14 +209,11 @@ def customer_hub(request):
     open_due_sq, last_done_sq = _followup_annotation()
     customers = (Customer.all_objects
                  .select_related('assigned_to', 'created_by', 'ad_source')
-                 .prefetch_related(Prefetch(
-                     'calls',
-                     queryset=Call.objects.select_related('called_by')
-                                         .order_by('-call_date'),
-                     to_attr='history_calls',
-                 ))
                  .annotate(open_fu_due=open_due_sq, last_fu_done=last_done_sq)
                  .order_by('-created_at'))
+
+    if not has_permission(request.user, 'customers.delete'):
+        customers = customers.filter(is_deleted=False)
 
     if search:
         customers = customers.filter(digit_contains('name', search) | digit_contains('mobile', search))
@@ -223,7 +257,14 @@ def customer_hub(request):
             customers = customers.filter(**{field + '__gte': start})
         if end:
             customers = customers.filter(**{field + '__lte': end})
-    sort = request.GET.get('sort', 'priority')
+    expert = request.GET.get('contact_expert', '')
+    if expert == 'unassigned':
+        customers = customers.filter(assigned_to__isnull=True)
+    elif expert:
+        customers = customers.filter(assigned_to_id=expert) if expert.isascii() and expert.isdigit() and len(expert)<16 else customers.none()
+    sort = request.GET.get('sort') or 'recent'
+    if sort not in ('oldest', 'recent', 'priority'):
+        sort = 'recent'
     if sort == 'oldest':
         customers = customers.order_by('created_at', 'pk')
     elif sort == 'recent':
@@ -259,24 +300,27 @@ def customer_hub(request):
     context = {
         'active_tab': tab,
         'search': search,
-        'table_filters': {'priority': priority, 'date_field': date_field, 'date_from': date_from, 'date_to': date_to, 'sort': sort},
+        'table_filters': {'priority': priority, 'date_field': date_field, 'date_from': date_from, 'date_to': date_to, 'sort': sort, 'contact_expert': expert},
         'stats': {
             'total_customers': total_customers,
             'total_leads': total_leads,
             'pending_followups': pending_followups,
             'recent_revenue': recent_revenue,
         },
-        'customers': customers[:50],
+        'customers': paginate(request, customers),
+        'contact_experts': User.objects.filter(pk__in=Customer.all_objects.values('assigned_to_id')).order_by('first_name','last_name','username'),
         'today': today,
         'filter_customers': filter_customers,
         'filter_sources': filter_sources,
         'reassign_users': reassign_users,
         'contact_type_choices': Call.CONTACT_TYPE_CHOICES,
         'type_choices': Call.CALL_TYPE_CHOICES,
-        'invoices': (Invoice.objects.select_related('customer', 'created_by').order_by('-created_at')[:20]) if 'invoice' in tabs and has_permission(request.user, 'invoices.view') else [],
+        'invoices': paginate(request, Invoice.objects.select_related('customer', 'created_by').order_by('-created_at','-pk'), 'invoice_page') if 'invoice' in tabs and has_permission(request.user, 'invoices.view') else [],
         'call_form': HubCallForm(user=request.user),
     }
     
+    if tab == 'info' and has_permission(request.user, 'calls.view'):
+        attach_contact_pages(request, context['customers'])
     context.update(workflow_context)
 
     # دکمه «ثبت تماس جدید»:
