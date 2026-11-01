@@ -1,9 +1,12 @@
 from django.urls import path
-from . import views
+from . import views, task_api
 
 app_name = 'hr'
 
 urlpatterns = [
+    path('tasks/inbox/', task_api.inbox, name='task_inbox'),
+    path('tasks/notices/read/', task_api.mark_read, name='task_notice_read'),
+    path('tasks/<int:pk>/report/', task_api.submit_report, name='task_report'),
     path('', views.employee_list, name='employee_list'),
     path('employees/new/', views.employee_create, name='employee_create'),
     path('employees/<int:pk>/', views.employee_detail, name='employee_detail'),

@@ -463,10 +463,10 @@ class RBACOnViewsTest(TestCase):
         ])
 
     def test_hr_tasks_list_access(self):
-        # operator دسترسی default دارد (قابل override)
+        # همه اعضا به وظایف خود دسترسی دارند (قابل override)
         self._check_url('hr:task_list', [
             ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT,
-            ROLE_OPERATOR,
+            ROLE_OPERATOR, ROLE_ACCOUNTANT,
         ])
 
     def test_hr_leaves_list_is_open_for_all(self):

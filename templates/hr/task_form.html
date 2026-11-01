@@ -17,6 +17,7 @@
 
     <section class="crm-form-section"><header class="crm-form-section-head"><span>1</span><div><h2>تعریف وظیفه</h2><p>چه کاری و توسط چه کسی انجام می‌شود؟</p></div></header><div class="crm-form-grid">
 {% include 'includes/_form_field.html' with field=form.title wide=True %}
+{% include 'includes/_form_field.html' with field=form.assigned_user %}
 {% include 'includes/_form_field.html' with field=form.assigned_to %}
 </div></section>
 <section class="crm-form-section"><header class="crm-form-section-head"><span>2</span><div><h2>زمان و اولویت</h2><p>مهلت انجام و وضعیت رسیدگی.</p></div></header><div class="crm-form-grid">

@@ -152,7 +152,7 @@ class TaskForm(forms.ModelForm):
 
     class Meta:
         model = Task
-        fields = ['title', 'description', 'assigned_to', 'priority',
+        fields = ['title', 'description', 'assigned_to', 'assigned_user', 'priority',
                   'status', 'due_date']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm', 'placeholder': 'عنوان وظیفه'}),
@@ -164,7 +164,10 @@ class TaskForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['assigned_to'].required = True
+        self.fields['assigned_to'].required = False
+        self.fields['assigned_user'].required = False
+        self.fields['assigned_user'].queryset = User.objects.filter(is_active=True).order_by('username')
+        self.fields['assigned_to'].help_text = 'کاربر مستقیم یا پروفایل پرسنلی را انتخاب کنید؛ انتخاب هر دو فقط برای یک شخص مجاز است.'
         self.fields['assigned_to'].queryset = Employee.objects.filter(is_active=True)
 
         if self.instance and self.instance.pk and self.instance.due_date:
@@ -189,6 +192,16 @@ class TaskForm(forms.ModelForm):
             return jdatetime.date(y, m, d).togregorian()
         except (ValueError, AttributeError):
             raise forms.ValidationError('تاریخ معتبر نیست')
+
+
+    def clean(self):
+        data = super().clean()
+        user, employee = data.get('assigned_user'), data.get('assigned_to')
+        if not user and not employee:
+            self.add_error('assigned_user', 'یک کاربر مسئول یا پروفایل پرسنلی انتخاب کنید.')
+        if user and employee and employee.user_id != user.pk:
+            self.add_error('assigned_to', 'کاربر و پروفایل پرسنلی باید متعلق به یک نفر باشند.')
+        return data
 
 
 class LeaveRequestForm(forms.ModelForm):

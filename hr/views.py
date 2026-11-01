@@ -70,12 +70,12 @@ def employee_detail(request, pk):
     from .task_access import restrict_hiring_tasks
     tasks = restrict_hiring_tasks(employee.tasks.all(), request.user)
     open_tasks = tasks.filter(
-        status__in=['pending', 'in_progress']
+        status__in=['pending', 'in_progress', 'follow_up']
     ).order_by('due_date','pk')
 
     done_tasks_count = tasks.filter(status='done').count()
     open_tasks_count = tasks.filter(
-        status__in=['pending', 'in_progress']
+        status__in=['pending', 'in_progress', 'follow_up']
     ).count()
 
     context = {
@@ -203,6 +203,21 @@ def task_list(request):
     elif due == 'upcoming':
         tasks = tasks.filter(due_date__gte=today).exclude(overdue_condition()).exclude(status__in=['done','cancelled'])
 
+    source = request.GET.get('source', '')
+    if source == 'manual':
+        tasks = tasks.filter(source_type='', hiring_session__isnull=True)
+    elif source == 'repeat':
+        tasks = tasks.filter(hiring_session__isnull=False)
+    elif source == 'followup':
+        tasks = tasks.filter(source_type__in=['followup','customer_followup'])
+    elif source in ('case','registration','interview','call','invoice','leave'):
+        tasks = tasks.filter(source_type=source)
+    report_status = request.GET.get('report', '')
+    if report_status == 'pending':
+        tasks = tasks.filter(events__report_required=True,events__report__isnull=True).distinct()
+    elif report_status == 'submitted':
+        tasks = tasks.filter(events__report__isnull=False).distinct()
+
     stats = {
         'total': base_qs.count(),
         'pending': base_qs.filter(status='pending').count(),
@@ -213,7 +228,7 @@ def task_list(request):
     paginator = Paginator(tasks, PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
-    employees = Employee.objects.filter(is_active=True)
+    employees = Employee.objects.filter(is_active=True,tasks__in=base_qs).distinct()
     from django.contrib.auth.models import User
     responsible_users = User.objects.filter(Q(direct_tasks__in=base_qs) | Q(employee_profile__tasks__in=base_qs)).distinct().order_by('username')
 
@@ -221,6 +236,7 @@ def task_list(request):
         'page_obj': page_obj,
         'stats': stats,
         'search': search,
+        'current_source': source, 'current_report':report_status,
         'current_status': status,
         'current_priority': priority,
         'current_employee': employee,
@@ -243,9 +259,8 @@ def task_detail(request, pk):
             raise Http404
         messages.error(request, 'شما به این وظیفه دسترسی ندارید.')
         return redirect('hr:task_list')
-    if task.hiring_session_id:
-        return redirect(task.recruitment_url)
-    return render(request, 'hr/task_detail.html', {'task': task})
+    from .task_access import source_url, owned_tasks
+    return render(request, 'hr/task_detail.html', {'task': task, 'work_url': source_url(task), 'can_report_own': owned_tasks(request.user).filter(pk=task.pk).exists(), 'task_events': paginate(request, task.events.select_related('actor','report__author'), 'events_page')})
 
 
 @login_required
@@ -274,6 +289,11 @@ def task_create(request):
 @require_permission('hr.manage_tasks')
 def task_edit(request, pk):
     task = get_object_or_404(Task, pk=pk)
+    from .task_access import visible_tasks
+    task = get_object_or_404(visible_tasks(request.user), pk=pk)
+    if task.source_type:
+        messages.info(request, 'این وظیفه با انجام عملیات مرتبط به‌روز می‌شود؛ از دکمه انجام کار در جزئیات وظیفه استفاده کنید.')
+        return redirect('hr:task_detail', pk=pk)
     if task.hiring_session_id:
         from .task_access import visible_tasks
         task=get_object_or_404(visible_tasks(request.user),pk=pk)
@@ -304,6 +324,11 @@ def task_edit(request, pk):
 @require_permission('hr.manage_tasks')
 def task_delete(request, pk):
     task = get_object_or_404(Task, pk=pk)
+    from .task_access import visible_tasks
+    task = get_object_or_404(visible_tasks(request.user), pk=pk)
+    if task.source_type:
+        messages.info(request, 'این وظیفه با انجام عملیات مرتبط به‌روز می‌شود؛ از دکمه انجام کار در جزئیات وظیفه استفاده کنید.')
+        return redirect('hr:task_detail', pk=pk)
     if task.hiring_session_id:
         from .task_access import visible_tasks
         task=get_object_or_404(visible_tasks(request.user),pk=pk)
@@ -328,6 +353,11 @@ def task_toggle_status(request, pk):
     ⭐ Fix #18: برای status نامعتبر هم بازخورد می‌دهد (قبلاً سکوت می‌کرد).
     """
     task = get_object_or_404(Task, pk=pk)
+    from .task_access import visible_tasks
+    task = get_object_or_404(visible_tasks(request.user), pk=pk)
+    if task.source_type:
+        messages.info(request, 'این وظیفه با انجام عملیات مرتبط به‌روز می‌شود؛ از دکمه انجام کار در جزئیات وظیفه استفاده کنید.')
+        return redirect('hr:task_detail', pk=pk)
     if task.hiring_session_id:
         from .task_access import visible_tasks
         task=get_object_or_404(visible_tasks(request.user),pk=pk)
@@ -716,7 +746,7 @@ def my_profile(request):
     from .task_access import restrict_hiring_tasks
     tasks = restrict_hiring_tasks(employee.tasks.all(), request.user)
     open_tasks = tasks.filter(
-        status__in=['pending', 'in_progress']
+        status__in=['pending', 'in_progress', 'follow_up']
     ).order_by('due_date')
 
     done_tasks = tasks.filter(

@@ -89,7 +89,8 @@ PERMISSIONS = {
 
     'hr.view_employees':    [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'hr.manage_employees':  [ROLE_ADMIN],
-    'hr.view_tasks':        [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR, ROLE_ADS_MANAGER],
+    'hr.view_tasks':        list(ROLE_DISPLAY),
+    'hr.report_tasks':      list(ROLE_DISPLAY),
     'hr.manage_tasks':      [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES],
     'hr.review_leaves':     [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'hr.attendance':        [ROLE_ADMIN, ROLE_SALES_MANAGER],
@@ -148,6 +149,7 @@ PERMISSION_META = {
     'hr.view_employees':   ('منابع انسانی', 'مشاهده پرسنل', 'مشاهده‌ی لیست و جزئیات پرسنل'),
     'hr.manage_employees': ('منابع انسانی', 'مدیریت پرسنل', 'افزودن، ویرایش و حذف پرسنل'),
     'hr.view_tasks':       ('منابع انسانی', 'مشاهده وظایف', 'مشاهده‌ی وظایف (غیرمدیر فقط وظایف خودش)'),
+    'hr.report_tasks': ('منابع انسانی', 'انجام وظایف و ثبت گزارش خود', 'ثبت گزارش وظیفه شخصی؛ وضعیت کارهای خودکار از عملیات واقعی تعیین می‌شود'),
     'hr.manage_tasks':     ('منابع انسانی', 'مدیریت وظایف', 'افزودن، ویرایش و حذف وظایف همه‌ی کارمندان'),
     'hr.review_leaves':    ('منابع انسانی', 'بررسی مرخصی', 'تایید یا رد درخواست‌های مرخصی'),
     'hr.attendance':       ('منابع انسانی', 'حضور و غیاب', 'ثبت و گزارش حضور و غیاب'),

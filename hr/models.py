@@ -1,5 +1,5 @@
 from datetime import datetime
-from django.db import models
+from django.db import models, transaction
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -69,7 +69,7 @@ class Employee(models.Model):
 
     @property
     def open_tasks_count(self):
-        return self.tasks.filter(status__in=['pending', 'in_progress']).count()
+        return self.tasks.filter(status__in=['pending', 'in_progress', 'follow_up']).count()
 
 
 class Task(models.Model):
@@ -85,6 +85,7 @@ class Task(models.Model):
     STATUS_CHOICES = [
         ('pending', 'در انتظار'),
         ('in_progress', 'در حال انجام'),
+        ('follow_up', 'در پیگیری'),
         ('done', 'انجام شده'),
         ('cancelled', 'لغو شده'),
     ]
@@ -112,6 +113,11 @@ class Task(models.Model):
     assigned_user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='direct_tasks', verbose_name='کاربر مسئول')
     hiring_session = models.OneToOneField('customers.InterviewSession', null=True, blank=True, on_delete=models.CASCADE, related_name='next_task', verbose_name='جلسه تعیین‌کننده موعد')
     performed_session = models.OneToOneField('customers.InterviewSession', null=True, blank=True, on_delete=models.SET_NULL, related_name='scheduled_task', verbose_name='جلسه انجام‌شده')
+
+    source_key = models.CharField(max_length=120, null=True, blank=True, unique=True, editable=False)
+    source_type = models.CharField(max_length=24, blank=True, editable=False)
+    source_id = models.PositiveBigIntegerField(null=True, blank=True, editable=False)
+    source_customer = models.ForeignKey('customers.Customer', null=True, blank=True, on_delete=models.SET_NULL, related_name='workflow_tasks', editable=False)
 
     completed_at = models.DateTimeField('تاریخ اتمام', null=True, blank=True)
 
@@ -155,12 +161,16 @@ class Task(models.Model):
         }.get(self.priority, 'gray')
 
     def save(self, *args, **kwargs):
-        if self.status == 'done' and not self.completed_at:
-            self.completed_at = timezone.now()
-        elif self.status != 'done':
-            self.completed_at = None
-
-        super().save(*args, **kwargs)
+        with transaction.atomic():
+            if self.pk:
+                Task.objects.select_for_update().filter(pk=self.pk).exists()
+            if self.status == 'done' and not self.completed_at:
+                self.completed_at = timezone.now()
+            elif self.status != 'done':
+                self.completed_at = None
+            if kwargs.get('update_fields') and 'status' in kwargs['update_fields']:
+                kwargs['update_fields'] = set(kwargs['update_fields']) | {'completed_at'}
+            super().save(*args, **kwargs)
 
 
 class LeaveRequest(models.Model):
@@ -290,3 +300,40 @@ class Attendance(models.Model):
         if m == 0:
             return f'{h} ساعت'
         return f'{h} ساعت و {m} دقیقه'
+
+class TaskEvent(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='events')
+    from_status = models.CharField(max_length=20, blank=True)
+    to_status = models.CharField(max_length=20)
+    actor = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    report_user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='task_report_requests')
+    report_required = models.BooleanField(default=False)
+    snapshot = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def get_transition_display(self):
+        choices = dict(Task.STATUS_CHOICES)
+        return choices.get(self.from_status, self.from_status) + ' ← ' + choices.get(self.to_status, self.to_status)
+
+    class Meta:
+        ordering = ['-pk']
+
+
+class TaskReport(models.Model):
+    event = models.OneToOneField(TaskEvent, on_delete=models.CASCADE, related_name='report')
+    author = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+    text = models.TextField(max_length=4000)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class TaskNotice(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='notices')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='task_notices')
+    text = models.CharField(max_length=250)
+    read_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-pk']
+        indexes = [models.Index(fields=['user', 'read_at'])]

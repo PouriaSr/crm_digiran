@@ -31,6 +31,21 @@ class TaskAdmin(admin.ModelAdmin):
     ordering = ('-created_at',)
     autocomplete_fields = ['assigned_to']
 
+    def get_readonly_fields(self, request, obj=None):
+        if obj and (obj.source_type or obj.hiring_session_id):
+            return ('title','description','assigned_to','assigned_user','created_by','status','due_date','due_time','completed_at','hiring_session','performed_session')
+        return ('completed_at',)
+
+    def has_delete_permission(self, request, obj=None):
+        if obj and (obj.source_type or obj.hiring_session_id):
+            return False
+        return super().has_delete_permission(request, obj)
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        actions.pop('delete_selected', None)
+        return actions
+
     def is_overdue(self, obj):
         return obj.is_overdue
     is_overdue.boolean = True

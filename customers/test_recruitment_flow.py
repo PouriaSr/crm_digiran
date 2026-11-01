@@ -399,7 +399,7 @@ class NewRecruitmentFlowTests(TestCase):
         task.refresh_from_db();source.refresh_from_db()
         self.assertEqual(task.due_time.strftime('%H:%M'),'12:15')
         self.assertEqual(task.due_date,timezone.localtime(source.next_interview_at).date())
-        self.assertEqual(Task.objects.count(),1)
+        self.assertEqual(Task.objects.filter(hiring_session__isnull=False).count(),1)
         second=self.start(rec,'repeat',offset=10)
         task.refresh_from_db();self.assertEqual(task.status,'in_progress')
         self.assertEqual(task.performed_session_id,second.pk)
@@ -410,10 +410,10 @@ class NewRecruitmentFlowTests(TestCase):
         task.refresh_from_db();self.assertEqual(task.status,'done')
         self.assertIsNotNone(task.completed_at)
         source.refresh_from_db();self.assertEqual(source.result,'repeat')
-        self.assertEqual(Task.objects.count(),1)
+        self.assertEqual(Task.objects.filter(hiring_session__isnull=False).count(),1)
         # Double submission cannot create a task or change the completed appointment.
         self.client.post(reverse('customers:interview_save',args=[second.pk]),data)
-        self.assertEqual(Task.objects.count(),1)
+        self.assertEqual(Task.objects.filter(hiring_session__isnull=False).count(),1)
         page=self.client.get(reverse('customers:hub'),{'tab':'hiring','r':rec.pk})
         self.assertContains(page,'id="repeat-task"')
 
@@ -427,7 +427,7 @@ class NewRecruitmentFlowTests(TestCase):
         self.assertEqual(self.client.post(edit,data).status_code,302)
         task.refresh_from_db();self.assertEqual(task.status,'pending')
         self.assertEqual(task.due_time.strftime('%H:%M'),'13:45')
-        self.assertEqual(Task.objects.count(),1)
+        self.assertEqual(Task.objects.filter(hiring_session__isnull=False).count(),1)
         response=self.client.post(reverse('customers:hiring_refer',args=[rec.pk]),{'user':self.outsider.pk})
         self.assertEqual(response.status_code,302)
         task.refresh_from_db();self.assertEqual(task.assigned_user_id,self.outsider.pk)
@@ -468,11 +468,12 @@ class NewRecruitmentFlowTests(TestCase):
         from accounts.notifications import get_notifications
         from hr.forms import TaskForm
         rec,source,task=self.schedule_repeat()
-        self.assertTrue(TaskForm().fields['assigned_to'].required)
+        self.assertFalse(TaskForm().fields['assigned_to'].required)
+        self.assertIn('assigned_user',TaskForm().fields)
         now=timezone.localtime(self.now)
         task.due_date=now.date();task.due_time=(now-timedelta(minutes=1)).time().replace(tzinfo=None);task.save()
         with patch('django.utils.timezone.now',return_value=self.now):
-            self.assertTrue(any('وظیفه عقب‌افتاده' in n['title'] for n in get_notifications(self.admin)))
+            self.assertTrue(any('وظیفه عقب‌افتاده' in n['title'] for n in get_notifications(self.manager)))
             response=self.client.get(reverse('hr:task_list'),{'due':'overdue','responsible':self.manager.pk})
             self.assertEqual(list(response.context['page_obj']),[task])
         response=self.client.post(reverse('hr:task_edit',args=[task.pk]),{'title':'نباید ذخیره شود'})

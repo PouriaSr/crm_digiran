@@ -45,4 +45,6 @@ def finish_interview_task(session):
 
 
 def reassign_interview_tasks(application, user):
-    Task.objects.filter(hiring_session__application=application,status__in=['pending','in_progress']).update(**owner_fields(user))
+    for task in Task.objects.filter(hiring_session__application=application,status__in=['pending','in_progress']):
+        for key,value in owner_fields(user).items():setattr(task,key,value)
+        task.save()
