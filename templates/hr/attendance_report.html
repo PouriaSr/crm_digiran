@@ -20,7 +20,7 @@
     <form method="get" class="crm-filter-form filters-row">
         <div class="w-full sm:w-auto">
             <label class="block text-xs text-gray-500 mb-1.5">سال</label>
-            <select name="year" id="year-select"
+            <select name="year" data-filter-default="{{ default_year }}" id="year-select"
                     class="w-full sm:w-28 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
                     dir="ltr">
                 {% for y in year_choices %}
@@ -31,7 +31,7 @@
 
         <div class="w-full sm:w-auto">
             <label class="block text-xs text-gray-500 mb-1.5">ماه</label>
-            <select name="month_num" id="month-select"
+            <select name="month_num" data-filter-default="{{ default_month }}" id="month-select"
                     class="w-full sm:w-40 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer">
                 {% for num, label in month_choices %}
                     <option value="{{ num }}" {% if num == selected_month_num %}selected{% endif %}>{{ label }}</option>

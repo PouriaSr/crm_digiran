@@ -716,6 +716,7 @@ def attendance_report(request):
         'report': report,
         'month_start': month_start,
         'month_end': month_end,
+        'default_year': j_now.year, 'default_month': j_now.month,
         'selected_year': selected_year,
         'selected_month_num': selected_month_num,
         'year_choices': year_choices,
