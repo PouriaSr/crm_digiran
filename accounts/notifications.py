@@ -15,13 +15,12 @@ def get_notifications(user):
         from hr.task_access import visible_tasks, overdue_condition
         overdue_tasks = visible_tasks(user).filter(overdue_condition())
 
-        from hr.models import TaskNotice, TaskEvent
-        from hr.task_access import owned_tasks
-        own = visible_tasks(user).filter(pk__in=owned_tasks(user).values('pk'))
-        unread = TaskNotice.objects.filter(user=user, read_at__isnull=True, task__in=visible_tasks(user)).count()
-        pending_reports = TaskEvent.objects.filter(report_user=user, report_required=True, report__isnull=True, task__in=visible_tasks(user)).count()
-        if unread or pending_reports:
-            notifications.append({'icon':'📋','title':f'{unread} اعلان وظیفه و {pending_reports} گزارش در انتظار ثبت دارید.', 'url':reverse('hr:task_list'), 'color':'text-blue-600','bg':'bg-blue-50'})
+        from hr.task_inbox import inbox_records, inbox_counts
+        records, own, events, notices = inbox_records(user)
+        counts = inbox_counts(records, own, events, notices)
+        if counts['attention'] or counts['updates_unread']:
+            title = (f"{counts['attention']} کار نیاز به رسیدگی شما دارد." if counts['attention'] else f"{counts['updates_unread']} تغییر خوانده‌نشده در وظایف شما ثبت شده است.")
+            notifications.append({'icon':'📋','title':title, 'url':reverse('hr:task_list')+'?scope=mine', 'color':'text-blue-600','bg':'bg-blue-50'})
         overdue_tasks = own.filter(overdue_condition())
         count = overdue_tasks.count()
         if count > 0:

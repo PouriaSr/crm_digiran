@@ -1028,6 +1028,7 @@ window.apexMobileMerge = function (options) {
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </button>
 
+            {% include 'includes/_task_launcher.html' with placement='mobile' %}
             <button @click="notifOpen = !notifOpen" class="app-topbar-btn" aria-label="اعلان‌ها">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                 {% if notifications_count > 0 %}
@@ -1060,7 +1061,7 @@ window.apexMobileMerge = function (options) {
         </div>
 
         <!-- ===== Desktop Header ===== -->
-        <header class="hidden lg:flex min-h-[76px] bg-white border-b border-gray-200 px-6 py-3 items-center justify-between gap-6">
+        <header class="crm-desktop-header hidden lg:flex min-h-[76px] bg-white border-b border-gray-200 px-6 py-3 items-center justify-between gap-6">
             <!-- Search: visually grouped as one control -->
             <form data-global-search method="get" action="{% url 'dashboard:search' %}" class="flex-1 min-w-0 max-w-2xl flex items-stretch">
                 <div data-input-icon-right class="relative flex-1 min-w-0">
@@ -1116,6 +1117,7 @@ window.apexMobileMerge = function (options) {
                     </div>
                 </div>
 
+                {% include 'includes/_task_launcher.html' with placement='desktop' %}
                 <!-- Notifications -->
                 <div class="relative">
                     <button type="button" @click="notifOpen = !notifOpen; profileOpen = false"

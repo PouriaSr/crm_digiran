@@ -1,0 +1,8 @@
+{% extends "admin/base.html" %}
+{% block extrahead %}{{ block.super }}{% include 'includes/_live_search.html' %}{% include 'includes/_form_styles.html' %}{% include 'includes/_filter_ui.html' %}{% include 'includes/_feedback_ui.html' %}{% include 'includes/_form_client.html' %}<script>document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('#content form[method=post]').forEach(form=>form.setAttribute('data-crm-form',''));window.CRMForms?.prepare();});</script>{% endblock %}
+
+{% block messages %}{% include 'includes/_feedback_messages.html' %}{% endblock %}
+
+{% block footer %}{{ block.super }}{% if not is_popup %}{% include 'includes/_task_inbox.html' %}{% endif %}{% endblock %}
+
+{% block header %}{{ block.super }}{% if not is_popup %}<span id="crm-task-admin-slot" hidden>{% include 'includes/_task_launcher.html' with placement='admin' %}</span>{% endif %}{% endblock %}

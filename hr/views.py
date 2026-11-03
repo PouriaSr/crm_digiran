@@ -169,6 +169,10 @@ def task_list(request):
     can_manage = has_permission(request.user, 'hr.manage_tasks')
     from .task_access import visible_tasks, overdue_condition
     base_qs = visible_tasks(request.user)
+    scope = request.GET.get('scope', '')
+    if scope == 'mine':
+        from .task_access import owned_tasks
+        base_qs = base_qs.filter(Q(pk__in=owned_tasks(request.user).values('pk')) | Q(events__report_user=request.user)).distinct()
     tasks = base_qs.select_related('assigned_to','assigned_user','created_by','hiring_session__application__reception')
 
     search = request.GET.get('q', '').strip()
@@ -236,6 +240,7 @@ def task_list(request):
         'page_obj': page_obj,
         'stats': stats,
         'search': search,
+        'current_scope': scope,
         'current_source': source, 'current_report':report_status,
         'current_status': status,
         'current_priority': priority,

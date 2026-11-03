@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.cache import never_cache
 from accounts.permissions import require_permission, has_permission
 from .models import Task, TaskEvent, TaskNotice, TaskReport
 from .task_access import visible_tasks, owned_tasks, source_url
@@ -16,26 +17,23 @@ class ReportForm(forms.Form):
 
 @require_permission('hr.view_tasks')
 @require_GET
+@never_cache
 def inbox(request):
-    records = visible_tasks(request.user)
-    notices = TaskNotice.objects.filter(user=request.user, read_at__isnull=True, task__in=records).select_related('task')
-    events = TaskEvent.objects.filter(report_user=request.user, report_required=True, report__isnull=True, task__in=records).select_related('task')
-    if not has_permission(request.user, 'hr.report_tasks'):
-        events = events.none()
-    return JsonResponse({'unread': notices.count(), 'pending_reports': events.count(),
-        'notices': [{'id': n.pk, 'title': n.text, 'task': n.task_id, 'url': reverse('hr:task_detail', args=[n.task_id])} for n in notices[:max(0,10-min(events.count(),10))]],
-        'reports': [{'event': e.pk, 'task': e.task_id, 'title': e.snapshot.get('title', e.task.title), 'description': e.snapshot.get('description', e.task.description or ''), 'status': dict(Task.STATUS_CHOICES).get(e.to_status,e.to_status), 'when': timezone.localtime(e.created_at).isoformat(), 'url':reverse('hr:task_detail',args=[e.task_id])} for e in events.order_by('pk')[:10]]})
+    from .task_inbox import personal_inbox
+    return JsonResponse(personal_inbox(request.user, request.GET))
 
 
 @require_permission('hr.view_tasks')
 @require_POST
 def mark_read(request):
+    if request.POST.get('scope') == 'all':
+        count = TaskNotice.objects.filter(user=request.user, task__in=visible_tasks(request.user), read_at__isnull=True).update(read_at=timezone.now())
+        return JsonResponse({'ok': True, 'count': count})
     raw = request.POST.get('notice', '')
     if not raw.isascii() or not raw.isdigit() or len(raw) > 16:
         return JsonResponse({'error': 'اعلان معتبر نیست.'}, status=400)
     notice = get_object_or_404(TaskNotice, pk=raw, user=request.user, task__in=visible_tasks(request.user))
-    notice.read_at = timezone.now()
-    notice.save(update_fields=['read_at'])
+    TaskNotice.objects.filter(task=notice.task,user=request.user,read_at__isnull=True).update(read_at=timezone.now())
     return JsonResponse({'ok': True})
 
 
