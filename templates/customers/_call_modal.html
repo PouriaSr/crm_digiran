@@ -37,7 +37,7 @@
                   class="flex flex-col flex-1 min-h-0">
                 {% csrf_token %}
                 <input type="hidden" name="next" id="hub_call_next" value="">
-                <p class="px-4 sm:px-6 pt-3 text-xs text-slate-500">ساعت دقیق تماس هنگام ثبت، به‌صورت خودکار ذخیره می‌شود.</p>
+                <p class="px-4 sm:px-6 pt-3 text-xs text-slate-500" x-text="isInterviewer ? 'ثبت اولیه فرد؛ ساعت ورود بعداً در پذیرش ثبت می‌شود.' : 'ساعت دقیق تماس هنگام ثبت، به‌صورت خودکار ذخیره می‌شود.'">ساعت دقیق تماس هنگام ثبت، به‌صورت خودکار ذخیره می‌شود.</p>
                 <div class="call-scroll p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
                     <section class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm" aria-labelledby="call-contact-heading">
                         <div class="flex items-center justify-between gap-3 mb-4">
@@ -68,6 +68,9 @@
                             مشتری شناسایی شد: <strong x-text="existingCustomer?.name"></strong>
                         </div>
                     </section>
+                    <label class="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 cursor-pointer"><input type="checkbox" name="is_interviewer" x-model="isInterviewer" class="w-5 h-5"><span>مصاحبه‌کننده است <span class="text-xs text-slate-500">(اختیاری)</span></span></label>
+                    <p x-show="isInterviewer" x-cloak class="text-xs text-blue-700">فقط نام و شماره تماس ثبت می‌شود؛ سپس ورود فرد را در تب پذیرش ثبت کنید.</p>
+                    <fieldset data-call-extra x-show="!isInterviewer" :disabled="isInterviewer" class="space-y-4">
                     <section class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm" aria-labelledby="call-details-heading">
                         <h3 id="call-details-heading" class="font-bold text-slate-800 text-sm mb-4">جزئیات و نتیجه تماس</h3>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -138,11 +141,12 @@
                         <label for="id_notes" class="block text-sm font-bold text-slate-800 mb-3">شرح مکالمه <span class="text-red-500">*</span></label>
                         {{ call_form.notes }}
                     </section>
+                    </fieldset>
                 </div>
                 <div class="crm-call-actions shrink-0 rounded-b-3xl border-t border-slate-200 px-4 sm:px-6 py-4 bg-white flex items-center gap-3">
                     <button type="submit" :disabled="submitting"
                             class="flex-1 py-3.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-60 disabled:cursor-wait focus-visible:ring-4 focus-visible:ring-blue-200 transition shadow-sm"
-                            x-text="submitting ? 'در حال ثبت…' : 'ثبت تماس'">ثبت تماس</button>
+                            x-text="submitting ? 'در حال ثبت…' : isInterviewer ? 'ثبت مصاحبه‌کننده' : 'ثبت تماس'">ثبت تماس</button>
                     <button type="button" @click="isCallModalOpen = false"
                             class="px-5 py-3.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 focus-visible:ring-4 focus-visible:ring-slate-200 transition">انصراف</button>
                 </div>
@@ -155,6 +159,7 @@
 function callModalWidget() {
     return {
         isCallModalOpen: false,
+        isInterviewer: false,
         callType: 'incoming',
         needsFollowup: false,
         sendAddress: false,
@@ -172,6 +177,7 @@ function callModalWidget() {
         serverClockStart: performance.now(),
 
         init() {
+            this.$watch('isInterviewer', value => {document.querySelectorAll('#call-modal-root [data-call-extra] select').forEach(field=>{if(field.tomselect)field.tomselect[value?'disable':'enable']();});});
             this.$watch('customerAnalysis', value => { if (this.isCallModalOpen) this.applyCustomerAnalysis(value); });
             this.updateSystemTime();
             this._clockTimer = setInterval(() => {
@@ -214,6 +220,7 @@ function callModalWidget() {
             var d = detail || {};
             var form = document.querySelector('#call-modal-root form');
             if (form) form.reset();
+            this.isInterviewer = false;
             this.isCallModalOpen = true;
             this.updateSystemTime();
             this.sendAddress = false;

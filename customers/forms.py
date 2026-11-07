@@ -260,6 +260,7 @@ CUSTOMER_STATUS_CHOICES = DECLARED_CUSTOMER_STATUS_CHOICES
 
 
 class HubCallForm(forms.Form):
+    is_interviewer = forms.BooleanField(label='مصاحبه‌کننده است', required=False)
     mobile = forms.CharField(label='شماره تماس', max_length=15, required=True,
         widget=forms.TextInput(attrs={'class': 'w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-lg font-mono tracking-widest bg-white', 'dir': 'ltr', 'placeholder': '09123456789', 'id': 'hub_call_mobile', 'data-entry-help': 'شماره تماس باید ۱۱ رقم داشته باشد؛ ارقام فارسی، انگلیسی و عربی پذیرفته می‌شوند.', 'inputmode': 'numeric', 'minlength': 11, 'maxlength': 15, 'pattern': '[0-9۰-۹٠-٩]{11}', '@input': 'validateMobile($el)', '@blur': 'validateMobile($el, true)', '@input.debounce.500ms': 'checkMobile()', ':aria-invalid': "mobileInvalid ? 'true' : 'false'", 'aria-describedby': 'hub_call_mobile_error'}))
     name = forms.CharField(label='نام و نام خانوادگی', max_length=200, required=True,
@@ -309,6 +310,11 @@ class HubCallForm(forms.Form):
                 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl '
                 'focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500'
             )
+        if self.is_bound and self['is_interviewer'].value():
+            for name, field in self.fields.items():
+                if name not in ('name', 'mobile', 'is_interviewer'):
+                    field.required = False
+                    field.disabled = True
 
     source = forms.ModelChoiceField(label='منبع تماس', queryset=__import__('ads.models', fromlist=['AdSource']).AdSource.objects.filter(is_active=True), required=False,
         widget=ContactSourceSelect(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all'}))
@@ -352,6 +358,8 @@ class HubCallForm(forms.Form):
 
     def clean(self):
         data = super().clean()
+        if data.get('is_interviewer'):
+            return {key: data[key] for key in ('name', 'mobile', 'is_interviewer') if key in data}
         if data.get('customer_analysis') == 'potential':
             data['needs_followup'] = True
         if data.get('needs_followup'):

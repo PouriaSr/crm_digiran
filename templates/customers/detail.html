@@ -107,7 +107,7 @@
             {{ customer.name|first|upper }}
         </div>
         <div class="flex-1">
-            <h1 class="text-2xl font-bold text-gray-800">{{ customer.name }}</h1>
+            <h1 class="text-2xl font-bold text-gray-800">{{ customer.name }}{% if customer.is_interviewer %}<span class="ms-2 rounded-md bg-purple-50 text-purple-700 text-xs px-2 py-1">مصاحبه‌کننده</span>{% endif %}</h1>
             <p class="text-gray-500 font-mono mt-1" dir="ltr">{{ customer.mobile }}</p>
             <p class="text-xs text-gray-400 mt-2">
                 ثبت‌شده توسط
@@ -117,7 +117,7 @@
             </p>
 
             <div class="flex gap-2 mt-4 flex-wrap">
-                <span class="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700">{{ customer.get_source_display }}</span>
+                {% if customer.source %}<span class="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700">{{ customer.get_source_display }}</span>{% endif %}
             </div>
         </div>
     </div>

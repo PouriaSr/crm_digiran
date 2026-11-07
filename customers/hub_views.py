@@ -362,6 +362,18 @@ def hub_submit_call(request):
         return redirect(back)
 
     data = form.cleaned_data
+    if data.get('is_interviewer'):
+        with transaction.atomic():
+            existing = Customer.all_objects.filter(mobile=data['mobile']).first()
+            if existing:
+                messages.error(request, 'این شماره قبلاً ثبت شده است؛ فرد موجود را جستجو کنید. اطلاعات قبلی تغییر نکرد.',
+                               extra_tags=json.dumps({'field':'hub_call_mobile'}))
+                return redirect(f"{reverse('customers:hub')}?tab=info&q={data['mobile']}")
+            customer = Customer.objects.create(name=data['name'], mobile=data['mobile'], is_interviewer=True,
+                                               source='', assigned_to=request.user, created_by=request.user)
+        request.feedback_context = {'record': 'customer:'+str(customer.pk)}
+        messages.success(request, 'فرد با برچسب مصاحبه‌کننده ثبت شد؛ مرحله بعد ثبت ورود در تب پذیرش است.')
+        return redirect(f"{reverse('customers:hub')}?tab=info&q={customer.mobile}")
     mobile = data['mobile']
     needs_followup = data['needs_followup']
     # The explicit analysis controls the badge, independently of follow-up.
