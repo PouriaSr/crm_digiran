@@ -51,7 +51,11 @@ ROLE_TO_GROUP = {
 # ═══════════════════════════════════════════════════════════
 PERMISSIONS = {
     'communications.view': [ROLE_ADMIN, ROLE_SALES_MANAGER],
+    'communications.configuration': [ROLE_ADMIN, ROLE_SALES_MANAGER],
+    'communications.templates': [ROLE_ADMIN, ROLE_SALES_MANAGER],
+    'communications.history': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'communications.manage': [ROLE_ADMIN],
+    'communications.manage_templates': [ROLE_ADMIN],
     'communications.test': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'customers.view':   [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
     'customers.add':    [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR, ROLE_SECRETARY],
@@ -112,9 +116,13 @@ PERMISSIONS = {
 
 # ─── متادیتای نمایش دسترسی‌ها ───
 PERMISSION_META = {
-    'communications.view': ('اعلان', 'مشاهده مرکز اعلان', 'مشاهده تنظیمات و سوابق شبیه‌سازی پیامک، ایمیل، واتساپ و VoIP'),
-    'communications.manage': ('اعلان', 'پیکربندی و قالب پیام', 'ذخیره تنظیمات پیشنهادی سرویس و قالب‌ها؛ ارسال واقعی هنوز فعال نیست'),
-    'communications.test': ('اعلان', 'اجرای آزمایش', 'بررسی تنظیمات و اجرای شبیه‌سازی پیام و تماس، بدون ارسال واقعی'),
+    'communications.view': ('مدیریت پیام‌رسانی', 'ورود به مدیریت پیام‌رسانی', 'نمایش صفحه پیامک، ایمیل و واتساپ؛ دسترسی هر تب جداگانه قابل تنظیم است'),
+    'communications.configuration': ('مدیریت پیام‌رسانی', 'تب پیکربندی کانال', 'مشاهده تنظیمات اتصال پیشنهادی هر کانال'),
+    'communications.templates': ('مدیریت پیام‌رسانی', 'تب قالب‌های پیام', 'مشاهده قالب‌های پیشنهادی و سفارشی هر کانال'),
+    'communications.history': ('مدیریت پیام‌رسانی', 'تب سابقه آزمایش‌ها', 'مشاهده نتیجه آزمایش‌های پیامک، ایمیل و واتساپ؛ حذف فقط در پنل ادمین است'),
+    'communications.manage': ('مدیریت پیام‌رسانی', 'ویرایش پیکربندی کانال', 'ذخیره تنظیمات پیشنهادی سرویس؛ ارسال واقعی هنوز فعال نیست'),
+    'communications.manage_templates': ('مدیریت پیام‌رسانی', 'ساخت و ویرایش قالب‌ها', 'ایجاد قالب دلخواه، ویرایش قالب‌ها و فعال یا غیرفعال‌کردن آنها'),
+    'communications.test': ('مدیریت پیام‌رسانی', 'تب و اجرای آزمایش', 'انتخاب قالب، افزودن متن دلخواه و شبیه‌سازی پیام بدون ارسال واقعی'),
     'customers.view':   ('مشتریان', 'مشاهده', 'مشاهده‌ی لیست و جزئیات مشتریان'),
     'customers.add':    ('مشتریان', 'ایجاد', 'افزودن مشتری جدید'),
     'customers.edit':   ('مشتریان', 'ویرایش', 'ویرایش اطلاعات فقط برای مسئول کارت، سرپرست و ادمین'),
@@ -206,8 +214,9 @@ _OPERATION_META = {
     'customers.excel_import': ('ورود مشتریان از Excel', 'دریافت قالب، پیش‌نمایش و ثبت ورود مشتریان'),
 }
 for key, parent in PERMISSION_PARENT.items():
-    PERMISSIONS[key] = list(PERMISSIONS[parent])
-    PERMISSION_META[key] = ('عملیات مرکز مشتریان', *_OPERATION_META[key])
+    if key in _OPERATION_META:
+        PERMISSIONS[key] = list(PERMISSIONS[parent])
+        PERMISSION_META[key] = ('عملیات مرکز مشتریان', *_OPERATION_META[key])
 
 
 # ═══════════════════════════════════════════════════════════

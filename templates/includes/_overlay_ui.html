@@ -1,0 +1,25 @@
+<style>
+[data-crm-floating]{inset:auto;margin:0;z-index:2147483000!important}
+[data-crm-floating]::backdrop{background:transparent;pointer-events:none}
+</style>
+<script>
+(function(){
+ 'use strict';if(window.CRMOverlays)return;
+ let anchor=null;
+ function mount(node,owner){
+  if(!node)return;const dialog=owner?.closest('dialog[open]'),parent=dialog||document.body;
+  if(node.parentElement!==parent){if(node.matches(':popover-open'))node.hidePopover();parent.appendChild(node);}
+  node.dataset.crmFloating='';
+  if(typeof node.showPopover==='function')node.setAttribute('popover','manual');
+ }
+ function show(node,owner){mount(node,owner);if(node?.showPopover&&!node.matches(':popover-open')){try{node.showPopover();}catch(_){}}}
+ function hide(node){if(node?.matches(':popover-open'))node.hidePopover();}
+ document.addEventListener('focusin',event=>{if(event.target.matches('input,select,textarea,[data-jdp]'))anchor=event.target;},true);
+ // The calendar library creates a single body-level popup, including after HTMX swaps.
+ function calendar(){for(const node of document.querySelectorAll('jdp-container')){const visible=node.style.display!=='none'&&node.style.visibility!=='hidden'&&(node.style.display||node.getClientRects().length>0);if(visible)show(node,anchor);else hide(node);}}
+ let pending=false;const observer=new MutationObserver(()=>{if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;calendar();});});
+ observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['style']});
+ document.addEventListener('close',event=>{if(event.target.tagName==='DIALOG')for(const node of event.target.querySelectorAll('[data-crm-floating]')){hide(node);node.style.display='none';}},true);
+ window.CRMOverlays={mount,show,hide};
+})();
+</script>

@@ -9,7 +9,6 @@ PROVIDERS = {
     'sms': [('pending', 'هنوز انتخاب نشده'), ('kavenegar', 'کاوه‌نگار'), ('melipayamak', 'ملی پیامک'), ('faraz', 'فراز اس‌ام‌اس'), ('custom', 'سرویس دیگر')],
     'email': [('pending', 'هنوز انتخاب نشده'), ('smtp', 'SMTP'), ('custom', 'سرویس ایمیل API')],
     'whatsapp': [('pending', 'هنوز انتخاب نشده'), ('meta', 'WhatsApp Business / Meta'), ('custom', 'ارائه‌دهنده دیگر')],
-    'voip': [('pending', 'هنوز انتخاب نشده'), ('asterisk', 'Asterisk / Issabel'), ('3cx', '3CX'), ('custom', 'مرکز تلفن دیگر')],
 }
 
 
@@ -41,9 +40,7 @@ def configuration_gaps(config):
         missing.append('فرستنده / داخلی')
     if not config.credential_env:
         missing.append('نام متغیر اعتبار اتصال')
-    required = {'sms': ['endpoint'], 'email': ['endpoint'] if config.provider == 'custom' else ['host', 'port'], 'whatsapp': ['endpoint', 'account_id'], 'voip': ['host', 'port']}
-    if config.channel == 'voip' and config.connection.get('transport', 'pending') == 'pending':
-        missing.append('روش ارتباط با مرکز تلفن')
+    required = {'sms': ['endpoint'], 'email': ['endpoint'] if config.provider == 'custom' else ['host', 'port'], 'whatsapp': ['endpoint', 'account_id']}
     labels = {'endpoint': 'نشانی API', 'host': 'میزبان', 'port': 'پورت', 'account_id': 'شناسه حساب تجاری'}
     for key in required[config.channel]:
         if not config.connection.get(key):

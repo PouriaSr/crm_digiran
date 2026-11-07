@@ -875,6 +875,7 @@ window.apexMobileMerge = function (options) {
 
     {% include 'includes/_form_styles.html' %}
     {% include 'includes/_surface_styles.html' %}
+    {% include 'includes/_overlay_ui.html' %}
     {% include 'includes/_filter_ui.html' %}
     {% include 'includes/_feedback_ui.html' %}
     {% include 'includes/_chart_ui.html' %}
@@ -936,7 +937,7 @@ window.apexMobileMerge = function (options) {
 
             {% if 'communications.view' in user_permissions %}
             <a href="{% url 'communications:center' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'communications' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span>اعلان</span>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8M8 14h5M5 19l2.5-2H18a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 1 1.73V19Z"/></svg><span>مدیریت پیام‌رسانی</span>
             </a>
             {% endif %}
             {% if 'products.view' in user_permissions %}
@@ -1251,7 +1252,7 @@ window.apexMobileMerge = function (options) {
 
         {% if 'communications.view' in user_permissions %}
         <a href="{% url 'communications:center' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]">
-          <div class="w-11 h-11 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></div><span class="text-xs font-medium text-gray-700">اعلان</span>
+          <div class="w-11 h-11 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10h8M8 14h5M5 19l2.5-2H18a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 1 1.73V19Z"/></svg></div><span class="text-xs font-medium text-gray-700">مدیریت پیام‌رسانی</span>
         </a>
         {% endif %}
         {% if 'categories.view' in user_permissions %}

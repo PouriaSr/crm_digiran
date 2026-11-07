@@ -10,7 +10,7 @@
  try{previousNotice=Number(sessionStorage.getItem('crm-task-last-notice:'+userId)||0);}catch(_){}
  const visible=element=>!!element&&element.isConnected&&element.getClientRects().length>0&&getComputedStyle(element).visibility!=='hidden';
  const currentLauncher=()=>launchers.find(visible)||launchers[0];
- function message(text){clearTimeout(toastTimer);toast.textContent=text;toast.hidden=false;toastTimer=setTimeout(()=>{toast.hidden=true;},5500);}
+ function message(text){clearTimeout(toastTimer);toast.textContent=text;toast.hidden=false;window.CRMOverlays?.show(toast,document.activeElement);toastTimer=setTimeout(()=>{window.CRMOverlays?.hide(toast);toast.hidden=true;},5500);}
  function when(value,time=true){if(!value)return '';return new Intl.DateTimeFormat('fa-IR',{dateStyle:'short',...(time?{timeStyle:'short'}:{}),timeZone:'Asia/Tehran'}).format(new Date(time?value:value+'T12:00:00Z'));}
  function expanded(value){launchers.forEach(button=>button.setAttribute('aria-expanded',String(value)));}
  function position(){if(!box.open)return;if(innerWidth<1024){box.style.left='';box.style.top='';box.style.maxHeight='';return;}const anchor=(visible(returnFocus)&&returnFocus.matches('[data-task-launcher]')?returnFocus:currentLauncher())?.getBoundingClientRect();const width=box.getBoundingClientRect().width;box.style.left=Math.max(16,Math.min(innerWidth-width-16,anchor?anchor.left:16))+'px';const top=Math.max(16,Math.min(anchor?anchor.bottom+10:86,innerHeight-300));box.style.top=top+'px';box.style.maxHeight=Math.max(260,innerHeight-top-16)+'px';}
