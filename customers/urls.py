@@ -15,6 +15,7 @@ def to_hub(request):
 
 
 urlpatterns = [
+    path('<int:pk>/admission/assign/', candidate_views.admission_assign, name='admission_assign'),
     path('candidates/', candidate_views.candidate_list, name='candidate_list'),
     # Redirect old list to new Hub
     path('', to_hub, name='list'),

@@ -121,6 +121,7 @@
                             {% endif %}
                             <span class="w-px h-5 bg-gray-200 mx-0.5"></span>
 
+                            {% include 'customers/_admission_button.html' %}
                             {# ── گروه ثانویه: آیکن‌محور ── #}
                             {% if can_transfer_cards %}
                             <button type="button" title="انتقال به کارمند دیگر" aria-label="انتقال"
@@ -219,6 +220,7 @@
                     <button type="button" onclick="openQuickCall('new', {{ c.pk }}, '{{ c.name|escapejs }}', '{{ c.mobile|escapejs }}')"
                             class="text-xs px-2 py-1 bg-sky-50 text-sky-700 rounded-lg">تماس جدید</button>
                     {% endif %}
+                    {% include 'customers/_admission_button.html' %}
                     {% if card_editable %}
                     <button type="button" onclick="openCustomerModal('{% url 'customers:edit' c.pk %}?is_modal=1')"
                             class="text-xs px-2 py-1 bg-amber-50 text-amber-700 rounded-lg">ویرایش</button>

@@ -102,12 +102,15 @@ def sync_customer_flag(customer):
 
 
 def sync_reception(rec):
+    from .admission_tasks import reconcile, automatic_receiver
+    reconcile(rec.customer)
     if (rec.customer.is_interviewer and rec.person_type != 'interviewer') or rec.workflow_version != 2:
         for task in Task.objects.filter(source_id=rec.pk, source_type__in=['reception','case','registration']).exclude(status__in=['done','cancelled']):
             task.status='cancelled';task.save()
         return
     customer = rec.customer
-    owner = choose_owner([rec.created_by, rec.referred_by, customer.assigned_to], 'customers.reception_refer')
+    preferred = [customer.assigned_to, rec.created_by, rec.referred_by] if not rec.referred_at and automatic_receiver(customer.assigned_to) else [rec.created_by, rec.referred_by, customer.assigned_to]
+    owner = choose_owner(preferred, 'customers.reception_refer')
     sync('reception:'+str(rec.pk), 'reception', rec, 'ارجاع مراجعه‌کننده — '+customer.name, owner,
          'cancelled' if customer.is_deleted else 'done' if rec.referred_at else 'pending', customer,
          description='ورود ثبت شده است؛ مسئول مرحله بعد را در تب پذیرش انتخاب و فرد را به پرونده یا استخدام ارجاع دهید.')
@@ -134,6 +137,8 @@ def sync_hiring(app):
     from customers.models import InterviewSession
     rec = app.reception
     customer = rec.customer
+    from .admission_tasks import reconcile
+    reconcile(customer)
     active = bool(rec.referred_at or rec.workflow_version == 1)
     owner = choose_owner([customer.assigned_to, rec.referred_to], 'customers.hiring_interview')
     session = InterviewSession.objects.filter(application=app, kind='first').order_by('pk').first()
@@ -212,6 +217,8 @@ def backfill():
     from .models import LeaveRequest
     token = quiet.set(True)
     try:
+        from .admission_tasks import reconcile, backfill_assignments
+        backfill_assignments()
         for item in FollowUp.objects.filter(is_done=False, customer__is_deleted=False).select_related('customer__assigned_to', 'created_by').iterator():
             sync_followup(item)
         for item in Reception.objects.filter(workflow_version=2, registration_completed_at__isnull=True, customer__is_deleted=False).select_related('customer__assigned_to').iterator():
@@ -227,7 +234,7 @@ def backfill():
         for item in LeaveRequest.objects.filter(status='pending').iterator():
             sync_leave(item)
         # Reconcile tasks whose sources were completed, deleted or changed with bulk updates.
-        sources = {'followup':(FollowUp,sync_followup), 'customer_followup':(Customer.all_objects,sync_customer_flag),
+        sources = {'admission':(Customer.all_objects,reconcile), 'followup':(FollowUp,sync_followup), 'customer_followup':(Customer.all_objects,sync_customer_flag),
                    'reception':(Reception,sync_reception), 'case':(Reception,sync_reception),
                    'registration':(Reception,sync_reception), 'interview':(HiringApplication,sync_hiring),
                    'call':(Call,sync_call), 'invoice':(Invoice,sync_invoice), 'leave':(LeaveRequest,sync_leave)}

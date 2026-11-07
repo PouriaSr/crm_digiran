@@ -2,4 +2,5 @@
 {% include 'customers/_candidate_summary.html' %}
 <div class="flex items-center justify-between gap-3 flex-wrap mb-5"><h1 class="text-xl font-bold text-slate-800">مصاحبه‌کنندگان</h1><form method="get" class="crm-filter-form flex gap-3"><input type="hidden" name="people" value="candidates"><input type="hidden" name="tab" value="info"><input id="hub-search-input" name="q" value="{{ search }}" placeholder="جستجوی نام یا شماره…" class="border border-slate-200 rounded-xl px-4 py-3"><button type="submit">جستجو</button></form></div>
 {% include 'customers/hub_table_partial.html' %}{% include 'customers/_call_modal.html' %}
+{% include 'customers/_admission_assignment.html' %}
 {% endblock %}

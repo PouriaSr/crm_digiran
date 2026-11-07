@@ -3,6 +3,13 @@ from django.dispatch import receiver
 from .models import Task
 
 
+@receiver(pre_save, sender='customers.Customer', dispatch_uid='hr.task_assignment_before')
+def customer_assignment_before(sender, instance, raw=False, **kwargs):
+    if not raw:
+        previous=sender.all_objects.filter(pk=instance.pk).values('assigned_to_id').first() if instance.pk else None
+        instance._task_assignment_changed=not previous or previous['assigned_to_id'] != instance.assigned_to_id
+
+
 @receiver(pre_save, sender=Task, dispatch_uid='hr.task_before')
 def before_task(sender, instance, raw=False, **kwargs):
     if not raw:
@@ -31,6 +38,8 @@ def workflow_changed(sender, instance, raw=False, **kwargs):
     elif name == 'customers.InterviewSession':
         service.sync_hiring(instance.application)
     elif name == 'customers.Customer':
+        from .admission_tasks import reconcile, automatic_receiver
+        reconcile(instance, request=getattr(instance,'_task_assignment_changed',False) and automatic_receiver(instance.assigned_to))
         def update_flag():
             from customers.models import Customer
             current = Customer.all_objects.filter(pk=instance.pk).first()

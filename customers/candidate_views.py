@@ -1,5 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
+from django.views.decorators.http import require_POST
 from django.db.models import Q, OuterRef, Subquery, Count
 from django.db.models.functions import Coalesce
 from django.shortcuts import render, redirect, get_object_or_404
@@ -21,6 +23,8 @@ def candidate_list(request):
         request.GET=request.GET.copy();request.GET['tab']='info';request.GET['people']='candidates'
         return customer_hub(request)
     context=candidate_list_context(request)
+    from hr.admission_tasks import assignment_context
+    context.update(assignment_context(request.user))
     context['call_form']=HubCallForm(user=request.user)
     return render(request,'customers/candidate_list.html',context)
 
@@ -118,6 +122,41 @@ def profile(request, person):
             for attr in list(form.fields[name].widget.attrs):
                 if attr.startswith(('@',':','x-')):
                     form.fields[name].widget.attrs.pop(attr)
-    return render(request,'customers/candidate_detail.html',{'person':person,'latest':latest,'records':paginate(request,records,'visits_page'),
+    from hr.admission_tasks import assignment_context
+    return render(request,'customers/candidate_detail.html',{**assignment_context(request.user),'person':person,'latest':latest,'records':paginate(request,records,'visits_page'),
         'sessions':paginate(request,sessions,'sessions_page'),'referrals':paginate(request,referrals,'referrals_page'),'can_hiring':can_hiring,'can_edit_candidate':can_edit,'identity_form':form,
         'can_documents':can_hiring and has_permission(request.user,'customers.hiring_documents') and latest and (latest.referred_at or latest.workflow_version == 1)})
+
+
+@login_required
+@require_permission('customers.reassign')
+@require_POST
+@transaction.atomic
+def admission_assign(request, pk):
+    from django.contrib.auth.models import User
+    from hr.admission_tasks import can_receive, latest_visit, needs_arrival, reconcile
+    import json
+    if not is_card_manager(request.user):
+        raise PermissionDenied('واگذاری پذیرش فقط برای سرپرست و ادمین مجاز است.')
+    person=get_object_or_404(Customer.objects.select_for_update(),pk=pk)
+    if person.is_interviewer and not has_permission(request.user,'customers.candidate_view'):
+        raise PermissionDenied
+    from django.urls import reverse
+    back=reverse('customers:detail',args=[person.pk]) if request.POST.get('next')=='profile' else reverse('customers:hub')+'?tab=info'+('&people=candidates' if person.is_interviewer else '')
+    if request.POST.get('next') != 'profile' and person.is_interviewer and not has_permission(request.user,'customers.info'):
+        back=reverse('customers:candidate_list')
+    def reject(message):
+        messages.error(request,message,extra_tags=json.dumps({'field':'admission-assignee'}))
+        return redirect(back)
+    identifier=request.POST.get('assigned_to','')
+    target=User.objects.filter(pk=identifier,is_active=True).first() if identifier.isascii() and identifier.isdigit() and len(identifier)<16 else None
+    if not can_receive(target):
+        return reject('کاربر مقصد باید دسترسی مشاهده وظایف، پذیرش و ثبت ورود داشته باشد.')
+    if not needs_arrival(latest_visit(person)):
+        return reject('ورود این فرد قبلاً ثبت شده است؛ ابتدا مراجعه جاری را در پذیرش، پرونده یا استخدام ادامه دهید.')
+    person.assigned_to=target
+    person.save(update_fields=['assigned_to','updated_at'])
+    reconcile(person,request=True)
+    request.feedback_context={'record':'customer:'+str(person.pk)}
+    messages.success(request,'فرد به «'+(target.get_full_name() or target.username)+'» واگذار شد و وظیفه ثبت ورود در پذیرش ایجاد شد.')
+    return redirect(back)

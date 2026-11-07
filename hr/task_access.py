@@ -33,12 +33,12 @@ def visible_tasks(user):
     from customers.access import is_card_manager
     if not is_card_manager(user):
         records = records.filter(Q(source_type='') | Q(assigned_user=user) | Q(events__report_user=user)).distinct()
-    permissions = {'reception':'customers.reception', 'invitation':'customers.hiring', 'customer_followup':'customers.followup', 'followup':'customers.followup', 'case':'customers.case', 'registration':'customers.registration', 'interview':'customers.hiring', 'call':'calls.view', 'invoice':'invoices.view', 'leave':'hr.review_leaves'}
+    permissions = {'admission':'customers.reception', 'reception':'customers.reception', 'invitation':'customers.hiring', 'customer_followup':'customers.followup', 'followup':'customers.followup', 'case':'customers.case', 'registration':'customers.registration', 'interview':'customers.hiring', 'call':'calls.view', 'invoice':'invoices.view', 'leave':'hr.review_leaves'}
     for kind, permission in permissions.items():
         if not has_permission(user, permission):
             records = records.exclude(source_type=kind)
     if not is_card_manager(user):
-        records = records.exclude(Q(source_type__in=['case','registration','interview','invitation','followup','customer_followup','call']) & ~Q(source_customer__assigned_to=user) & Q(source_customer__isnull=False))
+        records = records.exclude(Q(source_type__in=['admission','case','registration','interview','invitation','followup','customer_followup','call']) & ~Q(source_customer__assigned_to=user) & Q(source_customer__isnull=False))
     records = records.exclude(source_customer__is_deleted=True)
     records = records.exclude(source_customer__is_interviewer=True,source_type__in=['followup','customer_followup','case','registration','call','invoice'])
     return records
@@ -65,6 +65,8 @@ def source_url(task):
     from urllib.parse import urlencode
     if task.hiring_session_id:
         return task.recruitment_url
+    if task.source_type == 'admission':
+        return reverse('customers:hub') + '?' + urlencode({'tab':'reception','c':task.source_id})
     if task.source_type == 'reception':
         return reverse('customers:hub') + '?' + urlencode({'tab':'reception', 'r':task.source_id,
             'workflow_q':task.source_customer.mobile if task.source_customer else ''})

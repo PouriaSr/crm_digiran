@@ -205,10 +205,12 @@ def customer_hub(request):
     if tab not in tabs:
         raise PermissionDenied('دسترسی این تب برای شما فعال نیست.')
     request._hub_tab = tab
+    from hr.admission_tasks import assignment_context
     unified_search = tab == 'info' and bool(request.GET.get('q', '').strip()) and request.GET.get('search_all') == '1'
     if tab=='info' and request.GET.get('people')=='candidates' and not unified_search:
         from .candidate_views import candidate_list_context
         context=candidate_list_context(request)
+        context.update(assignment_context(request.user))
         context.update(build_workflow_context(request))
         context.update(active_tab='info',call_form=HubCallForm(user=request.user))
         partial=request.headers.get('HX-Request') or request.headers.get('X-Requested-With')=='XMLHttpRequest' or request.GET.get('partial')=='1'
@@ -300,7 +302,7 @@ def customer_hub(request):
                         .order_by('name', 'id')[:1000])
     filter_sources = AdSource.objects.filter(is_active=True).order_by('phone_number')
     reassign_users = (User.objects.filter(is_active=True)
-                      .order_by('first_name', 'username'))
+                      .prefetch_related('groups','permission_overrides').order_by('first_name', 'username'))
 
     # ═══ پیگیری‌ها: یک تعریف واحد از «در انتظار» ═══
     # در انتظار = تیک نخورده + تاریخ دارد + تاریخش رسیده (امروز یا گذشته)
@@ -347,6 +349,7 @@ def customer_hub(request):
     if tab == 'info' and has_permission(request.user, 'calls.view'):
         attach_contact_pages(request, context['customers'])
     context.update(workflow_context)
+    context.update(assignment_context(request.user, reassign_users))
 
     # دکمه «ثبت تماس جدید»:
     #   جستجو خالی → غیرفعال · مشتری موجود → غیرفعال · مشتری ناموجود → فعال
