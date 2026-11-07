@@ -4,6 +4,19 @@ from .models import Call
 
 @admin.register(Call)
 class CallAdmin(admin.ModelAdmin):
+    def get_queryset(self, request):
+        records=super().get_queryset(request)
+        return records if request.user.is_superuser else records.exclude(customer__is_interviewer=True)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'customer':
+            from customers.models import Customer
+            kwargs['queryset']=Customer.objects.filter(is_interviewer=False)
+        return super().formfield_for_foreignkey(db_field,request,**kwargs)
+
+    def has_change_permission(self, request, obj=None):
+        return super().has_change_permission(request,obj) and not (obj and obj.customer_id and obj.customer.is_interviewer)
+
     list_display = (
         'caller_name', 'call_number', 'call_type', 'status',
         'purpose', 'customer', 'called_by', 'call_date'

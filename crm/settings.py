@@ -104,6 +104,7 @@ MIDDLEWARE = [
     'crm.middleware.NormalizeNumeralInputsMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'customers.candidate_access.CandidateWorkflowMiddleware',
 
     # ⚠️ CurrentUserMiddleware باید بعد از AuthenticationMiddleware باشه
     'crm.middleware.CurrentUserMiddleware',

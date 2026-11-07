@@ -40,6 +40,7 @@ def visible_tasks(user):
     if not is_card_manager(user):
         records = records.exclude(Q(source_type__in=['case','registration','interview','followup','customer_followup','call']) & ~Q(source_customer__assigned_to=user) & Q(source_customer__isnull=False))
     records = records.exclude(source_customer__is_deleted=True)
+    records = records.exclude(source_customer__is_interviewer=True,source_type__in=['followup','customer_followup','case','registration','call','invoice'])
     return records
 
 

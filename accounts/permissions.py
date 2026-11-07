@@ -50,6 +50,9 @@ ROLE_TO_GROUP = {
 # تعریف دسترسی‌ها
 # ═══════════════════════════════════════════════════════════
 PERMISSIONS = {
+    'customers.candidate_view': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
+    'customers.candidate_add': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
+    'customers.candidate_edit': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'communications.view': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'communications.configuration': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'communications.templates': [ROLE_ADMIN, ROLE_SALES_MANAGER],
@@ -116,6 +119,9 @@ PERMISSIONS = {
 
 # ─── متادیتای نمایش دسترسی‌ها ───
 PERMISSION_META = {
+    'customers.candidate_view': ('استخدام و مصاحبه‌کنندگان', 'فهرست و صفحه مصاحبه‌کننده', 'مشاهده افراد تحت مسئولیت یا ثبت‌شده توسط خود؛ سوابق مصاحبه و مدارک مجوز استخدام جدا دارند'),
+    'customers.candidate_add': ('استخدام و مصاحبه‌کنندگان', 'ثبت اولیه مصاحبه‌کننده', 'ثبت فقط نام و شماره از فرم تماس؛ مجوز ثبت تماس نیز لازم است'),
+    'customers.candidate_edit': ('استخدام و مصاحبه‌کنندگان', 'ویرایش هویت مصاحبه‌کننده', 'تغییر نام و شماره فرد تحت مسئولیت؛ سایر عملیات از گردش استخدام انجام می‌شوند'),
     'communications.view': ('مدیریت پیام‌رسانی', 'ورود به مدیریت پیام‌رسانی', 'نمایش صفحه پیامک، ایمیل و واتساپ؛ دسترسی هر تب جداگانه قابل تنظیم است'),
     'communications.configuration': ('مدیریت پیام‌رسانی', 'تب پیکربندی کانال', 'مشاهده تنظیمات اتصال پیشنهادی هر کانال'),
     'communications.templates': ('مدیریت پیام‌رسانی', 'تب قالب‌های پیام', 'مشاهده قالب‌های پیشنهادی و سفارشی هر کانال'),

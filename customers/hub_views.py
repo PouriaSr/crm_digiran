@@ -208,7 +208,7 @@ def customer_hub(request):
     
     from django.db.models import Prefetch
     open_due_sq, last_done_sq = _followup_annotation()
-    customers = (Customer.all_objects
+    customers = (Customer.all_objects.filter(is_interviewer=False)
                  .select_related('assigned_to', 'created_by', 'ad_source')
                  .annotate(open_fu_due=open_due_sq, last_fu_done=last_done_sq)
                  .order_by('-created_at'))
@@ -280,7 +280,7 @@ def customer_hub(request):
     workflow_context = build_workflow_context(request)
 
     # گزینه‌های لیست‌ها
-    filter_customers = (Customer.all_objects
+    filter_customers = (Customer.all_objects.filter(is_interviewer=False)
                         .annotate(n_calls=Count('calls'))
                         .order_by('name', 'id')[:1000])
     filter_sources = AdSource.objects.filter(is_active=True).order_by('phone_number')
@@ -290,16 +290,16 @@ def customer_hub(request):
     # ═══ پیگیری‌ها: یک تعریف واحد از «در انتظار» ═══
     # در انتظار = تیک نخورده + تاریخ دارد + تاریخش رسیده (امروز یا گذشته)
     open_followups = FollowUp.objects.filter(
-        is_done=False, customer__is_deleted=False,
+        is_done=False, customer__is_deleted=False, customer__is_interviewer=False,
     )
     due_followups = open_followups.filter(due_date__lte=today)
 
     
-    total_customers = Customer.objects.count()
-    total_leads = Customer.objects.filter(stage='lead').count()
+    total_customers = Customer.objects.filter(is_interviewer=False).count()
+    total_leads = Customer.objects.filter(stage='lead',is_interviewer=False).count()
     pending_followups = due_followups.count()
     upcoming_followups_count = open_followups.filter(due_date__gt=today).count()
-    recent_revenue = Invoice.objects.filter(status='paid').aggregate(total=Sum('total'))['total'] or 0
+    recent_revenue = Invoice.objects.filter(status='paid',customer__is_interviewer=False).aggregate(total=Sum('total'))['total'] or 0
 
     context = {
         'active_tab': tab,
@@ -319,7 +319,7 @@ def customer_hub(request):
         'reassign_users': reassign_users,
         'contact_type_choices': Call.CONTACT_TYPE_CHOICES,
         'type_choices': Call.CALL_TYPE_CHOICES,
-        'invoices': paginate(request, Invoice.objects.select_related('customer', 'created_by').order_by('-created_at','-pk'), 'invoice_page') if 'invoice' in tabs and has_permission(request.user, 'invoices.view') else [],
+        'invoices': paginate(request, Invoice.objects.select_related('customer', 'created_by').filter(customer__is_interviewer=False).order_by('-created_at','-pk'), 'invoice_page') if 'invoice' in tabs and has_permission(request.user, 'invoices.view') else [],
         'call_form': HubCallForm(user=request.user),
     }
     
@@ -363,6 +363,8 @@ def hub_submit_call(request):
 
     data = form.cleaned_data
     if data.get('is_interviewer'):
+        if not has_permission(request.user, 'customers.candidate_add'):
+            raise PermissionDenied('مجوز ثبت اولیه مصاحبه‌کننده ندارید.')
         with transaction.atomic():
             existing = Customer.all_objects.filter(mobile=data['mobile']).first()
             if existing:
@@ -373,7 +375,9 @@ def hub_submit_call(request):
                                                source='', assigned_to=request.user, created_by=request.user)
         request.feedback_context = {'record': 'customer:'+str(customer.pk)}
         messages.success(request, 'فرد با برچسب مصاحبه‌کننده ثبت شد؛ مرحله بعد ثبت ورود در تب پذیرش است.')
-        return redirect(f"{reverse('customers:hub')}?tab=info&q={customer.mobile}")
+        if has_permission(request.user, 'customers.candidate_view'):
+            return redirect('customers:detail', pk=customer.pk)
+        return redirect(f"{reverse('customers:hub')}?tab=info")
     mobile = data['mobile']
     needs_followup = data['needs_followup']
     # The explicit analysis controls the badge, independently of follow-up.
@@ -385,6 +389,8 @@ def hub_submit_call(request):
 
     with transaction.atomic():
         customer = Customer.objects.select_for_update().filter(mobile=mobile).first()
+        if customer and customer.is_interviewer:
+            raise PermissionDenied('مصاحبه‌کننده از مسیر استخدام مدیریت می‌شود.')
         if customer is None:
             customer = Customer.objects.create(
                 name=data['name'], mobile=mobile,
@@ -446,6 +452,10 @@ def hub_check_customer(request):
         return JsonResponse({'exists': False})
     customer = Customer.objects.filter(mobile=mobile).first()
     if customer:
+        if customer.is_interviewer:
+            allowed = has_permission(request.user,'customers.candidate_view') and (can_edit_card(request.user,customer) or customer.created_by_id == request.user.pk)
+            return JsonResponse({'exists':True,'name':customer.name if allowed else 'فرد ثبت‌شده','is_interviewer':True,'type':'مصاحبه‌کننده','status':'استخدام',
+                                 'profile_url':reverse('customers:detail',args=[customer.pk]) if allowed else ''})
         return JsonResponse({
             'exists': True,
             'name': customer.name,

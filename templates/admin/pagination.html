@@ -1,0 +1,2 @@
+{% load fa_numbers %}{% admin_pagination_page cl as page %}{% page_controls page 'p' %}
+{% if cl.formset and cl.result_count %}<input type="submit" name="_save" class="default" value="ذخیره">{% endif %}

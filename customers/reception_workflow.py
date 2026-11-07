@@ -35,7 +35,7 @@ def allowed_tabs(user):
 
 
 def workflow_records():
-    return Reception.objects.filter(workflow_version=2, customer__is_deleted=False).select_related(
+    return Reception.objects.filter(workflow_version=2, customer__is_deleted=False).exclude(customer__is_interviewer=True,person_type='customer').select_related(
         'customer', 'customer__assigned_to', 'customer__ad_source', 'customer__case', 'customer__case__product',
         'referred_to', 'referred_by', 'created_by', 'case_completed_by', 'registration_completed_by',
     ).prefetch_related(Prefetch(
@@ -133,7 +133,7 @@ def build_workflow_context(request):
         return Paginator(search_records(records, query if active == tab else ''), PAGE_SIZE).get_page(request.GET.get(page_key))
     context = {'allowed_hub_tabs': tabs, 'registration_unlocked': False, 'workflow_query': query,
                'hub_tab_items': [{'key': tab, 'icon': labels[tab][0], 'label': labels[tab][1]} for tab in tabs]}
-    visible = editable_records(request.user)
+    visible = editable_records(request.user).filter(customer__is_interviewer=False)
     if 'registration' in tabs:
         ready = visible.filter(person_type='customer', case_completed_at__isnull=False).order_by('-case_completed_at', '-pk')
         context.update(registration_unlocked=ready.exists(), registration_choices=ready, registration_records=paginated(ready, 'registration', 'registration_page'),
@@ -144,7 +144,7 @@ def build_workflow_context(request):
         context['arrival_resume_form'] = getattr(request, '_arrival_resume_form', None) or ResumeForm()
         context.update(reception_customers=Customer.objects.order_by('name'),
                        reception_records=paginated(records, 'reception', 'reception_page'), referral_users=referral_users() if active == 'reception' else [], hiring_referral_users=referral_users('interviewer') if active == 'reception' else [],
-                       legacy_receptions=paginate(request, Reception.objects.filter(workflow_version=1, customer__is_deleted=False)
+                       legacy_receptions=paginate(request, Reception.objects.filter(workflow_version=1, customer__is_deleted=False).exclude(customer__is_interviewer=True,person_type='customer')
                        .select_related('customer', 'created_by').order_by('-created_at','-pk'), 'legacy_reception_page'))
     if 'case' in tabs:
         records = visible.filter(person_type='customer', referred_at__isnull=False).order_by('-referred_at', '-pk')
@@ -215,6 +215,8 @@ def reception_action(request):
         if person not in dict(Reception.PERSON_CHOICES):
             return HttpResponse('نوع مراجعه‌کننده را انتخاب کنید.', status=400)
         customer = get_object_or_404(Customer.objects.select_for_update(), pk=posted_pk(request, 'customer'))
+        if customer.is_interviewer:
+            person = 'interviewer'
         from .hiring_forms import ResumeForm
         from .hiring_views import save_resume
         resume_form = ResumeForm(request.POST, request.FILES) if person == 'interviewer' else None
@@ -264,6 +266,8 @@ def reception_action(request):
     rec = get_object_or_404(Reception.objects.select_for_update(),
                            pk=posted_pk(request, 'reception'), workflow_version=2)
     customer = get_object_or_404(Customer.objects.select_for_update(), pk=rec.customer_id)
+    if customer.is_interviewer and rec.person_type != 'interviewer':
+        return HttpResponse('این مراجعه در مسیر مشتری قابل ارجاع نیست؛ ورود استخدام را ثبت کنید.',status=409)
     if rec.referred_at:
         messages.info(request, 'این مراجعه قبلاً ارجاع شده است؛ زمان و مسئول قبلی حفظ شدند.')
         return redirect(back_to('reception', rec))
@@ -340,6 +344,8 @@ def start_case_work(rec, user):
 @transaction.atomic
 def case_open(request, pk):
     rec = get_object_or_404(Reception.objects.select_for_update().select_related('customer'), pk=pk, workflow_version=2, person_type='customer')
+    if rec.customer.is_interviewer:
+        raise PermissionDenied('این فرد در مسیر استخدام قرار دارد.')
     if not can_edit_card(request.user, rec.customer):
         raise PermissionDenied('دسترسی تکمیل این پرونده را ندارید.')
     if not rec.referred_at:
@@ -359,7 +365,7 @@ def case_save(request):
     customer = get_object_or_404(Customer.objects.select_for_update(), pk=rec.customer_id)
     if not can_edit_card(request.user, customer):
         raise PermissionDenied('پرونده فقط برای مسئول کارت، سرپرست و ادمین قابل تکمیل است.')
-    if rec.person_type != 'customer':
+    if rec.person_type != 'customer' or customer.is_interviewer:
         return HttpResponse('این مراجعه در مسیر استخدام قرار دارد.', status=409)
     if not rec.referred_at:
         return HttpResponse('ابتدا مراجعه‌کننده را از پذیرش ارجاع دهید.', status=409)
@@ -409,7 +415,7 @@ def registration_form(request, pk):
     customer = get_object_or_404(Customer.objects.select_for_update(), pk=rec.customer_id)
     if not can_edit_card(request.user, customer):
         raise PermissionDenied('ثبت اطلاعات فقط برای مسئول کارت، سرپرست و ادمین مجاز است.')
-    if rec.person_type != 'customer':
+    if rec.person_type != 'customer' or customer.is_interviewer:
         return HttpResponse('اطلاعات این فرد در تب استخدام نمایش داده می‌شود.', status=409)
     if not rec.referred_at or not rec.case_completed_at:
         return HttpResponse('ابتدا ارجاع و ثبت پرونده را تکمیل کنید.', status=409)

@@ -49,7 +49,7 @@ def get_notifications(user):
     if has_permission(user, 'customers.view'):
         from customers.models import Customer
         # در سیستم جدید «نیاز به پیگیری» یک پرچم روی مشتری است (تاریخ جمع نمی‌شود)
-        followups = Customer.objects.filter(needs_followup=True)
+        followups = Customer.objects.filter(needs_followup=True,is_interviewer=False)
 
         if not user.is_superuser:
             followups = followups.filter(assigned_to=user)

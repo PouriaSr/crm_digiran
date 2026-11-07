@@ -6,6 +6,11 @@ from crm.numerals import persian_digits, normalize_input
 register = template.Library()
 
 
+@register.filter
+def user_label(user):
+    return (user.get_full_name() or user.username) if user else 'تعیین نشده'
+
+
 @register.simple_tag(takes_context=True)
 def workflow_page_url(context, key, number, tab):
     query = context['request'].GET.copy()
@@ -125,3 +130,35 @@ def record_page_url(context, key, number):
     query.pop('partial', None)
     query[key or 'page'] = number
     return '?' + query.urlencode()
+
+
+@register.inclusion_tag('includes/_page_controls.html', takes_context=True)
+def page_controls(context, page, key=None, tab=None):
+    if not page or not hasattr(page, 'paginator'):
+        return {}
+    key = key or getattr(page, 'page_key', 'page')
+    from django.http import QueryDict
+    request = context.get('request')
+    query = request.GET.copy() if request else QueryDict(mutable=True)
+    if not request and context.get('cl'):
+        for name, values in context['cl'].filter_params.items():
+            query.setlist(name, values)
+    query.pop('partial', None)
+    if tab:
+        query['tab'] = tab
+    def url(number):
+        params = query.copy()
+        params[key] = number
+        return '?' + params.urlencode()
+    numbers = [{'number': number, 'url': url(number), 'current': number == page.number}
+               if isinstance(number, int) else {'ellipsis': True}
+               for number in page.paginator.get_elided_page_range(page.number, on_each_side=2, on_ends=1)]
+    query.pop(key, None)
+    return {'page': page, 'page_key': key, 'numbers': numbers, 'first_url': url(1),
+            'previous_url': url(max(1, page.number-1)), 'next_url': url(min(page.paginator.num_pages, page.number+1)),
+            'jump_values': [(name, value) for name, values in query.lists() for value in values]}
+
+
+@register.simple_tag
+def admin_pagination_page(cl):
+    return cl.paginator.get_page(cl.page_num)

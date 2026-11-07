@@ -20,7 +20,7 @@ from .forms import CallForm
 @login_required
 @require_permission('calls.view')
 def call_list(request):
-    calls = Call.objects.select_related('customer', 'called_by').all()
+    calls = Call.objects.select_related('customer', 'called_by').exclude(customer__is_interviewer=True)
 
     # ═══ جستجو ═══
     search = request.GET.get('q', '').strip()
@@ -73,10 +73,10 @@ def call_list(request):
     week_ago = today - timedelta(days=7)
 
     stats = {
-        'total': Call.objects.count(),
-        'today': Call.objects.filter(call_date__date=today).count(),
-        'week': Call.objects.filter(call_date__date__gte=week_ago).count(),
-        'followup': Call.objects.filter(status='followup', is_followed_up=False).count(),
+        'total': Call.objects.exclude(customer__is_interviewer=True).count(),
+        'today': Call.objects.exclude(customer__is_interviewer=True).filter(call_date__date=today).count(),
+        'week': Call.objects.exclude(customer__is_interviewer=True).filter(call_date__date__gte=week_ago).count(),
+        'followup': Call.objects.exclude(customer__is_interviewer=True).filter(status='followup', is_followed_up=False).count(),
     }
 
     # ═══ صفحه‌بندی ═══

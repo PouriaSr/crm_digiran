@@ -84,6 +84,8 @@ class CallForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)# ═══ مقدار اولیه برای تاریخ پیگیری ═══
+        from customers.models import Customer
+        self.fields['customer'].queryset = Customer.objects.filter(is_interviewer=False)
         from ads.models import AdSource
         from django.db.models import Q
         self.fields['source'].queryset = AdSource.objects.filter(Q(is_active=True) | Q(pk=self.instance.source_id))

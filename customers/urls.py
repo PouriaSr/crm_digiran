@@ -3,7 +3,7 @@ from django.shortcuts import redirect
 from django.urls import path
 
 from accounts.permissions import require_permission
-from . import views, hub_views, reception_workflow, hiring_views
+from . import views, hub_views, reception_workflow, hiring_views, candidate_views
 
 app_name = 'customers'
 
@@ -15,6 +15,7 @@ def to_hub(request):
 
 
 urlpatterns = [
+    path('candidates/', candidate_views.candidate_list, name='candidate_list'),
     # Redirect old list to new Hub
     path('', to_hub, name='list'),
     

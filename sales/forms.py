@@ -54,6 +54,7 @@ class InvoiceForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['customer'].queryset = Customer.objects.filter(is_interviewer=False)
 
         
         if self.instance and self.instance.pk and self.instance.due_date:

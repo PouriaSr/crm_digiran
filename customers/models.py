@@ -350,6 +350,7 @@ class RecordUpdate(models.Model):
     SCOPE_CHOICES = [
         ('reception', 'پذیرش'),
         ('case', 'پرونده'),
+        ('hiring', 'استخدام'),
     ]
 
     customer = models.ForeignKey(

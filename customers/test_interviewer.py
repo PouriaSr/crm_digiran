@@ -25,10 +25,11 @@ class InterviewerFlowTest(TestCase):
         self.arrive(); self.cand.refresh_from_db()
         self.assertTrue(self.cand.is_interviewer)
 
-    def test_interviewers_remain_in_shared_information_list(self):
+    def test_interviewers_use_separate_information_list(self):
         self.arrive()
         ids = [row.pk for row in self.client.get(self.hub).context['customers']]
-        self.assertIn(self.cand.pk, ids); self.assertIn(self.other.pk, ids)
+        self.assertNotIn(self.cand.pk, ids); self.assertIn(self.other.pk, ids)
+        self.assertContains(self.client.get(reverse('customers:candidate_list')),self.cand.name)
 
     def test_interviewers_do_not_enter_customer_case_selector(self):
         rec = self.arrive()

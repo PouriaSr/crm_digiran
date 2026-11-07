@@ -168,10 +168,10 @@ def _apply_invoice_filters(qs, request):
 @login_required
 @require_permission('invoices.view')
 def invoice_list(request):
-    qs = Invoice.objects.select_related('customer', 'created_by').all()
+    qs = Invoice.objects.select_related('customer', 'created_by').exclude(customer__is_interviewer=True)
     qs, filters = _apply_invoice_filters(qs, request)
 
-    all_invoices = Invoice.objects.all()
+    all_invoices = Invoice.objects.exclude(customer__is_interviewer=True)
     stats = {
         'total': all_invoices.count(),
         'draft': all_invoices.filter(status='draft').count(),

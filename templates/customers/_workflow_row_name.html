@@ -1,2 +1,2 @@
-<strong class="wf-name" title="{{ rec.customer.name }}">{{ rec.customer.name }}{% if rec.customer.is_interviewer %}<span class="hr-chip">مصاحبه‌کننده</span>{% endif %}</strong>
+<strong class="wf-name" title="{{ rec.customer.name }}">{% if rec.customer.is_interviewer and 'customers.candidate_view' in user_permissions %}<a href="{% url 'customers:detail' rec.customer.pk %}" onclick="event.stopPropagation()">{{ rec.customer.name }}</a>{% else %}{{ rec.customer.name }}{% endif %}{% if rec.customer.is_interviewer %}<span class="hr-chip">مصاحبه‌کننده</span>{% endif %}</strong>
 <span class="wf-mobile" dir="ltr">{{ rec.customer.mobile }}</span>

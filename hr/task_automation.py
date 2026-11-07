@@ -51,6 +51,9 @@ def sync(key, kind, obj, title, owner, state, customer=None, date=None, time=Non
 
 def sync_followup(item):
     customer = item.customer
+    if customer.is_interviewer:
+        Task.objects.filter(source_key='followup:'+str(item.pk)).exclude(status__in=['done','cancelled']).update(status='cancelled')
+        return
     from customers.access import is_card_manager
     owner = choose_owner([customer.assigned_to, item.created_by if is_card_manager(item.created_by) else None], 'customers.followup')
     state = 'cancelled' if customer.is_deleted else 'done' if item.is_done else 'follow_up'
@@ -65,6 +68,10 @@ def sync_customer_flag(customer):
     """Older databases can contain a followup flag without a dated FollowUp."""
     key = 'customer-followup:'+str(customer.pk)
     existing = Task.objects.filter(source_key=key).first()
+    if customer.is_interviewer:
+        if existing and existing.status not in ('done','cancelled'):
+            existing.status='cancelled';existing.save()
+        return
     if customer.followups.filter(is_done=False).exists():
         if existing and existing.status not in ('done','cancelled'):
             existing.status='cancelled';existing.save()
@@ -78,6 +85,8 @@ def sync_customer_flag(customer):
 
 
 def sync_reception(rec):
+    if rec.customer.is_interviewer and rec.person_type != 'interviewer':
+        return
     if rec.workflow_version != 2 or not rec.referred_at:
         return
     customer = rec.customer
@@ -121,7 +130,7 @@ def sync_call(call):
     state = 'done' if call.is_followed_up else 'follow_up' if call.status == 'followup' else 'cancelled'
     if not call.follow_up_date and state != 'done':
         state = 'cancelled'
-    if call.customer_id and call.customer.is_deleted:
+    if call.customer_id and (call.customer.is_deleted or call.customer.is_interviewer):
         state = 'cancelled'
     sync('call:'+str(call.pk), 'call', call, 'پیگیری تماس — '+call.caller_name, owner, state, customer=call.customer, date=call.follow_up_date, time=call.follow_up_time)
 
@@ -130,7 +139,7 @@ def sync_invoice(invoice):
     owner = choose_owner([invoice.created_by, invoice.customer.assigned_to], 'invoices.edit')
     state = {'draft': 'pending', 'issued': 'follow_up', 'paid': 'done', 'cancelled': 'cancelled'}[invoice.status]
     sync('invoice:'+str(invoice.pk), 'invoice', invoice, 'رسیدگی فاکتور — '+invoice.number, owner,
-         'cancelled' if invoice.customer.is_deleted else state, invoice.customer, invoice.due_date)
+         'cancelled' if invoice.customer.is_deleted or invoice.customer.is_interviewer else state, invoice.customer, invoice.due_date)
 
 
 def sync_leave(leave):

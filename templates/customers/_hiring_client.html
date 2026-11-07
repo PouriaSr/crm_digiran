@@ -3,6 +3,7 @@
  const csrf=()=>document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
  let previousFocus=null;
  const timers=new WeakMap();
+ requestAnimationFrame(()=>{const field=document.getElementById('arrival-customer');if(field?.value)field.dispatchEvent(new Event('change',{bubbles:true}));});
  document.addEventListener('change',event=>{if(event.target.id!=='arrival-customer'||!event.target.value)return;const form=event.target.closest('form'),candidate=event.target.selectedOptions[0]?.dataset.interviewer==='yes',choice=form.querySelector('[name=person_type][value='+(candidate?'interviewer':'customer')+']');choice.checked=true;choice.dispatchEvent(new Event('change',{bubbles:true}));});
  function removeModal(){const modal=document.getElementById('hiring-modal');if(!modal)return;modal.querySelectorAll('select').forEach(el=>el.tomselect?.destroy());if(window.Alpine?.destroyTree)Alpine.destroyTree(modal);modal.remove();}
  function close(){removeModal();document.body.style.overflow='';previousFocus?.focus();const search=document.querySelector('input[name=workflow_q]:not([type=hidden])');if(search?.form)window.CRMLiveSearch?.search(search.form);}

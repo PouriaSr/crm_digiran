@@ -58,9 +58,22 @@ def _add_duplicate_warnings(request, form):
 
 
 @login_required
-@require_permission('customers.view')
 def customer_detail(request, pk):
-    customer = get_object_or_404(Customer, pk=pk)
+    can_customers = has_permission(request.user,'customers.view')
+    can_candidates = has_permission(request.user,'customers.candidate_view')
+    if not can_customers and not can_candidates:
+        raise PermissionDenied
+    scope = Customer.objects.all()
+    if not can_customers:
+        scope = scope.filter(is_interviewer=True)
+    if not can_candidates:
+        scope = scope.filter(is_interviewer=False)
+    customer = get_object_or_404(scope, pk=pk)
+    if customer.is_interviewer:
+        from .candidate_views import profile
+        return profile(request, customer)
+    if not has_permission(request.user, 'customers.view'):
+        raise PermissionDenied
 
     # ⭐ فقط کاربرانی که invoices.view دارند، اطلاعات فاکتور را می‌بینند
     can_view_invoices = has_permission(request.user, 'invoices.view')

@@ -2,6 +2,7 @@
 <style>
 #call-modal-root input[aria-invalid="true"] {border-color:#f87171;box-shadow:0 0 0 3px #fef2f2;}
 #call-modal-root .call-scroll {scrollbar-width:thin;scrollbar-color:#cbd5e1 transparent;}
+#call-modal-root [aria-labelledby="call-next-heading"]{display:flex;flex-direction:column;gap:18px;padding:24px!important}#call-next-heading{margin:0!important}#call-modal-root [for=hub_needs_followup]{align-items:flex-start!important;gap:14px!important;line-height:1.9}#call-modal-root [for=hub_send_address]{display:flex;flex-wrap:wrap;align-items:center;gap:12px!important;border:1px solid #e2e8f0;border-radius:14px;padding:16px!important;margin:0!important;background:#f8fafc}#call-modal-root [aria-labelledby="call-next-heading"]>div{padding:18px!important}#call-modal-root [aria-labelledby="call-next-heading"]>p{margin:0!important;line-height:1.9}#call-modal-root [for=hub_send_address]>span:first-of-type{min-height:44px;flex:none}#call-modal-root [for=hub_send_address]>span:last-child{flex:1 1 180px;line-height:1.8}
 </style>
 <div id="call-modal-root"
      x-data="callModalWidget()"
@@ -65,10 +66,11 @@
                             </div>
                         </div>
                         <div x-show="existingCustomer" x-cloak class="mt-4 text-xs text-emerald-800 bg-emerald-50 px-3 py-2.5 rounded-xl border border-emerald-100" role="status">
-                            مشتری شناسایی شد: <strong x-text="existingCustomer?.name"></strong>
+                            <span x-text="existingCustomer?.is_interviewer ? 'مصاحبه‌کننده شناسایی شد؛ از پرونده استخدام ادامه دهید:' : 'مشتری شناسایی شد:'"></span> <strong x-text="existingCustomer?.name"></strong>
+                            <a x-show="existingCustomer?.profile_url" :href="existingCustomer?.profile_url" class="block mt-3 text-blue-700 underline">پرونده مصاحبه‌کننده</a>
                         </div>
                     </section>
-                    <label class="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 cursor-pointer"><input type="checkbox" name="is_interviewer" x-model="isInterviewer" class="w-5 h-5"><span>مصاحبه‌کننده است <span class="text-xs text-slate-500">(اختیاری)</span></span></label>
+                    {% if 'customers.candidate_add' in user_permissions %}<label class="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 cursor-pointer"><input type="checkbox" name="is_interviewer" x-model="isInterviewer" :disabled="existingCustomer?.is_interviewer" class="w-5 h-5"><span>مصاحبه‌کننده است <span class="text-xs text-slate-500">(اختیاری)</span></span></label>{% endif %}
                     <p x-show="isInterviewer" x-cloak class="text-xs text-blue-700">فقط نام و شماره تماس ثبت می‌شود؛ سپس ورود فرد را در تب پذیرش ثبت کنید.</p>
                     <fieldset data-call-extra x-show="!isInterviewer" :disabled="isInterviewer" class="space-y-4">
                     <section class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm" aria-labelledby="call-details-heading">
@@ -144,7 +146,7 @@
                     </fieldset>
                 </div>
                 <div class="crm-call-actions shrink-0 rounded-b-3xl border-t border-slate-200 px-4 sm:px-6 py-4 bg-white flex items-center gap-3">
-                    <button type="submit" :disabled="submitting"
+                    <button type="submit" :disabled="submitting || existingCustomer?.is_interviewer"
                             class="flex-1 py-3.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-60 disabled:cursor-wait focus-visible:ring-4 focus-visible:ring-blue-200 transition shadow-sm"
                             x-text="submitting ? 'در حال ثبت…' : isInterviewer ? 'ثبت مصاحبه‌کننده' : 'ثبت تماس'">ثبت تماس</button>
                     <button type="button" @click="isCallModalOpen = false"
@@ -314,6 +316,7 @@ function callModalWidget() {
                     self.existingCustomer = data.exists ? data : null;
                     self.checking = false;
                     if (data.exists) {
+                        self.isInterviewer = !!data.is_interviewer;
                         var n = document.getElementById('hub_call_name');
                         if (n && !n.value) { n.value = data.name; self.validateName(n); }
                     }

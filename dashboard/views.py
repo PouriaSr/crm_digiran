@@ -55,14 +55,14 @@ def _get_data_owner(user, filter_user_id=None):
 
 
 def _filtered_customers(owner):
-    qs = Customer.objects.all()
+    qs = Customer.objects.filter(is_interviewer=False)
     if owner is not None:
         qs = qs.filter(Q(assigned_to=owner) | Q(created_by=owner))
     return qs
 
 
 def _filtered_calls(owner):
-    qs = Call.objects.all()
+    qs = Call.objects.exclude(customer__is_interviewer=True)
     if owner is not None:
         qs = qs.filter(Q(called_by=owner) | Q(created_by=owner))
     return qs
@@ -71,7 +71,7 @@ def _filtered_calls(owner):
 def _filtered_invoices(owner, statuses=None):
     if statuses is None:
         statuses = ['issued', 'paid']
-    qs = Invoice.objects.filter(status__in=statuses)
+    qs = Invoice.objects.filter(status__in=statuses,customer__is_interviewer=False)
     if owner is not None:
         qs = qs.filter(created_by=owner)
     return qs
