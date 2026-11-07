@@ -93,13 +93,34 @@ class PersonalInboxTests(TestCase):
         now=Task.objects.create(title='امروز',assigned_user=self.user,due_date=today)
         future=Task.objects.create(title='آینده',assigned_user=self.user,due_date=today+timedelta(days=1))
         for i in range(12):Task.objects.create(title='کار بدون موعد '+str(i),assigned_user=self.user)
-        data=self.get();self.assertEqual(data['items'][0]['task'],late.pk)
+        data=self.get(sort='overdue');self.assertEqual(data['items'][0]['task'],late.pk)
         self.assertEqual(data['pagination']['total'],15);self.assertEqual(len(data['items']),10)
         self.assertEqual(len(self.get(page=2)['items']),5)
         self.assertEqual([row['task'] for row in self.get(due='overdue')['items']],[late.pk])
         self.assertEqual([row['task'] for row in self.get(due='today')['items']],[now.pk])
         self.assertEqual([row['task'] for row in self.get(due='upcoming')['items']],[future.pk])
         self.assertEqual(self.get(due='undated')['pagination']['total'],12)
+
+    def test_new_tasks_first_and_same_sort_on_full_page(self):
+        old=Task.objects.create(title='قدیمی', assigned_user=self.user, priority='urgent')
+        new=Task.objects.create(title='جدید', assigned_user=self.user, priority='low')
+        self.assertEqual([row['task'] for row in self.get()['items']], [new.pk, old.pk])
+        self.assertEqual(self.get(sort='priority')['items'][0]['task'], old.pk)
+        response=self.client.get(reverse('hr:task_list'), {'scope':'mine'})
+        self.assertEqual([task.pk for task in response.context['page_obj']], [new.pk, old.pk])
+
+    def test_date_ranges_creation_and_due_are_distinct_and_invalid_dates_visible(self):
+        from dashboard.templatetags.fa_numbers import jdate
+        today=timezone.localdate()
+        date=jdate(today,'Y/m/d')
+        task=Task.objects.create(title='موعد فردا',assigned_user=self.user,due_date=today+timedelta(days=1))
+        self.assertEqual(self.get(date_from=date,date_to=date)['items'][0]['task'],task.pk)
+        self.assertEqual(self.get(date_basis='due',date_from=date,date_to=date)['items'],[])
+        invalid=self.get(date_from='invalid')
+        self.assertEqual(invalid['items'],[])
+        self.assertIn('date_from',invalid['filter_errors'])
+        response=self.client.get(reverse('hr:task_list'), {'scope':'mine','date_basis':'due','date_to':date})
+        self.assertEqual(len(response.context['page_obj']),0)
 
     def test_closed_work_is_not_actionable_but_history_remains(self):
         task=Task.objects.create(title='تمام شده',assigned_user=self.user,status='done')

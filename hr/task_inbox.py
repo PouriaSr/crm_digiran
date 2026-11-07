@@ -1,6 +1,6 @@
 """Personal work queue. Reading an update never completes work or its report."""
 from django.core.paginator import Paginator
-from django.db.models import Case, Count, Exists, IntegerField, Max, Min, OuterRef, Q, Value, When
+from django.db.models import Count, Exists, Max, Min, OuterRef, Q
 from django.urls import reverse
 from django.utils import timezone
 from accounts.permissions import get_user_permissions
@@ -8,6 +8,7 @@ from crm.pagination import PAGE_SIZE
 from crm.numerals import digit_contains
 from .models import Task, TaskEvent, TaskNotice
 from .task_access import owned_tasks, source_url, visible_tasks, overdue_condition
+from .task_filters import TaskQueueFilters, filter_task_dates, order_tasks
 
 
 def inbox_records(user):
@@ -62,6 +63,9 @@ def personal_inbox(user, params):
     if due not in due_counts:
         due = 'all'
     query = params.get('q', '').strip()[:200]
+    queue_filters = TaskQueueFilters(params)
+    valid_filters = queue_filters.is_valid()
+    filter_data = queue_filters.cleaned_data if valid_filters else {}
     permissions = get_user_permissions(user)
     related = ('assigned_user', 'assigned_to', 'source_customer', 'hiring_session__application__reception')
     first_events = events.order_by().values('task_id').annotate(first=Min('pk')).values('first')
@@ -78,10 +82,8 @@ def personal_inbox(user, params):
             items = items.filter(due_date__isnull=True)
         if query:
             items = items.filter(digit_contains('title',query) | digit_contains('description',query))
-        items = items.annotate(
-            queue_rank=Case(When(late, then=Value(0)), When(due_date=today, then=Value(1)), When(due_date__isnull=True, then=Value(3)), default=Value(2), output_field=IntegerField()),
-            priority_rank=Case(When(priority='urgent',then=Value(0)),When(priority='high',then=Value(1)),When(priority='medium',then=Value(2)),default=Value(3),output_field=IntegerField()),
-        ).select_related(*related).order_by('queue_rank','priority_rank','due_date','due_time','pk')
+        items = items.select_related(*related)
+        items = order_tasks(items, filter_data.get('sort'))
     elif view == 'reports':
         items = events.filter(pk__in=first_events).select_related('task').order_by('pk')
         if query:
@@ -92,6 +94,7 @@ def personal_inbox(user, params):
             # Match all changes of a task, then show its newest change.
             matching = notices.filter(digit_contains('task__title',query) | digit_contains('text',query)).values('task_id')
             items = items.filter(task_id__in=matching)
+    items = filter_task_dates(items, filter_data, '' if view == 'work' else 'task__') if valid_filters else items.none()
     page = Paginator(items, PAGE_SIZE).get_page(params.get('page', 1))
     rows = list(page)
     task_ids = [item.pk if view == 'work' else item.task_id for item in rows]
@@ -123,5 +126,5 @@ def personal_inbox(user, params):
     return {'counts': counts, 'attention_count': counts['attention'], 'due_counts': due_counts,
             'unread': notices.filter(read_at__isnull=True).count(), 'pending_reports': events.count(),
             'reports': auto_reports, 'notices': [{'id': newest.pk,'task':newest.task_id,'title':newest.text,'url':reverse('hr:task_detail',args=[newest.task_id])}] if newest else [],
-            'view': view, 'due': due, 'query': query, 'items': payload,
+            'view': view, 'due': due, 'query': query, 'items': payload, 'filter_errors': queue_filters.errors.get_json_data(),
             'pagination': {'page':page.number,'pages':page.paginator.num_pages,'total':page.paginator.count,'has_next':page.has_next(),'has_previous':page.has_previous()}}

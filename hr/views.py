@@ -229,6 +229,12 @@ def task_list(request):
         'overdue': base_qs.filter(overdue_condition()).count(),
     }
 
+    from .task_filters import TaskQueueFilters, filter_task_dates, order_tasks
+    queue_filters = TaskQueueFilters(request.GET)
+    if queue_filters.is_valid():
+        tasks = order_tasks(filter_task_dates(tasks, queue_filters.cleaned_data), queue_filters.cleaned_data.get('sort'))
+    else:
+        tasks = tasks.none()
     paginator = Paginator(tasks, PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
@@ -240,7 +246,7 @@ def task_list(request):
         'page_obj': page_obj,
         'stats': stats,
         'search': search,
-        'current_scope': scope,
+        'current_scope': scope, 'queue_filters': queue_filters,
         'current_source': source, 'current_report':report_status,
         'current_status': status,
         'current_priority': priority,
