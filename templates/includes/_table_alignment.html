@@ -1,0 +1,17 @@
+<style>
+html body table tr>:is(th,td):not([colspan]){text-align:center!important;vertical-align:middle!important}
+html body table tr>.crm-primary-column:not([colspan]){text-align:right!important}
+html body table tr>:is(th,td):not([colspan])>:is(div,p,span,a){text-align:inherit!important}
+html body table tr>:is(th,td):not([colspan])>.flex{justify-content:center!important}
+html body table tr>.crm-primary-column:not([colspan])>.flex{justify-content:flex-start!important}
+html body table tr>:is(th,td):not([colspan])>.flex-col{align-items:center!important}
+html body table tr>.crm-primary-column:not([colspan])>.flex-col{align-items:flex-start!important}
+</style>
+<script>
+(function(){
+ if(window.CRMTableAlignment)return;
+ function prepare(){for(const table of document.querySelectorAll('table')){const head=table.tHead?.rows[0];if(!head)continue;const cells=Array.from(head.cells);let primary=cells.findIndex(cell=>/^(نام مشتری|نام کارجو|نام کالا|نام محصول|نام پرسنل|نام کاربر|کاربر|مشتری|کارجو|کالا|محصول|پرسنل|عنوان)$/.test(cell.textContent.trim()));if(primary<0)primary=cells.findIndex(cell=>!cell.querySelector('input[type=checkbox]')&&!/^(#|ردیف|شماره)$/.test(cell.textContent.trim()));if(primary<0)primary=0;for(const row of Array.from(table.rows)){if(row.closest('table')!==table)continue;for(const cell of Array.from(row.cells))cell.classList.toggle('crm-primary-column',cell.cellIndex===primary&&cell.colSpan===1);}}}
+ let pending=false;new MutationObserver(()=>{if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;prepare();});}).observe(document.documentElement,{subtree:true,childList:true});
+ document.addEventListener('DOMContentLoaded',prepare);window.CRMTableAlignment={prepare};prepare();
+})();
+</script>
