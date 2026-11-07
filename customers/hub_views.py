@@ -163,7 +163,8 @@ def attach_contact_pages(request, customers):
     from django.db.models.functions import RowNumber
     from crm.pagination import PAGE_SIZE
 
-    cards = list(customers)
+    all_cards = list(customers)
+    cards = [card for card in all_cards if not card.is_interviewer]
     ids = [card.pk for card in cards]
     counts = dict(Call.objects.filter(customer_id__in=ids).values('customer_id')
                   .annotate(total=Count('pk')).values_list('customer_id','total'))
@@ -189,7 +190,7 @@ def attach_contact_pages(request, customers):
             by_customer.setdefault(call.customer_id, []).append(call)
         for card in cards:
             card.history_calls.object_list = by_customer.get(card.pk, [])
-    customers.object_list = cards
+    customers.object_list = all_cards
 
 
 @never_cache
@@ -204,7 +205,8 @@ def customer_hub(request):
     if tab not in tabs:
         raise PermissionDenied('دسترسی این تب برای شما فعال نیست.')
     request._hub_tab = tab
-    if tab=='info' and request.GET.get('people')=='candidates':
+    unified_search = tab == 'info' and bool(request.GET.get('q', '').strip()) and request.GET.get('search_all') == '1'
+    if tab=='info' and request.GET.get('people')=='candidates' and not unified_search:
         from .candidate_views import candidate_list_context
         context=candidate_list_context(request)
         context.update(build_workflow_context(request))
@@ -217,7 +219,11 @@ def customer_hub(request):
     
     from django.db.models import Prefetch
     open_due_sq, last_done_sq = _followup_annotation()
-    customers = (Customer.all_objects.filter(is_interviewer=False)
+    people_scope = Q(is_interviewer=False)
+    if unified_search and has_permission(request.user, 'customers.candidate_view'):
+        from .candidate_views import candidate_queryset
+        people_scope |= Q(pk__in=candidate_queryset(request.user).values('pk'))
+    customers = (Customer.all_objects.filter(people_scope)
                  .select_related('assigned_to', 'created_by', 'ad_source')
                  .annotate(open_fu_due=open_due_sq, last_fu_done=last_done_sq)
                  .order_by('-created_at'))
@@ -311,6 +317,7 @@ def customer_hub(request):
     recent_revenue = Invoice.objects.filter(status='paid',customer__is_interviewer=False).aggregate(total=Sum('total'))['total'] or 0
 
     context = {
+        'unified_search': unified_search,
         'active_tab': tab,
         'search': search,
         'table_filters': {'priority': priority, 'date_field': date_field, 'date_from': date_from, 'date_to': date_to, 'sort': sort, 'display_mode': display_mode, 'contact_expert': expert},
@@ -332,6 +339,11 @@ def customer_hub(request):
         'call_form': HubCallForm(user=request.user),
     }
     
+    if unified_search and has_permission(request.user, 'customers.candidate_view'):
+        from .candidate_views import candidate_queryset, prepare_candidate_actions
+        candidate_rows = {person.pk: person for person in candidate_queryset(request.user).filter(pk__in=[p.pk for p in context['customers'] if p.is_interviewer])}
+        prepare_candidate_actions(request.user, candidate_rows.values())
+        context['customers'].object_list = [candidate_rows.get(person.pk, person) for person in context['customers']]
     if tab == 'info' and has_permission(request.user, 'calls.view'):
         attach_contact_pages(request, context['customers'])
     context.update(workflow_context)

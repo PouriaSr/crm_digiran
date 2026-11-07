@@ -40,8 +40,9 @@ class NewCallButtonWiringTest(TestCase):
         self.assertIn('this.isCallModalOpen = true;', self.body)
         self.assertIn('this.mobile = d.mobile', self.body)
 
-    def test_button_disabled_binding_kept(self):
-        self.assertIn(':disabled="!showNewBtn"', self.body)
+    def test_registration_is_available_without_search(self):
+        self.assertNotIn(':disabled="!showNewBtn"', self.body)
+        self.assertIn('name="is_interviewer"', self.body)
 
 
 class CallModalPrefillTest(TestCase):

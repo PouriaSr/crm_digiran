@@ -1,8 +1,9 @@
 {% load fa_numbers card_access %}
 <div id="customer-table-container" data-live-results data-show-new="{{ show_new|yesno:'true,false' }}">
-{% if 'customers.candidate_view' in user_permissions %}<nav class="flex flex-wrap items-center gap-2 mb-4" aria-label="نوع فهرست اطلاعات">{% if 'customers.info' in user_permissions %}<a href="{% url 'customers:hub' %}?tab=info" class="inline-flex rounded-xl px-4 py-3 text-sm font-bold {% if not candidate_mode %}bg-blue-600 text-white{% else %}bg-white border border-slate-200 text-slate-600{% endif %}" {% if not candidate_mode %}aria-current="page"{% endif %}>مشتریان</a>{% endif %}<a href="{% if 'customers.info' in user_permissions %}{% url 'customers:hub' %}?tab=info&amp;people=candidates{% else %}{% url 'customers:candidate_list' %}{% endif %}" class="inline-flex rounded-xl px-4 py-3 text-sm font-bold {% if candidate_mode %}bg-purple-600 text-white{% else %}bg-white border border-slate-200 text-slate-600{% endif %}" {% if candidate_mode %}aria-current="page"{% endif %}>مصاحبه‌کنندگان</a></nav>{% endif %}
+{% if 'customers.candidate_view' in user_permissions %}<nav class="flex flex-wrap items-center gap-2 mb-4" aria-label="نوع فهرست اطلاعات">{% if 'customers.info' in user_permissions %}<a href="{% url 'customers:hub' %}?tab=info" class="inline-flex rounded-xl px-4 py-3 text-sm font-bold {% if not candidate_mode and not unified_search %}bg-blue-600 text-white{% else %}bg-white border border-slate-200 text-slate-600{% endif %}" {% if not candidate_mode and not unified_search %}aria-current="page"{% endif %}>مشتریان</a>{% endif %}<a href="{% if 'customers.info' in user_permissions %}{% url 'customers:hub' %}?tab=info&amp;people=candidates{% else %}{% url 'customers:candidate_list' %}{% endif %}" class="inline-flex rounded-xl px-4 py-3 text-sm font-bold {% if candidate_mode %}bg-purple-600 text-white{% else %}bg-white border border-slate-200 text-slate-600{% endif %}" {% if candidate_mode %}aria-current="page"{% endif %}>مصاحبه‌کنندگان</a></nav>{% endif %}
+{% if unified_search %}<p class="mb-3 text-sm text-slate-600">نتایج جستجوی مشتریان و مصاحبه‌کنندگان</p>{% endif %}
 {% if candidate_mode %}{% include 'customers/_candidate_filters.html' %}{% else %}<form method="get" id="hub-filter-form" class="crm-filter-form bg-white rounded-2xl border border-slate-200 p-4 mb-4 grid grid-cols-2 lg:grid-cols-6 gap-3 text-xs">
- <input type="hidden" name="tab" value="info"><input type="hidden" name="q" value="{{ search }}">
+ <input type="hidden" name="tab" value="info"><input type="hidden" name="q" value="{{ search }}">{% if unified_search %}<input type="hidden" name="search_all" value="1">{% endif %}
  {% if candidate_mode %}<input type="hidden" name="people" value="candidates">{% endif %}
  <label>نمایش و بازه<select name="display_mode" data-filter-default="recent" data-filter-help="در جدیدترین یا قدیمی‌ترین مشتری، بازه بر تاریخ ثبت مشتری اعمال می‌شود. در اولویت پیگیری، بازه بر موعد نزدیک‌ترین پیگیری باز اعمال می‌شود و ترتیب نمایش، عقب‌افتاده، امروز و آینده است. مشتری بدون پیگیری باز در بازه تاریخ پیگیری نمایش داده نمی‌شود." class="w-full mt-1 border rounded-lg p-2 no-search"><option value="recent" {% if table_filters.display_mode == 'recent' %}selected{% endif %}>جدیدترین مشتری</option><option value="oldest" {% if table_filters.display_mode == 'oldest' %}selected{% endif %}>قدیمی‌ترین مشتری</option><option value="followup" {% if table_filters.display_mode == 'followup' %}selected{% endif %}>اولویت پیگیری</option></select></label>
  <label>از تاریخ<input type="text" name="date_from" value="{{ table_filters.date_from }}" data-jdp data-jdp-time="false" placeholder="۱۴۰۵/۰۸/۰۱" autocomplete="off" class="w-full mt-1 border rounded-lg p-2"></label>
@@ -16,10 +17,10 @@
         <table class="w-full text-sm text-center">
             <thead class="bg-gray-50/80 border-b border-gray-100">
                 <tr class="text-gray-600">
-                    <th class="p-3 font-medium text-right hub-name-column">{% if candidate_mode %}نام مصاحبه‌کننده{% else %}نام مشتری{% endif %}</th>
+                    <th class="p-3 font-medium text-right hub-name-column">{% if unified_search %}نام فرد{% elif candidate_mode %}نام مصاحبه‌کننده{% else %}نام مشتری{% endif %}</th>
                     <th class="p-3 font-medium">شماره تماس</th>
-                    <th class="p-3 font-medium">{% if candidate_mode %}وضعیت پذیرش{% else %}منبع جذب{% endif %}</th>
-                    <th class="p-3 font-medium">{% if candidate_mode %}آخرین ورود{% else %}وضعیت پیگیری{% endif %}</th>
+                    <th class="p-3 font-medium">{% if unified_search %}منبع جذب / پذیرش{% elif candidate_mode %}وضعیت پذیرش{% else %}منبع جذب{% endif %}</th>
+                    <th class="p-3 font-medium">{% if unified_search %}پیگیری / آخرین ورود{% elif candidate_mode %}آخرین ورود{% else %}وضعیت پیگیری{% endif %}</th>
                     <th class="p-3 font-medium">{% if candidate_mode %}کاربر مسئول{% else %}کارشناس تماس{% endif %}</th>
                     <th class="p-3 font-medium">تاریخ ثبت</th>
                     <th class="p-3 font-medium">عملیات</th>
@@ -27,7 +28,7 @@
             </thead>
             <tbody class="divide-y divide-gray-50">
                 {% for c in customers %}
-                {% if candidate_mode %}{% include 'customers/_candidate_table_row.html' %}{% else %}
+                {% if c.is_interviewer %}{% include 'customers/_candidate_table_row.html' %}{% else %}
                 {% can_edit_card c as card_editable %}
                 <tr data-feedback-record="customer:{{ c.pk }}" class="hover:bg-blue-50/30 transition group {% if c.is_deleted %}opacity-60 bg-gray-50/50{% endif %}">
                     <td class="p-3 text-right hub-name-column">
@@ -170,7 +171,7 @@
                 {% endif %}{% empty %}
                 <tr>
                     <td colspan="7" class="p-12 text-center text-gray-400">
-                        <div class="mb-2 text-lg">{% if candidate_mode %}مصاحبه‌کننده‌ای با این مشخصات یافت نشد.{% else %}هیچ مشتری با این مشخصات یافت نشد.{% endif %}</div>
+                        <div class="mb-2 text-lg">{% if candidate_mode %}مصاحبه‌کننده‌ای با این مشخصات یافت نشد.{% elif unified_search %}هیچ فردی با این مشخصات یافت نشد.{% else %}هیچ مشتری با این مشخصات یافت نشد.{% endif %}</div>
                         {% if search %}
                             <input type="hidden" id="empty-search-query" value="{{ search }}">
                         {% endif %}
@@ -183,7 +184,7 @@
 
     <div id="hub-mobile-list" class="md:hidden space-y-3">
         {% for c in customers %}
-        {% if candidate_mode %}{% include 'customers/_candidate_mobile_card.html' %}{% else %}
+        {% if c.is_interviewer %}{% include 'customers/_candidate_mobile_card.html' %}{% else %}
                 {% can_edit_card c as card_editable %}
         <div data-feedback-record="customer:{{ c.pk }}" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 {% if c.is_deleted %}opacity-60{% endif %}">
             <a href="{% url 'customers:detail' c.pk %}" class="flex items-center gap-3">
@@ -226,7 +227,7 @@
             </div>
         </div>
         {% endif %}{% empty %}
-        <div class="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400 text-sm">{% if candidate_mode %}مصاحبه‌کننده‌ای با این مشخصات یافت نشد.{% else %}هیچ مشتری با این مشخصات یافت نشد.{% endif %}</div>
+        <div class="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400 text-sm">{% if candidate_mode %}مصاحبه‌کننده‌ای با این مشخصات یافت نشد.{% elif unified_search %}هیچ فردی با این مشخصات یافت نشد.{% else %}هیچ مشتری با این مشخصات یافت نشد.{% endif %}</div>
         {% endfor %}
     </div>
 {% include 'includes/_pagination.html' with page=customers %}

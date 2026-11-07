@@ -25,17 +25,32 @@ def candidate_list(request):
     return render(request,'customers/candidate_list.html',context)
 
 
-def candidate_list_context(request):
-    if not has_permission(request.user,'customers.candidate_view'):
-        raise PermissionDenied
+def candidate_queryset(user):
     people = Customer.objects.filter(is_interviewer=True).select_related('assigned_to')
-    if not is_card_manager(request.user):
-        people = people.filter(Q(assigned_to=request.user)|Q(created_by=request.user))
+    if not is_card_manager(user):
+        people = people.filter(Q(assigned_to=user)|Q(created_by=user))
     latest=Reception.objects.filter(customer_id=OuterRef('pk'),person_type='interviewer').annotate(
         list_arrival=Coalesce('hiring__current_arrived_at','arrived_at','created_at')).order_by('-created_at','-pk')
     people=people.annotate(candidate_reception_id=Subquery(latest.values('pk')[:1]),
                           candidate_arrival=Subquery(latest.values('list_arrival')[:1]),
                           candidate_referred_at=Subquery(latest.values('referred_at')[:1]))
+    return people
+
+
+def prepare_candidate_actions(user, page):
+    from django.urls import reverse
+    can_admit=has_permission(user,'customers.reception') and has_permission(user,'customers.reception_add')
+    manager=is_card_manager(user)
+    can_hiring=has_permission(user,'customers.hiring')
+    for person in page:
+        person.candidate_reception_url=(reverse('customers:hub')+f'?tab=reception&c={person.pk}') if can_admit else ''
+        person.candidate_hiring_url=(reverse('customers:hub')+f'?tab=hiring&r={person.candidate_reception_id}') if person.candidate_referred_at and can_hiring and (manager or person.assigned_to_id==user.pk) else ''
+
+
+def candidate_list_context(request):
+    if not has_permission(request.user,'customers.candidate_view'):
+        raise PermissionDenied
+    people = candidate_queryset(request.user)
     stats=people.aggregate(total=Count('pk'),registered=Count('pk',filter=Q(candidate_reception_id__isnull=True)),
         admitted=Count('pk',filter=Q(candidate_reception_id__isnull=False)),referred=Count('pk',filter=Q(candidate_referred_at__isnull=False)))
     owner_ids=people.values('assigned_to_id')
@@ -62,13 +77,7 @@ def candidate_list_context(request):
         if end:people=people.filter(created_at__date__lte=end)
     mode='oldest' if request.GET.get('display_mode')=='oldest' else 'recent'
     page=paginate(request,people.order_by('created_at' if mode=='oldest' else '-created_at','pk' if mode=='oldest' else '-pk'))
-    from django.urls import reverse
-    can_admit=has_permission(request.user,'customers.reception') and has_permission(request.user,'customers.reception_add')
-    manager=is_card_manager(request.user)
-    can_hiring=has_permission(request.user,'customers.hiring')
-    for person in page:
-        person.candidate_reception_url=(reverse('customers:hub')+f'?tab=reception&c={person.pk}') if can_admit else ''
-        person.candidate_hiring_url=(reverse('customers:hub')+f'?tab=hiring&r={person.candidate_reception_id}') if person.candidate_referred_at and can_hiring and (manager or person.assigned_to_id==request.user.pk) else ''
+    prepare_candidate_actions(request.user, page)
     return {'people':page,'customers':page,'candidate_mode':True,'search':query,'candidate_stats':stats,'contact_experts':owners,
         'table_filters':{'display_mode':mode,'date_from':start_raw,'date_to':end_raw,'contact_expert':owner,'visit':visit},'show_new':False}
 

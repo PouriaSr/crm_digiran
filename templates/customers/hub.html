@@ -97,9 +97,9 @@
     <div x-show="tab === 'info'" x-transition.opacity class="space-y-4">
         <div class="flex flex-col md:flex-row justify-between items-center gap-3">
             <form data-input-icon-left="action" method="get" class="crm-filter-form w-full md:w-1/2 relative group">
-            <input type="hidden" name="tab" value="info">
+            <input type="hidden" name="tab" value="info"><input type="hidden" name="search_all" value="1">
             {% if candidate_mode %}<input type="hidden" name="people" value="candidates">{% endif %}
-            <input type="text" name="q" id="hub-search-input" x-model="searchQuery" placeholder="جستجوی نام یا شماره..."
+            <input type="text" name="q" id="hub-search-input" x-model="searchQuery" placeholder="جستجوی نام یا شماره مشتری و مصاحبه‌کننده…"
                    class="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm shadow-sm group-hover:border-gray-300">
             <button type="submit" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-400 rounded-lg group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
@@ -107,16 +107,11 @@
         </form>
             
             <div class="flex items-center gap-2 shrink-0">
-            {% if candidate_mode %}{% if 'calls.add' in user_permissions and 'customers.candidate_add' in user_permissions %}<button type="button" onclick="openNewCallFromSearch(true)" class="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-purple-600 text-white hover:bg-purple-700 font-bold">+ ثبت مصاحبه‌کننده</button>{% endif %}{% elif "calls.add" in user_permissions %}
-            <button type="button" id="btn-new-call"
-                    onclick="openNewCallFromSearch()"
-                    :disabled="!showNewBtn"
-                    :title="showNewBtn ? 'ثبت تماس جدید (اگر مشتری نباشد، خودکار ساخته می‌شود)' : 'این مشتری در سیستم موجود است؛ از دکمه‌های همان ردیف استفاده کنید'"
-                    :class="showNewBtn
-                        ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md cursor-pointer'
-                        : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-60'"
-                    class="flex items-center justify-center gap-2 px-6 py-3 rounded-xl transition font-medium whitespace-nowrap">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg> ثبت تماس جدید
+            {% if "calls.add" in user_permissions %}
+            <button type="button" id="btn-new-call" onclick="openNewCallFromSearch()"
+                    title="ثبت تماس یا ثبت اولیه مصاحبه‌کننده"
+                    class="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-md transition font-medium whitespace-nowrap">
+                <span aria-hidden="true">+</span> ثبت تماس جدید
             </button>
             {% endif %}
             {% if 'customers.delete' in user_permissions and not candidate_mode %}

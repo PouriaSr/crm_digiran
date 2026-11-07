@@ -56,3 +56,27 @@ class CandidateListIntegrationTests(TestCase):
         self.assertEqual(response.context['customers'].paginator.count,0)
         user.permission_overrides.filter(permission_key='customers.candidate_view').update(granted=False)
         self.assertEqual(self.client.get(self.hub,{'tab':'info','people':'candidates'}).status_code,403)
+
+    def test_unified_search_returns_both_types_with_their_own_actions(self):
+        self.fresh.name='مشترک مصاحبه';self.fresh.save(update_fields=['name'])
+        self.ordinary.name='مشترک مشتری';self.ordinary.save(update_fields=['name'])
+        for mode in ('', 'candidates'):
+            response=self.client.get(self.hub,{'tab':'info','people':mode,'q':'مشترک','search_all':'1'})
+            self.assertEqual({p.pk for p in response.context['customers']},{self.fresh.pk,self.ordinary.pk})
+            self.assertTrue(response.context['unified_search'])
+            self.assertContains(response,'ثبت پذیرش')
+            self.assertContains(response,'name="search_all" value="1"')
+            candidate=next(p for p in response.context['customers'] if p.is_interviewer)
+            self.assertFalse(hasattr(candidate,'history_calls'))
+
+    def test_unified_search_respects_candidate_denial_and_ownership(self):
+        user=User.objects.create_user('common_search_user')
+        for key in ('customers.info','customers.candidate_view'):
+            UserPermissionOverride.objects.create(user=user,permission_key=key,granted=True)
+        self.client.force_login(user)
+        params={'tab':'info','q':self.fresh.mobile,'search_all':'1'}
+        self.assertEqual(self.client.get(self.hub,params).context['customers'].paginator.count,0)
+        self.fresh.assigned_to=user;self.fresh.save(update_fields=['assigned_to'])
+        self.assertEqual(self.client.get(self.hub,params).context['customers'].paginator.count,1)
+        user.permission_overrides.filter(permission_key='customers.candidate_view').update(granted=False)
+        self.assertEqual(self.client.get(self.hub,params).context['customers'].paginator.count,0)

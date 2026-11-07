@@ -70,7 +70,7 @@
                             <a x-show="existingCustomer?.profile_url" :href="existingCustomer?.profile_url" class="block mt-3 text-blue-700 underline">پرونده مصاحبه‌کننده</a>
                         </div>
                     </section>
-                    {% if 'customers.candidate_add' in user_permissions %}<label class="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 cursor-pointer"><input type="checkbox" name="is_interviewer" x-model="isInterviewer" :disabled="candidateOnly || existingCustomer?.is_interviewer" class="w-5 h-5"><span>مصاحبه‌کننده است <span x-show="!candidateOnly" class="text-xs text-slate-500">(اختیاری)</span></span></label>{% endif %}
+                    {% if 'customers.candidate_add' in user_permissions %}<label class="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 cursor-pointer"><input type="checkbox" name="is_interviewer" x-model="isInterviewer" :disabled="candidateOnly || !!existingCustomer?.is_interviewer" class="w-5 h-5"><span>مصاحبه‌کننده است <span x-show="!candidateOnly" class="text-xs text-slate-500">(اختیاری)</span></span></label>{% endif %}
                     <template x-if="candidateOnly"><input type="hidden" name="is_interviewer" value="on"></template>
                     <p x-show="isInterviewer" x-cloak class="text-xs text-blue-700">فقط نام و شماره تماس ثبت می‌شود؛ سپس ورود فرد را در تب پذیرش ثبت کنید.</p>
                     <fieldset data-call-extra x-show="!isInterviewer" :disabled="isInterviewer" class="space-y-4">
