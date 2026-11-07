@@ -42,6 +42,9 @@ def workflow_changed(sender, instance, raw=False, **kwargs):
             service.sync_followup(item)
         for item in instance.receptions.filter(workflow_version=2, registration_completed_at__isnull=True):
             service.sync_reception(item)
+        from customers.models import HiringApplication
+        for item in HiringApplication.objects.filter(reception__customer=instance):
+            service.sync_hiring(item)
         for item in instance.calls.filter(status='followup', is_followed_up=False):
             service.sync_call(item)
         for item in instance.invoices.filter(status__in=['draft', 'issued']):
@@ -49,10 +52,10 @@ def workflow_changed(sender, instance, raw=False, **kwargs):
 
 
 def workflow_deleted(sender, instance, **kwargs):
-    labels = {'customers.FollowUp': 'followup', 'customers.Reception': 'case', 'customers.HiringApplication': 'interview', 'calls.Call': 'call', 'sales.Invoice': 'invoice', 'hr.LeaveRequest': 'leave'}
+    labels = {'customers.FollowUp': 'followup', 'customers.Reception': 'case', 'customers.HiringApplication': 'interview', 'customers.InterviewSession':'invitation', 'calls.Call': 'call', 'sales.Invoice': 'invoice', 'hr.LeaveRequest': 'leave'}
     kinds = [labels[sender._meta.label]]
     if sender._meta.label == 'customers.Reception':
-        kinds.append('registration')
+        kinds.extend(['registration', 'reception'])
     for task in Task.objects.filter(source_type__in=kinds, source_id=instance.pk).exclude(status__in=['done', 'cancelled']):
         task.status = 'cancelled'
         task.save()
@@ -60,7 +63,7 @@ def workflow_deleted(sender, instance, **kwargs):
 
 for label in ['customers.FollowUp', 'customers.Reception', 'customers.HiringApplication', 'customers.InterviewSession', 'customers.CaseWorkSession', 'customers.Customer', 'calls.Call', 'sales.Invoice', 'hr.LeaveRequest']:
     post_save.connect(workflow_changed, sender=label, dispatch_uid='hr.workflow.'+label)
-    if label not in ['customers.Customer', 'customers.InterviewSession', 'customers.CaseWorkSession']:
+    if label not in ['customers.Customer', 'customers.CaseWorkSession']:
         post_delete.connect(workflow_deleted, sender=label, dispatch_uid='hr.workflow_deleted.'+label)
 
 
@@ -71,8 +74,31 @@ from django.db import transaction
 
 def membership_changed(sender, instance, action, **kwargs):
     if action in ('post_add', 'post_remove', 'post_clear'):
-        from .task_automation import backfill
-        transaction.on_commit(backfill)
+        from .task_automation import schedule_backfill
+        schedule_backfill()
 
 
 m2m_changed.connect(membership_changed, sender=User.groups.through, dispatch_uid='hr.task_role_change')
+
+
+def permission_changed(sender, instance, raw=False, **kwargs):
+    if not raw and (instance.permission_key.startswith(('customers.', 'calls.', 'invoices.')) or instance.permission_key in ('hr.review_leaves','hr.view_tasks')):
+        from .task_automation import schedule_backfill
+        schedule_backfill()
+
+
+post_save.connect(permission_changed, sender='accounts.UserPermissionOverride', dispatch_uid='hr.task_permission_change')
+post_delete.connect(permission_changed, sender='accounts.UserPermissionOverride', dispatch_uid='hr.task_permission_delete')
+
+
+@receiver(pre_save, sender=User, dispatch_uid='hr.task_user_access_before')
+def user_access_before(sender, instance, raw=False, **kwargs):
+    previous = User.objects.filter(pk=instance.pk).values('is_active','is_superuser').first() if instance.pk and not raw else None
+    instance._task_access_changed = bool(previous and any(previous[key] != getattr(instance,key) for key in previous))
+
+
+@receiver(post_save, sender=User, dispatch_uid='hr.task_user_access_after')
+def user_access_after(sender, instance, raw=False, **kwargs):
+    if not raw and getattr(instance, '_task_access_changed', False):
+        from .task_automation import schedule_backfill
+        schedule_backfill()

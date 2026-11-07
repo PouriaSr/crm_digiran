@@ -214,7 +214,7 @@ def task_list(request):
         tasks = tasks.filter(hiring_session__isnull=False)
     elif source == 'followup':
         tasks = tasks.filter(source_type__in=['followup','customer_followup'])
-    elif source in ('case','registration','interview','call','invoice','leave'):
+    elif source in ('reception','case','registration','interview','invitation','call','invoice','leave'):
         tasks = tasks.filter(source_type=source)
     report_status = request.GET.get('report', '')
     if report_status == 'pending':

@@ -88,13 +88,16 @@ def build_permission_fields(form):
         })
 
 
+@transaction.atomic
 def save_permission_overrides(user, cleaned_data):
     """overrideهای perm__ را ذخیره می‌کند (سوپریوزر: هیچ)"""
     from accounts.models import UserPermissionOverride
     from accounts.permissions import PERMISSION_META, role_allows_permission
+    from hr.task_automation import schedule_backfill
 
     user.permission_overrides.all().delete()
     if user.is_superuser:
+        schedule_backfill()
         return
 
     to_create = []
@@ -112,6 +115,7 @@ def save_permission_overrides(user, cleaned_data):
 
     if to_create:
         UserPermissionOverride.objects.bulk_create(to_create)
+    schedule_backfill()
 
 
 # ═══════════════════════════════════════════════════════════

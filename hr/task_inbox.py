@@ -102,7 +102,7 @@ def personal_inbox(user, params):
     unread_counts = dict(notices.filter(task_id__in=task_ids,read_at__isnull=True).order_by().values('task_id').annotate(total=Count('pk')).values_list('task_id','total'))
     first_by_task = {event.task_id: event for event in events.filter(pk__in=first_events,task_id__in=task_ids).select_related('task')}
     payload = []
-    action_permissions = {'case':'customers.case_edit','registration':'customers.registration_edit','interview':'customers.hiring_interview',
+    action_permissions = {'reception':'customers.reception_refer','invitation':'customers.hiring_interview','case':'customers.case_edit','registration':'customers.registration_edit','interview':'customers.hiring_interview',
                           'followup':'customers.followup','customer_followup':'customers.followup','call':'calls.edit','invoice':'invoices.edit','leave':'hr.review_leaves'}
     for item in rows:
         task = item if view == 'work' else item.task

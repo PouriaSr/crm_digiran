@@ -10,18 +10,33 @@ from .models import Task, TaskEvent, TaskNotice
 quiet = ContextVar('task_automation_quiet', default=False)
 
 
+def schedule_backfill():
+    # A permissions form can change many overrides in one transaction.
+    connection = transaction.get_connection()
+    if not any(getattr(entry[1], '_workflow_backfill', False) for entry in connection.run_on_commit):
+        def run():
+            backfill()
+        run._workflow_backfill = True
+        transaction.on_commit(run)
+
+
 def task_owner(task):
     return task.assigned_user or (task.assigned_to.user if task.assigned_to_id else None)
 
 
 def choose_owner(preferred, permission):
+    views = {'customers.case_edit':'customers.case', 'customers.registration_edit':'customers.registration',
+             'customers.reception_refer':'customers.reception', 'customers.hiring_interview':'customers.hiring',
+             'customers.followup':'customers.info', 'calls.edit':'calls.view', 'invoices.edit':'invoices.view'}
+    def eligible(user):
+        return user and user.is_active and has_permission(user, 'hr.view_tasks') and has_permission(user, permission) and (permission not in views or has_permission(user, views[permission]))
     for user in preferred:
-        if user and user.is_active and has_permission(user, permission):
+        if eligible(user):
             return user
-    candidates = [user for user in User.objects.filter(is_active=True).prefetch_related('groups', 'permission_overrides').order_by('-is_superuser', 'pk') if has_permission(user, permission)]
+    candidates = [user for user in User.objects.filter(is_active=True).prefetch_related('groups', 'permission_overrides').order_by('-is_superuser', 'pk') if eligible(user)]
     from customers.access import is_card_manager
     managers = [user for user in candidates if is_card_manager(user)]
-    return next(iter(managers or ([] if permission.startswith(('customers.', 'calls.')) else candidates)), None)
+    return next(iter(managers or ([] if permission.startswith(('customers.', 'calls.')) and permission != 'customers.reception_refer' else candidates)), None)
 
 
 def actor_or(user=None):
@@ -32,6 +47,8 @@ def actor_or(user=None):
 def sync(key, kind, obj, title, owner, state, customer=None, date=None, time=None, description=None):
     with transaction.atomic():
         task = Task.objects.select_for_update().filter(source_key=key).first()
+        if task and task.status == 'done' and state == 'cancelled':
+            return task
         if not task and (state in ('done', 'cancelled') or not owner):
             return None
         default_help = {'followup':'پیگیری مشتری را انجام دهید و نتیجه تماس را در مرکز مشتریان ثبت کنید.', 'case':'اطلاعات و مدارک مشتری را در تب پرونده تکمیل و ثبت اطلاعات کنید.', 'registration':'اطلاعات مرحله نهایی مشتری را در تب ثبت اطلاعات تکمیل و ذخیره کنید.', 'interview':'جلسه مصاحبه و ارزیابی کارجو را در تب استخدام ثبت کنید.', 'call':'تماس را پیگیری و نتیجه را در بخش تماس‌ها ثبت کنید.', 'invoice':'فاکتور را بررسی و صادر کنید؛ دریافت وجه را با وضعیت پرداخت‌شده در همان فاکتور ثبت کنید.', 'leave':'درخواست مرخصی را بررسی و نتیجه تأیید یا رد را ثبت کنید.'}
@@ -72,7 +89,7 @@ def sync_customer_flag(customer):
         if existing and existing.status not in ('done','cancelled'):
             existing.status='cancelled';existing.save()
         return
-    if customer.followups.filter(is_done=False).exists():
+    if customer.followups.filter(is_done=False).exists() or customer.calls.filter(status='followup', is_followed_up=False).exists():
         if existing and existing.status not in ('done','cancelled'):
             existing.status='cancelled';existing.save()
         return
@@ -85,24 +102,30 @@ def sync_customer_flag(customer):
 
 
 def sync_reception(rec):
-    if rec.customer.is_interviewer and rec.person_type != 'interviewer':
-        return
-    if rec.workflow_version != 2 or not rec.referred_at:
+    if (rec.customer.is_interviewer and rec.person_type != 'interviewer') or rec.workflow_version != 2:
+        for task in Task.objects.filter(source_id=rec.pk, source_type__in=['reception','case','registration']).exclude(status__in=['done','cancelled']):
+            task.status='cancelled';task.save()
         return
     customer = rec.customer
+    owner = choose_owner([rec.created_by, rec.referred_by, customer.assigned_to], 'customers.reception_refer')
+    sync('reception:'+str(rec.pk), 'reception', rec, 'ارجاع مراجعه‌کننده — '+customer.name, owner,
+         'cancelled' if customer.is_deleted else 'done' if rec.referred_at else 'pending', customer,
+         description='ورود ثبت شده است؛ مسئول مرحله بعد را در تب پذیرش انتخاب و فرد را به پرونده یا استخدام ارجاع دهید.')
+    if not rec.referred_at:
+        return
     if rec.person_type == 'interviewer':
         from customers.models import HiringApplication
         app = HiringApplication.objects.filter(reception=rec).first()
         if app:
             sync_hiring(app)
         return
-    owner = choose_owner([customer.assigned_to, rec.referred_to], 'customers.case')
+    owner = choose_owner([customer.assigned_to, rec.referred_to], 'customers.case_edit')
     cancel = customer.is_deleted
     working = rec.work_sessions.exists()
     sync('case:'+str(rec.pk), 'case', rec, 'تکمیل پرونده — '+customer.name, owner,
          'cancelled' if cancel else 'done' if rec.case_completed_at else 'in_progress' if working else 'pending', customer)
     if rec.case_completed_at:
-        owner = choose_owner([customer.assigned_to, rec.case_completed_by, rec.referred_to], 'customers.registration')
+        owner = choose_owner([customer.assigned_to, rec.case_completed_by, rec.referred_to], 'customers.registration_edit')
         sync('registration:'+str(rec.pk), 'registration', rec, 'ثبت اطلاعات — '+customer.name, owner,
              'cancelled' if cancel else 'done' if rec.registration_completed_at else 'pending', customer)
 
@@ -111,13 +134,26 @@ def sync_hiring(app):
     from customers.models import InterviewSession
     rec = app.reception
     customer = rec.customer
-    if not rec.referred_at:
-        return
+    active = bool(rec.referred_at or rec.workflow_version == 1)
     owner = choose_owner([customer.assigned_to, rec.referred_to], 'customers.hiring_interview')
     session = InterviewSession.objects.filter(application=app, kind='first').order_by('pk').first()
     state = 'done' if session and session.saved_at else 'in_progress' if session and session.started_at else 'pending'
     sync('interview:'+str(app.pk), 'interview', app, 'مصاحبه اول — '+customer.name, owner,
-         'cancelled' if customer.is_deleted else state, customer)
+         'cancelled' if customer.is_deleted or not active else state, customer)
+    from customers.recruitment_tasks import sync_interview_task
+    for item in app.sessions.all():
+        sync_interview_task(item, actor_or())
+        sync_invitation(item)
+
+
+def sync_invitation(session):
+    rec = session.application.reception
+    owner = choose_owner([rec.customer.assigned_to, rec.referred_to], 'customers.hiring_interview')
+    state = 'cancelled' if rec.customer.is_deleted or not (rec.referred_at or rec.workflow_version == 1) or not session.saved_at or not session.invite else 'done' if session.will_attend == 'no' or session.collaboration else 'follow_up'
+    when = timezone.localtime(session.invitation_at) if session.invitation_at else None
+    sync('invitation:'+str(session.pk), 'invitation', session, 'پیگیری دعوت به همکاری — '+rec.customer.name, owner,
+         state, rec.customer, when.date() if when else None, when.time().replace(tzinfo=None) if when else None,
+         description='نتیجه حضور و تبدیل به همکار را در همان جلسه استخدام ثبت کنید.')
 
 
 def sync_call(call):
@@ -128,8 +164,8 @@ def sync_call(call):
         return
     owner = choose_owner([call.customer.assigned_to if call.customer_id else None, call.called_by, call.created_by], 'calls.edit')
     state = 'done' if call.is_followed_up else 'follow_up' if call.status == 'followup' else 'cancelled'
-    if not call.follow_up_date and state != 'done':
-        state = 'cancelled'
+    if call.customer_id and state == 'follow_up':
+        sync_customer_flag(call.customer)
     if call.customer_id and (call.customer.is_deleted or call.customer.is_interviewer):
         state = 'cancelled'
     sync('call:'+str(call.pk), 'call', call, 'پیگیری تماس — '+call.caller_name, owner, state, customer=call.customer, date=call.follow_up_date, time=call.follow_up_time)
@@ -152,7 +188,8 @@ def record_change(task, before=None):
     owner = task_owner(task)
     previous_owner = task_owner(before) if before else None
     actor = actor_or()
-    if owner and (not before or owner.pk != getattr(previous_owner, 'pk', None)):
+    assignment = bool(owner and (not before or owner.pk != getattr(previous_owner, 'pk', None) or before.status in ('done','cancelled') and task.status not in ('done','cancelled')))
+    if assignment:
         TaskNotice.objects.filter(task=task, read_at__isnull=True).exclude(user=owner).update(read_at=timezone.now())
         if task.status not in ('done', 'cancelled'):
             TaskNotice.objects.create(task=task, user=owner, text=('وظیفه جدید: '+task.title)[:250])
@@ -160,7 +197,7 @@ def record_change(task, before=None):
         report_user = actor or owner
         required = bool(not quiet.get() and report_user and task.status in ('done', 'follow_up') and before.status not in ('done', 'cancelled'))
         event = TaskEvent.objects.create(snapshot={'title':task.title,'description':task.description or ''}, task=task, from_status=before.status, to_status=task.status, actor=actor, report_user=report_user, report_required=required)
-        if owner and not quiet.get():
+        if owner and not quiet.get() and not assignment:
             TaskNotice.objects.create(task=task, user=owner, text=('وضعیت «'+task.title+'»: '+task.get_status_display())[:250])
         if required and report_user.pk != getattr(owner, 'pk', None):
             TaskNotice.objects.create(task=task, user=report_user, text=('گزارش کار انجام‌شده: '+task.title)[:250])
@@ -179,6 +216,8 @@ def backfill():
             sync_followup(item)
         for item in Reception.objects.filter(workflow_version=2, registration_completed_at__isnull=True, customer__is_deleted=False).select_related('customer__assigned_to').iterator():
             sync_reception(item)
+        for item in HiringApplication.objects.select_related('reception__customer__assigned_to').iterator():
+            sync_hiring(item)
         for item in Customer.objects.filter(needs_followup=True,is_deleted=False).iterator():
             sync_customer_flag(item)
         for item in Call.objects.filter(status='followup', is_followed_up=False).iterator():
@@ -187,6 +226,24 @@ def backfill():
             sync_invoice(item)
         for item in LeaveRequest.objects.filter(status='pending').iterator():
             sync_leave(item)
+        # Reconcile tasks whose sources were completed, deleted or changed with bulk updates.
+        sources = {'followup':(FollowUp,sync_followup), 'customer_followup':(Customer.all_objects,sync_customer_flag),
+                   'reception':(Reception,sync_reception), 'case':(Reception,sync_reception),
+                   'registration':(Reception,sync_reception), 'interview':(HiringApplication,sync_hiring),
+                   'call':(Call,sync_call), 'invoice':(Invoice,sync_invoice), 'leave':(LeaveRequest,sync_leave)}
+        from customers.models import InterviewSession
+        sources['invitation'] = (InterviewSession,sync_invitation)
+        for task in Task.objects.exclude(status__in=['done','cancelled']).exclude(source_type='').iterator():
+            source = sources.get(task.source_type)
+            if not source:
+                continue
+            model, handler = source
+            records = model.objects if hasattr(model,'objects') else model
+            item = records.filter(pk=task.source_id).first()
+            if item:
+                handler(item)
+            else:
+                task.status='cancelled';task.save()
         for task in Task.objects.exclude(status__in=['done', 'cancelled']).select_related('assigned_user', 'assigned_to__user').iterator():
             owner = task_owner(task)
             if owner and not TaskNotice.objects.filter(task=task, user=owner).exists():

@@ -8,26 +8,39 @@ def owner_fields(user):
 
 
 def sync_interview_task(session, actor):
-    task = Task.objects.filter(hiring_session=session).first()
-    if session.result != 'repeat' or not session.next_interview_at:
-        if task and not task.performed_session_id and task.status != 'cancelled':
-            task.status = 'cancelled'
-            task.save(update_fields=['status','completed_at','updated_at'])
-        return task
-    if task and task.performed_session_id:
-        return task
+    from hr.task_automation import choose_owner
+    from django.db import transaction
     rec = session.application.reception
-    when = timezone.localtime(session.next_interview_at)
-    values = {'title': ('مصاحبه مجدد — '+rec.customer.name)[:200],
-              'description':'جلسه بعدی استخدام؛ اطلاعات کامل در پرونده کارجو قرار دارد.',
-              'due_date':when.date(), 'due_time':when.time().replace(tzinfo=None),
-              'status':'pending', 'priority':'high', **owner_fields(rec.customer.assigned_to)}
-    if task:
-        for key,value in values.items():setattr(task,key,value)
-        task.save()
-    else:
-        task = Task.objects.create(hiring_session=session,created_by=actor,**values)
-    return task
+    user = choose_owner([rec.customer.assigned_to, rec.referred_to], 'customers.hiring_interview')
+    with transaction.atomic():
+        task = Task.objects.select_for_update().filter(hiring_session=session).first()
+        valid = (session.saved_at and session.result == 'repeat' and session.next_interview_at
+                 and not rec.customer.is_deleted and user
+                 and (rec.referred_at or rec.workflow_version == 1))
+        if not valid:
+            if task and task.status not in ('done', 'cancelled'):
+                task.status = 'cancelled'
+                task.save(update_fields=['status', 'updated_at'])
+            return task
+        successor = session.application.sessions.filter(round_number__gt=session.round_number).order_by('round_number').first()
+        state = 'done' if successor and successor.saved_at else 'in_progress' if successor else 'pending'
+        if not task and state == 'done':
+            return None
+        when = timezone.localtime(session.next_interview_at)
+        values = {'title': ('مصاحبه مجدد — '+rec.customer.name)[:200],
+                  'description':'جلسه بعدی استخدام؛ اطلاعات کامل در پرونده کارجو قرار دارد.',
+                  'due_date':when.date(), 'due_time':when.time().replace(tzinfo=None),
+                  'status':state, 'priority':'high', 'source_customer':rec.customer,
+                  'performed_session':successor, **owner_fields(user)}
+        if task:
+            if all(getattr(task,key)==value for key,value in values.items()):
+                return task
+            for key,value in values.items():setattr(task,key,value)
+            if state == 'done':task.completed_at=successor.ended_at or successor.saved_at
+            task.save()
+        else:
+            task, _ = Task.objects.get_or_create(hiring_session=session, defaults={**values, 'created_by':actor})
+        return task
 
 
 def begin_interview_task(application, session):
