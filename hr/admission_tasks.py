@@ -1,4 +1,4 @@
-"""Assignments to reception exist before a physical visit is recorded."""
+"""Waiting candidates and reception assignments exist before a recorded visit."""
 from hashlib import sha256
 from django.db.models.functions import Coalesce
 from accounts.permissions import get_user_role, has_permission, ROLE_SECRETARY
@@ -15,7 +15,8 @@ def automatic_receiver(user):
 
 
 def latest_visit(person):
-    return person.receptions.annotate(task_arrival=Coalesce('hiring__current_arrived_at','arrived_at','created_at')).order_by('-task_arrival','-pk').first()
+    records=person.receptions.filter(person_type='interviewer') if person.is_interviewer else person.receptions
+    return records.annotate(task_arrival=Coalesce('hiring__current_arrived_at','arrived_at','created_at')).order_by('-task_arrival','-pk').first()
 
 
 def needs_arrival(rec):
@@ -26,20 +27,34 @@ def needs_arrival(rec):
                 and rec.task_arrival <= app.latest_session.saved_at)
 
 
-def reconcile(person, request=False):
+def eligible_receivers():
+    from django.contrib.auth.models import User
+    users=User.objects.filter(is_active=True).prefetch_related('groups','permission_overrides').order_by('pk')
+    return sorted([user for user in users if can_receive(user)],key=lambda user:(get_user_role(user) != ROLE_SECRETARY,user.pk))
+
+
+def reconcile(person, request=False, receivers=None):
     from .task_automation import sync
     visit = latest_visit(person)
     owner = person.assigned_to
-    for task in Task.objects.filter(source_type='admission',source_customer=person).exclude(status__in=['done','cancelled']):
-        state = 'cancelled' if person.is_deleted or not can_receive(owner) else 'done' if visit and visit.task_arrival >= task.created_at else 'pending'
-        sync(task.source_key, 'admission', person, 'ثبت ورود در پذیرش — '+person.name, owner, state, person,
-             description='فرد به شما واگذار شده است؛ هنگام مراجعه، ورود واقعی او را در تب پذیرش ثبت کنید. واگذاری به معنی ثبت ورود نیست.')
-    if not request or person.is_deleted or not can_receive(owner) or not needs_arrival(visit):
+    waiting = bool(person.is_interviewer and not person.is_deleted and not visit)
+    if waiting:
+        request=True
+        if not can_receive(owner):
+            pool=eligible_receivers() if receivers is None else receivers
+            owner=next(iter(pool),None)
+    description='فرد در انتظار پذیرش است؛ هنگام مراجعه، ورود واقعی او را در تب پذیرش ثبت کنید. واگذاری به معنی ثبت ورود نیست.'
+    for task in Task.objects.filter(source_type='admission',source_customer=person).exclude(status__in=['done','cancelled']).select_related('assigned_user'):
+        arrived = bool(visit and (task.source_key == f'admission:{person.pk}:first' or visit.task_arrival >= task.created_at))
+        state = 'cancelled' if person.is_deleted else 'done' if arrived else 'pending' if waiting or can_receive(owner) else 'cancelled'
+        sync(task.source_key, 'admission', person, 'ثبت ورود در پذیرش — '+person.name, task.assigned_user if arrived else owner, state, person,
+             description=description,allow_unassigned=waiting or arrived)
+    if not request or person.is_deleted or not (waiting or can_receive(owner)) or not needs_arrival(visit):
         return None
     token = sha256(f'{visit.pk}:{visit.task_arrival.isoformat()}'.encode()).hexdigest()[:20] if visit else 'first'
     return sync(f'admission:{person.pk}:{token}', 'admission', person, 'ثبت ورود در پذیرش — '+person.name,
                 owner, 'pending', person,
-                description='فرد به شما واگذار شده است؛ هنگام مراجعه، ورود واقعی او را در تب پذیرش ثبت کنید. واگذاری به معنی ثبت ورود نیست.')
+                description=description,allow_unassigned=waiting)
 
 
 def assignment_context(user, users=None):
@@ -53,10 +68,11 @@ def assignment_context(user, users=None):
 
 
 def backfill_assignments():
-    from django.db.models import Q
+    from django.db.models import Q, Exists, OuterRef
     from accounts.permissions import ROLE_TO_GROUP
-    from customers.models import Customer
+    from customers.models import Customer, Reception
     active=Task.objects.filter(source_type='admission').exclude(status__in=['done','cancelled']).values('source_customer_id')
-    people=Customer.all_objects.filter(Q(assigned_to__groups__name__in=[ROLE_TO_GROUP[ROLE_SECRETARY],ROLE_SECRETARY]) | Q(pk__in=active)).distinct().select_related('assigned_to').prefetch_related('assigned_to__groups','assigned_to__permission_overrides')
+    people=Customer.all_objects.alias(has_admission=Exists(Reception.objects.filter(customer_id=OuterRef('pk'),person_type='interviewer'))).filter(Q(is_interviewer=True,is_deleted=False,has_admission=False) | Q(assigned_to__groups__name__in=[ROLE_TO_GROUP[ROLE_SECRETARY],ROLE_SECRETARY]) | Q(pk__in=active)).distinct().select_related('assigned_to').prefetch_related('assigned_to__groups','assigned_to__permission_overrides')
+    receivers=eligible_receivers()
     for person in people.iterator(chunk_size=200):
-        reconcile(person,request=automatic_receiver(person.assigned_to))
+        reconcile(person,request=automatic_receiver(person.assigned_to),receivers=receivers)

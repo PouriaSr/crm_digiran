@@ -44,17 +44,17 @@ def actor_or(user=None):
     return actor if actor and actor.is_authenticated else user
 
 
-def sync(key, kind, obj, title, owner, state, customer=None, date=None, time=None, description=None):
+def sync(key, kind, obj, title, owner, state, customer=None, date=None, time=None, description=None, allow_unassigned=False):
     with transaction.atomic():
         task = Task.objects.select_for_update().filter(source_key=key).first()
         if task and task.status == 'done' and state == 'cancelled':
             return task
-        if not task and (state in ('done', 'cancelled') or not owner):
+        if not task and (state in ('done', 'cancelled') or not owner and not allow_unassigned):
             return None
         default_help = {'followup':'پیگیری مشتری را انجام دهید و نتیجه تماس را در مرکز مشتریان ثبت کنید.', 'case':'اطلاعات و مدارک مشتری را در تب پرونده تکمیل و ثبت اطلاعات کنید.', 'registration':'اطلاعات مرحله نهایی مشتری را در تب ثبت اطلاعات تکمیل و ذخیره کنید.', 'interview':'جلسه مصاحبه و ارزیابی کارجو را در تب استخدام ثبت کنید.', 'call':'تماس را پیگیری و نتیجه را در بخش تماس‌ها ثبت کنید.', 'invoice':'فاکتور را بررسی و صادر کنید؛ دریافت وجه را با وضعیت پرداخت‌شده در همان فاکتور ثبت کنید.', 'leave':'درخواست مرخصی را بررسی و نتیجه تأیید یا رد را ثبت کنید.'}
         description = description or default_help.get(kind,'وظیفه را در بخش مربوط انجام دهید.')
         values = dict(description=description, title=title[:200], assigned_user=owner, source_type=kind, source_id=obj.pk,
-                      source_customer=customer, status=state if owner else 'cancelled', due_date=date, due_time=time)
+                      source_customer=customer, status=state if owner or allow_unassigned else 'cancelled', due_date=date, due_time=time)
         if task:
             if all(getattr(task, name) == value for name, value in values.items()):
                 return task

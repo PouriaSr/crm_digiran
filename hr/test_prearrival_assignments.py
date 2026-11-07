@@ -110,7 +110,7 @@ class PrearrivalAssignmentTests(TestCase):
         session=InterviewSession.objects.create(application=app,round_number=1,kind='first',saved_at=old+timedelta(hours=1),result='repeat',next_interview_at=timezone.now())
         app.latest_session=session;app.save()
         self.assign()
-        task=Task.objects.get(source_type='admission')
+        task=Task.objects.get(source_type='admission',status='pending')
         self.client.force_login(self.first)
         self.client.post(reverse('customers:reception_action'),{'action':'arrive','customer':self.person.pk,'person_type':'interviewer'})
         task.refresh_from_db();self.assertEqual(task.status,'done')
