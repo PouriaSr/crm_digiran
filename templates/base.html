@@ -938,7 +938,7 @@ window.apexMobileMerge = function (options) {
 
             
 
-            {% if 'customers.candidate_view' in user_permissions %}<a href="{% url 'customers:candidate_list' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10">مصاحبه‌کنندگان</a>{% endif %}
+            {% if 'customers.candidate_view' in user_permissions and 'customers.info' not in user_permissions %}<a href="{% url 'customers:candidate_list' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10">مصاحبه‌کنندگان</a>{% endif %}
             {% if 'communications.view' in user_permissions %}
             <a href="{% url 'communications:center' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'communications' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8M8 14h5M5 19l2.5-2H18a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 1 1.73V19Z"/></svg><span>مدیریت پیام‌رسانی</span>

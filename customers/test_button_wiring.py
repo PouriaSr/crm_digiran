@@ -24,7 +24,7 @@ class NewCallButtonWiringTest(TestCase):
         self.assertIn('onclick="openNewCallFromSearch()"', self.body)
 
     def test_global_functions_exist(self):
-        self.assertIn('function openNewCallFromSearch()', self.body)
+        self.assertIn('function openNewCallFromSearch(candidate = false)', self.body)
         self.assertIn('function openNewCall(detail)', self.body)
         self.assertIn('function normalizeDigitsFa(s)', self.body)
 
@@ -77,7 +77,7 @@ class CallModalPrefillTest(TestCase):
         self.assertIn('n.readOnly = !!d.lock && !!wantName && !/\p{N}/u.test(wantName);', self.body)
 
     def test_search_flow_is_unlocked(self):
-        self.assertIn('var detail = { lock: false };', self.body)
+        self.assertIn('var detail = { lock: false, is_interviewer: candidate, candidate_only: candidate };', self.body)
 
     def test_row_flow_is_locked(self):
         self.assertIn("lock: true", self.body)

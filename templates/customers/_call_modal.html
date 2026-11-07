@@ -20,8 +20,8 @@
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M3 5a2 2 0 012-2h3l2 5-2 2a16 16 0 006 6l2-2 5 2v3a2 2 0 01-2 2C10 21 3 14 3 5z"/></svg>
                     </span>
                     <div>
-                        <h2 id="call-modal-title" class="text-lg sm:text-xl font-bold">ثبت تماس جدید</h2>
-                        <p class="mt-1 text-xs text-blue-100">اطلاعات مخاطب، نتیجه تماس و اقدام بعدی را یک‌جا ثبت کنید.</p>
+                        <h2 id="call-modal-title" class="text-lg sm:text-xl font-bold" x-text="candidateOnly ? 'ثبت مصاحبه‌کننده جدید' : 'ثبت تماس جدید'">ثبت تماس جدید</h2>
+                        <p class="mt-1 text-xs text-blue-100" x-text="candidateOnly ? 'برای ثبت اولیه، نام و شماره تماس فرد را وارد کنید.' : 'اطلاعات مخاطب، نتیجه تماس و اقدام بعدی را یک‌جا ثبت کنید.'">اطلاعات مخاطب، نتیجه تماس و اقدام بعدی را یک‌جا ثبت کنید.</p>
                         <div class="mt-2 flex items-center gap-2 text-xs text-blue-100">
                             <span>ساعت سیستم · تهران</span>
                             <span class="font-mono rounded-md bg-white/15 px-2 py-0.5" dir="ltr" x-text="systemTime"></span>
@@ -66,11 +66,12 @@
                             </div>
                         </div>
                         <div x-show="existingCustomer" x-cloak class="mt-4 text-xs text-emerald-800 bg-emerald-50 px-3 py-2.5 rounded-xl border border-emerald-100" role="status">
-                            <span x-text="existingCustomer?.is_interviewer ? 'مصاحبه‌کننده شناسایی شد؛ از پرونده استخدام ادامه دهید:' : 'مشتری شناسایی شد:'"></span> <strong x-text="existingCustomer?.name"></strong>
+                            <span x-text="existingCustomer?.is_interviewer ? 'مصاحبه‌کننده شناسایی شد؛ از پرونده استخدام ادامه دهید:' : candidateOnly ? 'این شماره قبلاً برای مشتری ثبت شده است؛ شماره فرد جدید را وارد کنید:' : 'مشتری شناسایی شد:'"></span> <strong x-text="existingCustomer?.name"></strong>
                             <a x-show="existingCustomer?.profile_url" :href="existingCustomer?.profile_url" class="block mt-3 text-blue-700 underline">پرونده مصاحبه‌کننده</a>
                         </div>
                     </section>
-                    {% if 'customers.candidate_add' in user_permissions %}<label class="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 cursor-pointer"><input type="checkbox" name="is_interviewer" x-model="isInterviewer" :disabled="existingCustomer?.is_interviewer" class="w-5 h-5"><span>مصاحبه‌کننده است <span class="text-xs text-slate-500">(اختیاری)</span></span></label>{% endif %}
+                    {% if 'customers.candidate_add' in user_permissions %}<label class="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 cursor-pointer"><input type="checkbox" name="is_interviewer" x-model="isInterviewer" :disabled="candidateOnly || existingCustomer?.is_interviewer" class="w-5 h-5"><span>مصاحبه‌کننده است <span x-show="!candidateOnly" class="text-xs text-slate-500">(اختیاری)</span></span></label>{% endif %}
+                    <template x-if="candidateOnly"><input type="hidden" name="is_interviewer" value="on"></template>
                     <p x-show="isInterviewer" x-cloak class="text-xs text-blue-700">فقط نام و شماره تماس ثبت می‌شود؛ سپس ورود فرد را در تب پذیرش ثبت کنید.</p>
                     <fieldset data-call-extra x-show="!isInterviewer" :disabled="isInterviewer" class="space-y-4">
                     <section class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm" aria-labelledby="call-details-heading">
@@ -146,7 +147,7 @@
                     </fieldset>
                 </div>
                 <div class="crm-call-actions shrink-0 rounded-b-3xl border-t border-slate-200 px-4 sm:px-6 py-4 bg-white flex items-center gap-3">
-                    <button type="submit" :disabled="submitting || existingCustomer?.is_interviewer"
+                    <button type="submit" :disabled="submitting || existingCustomer?.is_interviewer || (candidateOnly && !!existingCustomer)"
                             class="flex-1 py-3.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-60 disabled:cursor-wait focus-visible:ring-4 focus-visible:ring-blue-200 transition shadow-sm"
                             x-text="submitting ? 'در حال ثبت…' : isInterviewer ? 'ثبت مصاحبه‌کننده' : 'ثبت تماس'">ثبت تماس</button>
                     <button type="button" @click="isCallModalOpen = false"
@@ -162,6 +163,7 @@ function callModalWidget() {
     return {
         isCallModalOpen: false,
         isInterviewer: false,
+        candidateOnly: false,
         callType: 'incoming',
         needsFollowup: false,
         sendAddress: false,
@@ -222,7 +224,8 @@ function callModalWidget() {
             var d = detail || {};
             var form = document.querySelector('#call-modal-root form');
             if (form) form.reset();
-            this.isInterviewer = false;
+            this.candidateOnly = !!d.candidate_only;
+            this.isInterviewer = !!d.is_interviewer;
             this.isCallModalOpen = true;
             this.updateSystemTime();
             this.sendAddress = false;
@@ -316,7 +319,7 @@ function callModalWidget() {
                     self.existingCustomer = data.exists ? data : null;
                     self.checking = false;
                     if (data.exists) {
-                        self.isInterviewer = !!data.is_interviewer;
+                        self.isInterviewer = self.candidateOnly || !!data.is_interviewer;
                         var n = document.getElementById('hub_call_name');
                         if (n && !n.value) { n.value = data.name; self.validateName(n); }
                     }
@@ -356,14 +359,14 @@ function openNewCall(detail) {
     return false;
 }
 
-function openNewCallFromSearch() {
+function openNewCallFromSearch(candidate = false) {
     // ⚠️ در صفحه چند input[name="q"] وجود دارد (جستجوی هدر)؛ باید همین کادر خوانده شود
     var input = document.getElementById('hub-search-input')
         || document.querySelector('#customer-table-container input[name="q"]')
         || document.querySelector('input[name="q"]');
     var raw = normalizeDigitsFa((input && input.value ? input.value : '').trim());
     var digits = (raw.match(/[0-9]/g) || []).join('');
-    var detail = { lock: false };   // از جستجو → فیلدها قابل ویرایش
+    var detail = { lock: false, is_interviewer: candidate, candidate_only: candidate };   // از جستجو → فیلدها قابل ویرایش
     if (digits.length >= 10) {
         detail.mobile = digits;
     } else if (raw) {

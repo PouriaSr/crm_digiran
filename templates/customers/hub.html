@@ -47,6 +47,7 @@
     
     {% if active_tab == "info" and "info" in allowed_hub_tabs %}
     <!-- Premium KPI Cards -->
+    {% if candidate_mode %}{% include 'customers/_candidate_summary.html' %}{% else %}
     <div x-show="tab === 'info'" class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
 
         
@@ -76,7 +77,7 @@
     </div>
 
     {% endif %}
-    <div class="wf-tabs-shell">
+    {% endif %}<div class="wf-tabs-shell">
         <nav id="hub-tabs" aria-label="مراحل مرکز مشتریان" class="wf-tabs">
             {% for item in hub_tab_items %}
             {% if item.key == 'registration' and not registration_unlocked %}
@@ -97,6 +98,7 @@
         <div class="flex flex-col md:flex-row justify-between items-center gap-3">
             <form data-input-icon-left="action" method="get" class="crm-filter-form w-full md:w-1/2 relative group">
             <input type="hidden" name="tab" value="info">
+            {% if candidate_mode %}<input type="hidden" name="people" value="candidates">{% endif %}
             <input type="text" name="q" id="hub-search-input" x-model="searchQuery" placeholder="جستجوی نام یا شماره..."
                    class="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm shadow-sm group-hover:border-gray-300">
             <button type="submit" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-400 rounded-lg group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
@@ -105,7 +107,7 @@
         </form>
             
             <div class="flex items-center gap-2 shrink-0">
-            {% if "calls.add" in user_permissions %}
+            {% if candidate_mode %}{% if 'calls.add' in user_permissions and 'customers.candidate_add' in user_permissions %}<button type="button" onclick="openNewCallFromSearch(true)" class="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-purple-600 text-white hover:bg-purple-700 font-bold">+ ثبت مصاحبه‌کننده</button>{% endif %}{% elif "calls.add" in user_permissions %}
             <button type="button" id="btn-new-call"
                     onclick="openNewCallFromSearch()"
                     :disabled="!showNewBtn"
@@ -117,7 +119,7 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg> ثبت تماس جدید
             </button>
             {% endif %}
-            {% if 'customers.delete' in user_permissions %}
+            {% if 'customers.delete' in user_permissions and not candidate_mode %}
             <a href="{% url 'customers:inactive_list' %}"
                class="flex items-center justify-center gap-2 bg-red-600 text-white hover:bg-red-700 px-6 py-3 rounded-xl font-medium whitespace-nowrap shadow-md transition">
                 مشتریان غیرفعال
@@ -191,8 +193,9 @@
     {% include 'customers/_workflow_clocks.html' %}
     {% include 'customers/_hiring_client.html' %}
     {% include "customers/_call_modal.html" %}
-{% include "customers/_quick_call_modal.html" %}
+{% if not candidate_mode %}{% include "customers/_quick_call_modal.html" %}
 {% include "customers/_call_edit_modal.html" %}
+{% endif %}
 
 <!-- ═══ مودال انتقال مشتری ═══ -->
 <div id="reassign-backdrop" class="fixed inset-0 z-[120] hidden items-center justify-center bg-black/50 p-4 backdrop-blur-sm">

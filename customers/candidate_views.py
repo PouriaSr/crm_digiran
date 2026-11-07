@@ -1,6 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
+from django.db.models import Q, OuterRef, Subquery, Count
+from django.db.models.functions import Coalesce
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.utils import timezone
@@ -15,13 +16,61 @@ from .forms import HubCallForm
 @login_required
 @require_permission('customers.candidate_view')
 def candidate_list(request):
+    if has_permission(request.user,'customers.info'):
+        from .hub_views import customer_hub
+        request.GET=request.GET.copy();request.GET['tab']='info';request.GET['people']='candidates'
+        return customer_hub(request)
+    context=candidate_list_context(request)
+    context['call_form']=HubCallForm(user=request.user)
+    return render(request,'customers/candidate_list.html',context)
+
+
+def candidate_list_context(request):
+    if not has_permission(request.user,'customers.candidate_view'):
+        raise PermissionDenied
     people = Customer.objects.filter(is_interviewer=True).select_related('assigned_to')
     if not is_card_manager(request.user):
         people = people.filter(Q(assigned_to=request.user)|Q(created_by=request.user))
+    latest=Reception.objects.filter(customer_id=OuterRef('pk'),person_type='interviewer').annotate(
+        list_arrival=Coalesce('hiring__current_arrived_at','arrived_at','created_at')).order_by('-created_at','-pk')
+    people=people.annotate(candidate_reception_id=Subquery(latest.values('pk')[:1]),
+                          candidate_arrival=Subquery(latest.values('list_arrival')[:1]),
+                          candidate_referred_at=Subquery(latest.values('referred_at')[:1]))
+    stats=people.aggregate(total=Count('pk'),registered=Count('pk',filter=Q(candidate_reception_id__isnull=True)),
+        admitted=Count('pk',filter=Q(candidate_reception_id__isnull=False)),referred=Count('pk',filter=Q(candidate_referred_at__isnull=False)))
+    owner_ids=people.values('assigned_to_id')
+    from django.contrib.auth.models import User
+    owners=User.objects.filter(pk__in=owner_ids).order_by('first_name','username')
     query = request.GET.get('q','').strip()[:200]
     if query:
         people = people.filter(digit_contains('name',query)|digit_contains('mobile',query))
-    return render(request,'customers/candidate_list.html',{'people':paginate(request,people.order_by('-created_at','-pk')),'search':query})
+    visit=request.GET.get('visit','')
+    if visit=='registered':people=people.filter(candidate_reception_id__isnull=True)
+    elif visit=='admitted':people=people.filter(candidate_reception_id__isnull=False,candidate_referred_at__isnull=True)
+    elif visit=='referred':people=people.filter(candidate_referred_at__isnull=False)
+    owner=request.GET.get('contact_expert','')
+    if owner=='unassigned':people=people.filter(assigned_to__isnull=True)
+    elif owner:people=people.filter(assigned_to_id=owner) if owner.isascii() and owner.isdigit() and len(owner)<16 else people.none()
+    from audit.views import _parse_jalali_date
+    start_raw,end_raw=request.GET.get('date_from',''),request.GET.get('date_to','')
+    start,end=_parse_jalali_date(start_raw),_parse_jalali_date(end_raw)
+    if (start_raw and not start) or (end_raw and not end) or (start and end and start>end):
+        people=people.none()
+        messages.error(request,'بازه تاریخ معتبر نیست؛ تاریخ شمسی شروع و پایان را بررسی کنید.')
+    else:
+        if start:people=people.filter(created_at__date__gte=start)
+        if end:people=people.filter(created_at__date__lte=end)
+    mode='oldest' if request.GET.get('display_mode')=='oldest' else 'recent'
+    page=paginate(request,people.order_by('created_at' if mode=='oldest' else '-created_at','pk' if mode=='oldest' else '-pk'))
+    from django.urls import reverse
+    can_admit=has_permission(request.user,'customers.reception') and has_permission(request.user,'customers.reception_add')
+    manager=is_card_manager(request.user)
+    can_hiring=has_permission(request.user,'customers.hiring')
+    for person in page:
+        person.candidate_reception_url=(reverse('customers:hub')+f'?tab=reception&c={person.pk}') if can_admit else ''
+        person.candidate_hiring_url=(reverse('customers:hub')+f'?tab=hiring&r={person.candidate_reception_id}') if person.candidate_referred_at and can_hiring and (manager or person.assigned_to_id==request.user.pk) else ''
+    return {'people':page,'customers':page,'candidate_mode':True,'search':query,'candidate_stats':stats,'contact_experts':owners,
+        'table_filters':{'display_mode':mode,'date_from':start_raw,'date_to':end_raw,'contact_expert':owner,'visit':visit},'show_new':False}
 
 
 def profile(request, person):

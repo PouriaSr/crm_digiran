@@ -204,6 +204,15 @@ def customer_hub(request):
     if tab not in tabs:
         raise PermissionDenied('دسترسی این تب برای شما فعال نیست.')
     request._hub_tab = tab
+    if tab=='info' and request.GET.get('people')=='candidates':
+        from .candidate_views import candidate_list_context
+        context=candidate_list_context(request)
+        context.update(build_workflow_context(request))
+        context.update(active_tab='info',call_form=HubCallForm(user=request.user))
+        partial=request.headers.get('HX-Request') or request.headers.get('X-Requested-With')=='XMLHttpRequest' or request.GET.get('partial')=='1'
+        response=render(request,'customers/hub_table_partial.html' if partial else 'customers/hub.html',context)
+        if partial:response['X-Show-New-Customer']='false'
+        return response
     search = request.GET.get('q', '').strip()
     
     from django.db.models import Prefetch
