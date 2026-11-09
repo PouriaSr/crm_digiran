@@ -1,0 +1,100 @@
+<style>
+/* Mobile keeps the desktop controls and permissions, with room for touch. */
+@media(min-width:1024px){html body .app-topbar,html body .app-bottom-nav{display:none!important}}
+.crm-mobile-filter-toggle,.crm-mobile-filter-selections,.crm-mobile-action-label{display:none}
+#mobile-navigation{top:auto;bottom:0;left:0;right:0;margin:0;max-width:none;width:100%;max-height:min(88dvh,var(--crm-viewport-height,88dvh));overscroll-behavior:contain;box-sizing:border-box}
+#mobile-navigation:not([open]){display:none!important}
+#mobile-navigation::backdrop{background:#0f172a80;backdrop-filter:blur(3px)}
+.crm-mobile-nav-head{position:sticky;top:0;z-index:2;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.crm-mobile-nav-head button{border:1px solid #e2e8f0;border-radius:12px;width:44px;height:44px;font-size:24px;background:#f8fafc}
+.crm-mobile-navigation-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:20px}
+.crm-mobile-navigation-links>a{display:flex;align-items:center;min-height:48px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;font-size:12px;color:#334155}
+.crm-mobile-menu-open{overflow:hidden}
+@media(max-width:1023px){
+ html body .crm-desktop-header{display:none!important}
+ html body .app-topbar{display:flex!important;padding-top:env(safe-area-inset-top,0px);height:calc(56px + env(safe-area-inset-top,0px))}
+ html body .app-bottom-nav{display:flex!important}
+ html body .crm-task-launcher-bottom{position:relative;display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:0;background:transparent;color:#475569;box-shadow:none;padding:6px 4px;min-height:52px;border-radius:10px;font:inherit}
+ html body .crm-task-launcher-bottom svg{width:22px;height:22px}
+ html body .crm-task-launcher-bottom .crm-task-launcher-label{display:block;font-size:10px;line-height:1.7}
+ html body .crm-task-launcher-bottom .crm-task-count{position:absolute;top:1px;inset-inline-end:calc(50% - 24px);min-width:18px;height:18px;padding:0 3px;font-size:10px}
+ html body .crm-task-launcher-bottom .crm-task-news-dot{position:absolute;top:4px;inset-inline-end:calc(50% - 19px)}
+ html body .crm-task-launcher-bottom[aria-expanded=true]{color:#2563eb;background:#eff6ff}
+ .crm-person-actions{flex-wrap:wrap!important;gap:8px!important;justify-content:flex-start!important}
+ .crm-person-actions .hub-act,.crm-person-actions .hub-act-icon{min-height:44px!important}
+ .crm-person-actions .hub-act-icon{min-width:44px!important;width:auto;gap:6px;padding-inline:10px}
+ .crm-mobile-action-label{display:inline;font-size:11px;white-space:nowrap}
+ html body .page-header .action-buttons-hidden-mobile{display:flex!important;flex-direction:row;flex-wrap:wrap;gap:8px;width:100%}
+ html body .page-header .action-buttons-hidden-mobile>a,html body .page-header .action-buttons-hidden-mobile>button{width:auto;flex:1 1 130px;min-height:44px;justify-content:center;text-align:center}
+ .crm-person-actions>span.w-px{display:none}
+ .crm-customer-mobile-meta dd{line-height:1.8;overflow-wrap:anywhere}
+ html body .crm-pages a,html body .crm-pages .crm-page-disabled,html body .crm-pages [aria-current=page],html body .crm-page-jump button{min-height:44px;min-width:44px}
+ .crm-pages{justify-content:center}.crm-pages>span{width:100%;text-align:center}
+ html body #call-modal-root>div:first-child{top:var(--crm-viewport-top,0px);bottom:auto;height:var(--crm-viewport-height,100dvh);padding:8px;align-items:stretch}
+ html body #call-modal-root [role=dialog]{max-height:100%;height:100%;border-radius:18px}
+ html body #call-modal-root input,html body #call-modal-root textarea{scroll-margin-block:80px 100px}
+ html body .hr-overlay{top:var(--crm-viewport-top,0px);bottom:auto;height:var(--crm-viewport-height,100dvh);box-sizing:border-box}
+ html body .hr-dialog,html body .wf-referral-dialog,html body #admission-assignment{max-height:calc(var(--crm-viewport-height,100dvh) - 16px)!important;overscroll-behavior:contain}
+ html body #crm-task-inbox[open],html body #crm-task-report[open]{top:calc(var(--crm-viewport-top,0px) + 8px)!important;bottom:auto!important;left:8px!important;right:8px!important;width:calc(100% - 16px);max-width:none;max-height:calc(var(--crm-viewport-height,100dvh) - 16px)!important;margin:0;overflow:auto}
+ html body .crm-task-queue-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible;gap:10px;padding:12px 14px}
+ html body .crm-task-queue-filters label{min-width:0}
+ html body .crm-task-queue-filters :is(input,select){height:44px;min-height:44px!important;padding:8px!important;font-size:16px!important}
+ html body .crm-task-queue-filters button{min-height:44px;align-self:end}
+ html body .crm-task-dialog>header{position:sticky;top:0;z-index:2;background:#fff;flex:none}
+ html body .crm-task-inbox-list{min-height:100px;max-height:42dvh;overscroll-behavior:contain}
+ html body .crm-task-body textarea{min-height:100px!important;font-size:16px!important}
+ html body .crm-task-actions>button,html body .crm-task-actions>a{min-height:44px}
+ html body :is(.hr-dialog-foot,.crm-task-inbox-footer){padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
+}
+@media(max-width:767px){
+ .crm-mobile-filters{margin-bottom:16px;min-width:0}
+ .crm-mobile-filter-toggle{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;min-height:48px;border:1px solid #dce3ed;border-radius:13px;background:#fff;color:#334155;font-size:13px;font-weight:700}
+ .crm-mobile-filter-toggle[aria-expanded=true]{border-radius:13px 13px 0 0;border-bottom-color:#eef2f6}
+ .crm-mobile-filter-toggle>span:last-child{font-size:11px;color:#64748b;font-weight:400}
+ .crm-mobile-filters[data-open=true]>.crm-mobile-filter-selections{display:none}
+ .crm-mobile-filter-selections:not(:empty){display:flex;flex-wrap:wrap;gap:7px;padding:10px 2px 0}
+ .crm-mobile-filter-selections>button{max-width:100%;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:7px 10px;border:1px solid #bfdbfe;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-size:11px}
+ .crm-mobile-filter-selections>button>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .crm-mobile-filters[data-open=false]>form{display:none!important}
+ html body .crm-mobile-filters>form.crm-filter-toolbar{flex-wrap:wrap!important;padding:12px!important;margin:0!important;border-radius:0 0 13px 13px}
+ html body .crm-mobile-filters>form.crm-filter-toolbar>.crm-filter-track{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%!important;flex-basis:100%!important;overflow:visible;gap:12px;padding:0}
+ html body .crm-mobile-filters .crm-filter-field{min-width:0;max-width:none;width:100%}
+ html body .crm-mobile-filters .crm-filter-field-head{min-height:29px;height:auto;align-items:center}
+ html body .crm-mobile-filters .crm-filter-field-head>label{white-space:normal;overflow:visible;line-height:1.7!important}
+ html body .crm-mobile-filters .crm-filter-field>input,html body .crm-mobile-filters .crm-filter-field>select:not(.tomselected){height:46px!important;min-height:46px!important;padding:10px!important;font-size:16px!important}
+ html body .crm-mobile-filters .ts-control{min-height:46px!important;height:46px!important;font-size:16px!important;padding:8px 10px!important}
+ html body .crm-mobile-filters .ts-control>input{font-size:16px!important;min-height:0!important;padding:0!important}
+ html body .crm-mobile-filters .crm-filter-actions{width:100%!important;justify-content:flex-end;flex-wrap:wrap;gap:8px!important;margin-top:4px!important}
+ html body .crm-mobile-filters .crm-filter-actions>.crm-filter-scroll{display:none!important}
+ .crm-mobile-filters .crm-filter-errors{width:100%}
+ .responsive-table td[data-label]{min-width:0;overflow-wrap:anywhere}
+ .responsive-table td[data-label]>*{min-width:0;max-width:100%}
+ .crm-customer-mobile-meta>div{min-width:0}
+ .crm-person-actions{padding:0!important}
+ .crm-person-actions>a,.crm-person-actions>button,.crm-person-actions>form{flex:none}
+ html body .crm-task-tabs{overflow-x:auto;flex-wrap:nowrap}
+}
+@media(max-width:359px){html body .crm-mobile-filters>form.crm-filter-toolbar>.crm-filter-track{grid-template-columns:minmax(0,1fr)}.crm-mobile-navigation-links{grid-template-columns:minmax(0,1fr)}}
+@media(max-height:520px) and (max-width:1023px){html body .crm-task-inbox-list{max-height:none;overflow:visible}html body #crm-task-inbox[open]{display:block}html body .crm-task-queue-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+<script>
+(function(){
+ 'use strict';if(window.CRMMobileUI)return;
+ const states=new Map(),bound=new WeakSet();let serial=0;
+ function viewport(){const menu=document.getElementById('mobile-navigation');if(innerWidth>=1024&&menu?.open)menu.close();const v=window.visualViewport;document.documentElement.style.setProperty('--crm-viewport-height',Math.round(v?.height||innerHeight)+'px');document.documentElement.style.setProperty('--crm-viewport-top',Math.round(v?.offsetTop||0)+'px');}
+ function key(form){return location.pathname+':'+(form.querySelector('[name=tab]')?.value||'')+':'+(form.id||Array.from(form.elements).map(el=>el.name).join(','));}
+ function selections(form,shell){const active=[];for(const field of form.querySelectorAll('.crm-filter-field>input[name],.crm-filter-field>select[name]')){const clear=field.closest('.crm-filter-field').querySelector('.crm-filter-clear');if(!clear||clear.hidden)continue;const title=field.closest('.crm-filter-field').querySelector('label')?.textContent.trim()||field.name;const value=field.tagName==='SELECT'?Array.from(field.selectedOptions).map(item=>item.textContent.trim()).join('، '):field.value;if(value)active.push({title,value,clear});}
+  const signature=JSON.stringify(active.map(item=>[item.title,item.value]));if(shell._selectionSignature===signature)return;shell._selectionSignature=signature;
+  shell.querySelector('[data-mobile-filter-count]').textContent=active.length?new Intl.NumberFormat('fa-IR').format(active.length)+' فیلتر فعال':'همه گزینه‌ها';const chips=shell.querySelector('.crm-mobile-filter-selections');chips.replaceChildren();for(const item of active){const button=document.createElement('button');button.type='button';button.setAttribute('aria-label','پاک‌کردن فیلتر '+item.title);const text=document.createElement('span');text.textContent=item.title+': '+item.value;const cross=document.createElement('b');cross.textContent='×';cross.setAttribute('aria-hidden','true');button.append(text,cross);button.addEventListener('click',()=>item.clear.click());chips.append(button);}}
+ function prepare(root=document){const forms=[...(root.matches?.('form.crm-filter-toolbar')?[root]:[]),...root.querySelectorAll('form.crm-filter-toolbar')];for(const form of forms){if(form.method.toLowerCase()!=='get')continue;let shell=form.closest('.crm-mobile-filters');if(!shell){shell=document.createElement('section');shell.className='crm-mobile-filters';const stateKey=key(form);const open=states.get(stateKey)||!!form.querySelector('.errorlist,[aria-invalid=true]');shell.dataset.open=String(open);if(!form.id)form.id='crm-mobile-filter-'+(++serial);const button=document.createElement('button');button.type='button';button.className='crm-mobile-filter-toggle';button.setAttribute('aria-controls',form.id);button.setAttribute('aria-expanded',String(open));const title=document.createElement('span');title.textContent='فیلترها';const count=document.createElement('span');count.dataset.mobileFilterCount='';button.append(title,count);const chips=document.createElement('div');chips.className='crm-mobile-filter-selections';chips.setAttribute('aria-label','فیلترهای انتخاب‌شده');form.before(shell);shell.append(button,chips,form);button.addEventListener('click',()=>{const value=shell.dataset.open!=='true';shell.dataset.open=String(value);button.setAttribute('aria-expanded',String(value));states.set(stateKey,value);});}
+  if(form.querySelector('.errorlist,[aria-invalid=true]')){shell.dataset.open='true';shell.querySelector('.crm-mobile-filter-toggle').setAttribute('aria-expanded','true');}
+  if(!bound.has(form)){bound.add(form);for(const name of ['input','change'])form.addEventListener(name,()=>requestAnimationFrame(()=>selections(form,shell)));}selections(form,shell);}
+  window.CRMTableAlignment?.prepare();for(const table of [...(root.matches?.('table.responsive-table')?[root]:[]),...root.querySelectorAll('table.responsive-table')]){const head=table.tHead?.rows[0];if(!head)continue;for(const body of table.tBodies)for(const row of body.rows)for(const cell of row.cells){if(cell.colSpan!==1||cell.hasAttribute('data-label')||cell.classList.contains('crm-primary-column'))continue;const label=head.cells[cell.cellIndex]?.textContent.trim();if(label)cell.dataset.label=label;}}
+ }
+ function navigation(){const menu=document.getElementById('mobile-navigation');if(menu){new MutationObserver(()=>document.documentElement.classList.toggle('crm-mobile-menu-open',menu.open)).observe(menu,{attributes:true,attributeFilter:['open']});menu.addEventListener('click',event=>{if(event.target!==menu)return;const r=menu.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)menu.close();});}}
+ function reveal(field){const shell=field.closest?.('.crm-mobile-filters');if(shell){shell.dataset.open='true';shell.querySelector('.crm-mobile-filter-toggle')?.setAttribute('aria-expanded','true');}}
+ document.addEventListener('invalid',event=>reveal(event.target),true);
+ new MutationObserver(records=>{for(const record of records)if(record.target.getAttribute('aria-invalid')==='true')reveal(record.target);}).observe(document.documentElement,{subtree:true,attributes:true,attributeFilter:['aria-invalid']});
+ document.addEventListener('DOMContentLoaded',()=>{viewport();navigation();prepare();});document.addEventListener('crm:results-updated',event=>prepare(event.detail?.root||document));document.addEventListener('htmx:afterSwap',event=>prepare(event.detail?.target||document));window.addEventListener('resize',viewport,{passive:true});window.visualViewport?.addEventListener('resize',viewport,{passive:true});window.visualViewport?.addEventListener('scroll',viewport,{passive:true});viewport();window.CRMMobileUI={prepare};
+})();
+</script>

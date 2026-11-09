@@ -880,6 +880,7 @@ window.apexMobileMerge = function (options) {
     {% include 'includes/_table_alignment.html' %}
     {% include 'includes/_pagination_ui.html' %}
     {% include 'includes/_filter_ui.html' %}
+{% include 'includes/_mobile_ui.html' %}
     {% include 'includes/_feedback_ui.html' %}
     {% include 'includes/_chart_ui.html' %}
     {% block extra_head %}{% endblock %}
@@ -1033,7 +1034,6 @@ window.apexMobileMerge = function (options) {
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </button>
 
-            {% include 'includes/_task_launcher.html' with placement='mobile' %}
             <button @click="notifOpen = !notifOpen" class="app-topbar-btn" aria-label="اعلان‌ها">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                 {% if notifications_count > 0 %}
@@ -1189,7 +1189,9 @@ window.apexMobileMerge = function (options) {
 
     
 
-    <button @click="moreOpen = true" class="app-bottom-nav-item
+    {% include 'includes/_task_launcher.html' with placement='bottom' %}
+
+    <button @click="moreOpen = true" aria-haspopup="dialog" aria-controls="mobile-navigation" class="app-bottom-nav-item
         {% if request.resolver_match.app_name in 'products,hr,ads,accounts,audit,dashboard' %}{% if request.resolver_match.url_name == 'bi' %}active{% endif %}{% endif %}">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
         <span>بیشتر</span>
@@ -1199,22 +1201,12 @@ window.apexMobileMerge = function (options) {
 <!-- ============================================
      MORE BOTTOM SHEET
      ============================================ -->
-<div x-show="moreOpen" x-cloak @click="moreOpen = false"
-     class="app-sheet-overlay lg:hidden"
-     x-transition.opacity></div>
-
-<div x-show="moreOpen" x-cloak
-     class="app-sheet lg:hidden"
-     x-transition:enter="transition ease-out duration-300"
-     x-transition:enter-start="translate-y-full"
-     x-transition:enter-end="translate-y-0"
-     x-transition:leave="transition ease-in duration-200"
-     x-transition:leave-start="translate-y-0"
-     x-transition:leave-end="translate-y-full">
-
+<dialog id="mobile-navigation" class="app-sheet lg:hidden" aria-labelledby="mobile-navigation-title"
+        x-effect="if (moreOpen && !$el.open) $el.showModal(); else if (!moreOpen && $el.open) $el.close()"
+        @close="moreOpen = false" @cancel="moreOpen = false">
     <div class="app-sheet-handle"></div>
 
-    <h2 class="text-lg font-bold text-gray-800 mb-4 px-1">بخش‌های دیگر</h2>
+    <header class="crm-mobile-nav-head"><h2 id="mobile-navigation-title" class="text-lg font-bold text-gray-800">بخش‌های سیستم</h2><button type="button" @click="moreOpen = false" aria-label="بستن فهرست بخش‌ها">×</button></header>
 
     <div class="grid grid-cols-3 gap-3 mb-6">
         {% if 'products.view' in user_permissions %}
@@ -1287,6 +1279,8 @@ window.apexMobileMerge = function (options) {
         {% endif %}
     </div>
 
+    {% include 'includes/_mobile_navigation_links.html' %}
+
     <div class="border-t border-gray-100 pt-4 space-y-2">
         <a href="{% url 'hr:my_profile' %}" class="flex items-center gap-3 p-3 rounded-xl active:bg-gray-100">
             <div class="w-11 h-11 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center font-bold shadow-md">
@@ -1309,7 +1303,7 @@ window.apexMobileMerge = function (options) {
             </button>
         </form>
     </div>
-</div>
+</dialog>
 
 <!-- ============================================
      SEARCH OVERLAY (mobile)

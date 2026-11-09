@@ -1,0 +1,9 @@
+<nav class="crm-mobile-navigation-links" aria-label="دسترسی مستقیم به بخش‌ها">
+{% if 'customers.candidate_view' in user_permissions and 'customers.info' not in user_permissions %}<a href="{% url 'customers:candidate_list' %}">مصاحبه‌کنندگان</a>{% endif %}
+{% if 'calls.view' in user_permissions %}<a href="{% url 'calls:list' %}">تماس‌ها</a>{% endif %}
+{% if 'invoices.view' in user_permissions %}<a href="{% url 'sales:list' %}">فاکتورها</a>{% endif %}
+{% if 'hr.view_employees' in user_permissions %}<a href="{% url 'hr:employee_list' %}">پرسنل</a>{% endif %}
+{% if 'hr.view_tasks' in user_permissions %}<a href="{% url 'hr:task_list' %}">صفحه وظایف</a>{% endif %}
+{% if 'hr.review_leaves' in user_permissions %}<a href="{% url 'hr:leave_list' %}">مرخصی‌ها</a>{% endif %}
+{% if 'hr.attendance' in user_permissions %}<a href="{% url 'hr:attendance_list' %}">حضور و غیاب</a><a href="{% url 'hr:attendance_report' %}">گزارش ماهانه</a>{% endif %}
+</nav>

@@ -68,7 +68,7 @@
             <div class="text-xl md:text-2xl font-bold text-gray-800">{{ stats.pending_followups|fa_num }}</div>
         </div>
         {% if 'invoices.view' in user_permissions %}
-        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden flex flex-col justify-center col-span-2 md:col-span-1">
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden flex flex-col justify-center">
             <div class="absolute right-0 top-0 bottom-0 w-1.5 bg-emerald-500"></div>
             <div class="text-gray-500 text-xs font-medium mb-1">درآمد وصول شده</div>
             <div class="text-lg md:text-xl font-bold text-gray-800" dir="ltr">{{ stats.recent_revenue|floatformat:0|fa_num }} <span class="text-xs font-normal text-gray-400">تومان</span></div>
@@ -248,7 +248,8 @@ function openReassignModal(pk, name) {
     var box = document.getElementById('reassign-backdrop');
     if (!box) return;
     document.getElementById('reassign-name').textContent = name || '';
-    document.getElementById('reassign-user').value = '';
+    const receiver = document.getElementById('reassign-user');
+    if (receiver.tomselect) receiver.tomselect.clear(true); else receiver.value = '';
     document.getElementById('reassign-form').action = "{% url 'customers:reassign' 0 %}".replace('/0/', '/' + pk + '/');
     box.classList.remove('hidden');
     box.classList.add('flex');
