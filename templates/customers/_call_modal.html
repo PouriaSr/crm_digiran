@@ -14,7 +14,7 @@
         <div role="dialog" aria-modal="true" aria-labelledby="call-modal-title"
              @click.away="popupOverlayClick($event) || (isCallModalOpen = false)"
              class="bg-slate-50 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col animate-slide-up">
-            <div class="shrink-0 rounded-t-3xl bg-gradient-to-l from-blue-700 to-indigo-600 px-5 py-4 sm:px-6 text-white flex items-center justify-between gap-4">
+            <div class="crm-call-header shrink-0 rounded-t-3xl bg-gradient-to-l from-blue-700 to-indigo-600 px-5 py-4 sm:px-6 text-white flex items-center justify-between gap-4">
                 <div class="flex items-center gap-3">
                     <span class="hidden sm:flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M3 5a2 2 0 012-2h3l2 5-2 2a16 16 0 006 6l2-2 5 2v3a2 2 0 01-2 2C10 21 3 14 3 5z"/></svg>
@@ -22,7 +22,7 @@
                     <div>
                         <h2 id="call-modal-title" class="text-lg sm:text-xl font-bold" x-text="candidateOnly ? 'ثبت مصاحبه‌کننده جدید' : 'ثبت تماس جدید'">ثبت تماس جدید</h2>
                         <p class="mt-1 text-xs text-blue-100" x-text="candidateOnly ? 'برای ثبت اولیه، نام و شماره تماس فرد را وارد کنید.' : 'اطلاعات مخاطب، نتیجه تماس و اقدام بعدی را یک‌جا ثبت کنید.'">اطلاعات مخاطب، نتیجه تماس و اقدام بعدی را یک‌جا ثبت کنید.</p>
-                        <div class="mt-2 flex items-center gap-2 text-xs text-blue-100">
+                        <div class="crm-call-clock mt-2 flex items-center gap-2 text-xs text-blue-100">
                             <span>ساعت سیستم · تهران</span>
                             <span class="font-mono rounded-md bg-white/15 px-2 py-0.5" dir="ltr" x-text="systemTime"></span>
                         </div>

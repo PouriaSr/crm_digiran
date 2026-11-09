@@ -1,7 +1,7 @@
 <style>
 /* Mobile keeps the desktop controls and permissions, with room for touch. */
 @media(min-width:1024px){html body .app-topbar,html body .app-bottom-nav{display:none!important}}
-.crm-mobile-filter-toggle,.crm-mobile-filter-selections,.crm-mobile-action-label{display:none}
+.crm-mobile-filter-toggle,.crm-mobile-filter-selections,.crm-mobile-action-label,.crm-task-filter-toggle{display:none}
 #mobile-navigation{top:auto;bottom:0;left:0;right:0;margin:0;max-width:none;width:100%;max-height:min(88dvh,var(--crm-viewport-height,88dvh));overscroll-behavior:contain;box-sizing:border-box}
 #mobile-navigation:not([open]){display:none!important}
 #mobile-navigation::backdrop{background:#0f172a80;backdrop-filter:blur(3px)}
@@ -20,6 +20,15 @@
  html body .crm-task-launcher-bottom .crm-task-count{position:absolute;top:1px;inset-inline-end:calc(50% - 24px);min-width:18px;height:18px;padding:0 3px;font-size:10px}
  html body .crm-task-launcher-bottom .crm-task-news-dot{position:absolute;top:4px;inset-inline-end:calc(50% - 19px)}
  html body .crm-task-launcher-bottom[aria-expanded=true]{color:#2563eb;background:#eff6ff}
+ .crm-hub-primary-actions{min-width:0;flex-wrap:wrap}
+ .crm-hub-primary-actions>*{flex:1 1 130px;min-width:0;min-height:46px;padding:10px 12px!important;font-size:13px;white-space:normal!important;text-align:center}
+ .crm-task-filter-toggle{display:flex;width:calc(100% - 28px);align-items:center;justify-content:space-between;gap:8px;margin:0 14px 8px;padding:10px 12px;min-height:44px;flex:none;border:1px solid #dce3ed;border-radius:10px;background:#f8fafc;color:#475569;font-size:12px}
+ .crm-task-filter-toggle span{font-size:10px;color:#64748b}
+ html body .crm-task-queue-filters[data-mobile-open=false]{display:none}
+ html body .crm-task-search-wrap input{font-size:16px;height:44px}
+ html body .crm-task-close{width:44px;height:44px}
+ html body .crm-task-due button{min-height:44px}
+ html body .crm-task-pagination button{min-height:44px;min-width:44px}
  .crm-person-actions{flex-wrap:wrap!important;gap:8px!important;justify-content:flex-start!important}
  .crm-person-actions .hub-act,.crm-person-actions .hub-act-icon{min-height:44px!important}
  .crm-person-actions .hub-act-icon{min-width:44px!important;width:auto;gap:6px;padding-inline:10px}
@@ -32,21 +41,26 @@
  .crm-pages{justify-content:center}.crm-pages>span{width:100%;text-align:center}
  html body #call-modal-root>div:first-child{top:var(--crm-viewport-top,0px);bottom:auto;height:var(--crm-viewport-height,100dvh);padding:8px;align-items:stretch}
  html body #call-modal-root [role=dialog]{max-height:100%;height:100%;border-radius:18px}
+ html body #call-modal-root .crm-call-header button{min-width:44px;min-height:44px;flex:none}
  html body #call-modal-root input,html body #call-modal-root textarea{scroll-margin-block:80px 100px}
  html body .hr-overlay{top:var(--crm-viewport-top,0px);bottom:auto;height:var(--crm-viewport-height,100dvh);box-sizing:border-box}
  html body .hr-dialog,html body .wf-referral-dialog,html body #admission-assignment{max-height:calc(var(--crm-viewport-height,100dvh) - 16px)!important;overscroll-behavior:contain}
- html body #crm-task-inbox[open],html body #crm-task-report[open]{top:calc(var(--crm-viewport-top,0px) + 8px)!important;bottom:auto!important;left:8px!important;right:8px!important;width:calc(100% - 16px);max-width:none;max-height:calc(var(--crm-viewport-height,100dvh) - 16px)!important;margin:0;overflow:auto}
+ html body #crm-task-inbox[open],html body #crm-task-report[open]{top:calc(var(--crm-viewport-top,0px) + 8px)!important;bottom:auto!important;left:8px!important;right:8px!important;width:calc(100% - 16px);max-width:none;max-height:calc(var(--crm-viewport-height,100dvh) - 16px)!important;margin:0;overflow:auto;scroll-padding-block:96px 16px}
  html body .crm-task-queue-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible;gap:10px;padding:12px 14px}
- html body .crm-task-queue-filters label{min-width:0}
+ html body .crm-task-queue-filters label{min-width:0;align-content:start}
  html body .crm-task-queue-filters :is(input,select){height:44px;min-height:44px!important;padding:8px!important;font-size:16px!important}
- html body .crm-task-queue-filters button{min-height:44px;align-self:end}
+ html body .crm-task-queue-filters>button{min-height:44px;align-self:end}
+ html body .crm-task-queue-filters label button{min-width:32px;min-height:32px}
  html body .crm-task-dialog>header{position:sticky;top:0;z-index:2;background:#fff;flex:none}
- html body .crm-task-inbox-list{min-height:100px;max-height:42dvh;overscroll-behavior:contain}
+ html body #crm-task-inbox[open]{display:block}
+ html body .crm-task-inbox-list{min-height:100px;max-height:none;overflow:visible;overscroll-behavior:contain}
+ html body .crm-task-inbox-footer{position:static}
  html body .crm-task-body textarea{min-height:100px!important;font-size:16px!important}
  html body .crm-task-actions>button,html body .crm-task-actions>a{min-height:44px}
  html body :is(.hr-dialog-foot,.crm-task-inbox-footer){padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
 }
 @media(max-width:767px){
+ .crm-hub-primary-actions{width:100%}
  .crm-mobile-filters{margin-bottom:16px;min-width:0}
  .crm-mobile-filter-toggle{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;min-height:48px;border:1px solid #dce3ed;border-radius:13px;background:#fff;color:#334155;font-size:13px;font-weight:700}
  .crm-mobile-filter-toggle[aria-expanded=true]{border-radius:13px 13px 0 0;border-bottom-color:#eef2f6}
@@ -75,7 +89,17 @@
  html body .crm-task-tabs{overflow-x:auto;flex-wrap:nowrap}
 }
 @media(max-width:359px){html body .crm-mobile-filters>form.crm-filter-toolbar>.crm-filter-track{grid-template-columns:minmax(0,1fr)}.crm-mobile-navigation-links{grid-template-columns:minmax(0,1fr)}}
-@media(max-height:520px) and (max-width:1023px){html body .crm-task-inbox-list{max-height:none;overflow:visible}html body #crm-task-inbox[open]{display:block}html body .crm-task-queue-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-height:520px) and (max-width:1023px){
+ html body #call-modal-root .crm-call-header{padding:8px 14px;gap:8px}
+ html body #call-modal-root .crm-call-header>div{gap:8px}
+ html body #call-modal-title{font-size:16px}
+ html body #call-modal-root .crm-call-header p{font-size:10px;margin-top:2px}
+ html body #call-modal-root .crm-call-clock{margin-top:3px;font-size:10px}
+ html body #call-modal-root .crm-call-header button{min-width:44px;min-height:44px;flex:none}
+ html body #call-modal-root .call-scroll{padding:12px 16px}
+ html body #call-modal-root .crm-call-actions{padding:8px 16px}
+ html body #call-modal-root .crm-call-actions button{min-height:44px;padding-block:8px}
+}
 </style>
 <script>
 (function(){
