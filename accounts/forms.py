@@ -335,3 +335,9 @@ class UserPasswordForm(forms.Form):
         if p1 and len(p1) < 6:
             raise forms.ValidationError('رمز عبور باید حداقل ۶ کاراکتر باشد')
         return cleaned
+
+from accounts.structure_forms_runtime import configure_form as _configure_structure_form
+
+_configure_structure_form(UserCreateForm,['users'])
+
+_configure_structure_form(UserEditForm,['users'])

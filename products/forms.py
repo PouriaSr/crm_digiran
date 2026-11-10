@@ -129,3 +129,7 @@ class CategoryForm(DuplicateCheckMixin, forms.ModelForm):
                 })
 
         return cleaned
+
+from accounts.structure_forms_runtime import configure_form as _configure_structure_form
+_configure_structure_form(ProductForm,['products'])
+_configure_structure_form(CategoryForm,['categories'])

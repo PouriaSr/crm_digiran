@@ -186,3 +186,6 @@ class InterviewTaskForm(HiringStyledForm, forms.Form):
         values=super().clean()
         values['appointment']=parse_appointment(self,'next',True)
         return values
+
+from accounts.structure_forms_runtime import configure_form as _configure_structure_form
+_configure_structure_form(InterviewForm,['hiring'])

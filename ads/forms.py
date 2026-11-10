@@ -183,3 +183,12 @@ class AdSourceForm(DuplicateCheckMixin, StyledFormMixin, forms.ModelForm):
         if find_exact_match(AdSource, 'phone_number', phone, normalize_phone, self.instance.pk):
             raise ValidationError('این شماره قبلاً ثبت شده است.')
         return phone
+
+
+from accounts.structure_forms_runtime import configure_form as _configure_structure_form
+_configure_structure_form(AdForm,['ads'])
+_configure_structure_form(AdSourceForm,['ad_sources'])
+
+_configure_structure_form(AdPlatformForm,['ad_platforms'])
+
+_configure_structure_form(AdProcessForm,['ad_processes'])

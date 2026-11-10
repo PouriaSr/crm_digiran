@@ -35,8 +35,10 @@ def permissions_context(request):
     notifications = get_notifications(user)
 
     from .interface import interface_context
+    from .structure_service import structure_context
     return {
         **interface_context(request),
+        **structure_context(request),
         'can_open_customer_hub': bool(allowed_tabs(user)),
         'can_assign_admission': card_manager_for_request(request) and 'customers.admission_assign' in get_user_permissions(user),
         'can_transfer_cards': card_manager_for_request(request) and 'customers.reassign' in get_user_permissions(user),

@@ -452,3 +452,9 @@ class CustomerCaseForm(forms.ModelForm):
                 if not cleaned.get('cheque_other_phone'):
                     self.add_error('cheque_other_phone', 'شماره تماس صاحب چک الزامی است.')
         return cleaned
+
+
+from accounts.structure_forms_runtime import configure_form as _configure_structure_form
+_configure_structure_form(CustomerForm,['info', 'registration'])
+_configure_structure_form(CustomerCaseForm,['case'])
+_configure_structure_form(HubCallForm,['info'])

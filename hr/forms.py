@@ -376,3 +376,9 @@ class MyProfileForm(forms.ModelForm):
             return jdatetime.date(y, m, d).togregorian()
         except (ValueError, AttributeError):
             raise forms.ValidationError('تاریخ معتبر نیست')
+
+from accounts.structure_forms_runtime import configure_form as _configure_structure_form
+_configure_structure_form(EmployeeForm,['employees'])
+_configure_structure_form(TaskForm,['tasks'])
+_configure_structure_form(LeaveRequestForm,['leaves'])
+_configure_structure_form(AttendanceForm,['attendance'])

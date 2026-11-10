@@ -2730,35 +2730,40 @@
     "section": "مرکز مشتریان",
     "kind": "field",
     "position": 10,
-    "path": "customers/_candidate_filters.html"
+    "path": "customers/_candidate_filters.html",
+    "filter_name": "display_mode"
   },
   "ui.customers.candidatefilters.label2": {
     "label": "از تاریخ ثبت",
     "section": "مرکز مشتریان",
     "kind": "field",
     "position": 20,
-    "path": "customers/_candidate_filters.html"
+    "path": "customers/_candidate_filters.html",
+    "filter_name": "date_from"
   },
   "ui.customers.candidatefilters.label3": {
     "label": "تا تاریخ ثبت",
     "section": "مرکز مشتریان",
     "kind": "field",
     "position": 30,
-    "path": "customers/_candidate_filters.html"
+    "path": "customers/_candidate_filters.html",
+    "filter_name": "date_to"
   },
   "ui.customers.candidatefilters.label4": {
     "label": "وضعیت پذیرش همه وضعیت‌ها در انتظار پذیرش پذیرش‌شده، بدون ارجاع ارجاع‌شده به استخدام",
     "section": "مرکز مشتریان",
     "kind": "field",
     "position": 40,
-    "path": "customers/_candidate_filters.html"
+    "path": "customers/_candidate_filters.html",
+    "filter_name": "visit"
   },
   "ui.customers.candidatefilters.label5": {
     "label": "کاربر مسئول همه مسئولان بدون مسئول",
     "section": "مرکز مشتریان",
     "kind": "field",
     "position": 50,
-    "path": "customers/_candidate_filters.html"
+    "path": "customers/_candidate_filters.html",
+    "filter_name": "contact_expert"
   },
   "ui.customers.candidatefilters.button6": {
     "label": "اعمال",
@@ -4374,77 +4379,110 @@
     "section": "مرکز مشتریان",
     "kind": "button",
     "position": 30,
-    "path": "customers/hub.html"
+    "path": "customers/hub.html",
+    "scopes": [
+      "info"
+    ]
   },
   "ui.customers.hub.button4": {
     "label": "+ ثبت تماس جدید",
     "section": "مرکز مشتریان",
     "kind": "button",
     "position": 40,
-    "path": "customers/hub.html"
+    "path": "customers/hub.html",
+    "scopes": [
+      "info"
+    ]
   },
   "ui.customers.hub.a5": {
     "label": "مشتریان غیرفعال",
     "section": "مرکز مشتریان",
     "kind": "link",
     "position": 50,
-    "path": "customers/hub.html"
+    "path": "customers/hub.html",
+    "scopes": [
+      "info"
+    ]
   },
   "ui.customers.hub.h26": {
     "label": "مدیریت فاکتورها",
     "section": "مرکز مشتریان",
     "kind": "heading",
     "position": 60,
-    "path": "customers/hub.html"
+    "path": "customers/hub.html",
+    "scopes": [
+      "invoices"
+    ]
   },
   "ui.customers.hub.a7": {
     "label": "+ صدور فاکتور جدید",
     "section": "مرکز مشتریان",
     "kind": "link",
     "position": 70,
-    "path": "customers/hub.html"
+    "path": "customers/hub.html",
+    "scopes": [
+      "invoices"
+    ]
   },
   "ui.customers.hub.th8": {
     "label": "شماره فاکتور",
     "section": "مرکز مشتریان",
     "kind": "column",
     "position": 10,
-    "path": "customers/hub.html"
+    "path": "customers/hub.html",
+    "scopes": [
+      "invoices"
+    ]
   },
   "ui.customers.hub.th9": {
     "label": "مشتری",
     "section": "مرکز مشتریان",
     "kind": "column",
     "position": 20,
-    "path": "customers/hub.html"
+    "path": "customers/hub.html",
+    "scopes": [
+      "invoices"
+    ]
   },
   "ui.customers.hub.th10": {
     "label": "مبلغ",
     "section": "مرکز مشتریان",
     "kind": "column",
     "position": 30,
-    "path": "customers/hub.html"
+    "path": "customers/hub.html",
+    "scopes": [
+      "invoices"
+    ]
   },
   "ui.customers.hub.th11": {
     "label": "وضعیت",
     "section": "مرکز مشتریان",
     "kind": "column",
     "position": 40,
-    "path": "customers/hub.html"
+    "path": "customers/hub.html",
+    "scopes": [
+      "invoices"
+    ]
   },
   "ui.customers.hub.th12": {
     "label": "عملیات",
     "section": "مرکز مشتریان",
     "kind": "column",
     "position": 50,
-    "path": "customers/hub.html"
+    "path": "customers/hub.html",
+    "scopes": [
+      "invoices"
+    ]
   },
   "ui.customers.hub.button13": {
     "label": "جزئیات فاکتور",
     "section": "مرکز مشتریان",
     "kind": "button",
     "position": 130,
-    "path": "customers/hub.html"
+    "path": "customers/hub.html",
+    "scopes": [
+      "invoices"
+    ]
   },
   "ui.customers.hub.h314": {
     "label": "انتقال مشتری",
@@ -4486,35 +4524,40 @@
     "section": "مرکز مشتریان",
     "kind": "field",
     "position": 10,
-    "path": "customers/hub_table_partial.html"
+    "path": "customers/hub_table_partial.html",
+    "filter_name": "source"
   },
   "ui.customers.hubtablepartial.label2": {
     "label": "وضعیت همه وضعیت‌ها سرنخ بالقوه مصاحبه‌کننده",
     "section": "مرکز مشتریان",
     "kind": "field",
     "position": 20,
-    "path": "customers/hub_table_partial.html"
+    "path": "customers/hub_table_partial.html",
+    "filter_name": "person_status"
   },
   "ui.customers.hubtablepartial.label3": {
     "label": "از تاریخ",
     "section": "مرکز مشتریان",
     "kind": "field",
     "position": 30,
-    "path": "customers/hub_table_partial.html"
+    "path": "customers/hub_table_partial.html",
+    "filter_name": "date_from"
   },
   "ui.customers.hubtablepartial.label4": {
     "label": "تا تاریخ",
     "section": "مرکز مشتریان",
     "kind": "field",
     "position": 40,
-    "path": "customers/hub_table_partial.html"
+    "path": "customers/hub_table_partial.html",
+    "filter_name": "date_to"
   },
   "ui.customers.hubtablepartial.label5": {
     "label": "کارشناس مسئول همه کارشناسان بدون مسئول",
     "section": "مرکز مشتریان",
     "kind": "field",
     "position": 50,
-    "path": "customers/hub_table_partial.html"
+    "path": "customers/hub_table_partial.html",
+    "filter_name": "contact_expert"
   },
   "ui.customers.hubtablepartial.button6": {
     "label": "اعمال فیلتر",

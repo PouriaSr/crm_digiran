@@ -99,7 +99,7 @@ def hiring_context(request, records):
     selected_pk = request.GET.get('r', '')
     selected_record = choices.filter(pk=selected_pk).first() if selected_pk.isascii() and selected_pk.isdigit() and len(selected_pk) < 16 else None
     selected_task = Task.objects.filter(hiring_session__application__reception=selected_record).select_related('assigned_user','assigned_to').order_by('-hiring_session__round_number').first() if selected_record else None
-    page = Paginator(records, PAGE_SIZE).get_page(request.GET.get('hiring_page'))
+    page = paginate(request,records,'hiring_page')
     for rec in page:
         application = getattr(rec, 'hiring', None)
         if application:

@@ -115,6 +115,7 @@ MIDDLEWARE = [
     'crm.feedback.FeedbackContextMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
+    'accounts.structure_middleware.StructureAccessMiddleware',
 
     # ⭐ تبدیل خودکار اعداد به فارسی در کل سیستم
     'crm.middleware.PersianDigitsMiddleware',

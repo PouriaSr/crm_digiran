@@ -18,7 +18,7 @@
 {% endif %}
 
 <form data-crm-form data-crm-page method="post" class="crm-form-page bg-white rounded-xl shadow-sm p-6">
-    {% csrf_token %}
+    {% csrf_token %}{% include 'includes/_structure_form_fields.html' %}
 
     {% include 'includes/_form_errors.html' %}
 <div class="crm-form-intro"><div><strong>حساب و سطح دسترسی</strong><p>ابتدا حساب و نقش را مشخص کنید؛ تنظیمات پیشرفته دسترسی در بخش جداگانه قرار دارند.</p></div><span>فیلدهای * الزامی‌اند</span></div>

@@ -29,6 +29,12 @@ class InterfaceForm(forms.ModelForm):
         if definition and not definition.get('label_mutable',True):
             self.fields['label'].disabled=True
             self.fields['label'].help_text='این عنوان از اطلاعات رکورد گرفته می‌شود و با تنظیمات نمایش جایگزین نمی‌شود.'
+        if definition and definition['kind'] in ('button','link'):
+            self.fields['action_kind']=forms.ChoiceField(label='عملکرد دکمه',choices=[('current','عملکرد اصلی'),('navigate','بازکردن مسیر دیگر'),('workflow','گردش‌کار همین رکورد')],initial=self.instance.behavior.get('action_kind','current'),required=False)
+            self.fields['destination']=forms.CharField(label='مسیر مقصد داخل سیستم',required=False,initial=self.instance.behavior.get('destination',''))
+            self.fields['appearance']=forms.ChoiceField(label='ظاهر دکمه',choices=[('default','ظاهر اصلی'),('primary','اصلی'),('secondary','ساده'),('danger','هشدار')],required=False,initial=self.instance.behavior.get('appearance','default'))
+            self.fields['confirmation']=forms.CharField(label='پیام تأیید قبل از اقدام',max_length=300,required=False,initial=self.instance.behavior.get('confirmation',''))
+            self.fields['tooltip']=forms.CharField(label='راهنمای دکمه',max_length=300,required=False,initial=self.instance.behavior.get('tooltip',''))
         self.fields['label'].required = True
         self.fields['label'].max_length = 180
         for field in self.fields.values():
@@ -37,7 +43,7 @@ class InterfaceForm(forms.ModelForm):
 
     def clean(self):
         data = super().clean()
-        for key in ('url','scope_path'):
+        for key in ('url','scope_path','destination'):
             value = data.get(key, '').strip()
             if value:
                 parsed = urlsplit(value)
@@ -49,6 +55,13 @@ class InterfaceForm(forms.ModelForm):
                     if prefix and value.startswith(prefix+'/'):data[key]=value[len(prefix):]
                 if key=='scope_path' and (parsed.query or parsed.fragment):
                     self.add_error(key, 'مسیر صفحه را بدون پارامتر یا # وارد کنید.')
+        if data.get('action_kind')=='navigate' and not data.get('destination'):self.add_error('destination','مسیر مقصد را وارد کنید.')
         if not self.definition and not data.get('url') and not data.get('body','').strip():
             self.add_error('body', 'متن صفحه یا مسیر مقصد را وارد کنید.')
         return data
+
+    def save(self,commit=True):
+        item=super().save(commit=False)
+        if 'action_kind' in self.fields:item.behavior={key:self.cleaned_data.get(key,'') for key in ('action_kind','destination','appearance','confirmation','tooltip')}
+        if commit:item.save()
+        return item

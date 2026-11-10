@@ -129,3 +129,7 @@ InvoiceItemFormSet = inlineformset_factory(
     extra=3,
     can_delete=True,
 )
+
+
+from accounts.structure_forms_runtime import configure_form as _configure_structure_form
+_configure_structure_form(InvoiceForm,['invoices'])

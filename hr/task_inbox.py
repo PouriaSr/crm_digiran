@@ -112,11 +112,17 @@ def personal_inbox(user, params):
                'status': task.get_status_display(), 'status_key': task.status, 'report_count': pending_counts.get(task.pk,0), 'unread_count': unread_counts.get(task.pk,0)}
         if view == 'work':
             permission = 'customers.hiring_interview' if task.hiring_session_id else action_permissions.get(task.source_type,'hr.report_tasks')
+            can_act=permission in permissions
+            if task.source_type=='structure':
+                from accounts.models import SectionRecord
+                from accounts.structure_service import can_access
+                configured=SectionRecord.objects.select_related('section').filter(pk=task.source_id).first()
+                can_act=bool(configured and can_access(user,configured.section,True))
             row.update(description=(task.description or '')[:600], due_date=task.due_date.isoformat() if task.due_date else None,
                        due_time=task.due_time.strftime('%H:%M') if task.due_time else None, overdue=task.is_overdue,
                        priority=task.get_priority_display(), priority_key=task.priority,
-                       manual=not task.source_type and not task.hiring_session_id, can_act=permission in permissions,
-                       action_url=source_url(task) if permission in permissions else row['url'],
+                       manual=not task.source_type and not task.hiring_session_id, can_act=can_act,
+                       action_url=source_url(task) if can_act else row['url'],
                        report=report_item(first_by_task[task.pk]) if task.pk in first_by_task else None)
         elif view == 'reports':
             row.update(report=report_item(item), when=timezone.localtime(item.created_at).isoformat())

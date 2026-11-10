@@ -149,3 +149,7 @@ class CallForm(forms.ModelForm):
             cleaned_data['is_followed_up'] = False
 
         return cleaned_data
+
+
+from accounts.structure_forms_runtime import configure_form as _configure_structure_form
+_configure_structure_form(CallForm,['calls'])

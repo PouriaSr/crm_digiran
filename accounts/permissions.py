@@ -51,6 +51,8 @@ ROLE_TO_GROUP = {
 # ═══════════════════════════════════════════════════════════
 PERMISSIONS = {
     'system.configure': [ROLE_ADMIN, ROLE_SALES_MANAGER],
+    'system.schema': [ROLE_ADMIN, ROLE_SALES_MANAGER],
+    'system.workflow': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'customers.admission_assign': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'customers.admission_choose': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'customers.candidate_view': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
@@ -122,6 +124,8 @@ PERMISSIONS = {
 
 # ─── متادیتای نمایش دسترسی‌ها ───
 PERMISSION_META = {
+    'system.schema': ('تنظیمات سیستم','ویرایش ساختار داده، فرم و فهرست','تعریف فیلد، قواعد اعتبارسنجی، ستون، فیلتر و ساختار هر بخش؛ فقط سرپرست و ادمین'),
+    'system.workflow': ('تنظیمات سیستم','تعریف فرآیند و وظایف خودکار','مرحله‌ها، انتقال‌ها و مسئول وظایف بخش؛ فقط سرپرست و ادمین'),
     'system.configure': ('تنظیمات سیستم', 'مدیریت اجزای سیستم', 'ویرایش تب‌ها، دکمه‌ها، ستون‌ها و اجزای رابط؛ فقط ادمین و سرپرست'),
     'customers.admission_assign': ('عملیات مرکز مشتریان', 'واگذاری پذیرش به خود', 'واگذاری پیش‌فرض به کاربر واردشده؛ نیازمند نقش سرپرست یا ادمین و مجوز ثبت ورود'),
     'customers.admission_choose': ('عملیات مرکز مشتریان', 'انتخاب مسئول دیگر برای پذیرش', 'نمایش انتخاب مسئول در پنجره واگذاری؛ بدون این مجوز مقصد همیشه خود کاربر است'),
@@ -194,6 +198,8 @@ PERMISSION_META = {
 
 # New operation keys inherit existing per-user overrides until explicitly customized.
 PERMISSION_PARENT = {
+    'system.schema':'system.configure',
+    'system.workflow':'system.configure',
     'customers.admission_assign':'customers.reassign',
     'customers.admission_choose':'customers.admission_assign',
     'customers.hiring_interview': 'customers.hiring',
@@ -277,7 +283,7 @@ def has_role(user, *roles):
     return get_user_role(user) in roles
 
 
-ROLE_RESTRICTED_PERMISSIONS = {key:{ROLE_ADMIN, ROLE_SALES_MANAGER} for key in ('customers.delete','system.configure','customers.admission_assign','customers.admission_choose')}
+ROLE_RESTRICTED_PERMISSIONS = {key:{ROLE_ADMIN, ROLE_SALES_MANAGER} for key in ('customers.delete','system.configure','system.schema','system.workflow','customers.admission_assign','customers.admission_choose')}
 
 
 def role_allows_permission(role, key):

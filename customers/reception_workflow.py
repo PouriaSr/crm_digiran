@@ -130,7 +130,8 @@ def build_workflow_context(request):
             records, filters = filter_workflow_records(request, records, tab)
             context['workflow_filters'] = filters
             context['workflow_filters_active'] = any(request.GET.get(name) for name in filters.fields)
-        return Paginator(search_records(records, query if active == tab else ''), PAGE_SIZE).get_page(request.GET.get(page_key))
+        from crm.pagination import paginate
+        return paginate(request,search_records(records,query if active == tab else ''),page_key)
     context = {'allowed_hub_tabs': tabs, 'registration_unlocked': False, 'workflow_query': query,
                'hub_tab_items': [{'key': tab, 'icon': labels[tab][0], 'label': labels[tab][1], 'position':list(TAB_PERMISSIONS).index(tab)*10} for tab in tabs]}
     visible = editable_records(request.user).filter(customer__is_interviewer=False)
@@ -142,6 +143,10 @@ def build_workflow_context(request):
         records = workflow_records().select_related('hiring', 'hiring__job_ad').order_by('-arrived_at', '-pk')
         from .hiring_forms import ResumeForm
         context['arrival_resume_form'] = getattr(request, '_arrival_resume_form', None) or ResumeForm()
+        if active=='reception':
+            from accounts.structure_service import schema,RecordForm
+            section=schema('reception',request)
+            if section:context['structure_arrival_form']=getattr(request,'_structure_arrival_form',None) or RecordForm(section=section,user=request.user)
         context.update(reception_customers=Customer.objects.order_by('name'),
                        reception_records=paginated(records, 'reception', 'reception_page'), referral_users=referral_users() if active == 'reception' else [], hiring_referral_users=referral_users('interviewer') if active == 'reception' else [],
                        legacy_receptions=paginate(request, Reception.objects.filter(workflow_version=1, customer__is_deleted=False).exclude(customer__is_interviewer=True,person_type='customer')
@@ -230,7 +235,21 @@ def reception_action(request):
             return response
         current = Reception.objects.filter(customer=customer, workflow_version=2,
                                            registration_completed_at__isnull=True).first()
+        from accounts.structure_service import schema,RecordForm,save_record
+        from django.contrib.contenttypes.models import ContentType
+        section=schema('reception',request)
+        extra_form=None
+        if section:
+            stored=section.records.filter(content_type=ContentType.objects.get_for_model(Reception),object_id=current.pk).first() if current else None
+            extra_form=RecordForm(request.POST,section=section,user=request.user,record=stored)
+            if not extra_form.is_valid():
+                from .hub_views import customer_hub
+                request.GET=request.GET.copy();request.GET.update({'tab':'reception','c':str(customer.pk)})
+                request._structure_arrival_form=extra_form
+                response=customer_hub(request);response.status_code=400
+                return response
         if current:
+            if extra_form and extra_form.values():save_record(section,extra_form.values(),request.user,subject=current,trusted=True)
             fresh_arrival = False
             if current.person_type == person == 'interviewer':
                 application, _ = HiringApplication.objects.get_or_create(reception=current, defaults={'current_arrived_at':current.arrived_at or current.created_at})
@@ -251,6 +270,7 @@ def reception_action(request):
         rec = Reception.objects.create(customer=customer, person_type=person, arrived_at=now,
                                        wait_started_at=now if person == 'interviewer' else None,
                                        is_waiting=person == 'interviewer', created_by=request.user)
+        if extra_form and (extra_form.values() or section.stages.filter(initial=True,enabled=True).exists()):save_record(section,extra_form.values(),request.user,subject=rec,trusted=True)
         if person == 'interviewer':
             application = HiringApplication.objects.create(reception=rec, current_arrived_at=now)
             save_resume(application, resume_form, request.user)

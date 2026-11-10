@@ -40,7 +40,15 @@ def visible_tasks(user):
     if not is_card_manager(user):
         records = records.exclude(Q(source_type__in=['case','registration','interview','invitation','followup','customer_followup','call']) & ~Q(source_customer__assigned_to=user) & Q(source_customer__isnull=False))
     records = records.exclude(source_customer__is_deleted=True)
+    if not has_permission(user,'customers.candidate_view'):
+        from accounts.models import SectionRecord
+        private=SectionRecord.objects.filter(section__key='info').values('pk')
+        records=records.exclude(source_type='structure',source_id__in=private,source_customer__is_interviewer=True)
     records = records.exclude(source_customer__is_interviewer=True,source_type__in=['followup','customer_followup','case','registration','call','invoice'])
+    from accounts.models import SectionSchema,SectionRecord
+    from accounts.structure_service import can_access,all_schemas
+    allowed=[section.pk for section in all_schemas().values() if can_access(user,section)]
+    records=records.exclude(Q(source_type='structure') & ~Q(source_id__in=SectionRecord.objects.filter(section_id__in=allowed).values('pk')))
     return records
 
 
@@ -65,6 +73,10 @@ def source_url(task):
     from urllib.parse import urlencode
     if task.hiring_session_id:
         return task.recruitment_url
+    if task.source_type == 'structure':
+        from accounts.models import SectionRecord
+        record=SectionRecord.objects.select_related('section').filter(pk=task.source_id).first()
+        return reverse('accounts:structure_record',args=[record.section.key,record.pk]) if record else reverse('hr:task_detail',args=[task.pk])
     if task.source_type == 'admission':
         return reverse('customers:hub') + '?' + urlencode({'tab':'reception','c':task.source_id})
     if task.source_type == 'reception':

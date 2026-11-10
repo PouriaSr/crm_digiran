@@ -1,11 +1,22 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
-from . import views, twofa_views, interface_views
+from . import views, twofa_views, interface_views, structure_views
 from .auth_views import RateLimitedLoginView
 
 app_name = 'accounts'
 
 urlpatterns = [
+    path('settings/sections/new/', structure_views.section_edit, name='structure_create'),
+    path('settings/sections/<slug:section_key>/apply-existing/', structure_views.apply_existing, name='structure_apply_existing'),
+    path('settings/sections/<slug:section_key>/', structure_views.section_edit, name='structure_section'),
+    path('settings/sections/<slug:section_key>/<str:kind>/new/', structure_views.element_edit, name='structure_element_create'),
+    path('settings/sections/<slug:section_key>/<str:kind>/<int:pk>/', structure_views.element_edit, name='structure_element_edit'),
+    path('settings/sections/<slug:section_key>/<str:kind>/<int:pk>/archive/', structure_views.element_archive, name='structure_element_archive'),
+    path('sections/<slug:section_key>/data/', structure_views.data_list, name='structure_data'),
+    path('sections/<slug:section_key>/new/', structure_views.data_edit, name='structure_record_create'),
+    path('sections/<slug:section_key>/record/<int:pk>/archive/', structure_views.record_archive, name='structure_record_archive'),
+    path('sections/<slug:section_key>/record/<int:pk>/', structure_views.data_edit, name='structure_record'),
+    path('sections/<slug:section_key>/native/<int:native_pk>/', structure_views.data_edit, name='structure_native_record'),
     path('settings/', interface_views.settings, name='interface_settings'),
     path('settings/new/', interface_views.edit, name='interface_create'),
     path('settings/edit/<str:key>/', interface_views.edit, name='interface_edit'),

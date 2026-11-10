@@ -21,20 +21,27 @@ def internal_url(value):
     return prefix+value if prefix and not (value==prefix or value.startswith(prefix+'/')) else value
 
 
+def component_settings(request):
+    from .models import InterfaceComponent
+    if not hasattr(request,'_interface_components'):request._interface_components=list(InterfaceComponent.objects.all())
+    return request._interface_components
+
+
 def interface_context(request):
     if not request.user.is_authenticated:
         return {}
     from .models import InterfaceComponent
-    settings = list(InterfaceComponent.objects.all())
+    settings = component_settings(request)
     overrides = []
     links = []
     for item in settings:
         visible = permitted(request.user, item)
         if item.custom:
-            if visible and (not item.scope_path or request.path_info == item.scope_path):
+            from .structure_registry import scope_for_request
+            if visible and (not item.scope_path or request.path_info == item.scope_path) and (not item.scope_key or item.scope_key==scope_for_request(request)):
                 links.append({'key': item.key, 'label': item.label, 'kind': item.kind,
                               'url': internal_url(item.url) if item.url else reverse('accounts:interface_page', args=[item.pk])})
         elif item.key in catalog():
             overrides.append({'key': item.key, 'label': item.label if catalog()[item.key].get('label_mutable',True) and item.label!=catalog()[item.key]['label'] else '', 'order_changed':item.position!=catalog()[item.key]['position'], 'visible': visible, 'position': item.position,
-                              'kind': item.kind})
+                              'kind': item.kind,'behavior':{**item.behavior,**({'destination':internal_url(item.behavior['destination'])} if item.behavior.get('destination') else {})}})
     return {'interface_overrides': overrides, 'interface_links': links}

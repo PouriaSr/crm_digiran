@@ -15,3 +15,5 @@
  {% include 'includes/_form_field.html' with field=form.address wide=True %}
 </div></section>{% endif %}
 {% if form.notes %}<section class="crm-form-section"><header class="crm-form-section-head"><span>＋</span><div><h2 data-crm-ui="ui.customers.customerfields.h24" data-crm-order="40">یادداشت و نکات تکمیلی</h2><p>نکاتی که برای رسیدگی بعدی به این مشتری مفید است.</p></div></header>{% include 'includes/_form_field.html' with field=form.notes %}</section>{% endif %}
+
+{% include 'includes/_structure_form_fields.html' %}

@@ -25,7 +25,7 @@
             <form data-crm-form method="post" action="{% url 'customers:case_save' %}"
                   x-data="{ cond: '{{ case_form.condition.value|default:''|escapejs }}', owner: '{{ case_form.cheque_owner.value|default:''|escapejs }}' }"
                   class="space-y-5">
-                {% csrf_token %}
+                {% csrf_token %}{% include 'includes/_structure_form_fields.html' with form=case_form %}
                 <input type="hidden" name="reception" value="{{ case_record.pk }}">
                 <input type="hidden" name="work_session" value="">
                 {{ case_form.non_field_errors }}

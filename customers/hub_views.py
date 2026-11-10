@@ -394,6 +394,8 @@ def hub_submit_call(request):
                 return redirect(f"{reverse('customers:hub')}?tab=info&q={data['mobile']}")
             customer = Customer.objects.create(name=data['name'], mobile=data['mobile'], is_interviewer=True,
                                                source='', assigned_to=request.user, created_by=request.user)
+        from accounts.structure_forms_runtime import save_form_extras
+        save_form_extras(form,customer)
         request.feedback_context = {'record': 'customer:'+str(customer.pk)}
         messages.success(request, 'فرد با برچسب مصاحبه‌کننده ثبت شد؛ مرحله بعد ثبت ورود در تب پذیرش است.')
         if has_permission(request.user, 'customers.candidate_view'):
@@ -448,6 +450,8 @@ def hub_submit_call(request):
                 note=data['notes'], created_by=request.user,
             )
 
+    from accounts.structure_forms_runtime import save_form_extras
+    save_form_extras(form,customer)
     messages.info(request, 'برچسب «بالقوه» ثبت شد.' if stage == 'potential' else 'مشتری با برچسب «سرنخ» ثبت شد.')
     if call.send_address:
         # Test mode only until the SMS provider is configured.
@@ -473,15 +477,19 @@ def hub_check_customer(request):
         return JsonResponse({'exists': False})
     customer = Customer.objects.filter(mobile=mobile).first()
     if customer:
+        from accounts.structure_service import schema,form_values_for_subject
+        section=schema('info',request)
+        structure_values=form_values_for_subject(section,customer,request.user) if section and can_edit_card(request.user,customer) else {}
         if customer.is_interviewer:
             allowed = has_permission(request.user,'customers.candidate_view') and (can_edit_card(request.user,customer) or customer.created_by_id == request.user.pk)
             return JsonResponse({'exists':True,'name':customer.name if allowed else 'فرد ثبت‌شده','is_interviewer':True,'type':'مصاحبه‌کننده','status':'استخدام',
-                                 'profile_url':reverse('customers:detail',args=[customer.pk]) if allowed else ''})
+                                 'profile_url':reverse('customers:detail',args=[customer.pk]) if allowed else '', 'structure_values':structure_values if allowed else {}})
         return JsonResponse({
             'exists': True,
             'name': customer.name,
             'type': customer.get_customer_type_display(),
-            'status': customer.get_status_display()
+            'status': customer.get_status_display(),
+            'structure_values':structure_values
         })
     return JsonResponse({'exists': False})
 

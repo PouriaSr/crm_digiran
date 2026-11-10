@@ -145,6 +145,7 @@
                         {{ call_form.notes }}
                     </section>
                     </fieldset>
+                    {% include 'includes/_structure_form_fields.html' with form=call_form %}
                 </div>
                 <div class="crm-call-actions shrink-0 rounded-b-3xl border-t border-slate-200 px-4 sm:px-6 py-4 bg-white flex items-center gap-3">
                     <button type="submit" :disabled="submitting || existingCustomer?.is_interviewer || (candidateOnly && !!existingCustomer)"
@@ -223,7 +224,7 @@ function callModalWidget() {
         openCall(detail) {
             var d = detail || {};
             var form = document.querySelector('#call-modal-root form');
-            if (form) form.reset();
+            if (form){form.reset();form.querySelectorAll('[name^=extra_]').forEach(input=>delete input.dataset.structureTouched);}
             this.candidateOnly = !!d.candidate_only;
             this.isInterviewer = !!d.is_interviewer;
             this.isCallModalOpen = true;
@@ -317,6 +318,8 @@ function callModalWidget() {
                 .then(function (data) {
                     if (seq !== self._openSeq || requestedMobile !== self.mobile) return;
                     self.existingCustomer = data.exists ? data : null;
+                    const form=document.querySelector('#call-modal-root form');
+                    for(const input of data.exists?form.querySelectorAll('[name^=extra_]'):[]){if(input.dataset.structureTouched)continue;const value=data.structure_values?.[input.name]??'';if(input.type==='checkbox')input.checked=!!value;else if(input.tomselect)input.tomselect.setValue(value,true);else input.value=value;}
                     self.checking = false;
                     if (data.exists) {
                         self.isInterviewer = self.candidateOnly || !!data.is_interviewer;
