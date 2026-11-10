@@ -6,7 +6,7 @@
 
 <div class="mb-6 flex items-center gap-3 flex-wrap">
     <a href="{% url 'customers:hub' %}?tab=invoice"
-       class="text-sm px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition flex items-center gap-1.5">
+       class="text-sm px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition flex items-center gap-1.5" data-crm-ui="ui.sales.form.a1" data-crm-order="10">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
         </svg>
@@ -15,7 +15,7 @@
 
     {% if form.customer.value %}
     <a href="{% url 'customers:detail' form.customer.value %}"
-       class="text-sm px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition flex items-center gap-1.5">
+       class="text-sm px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition flex items-center gap-1.5" data-crm-ui="ui.sales.form.a2" data-crm-order="20">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
@@ -26,7 +26,7 @@
 
     {% if invoice %}
     <a href="{% url 'sales:detail' invoice.pk %}"
-       class="text-sm px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition flex items-center gap-1.5">
+       class="text-sm px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition flex items-center gap-1.5" data-crm-ui="ui.sales.form.a3" data-crm-order="30">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -36,7 +36,7 @@
     {% endif %}
 </div>
 
-<h1 class="text-2xl font-bold text-gray-800 mb-6">{{ title }}</h1>
+<h1 class="text-2xl font-bold text-gray-800 mb-6" data-crm-ui="ui.sales.form.h14" data-crm-order="40">{{ title }}</h1>
 
 {# JSON امن کالاها برای autocomplete (۷.۱۰) #}
 {{ products_data|json_script:"products-data" }}
@@ -66,7 +66,7 @@
         <td class="py-3 px-2 text-center">
             <button type="button"
                     class="remove-row text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded transition"
-                    title="حذف این سطر">
+                    title="حذف این سطر" data-crm-ui="ui.sales.form.button5" data-crm-order="50">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -83,31 +83,31 @@
 
     <!-- ═══ سربرگ فاکتور ═══ -->
     <div class="bg-white rounded-xl shadow-sm p-6">
-        <h2 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+        <h2 class="font-bold text-gray-700 mb-4 flex items-center gap-2" data-crm-ui="ui.sales.form.h26" data-crm-order="60">
             <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-sm">📄</span>
             اطلاعات سربرگ
         </h2>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">مشتری <span class="text-red-500">*</span></label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.sales.form.label7" data-crm-order="70">مشتری <span class="text-red-500">*</span></label>
                 {{ form.customer }}
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">وضعیت</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.sales.form.label8" data-crm-order="80">وضعیت</label>
                 {{ form.status }}
             </div>
 
             
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">مهلت پرداخت</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.sales.form.label9" data-crm-order="90">مهلت پرداخت</label>
                 {{ form.due_date }}
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">نوع پرداخت</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.sales.form.label10" data-crm-order="100">نوع پرداخت</label>
                 {{ form.payment_type }}
             </div>
         </div>
@@ -116,12 +116,12 @@
     <!-- ═══ اقلام فاکتور ═══ -->
     <div class="bg-white rounded-xl shadow-sm p-6">
         <div class="flex justify-between items-center mb-4">
-            <h2 class="font-bold text-gray-700 flex items-center gap-2">
+            <h2 class="font-bold text-gray-700 flex items-center gap-2" data-crm-ui="ui.sales.form.h211" data-crm-order="110">
                 <span class="w-7 h-7 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center text-sm">📦</span>
                 اقلام فاکتور
             </h2>
             <button type="button" id="add-row-btn"
-                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-1.5">
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-1.5" data-crm-ui="ui.sales.form.button12" data-crm-order="120">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
@@ -135,11 +135,11 @@
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-gray-600 border-b border-gray-200">
-                        <th class="text-right py-3 px-2 font-medium">کالا</th>
-                        <th class="text-right py-3 px-2 font-medium w-24">تعداد</th>
-                        <th class="text-right py-3 px-2 font-medium w-40">قیمت واحد</th>
-                        <th class="text-right py-3 px-2 font-medium w-40">جمع</th>
-                        <th class="w-12"></th>
+                        <th class="text-right py-3 px-2 font-medium" data-crm-ui="ui.sales.form.th13" data-crm-order="10">کالا</th>
+                        <th class="text-right py-3 px-2 font-medium w-24" data-crm-ui="ui.sales.form.th14" data-crm-order="20">تعداد</th>
+                        <th class="text-right py-3 px-2 font-medium w-40" data-crm-ui="ui.sales.form.th15" data-crm-order="30">قیمت واحد</th>
+                        <th class="text-right py-3 px-2 font-medium w-40" data-crm-ui="ui.sales.form.th16" data-crm-order="40">جمع</th>
+                        <th class="w-12" data-crm-ui="ui.sales.form.th17" data-crm-order="50"></th>
                     </tr>
                 </thead>
                 <tbody id="items-container">
@@ -171,7 +171,7 @@
                             {% endif %}
                             <button type="button"
                                     class="remove-row text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded transition"
-                                    title="حذف این سطر">
+                                    title="حذف این سطر" data-crm-ui="ui.sales.form.button18" data-crm-order="180">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                           d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -191,18 +191,18 @@
 
     <!-- ═══ مبالغ ═══ -->
     <div class="bg-white rounded-xl shadow-sm p-6">
-        <h2 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+        <h2 class="font-bold text-gray-700 mb-4 flex items-center gap-2" data-crm-ui="ui.sales.form.h219" data-crm-order="190">
             <span class="w-7 h-7 bg-green-100 text-green-600 rounded-lg flex items-center justify-center text-sm">💰</span>
             مبالغ و مالیات
         </h2>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">تخفیف (تومان)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.sales.form.label20" data-crm-order="200">تخفیف (تومان)</label>
                 {{ form.discount }}
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">درصد مالیات (%)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.sales.form.label21" data-crm-order="210">درصد مالیات (%)</label>
                 {{ form.tax_percent }}
             </div>
         </div>
@@ -230,16 +230,16 @@
 
     <!-- توضیحات -->
     <div class="bg-white rounded-xl shadow-sm p-6">
-        <label class="block text-sm font-medium text-gray-700 mb-1.5">توضیحات</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.sales.form.label22" data-crm-order="220">توضیحات</label>
         {{ form.notes }}
     </div>
 
     <!-- دکمه‌ها -->
     <div class="crm-form-actions flex gap-3">
-        <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+        <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium" data-crm-ui="ui.sales.form.button23" data-crm-order="230">
             {{ submit_label }}
         </button>
-        <a href="{% url 'customers:hub' %}?tab=invoice" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+        <a href="{% url 'customers:hub' %}?tab=invoice" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium" data-crm-ui="ui.sales.form.a24" data-crm-order="240">
             انصراف
         </a>
     </div>

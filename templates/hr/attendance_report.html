@@ -6,20 +6,20 @@
 
 <div class="page-header">
     <div>
-        <h1 class="text-2xl font-bold text-gray-800">گزارش ماهانه حضور</h1>
+        <h1 class="text-2xl font-bold text-gray-800" data-crm-ui="ui.hr.attendancereport.h11" data-crm-order="10">گزارش ماهانه حضور</h1>
         <p class="text-sm text-gray-500 mt-1" dir="ltr">
             {{ month_start|jdate:"Y/m/d" }} -- {{ month_end|jdate:"Y/m/d" }}
         </p>
     </div>
     <div class="action-buttons flex gap-2">
-        <a href="{% url 'hr:attendance_list' %}" class="text-blue-600 hover:underline text-sm">بازگشت به لیست</a>
+        <a href="{% url 'hr:attendance_list' %}" class="text-blue-600 hover:underline text-sm" data-crm-ui="ui.hr.attendancereport.a2" data-crm-order="20">بازگشت به لیست</a>
     </div>
 </div>
 
 <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
     <form method="get" class="crm-filter-form filters-row">
         <div class="w-full sm:w-auto">
-            <label class="block text-xs text-gray-500 mb-1.5">سال</label>
+            <label class="block text-xs text-gray-500 mb-1.5" data-crm-ui="ui.hr.attendancereport.label3" data-crm-order="30">سال</label>
             <select name="year" data-filter-default="{{ default_year }}" id="year-select"
                     class="w-full sm:w-28 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
                     dir="ltr">
@@ -30,7 +30,7 @@
         </div>
 
         <div class="w-full sm:w-auto">
-            <label class="block text-xs text-gray-500 mb-1.5">ماه</label>
+            <label class="block text-xs text-gray-500 mb-1.5" data-crm-ui="ui.hr.attendancereport.label4" data-crm-order="40">ماه</label>
             <select name="month_num" data-filter-default="{{ default_month }}" id="month-select"
                     class="w-full sm:w-40 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer">
                 {% for num, label in month_choices %}
@@ -40,7 +40,7 @@
         </div>
 
         <div class="w-full sm:w-auto flex flex-col justify-end">
-            <button type="submit" class="w-full sm:w-auto px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+            <button type="submit" class="w-full sm:w-auto px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700" data-crm-ui="ui.hr.attendancereport.button5" data-crm-order="50">
                 نمایش
             </button>
         </div>
@@ -53,21 +53,21 @@
     <table class="responsive-table w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr class="text-gray-600">
-                <th class="text-right px-4 py-3 font-medium">کارمند</th>
-                <th class="text-right px-4 py-3 font-medium">سمت</th>
-                <th class="text-right px-4 py-3 font-medium">روزهای ثبت‌شده</th>
-                <th class="text-right px-4 py-3 font-medium">حاضر</th>
-                <th class="text-right px-4 py-3 font-medium">تاخیر</th>
-                <th class="text-right px-4 py-3 font-medium">غایب</th>
-                <th class="text-right px-4 py-3 font-medium">مرخصی</th>
-                <th class="text-right px-4 py-3 font-medium">جمع ساعت</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.hr.attendancereport.th6" data-crm-order="10">کارمند</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.hr.attendancereport.th7" data-crm-order="20">سمت</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.hr.attendancereport.th8" data-crm-order="30">روزهای ثبت‌شده</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.hr.attendancereport.th9" data-crm-order="40">حاضر</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.hr.attendancereport.th10" data-crm-order="50">تاخیر</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.hr.attendancereport.th11" data-crm-order="60">غایب</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.hr.attendancereport.th12" data-crm-order="70">مرخصی</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.hr.attendancereport.th13" data-crm-order="80">جمع ساعت</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for row in report %}
             <tr class="hover:bg-gray-50">
                 <td class="px-4 py-3 text-right">
-                    <a href="{% url 'hr:employee_detail' row.employee.pk %}" class="font-medium text-gray-800 hover:text-blue-600">
+                    <a href="{% url 'hr:employee_detail' row.employee.pk %}" class="font-medium text-gray-800 hover:text-blue-600" data-crm-ui="ui.hr.attendancereport.a14" data-crm-order="140">
                         {{ row.employee.full_name }}
                     </a>
                 </td>

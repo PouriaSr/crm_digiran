@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 {% block title %}{{ title }}{% endblock %}
 {% block content %}
-<div class="crm-page-heading"><a href="{% url 'customers:hub' %}?tab=info" class="text-blue-600 text-sm">بازگشت به مرکز مشتریان</a><h1 class="text-2xl font-bold text-gray-800 mt-3 mb-5">{{ title }}</h1></div>
+<div class="crm-page-heading"><a href="{% url 'customers:hub' %}?tab=info" class="text-blue-600 text-sm" data-crm-ui="ui.customers.form.a1" data-crm-order="10">بازگشت به مرکز مشتریان</a><h1 class="text-2xl font-bold text-gray-800 mt-3 mb-5" data-crm-ui="ui.customers.form.h12" data-crm-order="20">{{ title }}</h1></div>
 <form data-crm-form data-crm-page @change="if ($event.target.name === 'source') sourceVal = $event.target.value" method="post" class="crm-form-page" x-data="{sourceVal:'{{ form.source.value|default:'website'|escapejs }}'}">
  {% csrf_token %}{% include 'includes/_form_errors.html' %}
  <div class="crm-form-intro"><div><strong>ثبت منظم اطلاعات مشتری</strong><p>فیلدهای ستاره‌دار الزامی‌اند. تغییرات با زدن دکمه «{{ submit_label }}» ذخیره می‌شوند.</p></div></div>
  {% include 'customers/_customer_fields.html' %}
- <footer class="crm-form-actions"><button type="submit">{{ submit_label }}</button><a href="{% url 'customers:hub' %}?tab=info">انصراف</a></footer>
+ <footer class="crm-form-actions"><button type="submit" data-crm-ui="ui.customers.form.button3" data-crm-order="30">{{ submit_label }}</button><a href="{% url 'customers:hub' %}?tab=info" data-crm-ui="ui.customers.form.a4" data-crm-order="40">انصراف</a></footer>
 </form>
 {% endblock %}

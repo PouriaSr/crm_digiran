@@ -32,7 +32,7 @@
   const action=new URL(form.getAttribute('action')||location.href,location.href);
   if(action.origin!==location.origin)return null;
   const same=action.pathname===location.pathname;
-  const url=new URL(same?location.href:action.href);url.hash='';url.searchParams.delete('partial');
+  const url=new URL(same?location.href:action.href);url.hash='';url.searchParams.delete('partial');if(url.searchParams.get('tab')==='info'){for(const key of ['priority','display_mode','sort','date_field','people','search_all','visit'])url.searchParams.delete(key);}
   function merge(other){if(!other)return;for(const key of new Set(Array.from(other.elements).map(el=>el.name).filter(Boolean)))url.searchParams.delete(key);for(const [key,value] of new FormData(other)){if(typeof value==='string')url.searchParams.append(key,normalize(value));}}
   if(cfg.id==='customer-table-container')merge(document.getElementById('hub-filter-form'));
   merge(form);

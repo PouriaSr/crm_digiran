@@ -59,7 +59,7 @@ class WaitingAdmissionTests(TestCase):
         count=(Task.objects.count(),TaskNotice.objects.count(),TaskEvent.objects.count())
         backfill()
         self.assertEqual((Task.objects.count(),TaskNotice.objects.count(),TaskEvent.objects.count()),count)
-        waiting=set(Customer.objects.filter(is_interviewer=True,receptions__isnull=True).values_list('pk',flat=True))
+        waiting=set(Customer.objects.filter(receptions__isnull=True).values_list('pk',flat=True))
         covered=set(Task.objects.filter(source_type='admission',status='pending').values_list('source_customer_id',flat=True))
         self.assertEqual(covered,waiting)
         self.assertFalse(TaskEvent.objects.filter(report_required=True).exists())

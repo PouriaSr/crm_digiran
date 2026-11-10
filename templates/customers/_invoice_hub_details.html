@@ -1,6 +1,6 @@
 {% load fa_numbers %}
 <section class="wf-details wf-expanded" aria-label="جزئیات فاکتور {{ inv.number }}">
-    <header class="wf-expanded-header"><div><p class="wf-eyebrow">خلاصه فاکتور</p><h3>{{ inv.customer.name }}</h3><span class="wf-contact-line"><bdi dir="ltr">{{ inv.number }}</bdi></span></div><a class="wf-action" href="{% url 'sales:detail' inv.pk %}">مشاهده فاکتور کامل</a></header>
+    <header class="wf-expanded-header"><div><p class="wf-eyebrow">خلاصه فاکتور</p><h3 data-crm-ui="ui.customers.invoicehubdetails.h31" data-crm-order="10">{{ inv.customer.name }}</h3><span class="wf-contact-line"><bdi dir="ltr">{{ inv.number }}</bdi></span></div><a class="wf-action" href="{% url 'sales:detail' inv.pk %}" data-crm-ui="ui.customers.invoicehubdetails.a2" data-crm-order="20">مشاهده فاکتور کامل</a></header>
     <div class="wf-next-step"><strong>وضعیت پرداخت: {{ inv.get_status_display }}</strong><p>مبلغ نهایی: {{ inv.total|floatformat:0|fa_num }} تومان{% if inv.due_date %} · مهلت پرداخت: <bdi dir="ltr">{{ inv.due_date|jdate:'Y/m/d' }}</bdi>{% endif %}</p></div>
     <div class="wf-info-grid">
         <section class="wf-info-section"><header class="wf-section-heading"><h4>اطلاعات صدور</h4><span class="wf-badge {% if inv.status == 'paid' %}wf-badge-done{% else %}wf-badge-neutral{% endif %}">{{ inv.get_status_display }}</span></header>

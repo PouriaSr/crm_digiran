@@ -5,17 +5,17 @@
 {% block content %}
 
 <div class="mb-6">
-    <a href="{% url 'hr:employee_list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست</a>
+    <a href="{% url 'hr:employee_list' %}" class="text-blue-600 hover:underline text-sm" data-crm-ui="ui.hr.employeeform.a1" data-crm-order="10">← بازگشت به لیست</a>
 </div>
 
-<h1 class="text-2xl font-bold text-gray-800 mb-6">{{ title }}</h1>
+<h1 class="text-2xl font-bold text-gray-800 mb-6" data-crm-ui="ui.hr.employeeform.h12" data-crm-order="20">{{ title }}</h1>
 
 <form data-crm-form data-crm-page method="post" class="crm-form-page bg-white rounded-xl shadow-sm p-6">
     {% csrf_token %}
 
     {% include 'includes/_form_errors.html' %}
 
-    <section class="crm-form-section"><header class="crm-form-section-head"><span>1</span><div><h2>هویت و ارتباط</h2><p>نام و اطلاعات تماس همکار.</p></div></header><div class="crm-form-grid">
+    <section class="crm-form-section"><header class="crm-form-section-head"><span>1</span><div><h2 data-crm-ui="ui.hr.employeeform.h23" data-crm-order="30">هویت و ارتباط</h2><p>نام و اطلاعات تماس همکار.</p></div></header><div class="crm-form-grid">
 {% include 'includes/_form_field.html' with field=form.first_name %}
 {% include 'includes/_form_field.html' with field=form.last_name %}
 {% include 'includes/_form_field.html' with field=form.national_id %}
@@ -23,20 +23,20 @@
 {% include 'includes/_form_field.html' with field=form.email %}
 {% include 'includes/_form_field.html' with field=form.birth_date %}
 </div></section>
-<section class="crm-form-section"><header class="crm-form-section-head"><span>2</span><div><h2>اطلاعات همکاری</h2><p>حساب مرتبط، سمت و شرایط همکاری.</p></div></header><div class="crm-form-grid">
+<section class="crm-form-section"><header class="crm-form-section-head"><span>2</span><div><h2 data-crm-ui="ui.hr.employeeform.h24" data-crm-order="40">اطلاعات همکاری</h2><p>حساب مرتبط، سمت و شرایط همکاری.</p></div></header><div class="crm-form-grid">
 {% include 'includes/_form_field.html' with field=form.user %}
 {% include 'includes/_form_field.html' with field=form.position %}
 {% include 'includes/_form_field.html' with field=form.contract_type %}
 {% include 'includes/_form_field.html' with field=form.salary %}
 {% include 'includes/_form_field.html' with field=form.is_active %}
 </div></section>
-<section class="crm-form-section"><header class="crm-form-section-head"><span>3</span><div><h2>نشانی و یادداشت</h2><p>اطلاعات تکمیلی پرونده همکار.</p></div></header><div class="crm-form-grid">
+<section class="crm-form-section"><header class="crm-form-section-head"><span>3</span><div><h2 data-crm-ui="ui.hr.employeeform.h25" data-crm-order="50">نشانی و یادداشت</h2><p>اطلاعات تکمیلی پرونده همکار.</p></div></header><div class="crm-form-grid">
 {% include 'includes/_form_field.html' with field=form.address wide=True %}
 {% include 'includes/_form_field.html' with field=form.notes wide=True %}
 </div></section>
 <div class="crm-form-actions flex gap-3 mt-8 pt-6 border-t border-gray-100">
-        <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">{{ submit_label }}</button>
-        <a href="{% url 'hr:employee_list' %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">انصراف</a>
+        <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium" data-crm-ui="ui.hr.employeeform.button6" data-crm-order="60">{{ submit_label }}</button>
+        <a href="{% url 'hr:employee_list' %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium" data-crm-ui="ui.hr.employeeform.a7" data-crm-order="70">انصراف</a>
     </div>
 </form>
 

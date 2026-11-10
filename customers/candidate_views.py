@@ -129,7 +129,7 @@ def profile(request, person):
 
 
 @login_required
-@require_permission('customers.reassign')
+@require_permission('customers.admission_assign')
 @require_POST
 @transaction.atomic
 def admission_assign(request, pk):
@@ -148,7 +148,9 @@ def admission_assign(request, pk):
     def reject(message):
         messages.error(request,message,extra_tags=json.dumps({'field':'admission-assignee'}))
         return redirect(back)
-    identifier=request.POST.get('assigned_to','')
+    identifier=request.POST.get('assigned_to','') or str(request.user.pk)
+    if not has_permission(request.user,'customers.admission_choose') and identifier != str(request.user.pk):
+        raise PermissionDenied('مجوز انتخاب مسئول دیگر برای پذیرش را ندارید.')
     target=User.objects.filter(pk=identifier,is_active=True).first() if identifier.isascii() and identifier.isdigit() and len(identifier)<16 else None
     if not can_receive(target):
         return reject('کاربر مقصد باید دسترسی مشاهده وظایف، پذیرش و ثبت ورود داشته باشد.')

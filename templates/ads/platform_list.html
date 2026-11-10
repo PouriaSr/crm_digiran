@@ -4,45 +4,45 @@
 <div class="p-4 md:p-6 max-w-5xl mx-auto" dir="rtl">
 
   <div class="mb-6">
-    <a href="{% url 'ads:list' %}" class="text-sm text-blue-600 hover:underline">← بازگشت به تبلیغات</a>
-    <h1 class="text-2xl font-bold text-gray-800 mt-2">🏷️ مدیریت عنوان‌ها</h1>
+    <a href="{% url 'ads:list' %}" class="text-sm text-blue-600 hover:underline" data-crm-ui="ui.ads.platformlist.a1" data-crm-order="10">← بازگشت به تبلیغات</a>
+    <h1 class="text-2xl font-bold text-gray-800 mt-2" data-crm-ui="ui.ads.platformlist.h12" data-crm-order="20">🏷️ مدیریت عنوان‌ها</h1>
     <p class="text-sm text-gray-500 mt-1">پلتفرم‌های تبلیغاتی مثل دیوار، باسلام، شیپور و ...</p>
   </div>
 
   <form data-crm-form method="post" class="bg-white rounded-xl shadow-sm p-5 mb-6">
     {% csrf_token %}{% include 'includes/_form_errors.html' %}
-    <h2 class="font-bold text-gray-700 mb-4">{% if editing_platform %}ویرایش عنوان{% else %}افزودن عنوان{% endif %}</h2>
+    <h2 class="font-bold text-gray-700 mb-4" data-crm-ui="ui.ads.platformlist.h23" data-crm-order="30">{% if editing_platform %}ویرایش عنوان{% else %}افزودن عنوان{% endif %}</h2>
     {% if form.non_field_errors %}<div class="text-red-600 text-sm mb-3">{{ form.non_field_errors }}</div>{% endif %}
     <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
       <div class="md:col-span-2">
-        <label class="block text-sm font-medium text-gray-700 mb-1">نام عنوان <span class="text-red-500">*</span></label>
+        <label class="block text-sm font-medium text-gray-700 mb-1" data-crm-ui="ui.ads.platformlist.label4" data-crm-order="40">نام عنوان <span class="text-red-500">*</span></label>
         {{ form.name }}
         {% if form.name.errors %}<p class="text-red-500 text-xs mt-1">{{ form.name.errors.0 }}</p>{% endif %}
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">شماره شروع آگهی</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1" data-crm-ui="ui.ads.platformlist.label5" data-crm-order="50">شماره شروع آگهی</label>
         {{ form.ad_number_start }}
         {% if form.ad_number_start.errors %}<p class="text-red-500 text-xs mt-1">{{ form.ad_number_start.errors.0 }}</p>{% endif %}
       </div>
       <div class="flex items-center gap-3">
-        <div class="flex items-center gap-2">{{ form.is_active }}<label class="text-sm text-gray-700">فعال</label></div>
-        <button type="submit" class="ml-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">{% if editing_platform %}ذخیره تغییرات{% else %}افزودن{% endif %}</button>
+        <div class="flex items-center gap-2">{{ form.is_active }}<label class="text-sm text-gray-700" data-crm-ui="ui.ads.platformlist.label6" data-crm-order="60">فعال</label></div>
+        <button type="submit" class="ml-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium" data-crm-ui="ui.ads.platformlist.button7" data-crm-order="70">{% if editing_platform %}ذخیره تغییرات{% else %}افزودن{% endif %}</button>
       </div>
     </div>
   </form>
-  {% if editing_platform %}<a class="inline-block text-sm text-blue-600 mb-4" href="{% url 'ads:platform_list' %}">انصراف از ویرایش</a>{% endif %}
+  {% if editing_platform %}<a class="inline-block text-sm text-blue-600 mb-4" href="{% url 'ads:platform_list' %}" data-crm-ui="ui.ads.platformlist.a8" data-crm-order="80">انصراف از ویرایش</a>{% endif %}
 
   <div tabindex="0" aria-label="فهرست؛ برای مشاهده ستون‌های بیشتر پیمایش کنید" class="crm-list-scroll bg-white rounded-xl shadow-sm overflow-hidden">
     <table class="crm-data-table responsive-table w-full text-sm">
       <thead class="bg-gray-50 text-gray-600 border-b border-gray-100">
         <tr>
-          <th class="px-4 py-3 text-center font-medium">#</th>
-          <th class="px-4 py-3 text-center font-medium">نام</th>
-          <th class="px-4 py-3 text-center font-medium">شماره شروع</th>
-          <th class="px-4 py-3 text-center font-medium">فعال</th>
-          <th class="px-4 py-3 text-center font-medium">تعداد فرآیند</th>
-          <th class="px-4 py-3 text-center font-medium">تعداد تبلیغ</th>
-          <th class="px-4 py-3 text-center font-medium">عملیات</th>
+          <th class="px-4 py-3 text-center font-medium" data-crm-ui="ui.ads.platformlist.th9" data-crm-order="10">#</th>
+          <th class="px-4 py-3 text-center font-medium" data-crm-ui="ui.ads.platformlist.th10" data-crm-order="20">نام</th>
+          <th class="px-4 py-3 text-center font-medium" data-crm-ui="ui.ads.platformlist.th11" data-crm-order="30">شماره شروع</th>
+          <th class="px-4 py-3 text-center font-medium" data-crm-ui="ui.ads.platformlist.th12" data-crm-order="40">فعال</th>
+          <th class="px-4 py-3 text-center font-medium" data-crm-ui="ui.ads.platformlist.th13" data-crm-order="50">تعداد فرآیند</th>
+          <th class="px-4 py-3 text-center font-medium" data-crm-ui="ui.ads.platformlist.th14" data-crm-order="60">تعداد تبلیغ</th>
+          <th class="px-4 py-3 text-center font-medium" data-crm-ui="ui.ads.platformlist.th15" data-crm-order="70">عملیات</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100">
@@ -55,10 +55,10 @@
           <td class="px-4 py-3 text-center text-gray-600">{{ item.processes.count }}</td>
           <td class="px-4 py-3 text-center text-gray-600">{{ item.ads.count }}</td>
           <td class="px-4 py-3 text-center">
-            <a class="text-blue-600 hover:text-blue-800 text-xs font-medium ml-3" href="{% url 'ads:platform_edit' item.pk %}">ویرایش</a>
+            <a class="text-blue-600 hover:text-blue-800 text-xs font-medium ml-3" href="{% url 'ads:platform_edit' item.pk %}" data-crm-ui="ui.ads.platformlist.a16" data-crm-order="160">ویرایش</a>
             <form data-crm-form method="post" action="{% url 'ads:platform_delete' item.pk %}" class="inline" onsubmit="return confirm('حذف شود؟');">
               {% csrf_token %}
-              <button type="submit" class="text-red-600 hover:text-red-800 text-xs font-medium">حذف</button>
+              <button type="submit" class="text-red-600 hover:text-red-800 text-xs font-medium" data-crm-ui="ui.ads.platformlist.button17" data-crm-order="170">حذف</button>
             </form>
           </td>
         </tr>

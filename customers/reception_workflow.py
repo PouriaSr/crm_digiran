@@ -132,7 +132,7 @@ def build_workflow_context(request):
             context['workflow_filters_active'] = any(request.GET.get(name) for name in filters.fields)
         return Paginator(search_records(records, query if active == tab else ''), PAGE_SIZE).get_page(request.GET.get(page_key))
     context = {'allowed_hub_tabs': tabs, 'registration_unlocked': False, 'workflow_query': query,
-               'hub_tab_items': [{'key': tab, 'icon': labels[tab][0], 'label': labels[tab][1]} for tab in tabs]}
+               'hub_tab_items': [{'key': tab, 'icon': labels[tab][0], 'label': labels[tab][1], 'position':list(TAB_PERMISSIONS).index(tab)*10} for tab in tabs]}
     visible = editable_records(request.user).filter(customer__is_interviewer=False)
     if 'registration' in tabs:
         ready = visible.filter(person_type='customer', case_completed_at__isnull=False).order_by('-case_completed_at', '-pk')

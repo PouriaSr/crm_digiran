@@ -1,9 +1,10 @@
 <nav class="crm-mobile-navigation-links" aria-label="دسترسی مستقیم به بخش‌ها">
-{% if 'customers.candidate_view' in user_permissions and 'customers.info' not in user_permissions %}<a href="{% url 'customers:candidate_list' %}">مصاحبه‌کنندگان</a>{% endif %}
-{% if 'calls.view' in user_permissions %}<a href="{% url 'calls:list' %}">تماس‌ها</a>{% endif %}
-{% if 'invoices.view' in user_permissions %}<a href="{% url 'sales:list' %}">فاکتورها</a>{% endif %}
-{% if 'hr.view_employees' in user_permissions %}<a href="{% url 'hr:employee_list' %}">پرسنل</a>{% endif %}
-{% if 'hr.view_tasks' in user_permissions %}<a href="{% url 'hr:task_list' %}">صفحه وظایف</a>{% endif %}
-{% if 'hr.review_leaves' in user_permissions %}<a href="{% url 'hr:leave_list' %}">مرخصی‌ها</a>{% endif %}
-{% if 'hr.attendance' in user_permissions %}<a href="{% url 'hr:attendance_list' %}">حضور و غیاب</a><a href="{% url 'hr:attendance_report' %}">گزارش ماهانه</a>{% endif %}
+{% if 'customers.candidate_view' in user_permissions and 'customers.info' not in user_permissions %}<a href="{% url 'customers:candidate_list' %}" data-crm-ui="ui.includes.mobilenavigationlinks.a1" data-crm-order="10">مصاحبه‌کنندگان</a>{% endif %}
+{% if 'calls.view' in user_permissions %}<a href="{% url 'calls:list' %}" data-crm-ui="ui.includes.mobilenavigationlinks.a2" data-crm-order="20">تماس‌ها</a>{% endif %}
+{% if 'invoices.view' in user_permissions %}<a href="{% url 'sales:list' %}" data-crm-ui="ui.includes.mobilenavigationlinks.a3" data-crm-order="30">فاکتورها</a>{% endif %}
+{% if 'hr.view_employees' in user_permissions %}<a href="{% url 'hr:employee_list' %}" data-crm-ui="ui.includes.mobilenavigationlinks.a4" data-crm-order="40">پرسنل</a>{% endif %}
+{% if 'hr.view_tasks' in user_permissions %}<a href="{% url 'hr:task_list' %}" data-crm-ui="ui.includes.mobilenavigationlinks.a5" data-crm-order="50">صفحه وظایف</a>{% endif %}
+{% if 'hr.review_leaves' in user_permissions %}<a href="{% url 'hr:leave_list' %}" data-crm-ui="ui.includes.mobilenavigationlinks.a6" data-crm-order="60">مرخصی‌ها</a>{% endif %}
+{% if 'hr.attendance' in user_permissions %}<a href="{% url 'hr:attendance_list' %}" data-crm-ui="ui.includes.mobilenavigationlinks.a7" data-crm-order="70">حضور و غیاب</a><a href="{% url 'hr:attendance_report' %}" data-crm-ui="ui.includes.mobilenavigationlinks.a8" data-crm-order="80">گزارش ماهانه</a>{% endif %}
+{% if 'system.configure' in user_permissions %}<a href="{% url 'accounts:interface_settings' %}">تنظیمات سیستم</a>{% endif %}
 </nav>

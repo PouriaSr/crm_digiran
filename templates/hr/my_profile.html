@@ -3,7 +3,7 @@
 {% block title %}پروفایل من{% endblock %}
 
 {% block mobile_leading %}
-<a href="{% url 'dashboard:home' %}" class="app-topbar-btn" aria-label="بازگشت">
+<a href="{% url 'dashboard:home' %}" class="app-topbar-btn" aria-label="بازگشت" data-crm-ui="ui.hr.myprofile.a1" data-crm-order="10">
     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>
@@ -17,7 +17,7 @@
 {% load fa_numbers %}
 
 <div class="mb-6">
-    <h1 class="text-2xl font-bold text-gray-800">پروفایل من</h1>
+    <h1 class="text-2xl font-bold text-gray-800" data-crm-ui="ui.hr.myprofile.h12" data-crm-order="20">پروفایل من</h1>
     <p class="text-sm text-gray-500 mt-1">اطلاعات شخصی و فعالیت‌های شما در سیستم</p>
 </div>
 
@@ -30,11 +30,11 @@
         <div class="flex-1">
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-800">{{ employee.full_name }}</h2>
+                    <h2 class="text-2xl font-bold text-gray-800" data-crm-ui="ui.hr.myprofile.h23" data-crm-order="30">{{ employee.full_name }}</h2>
                     <p class="text-gray-500 text-sm mt-1">{{ employee.get_position_display }}</p>
                 </div>
                 <a href="{% url 'hr:edit_my_profile' %}" 
-                   class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium flex items-center gap-1.5 shadow-sm">
+                   class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium flex items-center gap-1.5 shadow-sm" data-crm-ui="ui.hr.myprofile.a4" data-crm-order="40">
                     <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                     </svg>
@@ -106,18 +106,18 @@
 <!-- ═══ وظایف باز ═══ -->
 <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
     <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-        <h2 class="font-bold text-gray-700 flex items-center gap-2">
+        <h2 class="font-bold text-gray-700 flex items-center gap-2" data-crm-ui="ui.hr.myprofile.h25" data-crm-order="50">
             <span class="w-7 h-7 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center text-sm">✅</span>
             وظایف باز من
             <span class="text-xs text-gray-400 font-normal">({{ open_tasks.paginator.count }})</span>
         </h2>
-        <a href="{% url 'hr:task_list' %}" class="text-xs text-blue-600 hover:underline">مشاهده همه</a>
+        <a href="{% url 'hr:task_list' %}" class="text-xs text-blue-600 hover:underline" data-crm-ui="ui.hr.myprofile.a6" data-crm-order="60">مشاهده همه</a>
     </div>
 
     {% if open_tasks %}
     <div class="divide-y divide-gray-100">
         {% for task in open_tasks %}
-        <a href="{% url 'hr:task_detail' task.pk %}" class="block px-6 py-3 hover:bg-gray-50 transition">
+        <a href="{% url 'hr:task_detail' task.pk %}" class="block px-6 py-3 hover:bg-gray-50 transition" data-crm-ui="ui.hr.myprofile.a7" data-crm-order="70">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="font-medium text-gray-800">{{ task.title }}</div>
@@ -158,7 +158,7 @@
 <!-- ═══ اطلاعات شخصی ═══ -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
     <div class="bg-white rounded-xl shadow-sm p-6">
-        <h2 class="font-bold text-gray-700 mb-4">اطلاعات شخصی</h2>
+        <h2 class="font-bold text-gray-700 mb-4" data-crm-ui="ui.hr.myprofile.h28" data-crm-order="80">اطلاعات شخصی</h2>
         <dl class="space-y-3 text-sm">
             <div class="flex justify-between">
                 <dt class="text-gray-500">کد ملی:</dt>
@@ -180,7 +180,7 @@
     </div>
 
     <div class="bg-white rounded-xl shadow-sm p-6">
-        <h2 class="font-bold text-gray-700 mb-4">اطلاعات شغلی</h2>
+        <h2 class="font-bold text-gray-700 mb-4" data-crm-ui="ui.hr.myprofile.h29" data-crm-order="90">اطلاعات شغلی</h2>
         <dl class="space-y-3 text-sm">
             <div class="flex justify-between">
                 <dt class="text-gray-500">سمت:</dt>
@@ -204,7 +204,7 @@
 
 <!-- ═══ امنیت — 2FA و تغییر رمز ═══ -->
 <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
-    <h2 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+    <h2 class="font-bold text-gray-700 mb-4 flex items-center gap-2" data-crm-ui="ui.hr.myprofile.h210" data-crm-order="100">
         <span class="w-7 h-7 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm">🔐</span>
         امنیت حساب
     </h2>
@@ -233,16 +233,16 @@
         <div class="flex-shrink-0 flex flex-col gap-2">
             {% if has_2fa %}
                 <a href="{% url 'accounts:twofa_disable' %}"
-                   class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium whitespace-nowrap">
+                   class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium whitespace-nowrap" data-crm-ui="ui.hr.myprofile.a11" data-crm-order="110">
                     غیرفعال‌سازی
                 </a>
                 <a href="{% url 'accounts:twofa_regenerate_recovery' %}"
-                   class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm whitespace-nowrap text-center">
+                   class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm whitespace-nowrap text-center" data-crm-ui="ui.hr.myprofile.a12" data-crm-order="120">
                     کد بازیابی جدید
                 </a>
             {% else %}
                 <a href="{% url 'accounts:twofa_setup' %}"
-                   class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium whitespace-nowrap">
+                   class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium whitespace-nowrap" data-crm-ui="ui.hr.myprofile.a13" data-crm-order="130">
                     فعال‌سازی 2FA
                 </a>
             {% endif %}
@@ -260,7 +260,7 @@
             </div>
         </div>
         <a href="{% url 'accounts:password_change' %}"
-           class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium whitespace-nowrap">
+           class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium whitespace-nowrap" data-crm-ui="ui.hr.myprofile.a14" data-crm-order="140">
             تغییر رمز
         </a>
     </div>

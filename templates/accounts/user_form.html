@@ -5,10 +5,10 @@
 {% block content %}
 
 <div class="mb-6">
-    <a href="{% url 'accounts:user_list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست کاربران</a>
+    <a href="{% url 'accounts:user_list' %}" class="text-blue-600 hover:underline text-sm" data-crm-ui="ui.accounts.userform.a1" data-crm-order="10">← بازگشت به لیست کاربران</a>
 </div>
 
-<h1 class="text-2xl font-bold text-gray-800 mb-6">{{ title }}</h1>
+<h1 class="text-2xl font-bold text-gray-800 mb-6" data-crm-ui="ui.accounts.userform.h12" data-crm-order="20">{{ title }}</h1>
 
 {% if is_self %}
 <div class="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl mb-6 text-sm">
@@ -25,7 +25,7 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.accounts.userform.label3" data-crm-order="30">
                 نام کاربری <span class="text-red-500">*</span>
             </label>
             {{ form.username }}
@@ -33,23 +33,23 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">نام</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.accounts.userform.label4" data-crm-order="40">نام</label>
             {{ form.first_name }}
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">نام خانوادگی</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.accounts.userform.label5" data-crm-order="50">نام خانوادگی</label>
             {{ form.last_name }}
         </div>
 
         <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">ایمیل</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.accounts.userform.label6" data-crm-order="60">ایمیل</label>
             {{ form.email }}
         </div>
 
         {% if is_create %}
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.accounts.userform.label7" data-crm-order="70">
                 رمز عبور <span class="text-red-500">*</span>
             </label>
             {{ form.password1 }}
@@ -57,7 +57,7 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.accounts.userform.label8" data-crm-order="80">
                 تکرار رمز عبور <span class="text-red-500">*</span>
             </label>
             {{ form.password2 }}
@@ -65,7 +65,7 @@
         {% endif %}
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.accounts.userform.label9" data-crm-order="90">
                 نقش در سیستم <span class="text-red-500">*</span>
             </label>
             {{ form.role }}
@@ -79,14 +79,14 @@
         </div>
 
         <div>
-            <label for="id_role_title" class="block text-sm font-medium text-gray-700 mb-1.5">عنوان دلخواه نقش</label>
+            <label for="id_role_title" class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.accounts.userform.label10" data-crm-order="100">عنوان دلخواه نقش</label>
             {{ form.role_title }}
             <p class="text-xs text-gray-400 mt-1">{{ form.role_title.help_text }}</p>
         </div>
 
         <div class="flex items-end pb-3">
             <label class="flex items-center gap-2 text-sm cursor-pointer
-                          {% if is_self %}opacity-50{% endif %}">
+                          {% if is_self %}opacity-50{% endif %}" data-crm-ui="ui.accounts.userform.label11" data-crm-order="110">
                 {{ form.is_active }}
                 <span>حساب کاربری فعال باشد</span>
             </label>
@@ -99,7 +99,7 @@
     {% if not form.instance.is_superuser %}
     <div class="mt-8 border-t border-gray-100 pt-6">
         <div class="mb-4">
-            <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
+            <h3 class="text-base font-bold text-gray-800 flex items-center gap-2" data-crm-ui="ui.accounts.userform.h312" data-crm-order="120">
                 🔐 سطوح دسترسی پیشرفته
             </h3>
             <p class="text-xs text-gray-500 mt-1 leading-relaxed">
@@ -121,7 +121,7 @@
                        class="w-full pr-9 pl-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             <button type="button" id="reset-all-btn"
-                    class="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-xs hover:bg-gray-100 font-medium whitespace-nowrap">
+                    class="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-xs hover:bg-gray-100 font-medium whitespace-nowrap" data-crm-ui="ui.accounts.userform.button13" data-crm-order="130">
                 &#8634; بازنشانی همه
             </button>
             <span class="text-xs text-gray-400 w-full sm:w-auto">
@@ -139,10 +139,10 @@
                 <table class="w-full text-sm perm-table">
     <thead class="text-xs text-gray-500 bg-white border-b border-gray-100">
         <tr>
-            <th class="px-4 py-2 text-right font-medium">دسترسی</th>
-            <th class="px-4 py-2 text-center font-medium w-20">نقش</th>
-            <th class="px-4 py-2 text-center font-medium w-44">بازنویسی</th>
-            <th class="px-4 py-2 text-center font-medium w-24">موثر</th>
+            <th class="px-4 py-2 text-right font-medium" data-crm-ui="ui.accounts.userform.th14" data-crm-order="10">دسترسی</th>
+            <th class="px-4 py-2 text-center font-medium w-20" data-crm-ui="ui.accounts.userform.th15" data-crm-order="20">نقش</th>
+            <th class="px-4 py-2 text-center font-medium w-44" data-crm-ui="ui.accounts.userform.th16" data-crm-order="30">بازنویسی</th>
+            <th class="px-4 py-2 text-center font-medium w-24" data-crm-ui="ui.accounts.userform.th17" data-crm-order="40">موثر</th>
         </tr>
     </thead>
     <tbody class="divide-y divide-gray-100">
@@ -150,7 +150,7 @@
         <tr class="hover:bg-gray-50/50" data-perm-key="{{ item.key }}">
             <td class="px-4 py-2">
                 <div class="text-gray-700">{{ item.label }}</div>
-                {% if item.description %}<button type="button" class="crm-filter-help" data-filter-help="{{ item.description }}" aria-label="راهنمای {{ item.label }}" aria-expanded="false">i</button>{% endif %}
+                {% if item.description %}<button type="button" class="crm-filter-help" data-filter-help="{{ item.description }}" aria-label="راهنمای {{ item.label }}" aria-expanded="false" data-crm-ui="ui.accounts.userform.button18" data-crm-order="180">i</button>{% endif %}
             </td>
             <td class="px-4 py-2 text-center" data-role-status-cell>
                 {% if item.role_status %}<span class="text-xs text-green-600 font-bold">✓</span>{% else %}<span class="text-xs text-gray-300">✗</span>{% endif %}
@@ -182,11 +182,11 @@
     <!-- دکمه‌ها -->
     <div class="crm-form-actions flex gap-3 mt-8 pt-6 border-t border-gray-100">
         <button type="submit"
-                class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+                class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium" data-crm-ui="ui.accounts.userform.button19" data-crm-order="190">
             {{ submit_label }}
         </button>
         <a href="{% url 'accounts:user_list' %}"
-           class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+           class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium" data-crm-ui="ui.accounts.userform.a20" data-crm-order="200">
             انصراف
         </a>
     </div>
@@ -194,7 +194,7 @@
 
 <!-- راهنمای نقش‌ها -->
 <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
-    <h2 class="font-bold text-gray-700 mb-4 text-sm">📋 راهنمای نقش‌ها</h2>
+    <h2 class="font-bold text-gray-700 mb-4 text-sm" data-crm-ui="ui.accounts.userform.h221" data-crm-order="210">📋 راهنمای نقش‌ها</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
         <div class="flex items-start gap-2 p-3 bg-emerald-50 rounded-lg"><span class="text-emerald-700 font-bold">منشی</span><span class="text-gray-600">تب اطلاعات و پذیرش؛ ثبت ورود و ارجاع مراجعه‌کننده</span></div>
         <div class="flex items-start gap-2 p-3 bg-purple-50 rounded-lg">

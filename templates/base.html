@@ -881,6 +881,7 @@ window.apexMobileMerge = function (options) {
     {% include 'includes/_pagination_ui.html' %}
     {% include 'includes/_filter_ui.html' %}
 {% include 'includes/_mobile_ui.html' %}
+{% include 'includes/_interface_ui.html' %}
     {% include 'includes/_feedback_ui.html' %}
     {% include 'includes/_chart_ui.html' %}
     {% block extra_head %}{% endblock %}
@@ -913,7 +914,7 @@ window.apexMobileMerge = function (options) {
         <nav class="p-3 space-y-1">
             {% if 'dashboard.view' in user_permissions %}
             <a href="{% url 'dashboard:home' %}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'dashboard' and request.resolver_match.url_name == 'home' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition">
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'dashboard' and request.resolver_match.url_name == 'home' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition" data-crm-ui="ui.base.a1" data-crm-order="10">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
                 <span>داشبورد</span>
             </a>
@@ -921,7 +922,7 @@ window.apexMobileMerge = function (options) {
 
             {% if 'dashboard.bi' in user_permissions %}
             <a href="{% url 'dashboard:bi' %}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.url_name == 'bi' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition">
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.url_name == 'bi' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition" data-crm-ui="ui.base.a2" data-crm-order="20">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                 <span>گزارش‌های BI</span>
             </a>
@@ -929,7 +930,7 @@ window.apexMobileMerge = function (options) {
 
             {% if can_open_customer_hub %}
             <a href="{% url 'customers:hub' %}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'customers' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition">
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'customers' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition" data-crm-ui="ui.base.a3" data-crm-order="30">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                 <span>مرکز مشتریان</span>
             </a>
@@ -939,15 +940,15 @@ window.apexMobileMerge = function (options) {
 
             
 
-            {% if 'customers.candidate_view' in user_permissions and 'customers.info' not in user_permissions %}<a href="{% url 'customers:candidate_list' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10">مصاحبه‌کنندگان</a>{% endif %}
+            {% if 'customers.candidate_view' in user_permissions and 'customers.info' not in user_permissions %}<a href="{% url 'customers:candidate_list' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10" data-crm-ui="ui.base.a4" data-crm-order="40">مصاحبه‌کنندگان</a>{% endif %}
             {% if 'communications.view' in user_permissions %}
-            <a href="{% url 'communications:center' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'communications' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition">
+            <a href="{% url 'communications:center' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'communications' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition" data-crm-ui="ui.base.a5" data-crm-order="50">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8M8 14h5M5 19l2.5-2H18a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 1 1.73V19Z"/></svg><span>مدیریت پیام‌رسانی</span>
             </a>
             {% endif %}
             {% if 'products.view' in user_permissions %}
             <a href="{% url 'products:list' %}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'products' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition">
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'products' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition" data-crm-ui="ui.base.a6" data-crm-order="60">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                 <span>کالاها و موجودی</span>
             </a>
@@ -955,7 +956,7 @@ window.apexMobileMerge = function (options) {
 
             {% if 'ads.view' in user_permissions %}
             <a href="{% url 'ads:list' %}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'ads' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition">
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'ads' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition" data-crm-ui="ui.base.a7" data-crm-order="70">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
                 <span>تبلیغات</span>
             </a>
@@ -964,7 +965,7 @@ window.apexMobileMerge = function (options) {
             {% if 'hr.view_employees' in user_permissions or 'hr.view_tasks' in user_permissions or 'hr.attendance' in user_permissions or 'hr.review_leaves' in user_permissions %}
             <div x-data="{ open: {% if request.resolver_match.app_name == 'hr' %}true{% else %}false{% endif %} }">
                 <button @click="open = !open"
-                        class="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'hr' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition">
+                        class="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'hr' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition" data-crm-ui="ui.base.button8" data-crm-order="80">
                     <div class="flex items-center gap-3">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                         <span>منابع انسانی</span>
@@ -973,35 +974,36 @@ window.apexMobileMerge = function (options) {
                 </button>
                 <div x-show="open" x-cloak class="pr-6 mt-1 space-y-1">
                     {% if 'hr.view_employees' in user_permissions %}
-                    <a href="{% if 'hr.view_employees' in user_permissions %}{% url 'hr:employee_list' %}{% else %}{% url 'hr:task_list' %}{% endif %}" class="block px-3 py-1.5 text-sm rounded-lg {% if request.resolver_match.url_name == 'employee_list' %}text-white bg-white/20{% else %}text-gray-300 hover:bg-white/10{% endif %}">پرسنل</a>
+                    <a href="{% if 'hr.view_employees' in user_permissions %}{% url 'hr:employee_list' %}{% else %}{% url 'hr:task_list' %}{% endif %}" class="block px-3 py-1.5 text-sm rounded-lg {% if request.resolver_match.url_name == 'employee_list' %}text-white bg-white/20{% else %}text-gray-300 hover:bg-white/10{% endif %}" data-crm-ui="ui.base.a9" data-crm-order="90">پرسنل</a>
                     {% endif %}
                     {% if 'hr.view_tasks' in user_permissions %}
-                    <a href="{% url 'hr:task_list' %}" class="block px-3 py-1.5 text-sm rounded-lg {% if request.resolver_match.url_name == 'task_list' %}text-white bg-white/20{% else %}text-gray-300 hover:bg-white/10{% endif %}">وظایف</a>
+                    <a href="{% url 'hr:task_list' %}" class="block px-3 py-1.5 text-sm rounded-lg {% if request.resolver_match.url_name == 'task_list' %}text-white bg-white/20{% else %}text-gray-300 hover:bg-white/10{% endif %}" data-crm-ui="ui.base.a10" data-crm-order="100">وظایف</a>
                     {% endif %}
                     {% if 'hr.review_leaves' in user_permissions %}
-                    <a href="{% url 'hr:leave_list' %}" class="block px-3 py-1.5 text-sm rounded-lg {% if request.resolver_match.url_name == 'leave_list' %}text-white bg-white/20{% else %}text-gray-300 hover:bg-white/10{% endif %}">مرخصی‌ها</a>
+                    <a href="{% url 'hr:leave_list' %}" class="block px-3 py-1.5 text-sm rounded-lg {% if request.resolver_match.url_name == 'leave_list' %}text-white bg-white/20{% else %}text-gray-300 hover:bg-white/10{% endif %}" data-crm-ui="ui.base.a11" data-crm-order="110">مرخصی‌ها</a>
                     {% endif %}
                     {% if 'hr.attendance' in user_permissions %}
-                    <a href="{% url 'hr:attendance_list' %}" class="block px-3 py-1.5 text-sm rounded-lg {% if request.resolver_match.url_name == 'attendance_list' %}text-white bg-white/20{% else %}text-gray-300 hover:bg-white/10{% endif %}">حضور و غیاب</a>
-                    <a href="{% url 'hr:attendance_report' %}" class="block px-3 py-1.5 text-sm rounded-lg {% if request.resolver_match.url_name == 'attendance_report' %}text-white bg-white/20{% else %}text-gray-300 hover:bg-white/10{% endif %}">گزارش ماهانه</a>
+                    <a href="{% url 'hr:attendance_list' %}" class="block px-3 py-1.5 text-sm rounded-lg {% if request.resolver_match.url_name == 'attendance_list' %}text-white bg-white/20{% else %}text-gray-300 hover:bg-white/10{% endif %}" data-crm-ui="ui.base.a12" data-crm-order="120">حضور و غیاب</a>
+                    <a href="{% url 'hr:attendance_report' %}" class="block px-3 py-1.5 text-sm rounded-lg {% if request.resolver_match.url_name == 'attendance_report' %}text-white bg-white/20{% else %}text-gray-300 hover:bg-white/10{% endif %}" data-crm-ui="ui.base.a13" data-crm-order="130">گزارش ماهانه</a>
                     {% endif %}
                 </div>
             </div>
             {% endif %}
 
-            {% if 'accounts.manage_users' in user_permissions or 'audit.view' in user_permissions %}
+            {% if 'accounts.manage_users' in user_permissions or 'audit.view' in user_permissions or 'system.configure' in user_permissions %}
             <div class="pt-3 mt-3 border-t border-white/10">
                 <div class="px-3 py-1 text-xs text-gray-400 mb-1">تنظیمات سیستم</div>
+{% if 'system.configure' in user_permissions %}<a href="{% url 'accounts:interface_settings' %}" class="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-white/10">تنظیمات سیستم</a>{% endif %}
                 {% if 'accounts.manage_users' in user_permissions %}
                 <a href="{% url 'accounts:user_list' %}"
-                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'accounts' and 'user' in request.resolver_match.url_name %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition">
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'accounts' and 'user' in request.resolver_match.url_name %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition" data-crm-ui="ui.base.a15" data-crm-order="150">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     <span>کاربران سیستم</span>
                 </a>
                 {% endif %}
                 {% if 'audit.view' in user_permissions %}
                 <a href="{% url 'audit:list' %}"
-                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'audit' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition">
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'audit' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition" data-crm-ui="ui.base.a16" data-crm-order="160">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
                     <span>لاگ سیستم</span>
                 </a>
@@ -1030,11 +1032,11 @@ window.apexMobileMerge = function (options) {
                 {% block mobile_title %}CRM Digiran{% endblock %}
             </div>
 
-            <button @click="searchOpen = true" class="app-topbar-btn" aria-label="جستجو">
+            <button @click="searchOpen = true" class="app-topbar-btn" aria-label="جستجو" data-crm-ui="ui.base.button17" data-crm-order="170">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </button>
 
-            <button @click="notifOpen = !notifOpen" class="app-topbar-btn" aria-label="اعلان‌ها">
+            <button @click="notifOpen = !notifOpen" class="app-topbar-btn" aria-label="اعلان‌ها" data-crm-ui="ui.base.button18" data-crm-order="180">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                 {% if notifications_count > 0 %}
                 <span class="absolute top-1.5 right-1.5 flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white bg-red-500 rounded-full ring-2 ring-white">{{ notifications_count }}</span>
@@ -1047,12 +1049,12 @@ window.apexMobileMerge = function (options) {
              class="lg:hidden fixed top-14 left-2 right-2 bg-white rounded-2xl shadow-2xl border border-gray-100 z-40 overflow-hidden max-h-[70vh] flex flex-col"
              x-transition>
             <div class="px-4 py-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center flex-shrink-0">
-                <h3 class="font-bold text-gray-800 text-sm">اعلان‌ها</h3>
+                <h3 class="font-bold text-gray-800 text-sm" data-crm-ui="ui.base.h319" data-crm-order="190">اعلان‌ها</h3>
                 <span class="text-xs text-gray-500">{{ notifications_count }} جدید</span>
             </div>
             <div class="overflow-y-auto flex-1">
                 {% for notif in notifications %}
-                <a href="{{ notif.url }}" class="flex items-start gap-3 p-4 border-b border-gray-50 last:border-0 active:bg-gray-50">
+                <a href="{{ notif.url }}" class="flex items-start gap-3 p-4 border-b border-gray-50 last:border-0 active:bg-gray-50" data-crm-ui="ui.base.a20" data-crm-order="200">
                     <div class="w-9 h-9 rounded-full {{ notif.bg }} flex items-center justify-center text-sm flex-shrink-0">{{ notif.icon }}</div>
                     <p class="text-sm text-gray-800 leading-relaxed flex-1">{{ notif.title }}</p>
                 </a>
@@ -1077,7 +1079,7 @@ window.apexMobileMerge = function (options) {
                            placeholder="جستجو در مشتریان، پیگیری‌ها، کالاها..."
                            class="w-full pr-10 pl-4 py-2.5 bg-gray-50 border border-gray-200 border-l-0 rounded-r-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-blue-300 transition text-sm">
                 </div>
-                <button type="submit" class="px-4 py-2.5 bg-blue-600 text-white rounded-l-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 text-sm font-medium flex items-center gap-2 whitespace-nowrap transition">
+                <button type="submit" class="px-4 py-2.5 bg-blue-600 text-white rounded-l-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 text-sm font-medium flex items-center gap-2 whitespace-nowrap transition" data-crm-ui="ui.base.button21" data-crm-order="210">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     جستجو
                 </button>
@@ -1089,7 +1091,7 @@ window.apexMobileMerge = function (options) {
                 <div class="relative">
                     <button type="button" @click="profileOpen = !profileOpen; notifOpen = false"
                             :aria-expanded="profileOpen.toString()"
-                            class="flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:border-gray-300 transition focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:border-gray-300 transition focus:outline-none focus:ring-2 focus:ring-blue-500" data-crm-ui="ui.base.button22" data-crm-order="220">
                         <div class="w-9 h-9 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
                             {{ request.user.username|first|upper }}
                         </div>
@@ -1102,7 +1104,7 @@ window.apexMobileMerge = function (options) {
 
                     <div x-show="profileOpen" @click.away="profileOpen = false" x-cloak x-transition
                          class="absolute left-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
-                        <a href="{% url 'hr:my_profile' %}" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                        <a href="{% url 'hr:my_profile' %}" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition" data-crm-ui="ui.base.a23" data-crm-order="230">
                             <div class="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                             </div>
@@ -1114,7 +1116,7 @@ window.apexMobileMerge = function (options) {
                         <div class="border-t border-gray-100"></div>
                         <form method="post" action="{% url 'accounts:logout' %}" class="p-2">
                             {% csrf_token %}
-                            <button type="submit" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 transition text-sm font-medium">
+                            <button type="submit" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 transition text-sm font-medium" data-crm-ui="ui.base.button24" data-crm-order="240">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                                 خروج از حساب
                             </button>
@@ -1128,7 +1130,7 @@ window.apexMobileMerge = function (options) {
                     <button type="button" @click="notifOpen = !notifOpen; profileOpen = false"
                             :aria-expanded="notifOpen.toString()"
                             aria-label="اعلان‌ها"
-                            class="relative w-11 h-11 flex items-center justify-center text-gray-500 bg-white border border-gray-200 hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300 rounded-xl transition focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="relative w-11 h-11 flex items-center justify-center text-gray-500 bg-white border border-gray-200 hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300 rounded-xl transition focus:outline-none focus:ring-2 focus:ring-blue-500" data-crm-ui="ui.base.button25" data-crm-order="250">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                         {% if notifications_count > 0 %}
                         <span class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold text-white bg-red-500 rounded-full ring-2 ring-white">{{ notifications_count }}</span>
@@ -1138,12 +1140,12 @@ window.apexMobileMerge = function (options) {
                          class="absolute left-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-40 overflow-hidden"
                          x-transition>
                         <div class="px-4 py-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                            <h3 class="font-bold text-gray-800 text-sm">اعلان‌های شما</h3>
+                            <h3 class="font-bold text-gray-800 text-sm" data-crm-ui="ui.base.h326" data-crm-order="260">اعلان‌های شما</h3>
                             <span class="text-xs text-gray-500">{{ notifications_count }} مورد جدید</span>
                         </div>
                         <div class="max-h-80 overflow-y-auto">
                             {% for notif in notifications %}
-                            <a href="{{ notif.url }}" class="flex items-start gap-3 p-4 hover:bg-gray-50 border-b border-gray-50 last:border-0">
+                            <a href="{{ notif.url }}" class="flex items-start gap-3 p-4 hover:bg-gray-50 border-b border-gray-50 last:border-0" data-crm-ui="ui.base.a27" data-crm-order="270">
                                 <div class="w-8 h-8 rounded-full {{ notif.bg }} flex items-center justify-center text-sm flex-shrink-0">{{ notif.icon }}</div>
                                 <p class="text-sm text-gray-800 leading-relaxed">{{ notif.title }}</p>
                             </a>
@@ -1162,6 +1164,7 @@ window.apexMobileMerge = function (options) {
         <main class="p-4 lg:p-6">
             {% include 'includes/_feedback_messages.html' %}
 
+            {% if interface_links %}<nav class="crm-custom-links" aria-label="بخش‌های سفارشی">{% for link in interface_links %}<a href="{{ link.url }}" data-crm-ui="ui.base.a28" data-crm-order="280">{{ link.label }}</a>{% endfor %}</nav>{% endif %}
             {% block content %}{% endblock %}
         </main>
     </div>
@@ -1172,14 +1175,14 @@ window.apexMobileMerge = function (options) {
      ============================================ -->
 <nav class="app-bottom-nav lg:hidden">
     {% if 'dashboard.view' in user_permissions %}
-    <a href="{% url 'dashboard:home' %}" class="app-bottom-nav-item {% if request.resolver_match.app_name == 'dashboard' %}active{% endif %}">
+    <a href="{% url 'dashboard:home' %}" class="app-bottom-nav-item {% if request.resolver_match.app_name == 'dashboard' %}active{% endif %}" data-crm-ui="ui.base.a29" data-crm-order="290">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
         <span>داشبورد</span>
     </a>
     {% endif %}
 
     {% if can_open_customer_hub %}
-    <a href="{% url 'customers:hub' %}" class="app-bottom-nav-item {% if request.resolver_match.app_name == 'customers' %}active{% endif %}">
+    <a href="{% url 'customers:hub' %}" class="app-bottom-nav-item {% if request.resolver_match.app_name == 'customers' %}active{% endif %}" data-crm-ui="ui.base.a30" data-crm-order="300">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
         <span>مشتریان</span>
     </a>
@@ -1192,7 +1195,7 @@ window.apexMobileMerge = function (options) {
     {% include 'includes/_task_launcher.html' with placement='bottom' %}
 
     <button @click="moreOpen = true" aria-haspopup="dialog" aria-controls="mobile-navigation" class="app-bottom-nav-item
-        {% if request.resolver_match.app_name in 'products,hr,ads,accounts,audit,dashboard' %}{% if request.resolver_match.url_name == 'bi' %}active{% endif %}{% endif %}">
+        {% if request.resolver_match.app_name in 'products,hr,ads,accounts,audit,dashboard' %}{% if request.resolver_match.url_name == 'bi' %}active{% endif %}{% endif %}" data-crm-ui="ui.base.button31" data-crm-order="310">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
         <span>بیشتر</span>
     </button>
@@ -1206,11 +1209,11 @@ window.apexMobileMerge = function (options) {
         @close="moreOpen = false" @cancel="moreOpen = false">
     <div class="app-sheet-handle"></div>
 
-    <header class="crm-mobile-nav-head"><h2 id="mobile-navigation-title" class="text-lg font-bold text-gray-800">بخش‌های سیستم</h2><button type="button" @click="moreOpen = false" aria-label="بستن فهرست بخش‌ها">×</button></header>
+    <header class="crm-mobile-nav-head"><h2 id="mobile-navigation-title" class="text-lg font-bold text-gray-800" data-crm-ui="ui.base.h232" data-crm-order="320">بخش‌های سیستم</h2><button type="button" @click="moreOpen = false" aria-label="بستن فهرست بخش‌ها" data-crm-ui="ui.base.button33" data-crm-order="330">×</button></header>
 
     <div class="grid grid-cols-3 gap-3 mb-6">
         {% if 'products.view' in user_permissions %}
-        <a href="{% url 'products:list' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]">
+        <a href="{% url 'products:list' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]" data-crm-ui="ui.base.a34" data-crm-order="340">
             <div class="w-11 h-11 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
             </div>
@@ -1219,7 +1222,7 @@ window.apexMobileMerge = function (options) {
         {% endif %}
 
         {% if 'dashboard.bi' in user_permissions %}
-        <a href="{% url 'dashboard:bi' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]">
+        <a href="{% url 'dashboard:bi' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]" data-crm-ui="ui.base.a35" data-crm-order="350">
             <div class="w-11 h-11 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
             </div>
@@ -1229,7 +1232,7 @@ window.apexMobileMerge = function (options) {
 
         {% if 'hr.view_employees' in user_permissions or 'hr.view_tasks' in user_permissions or 'hr.attendance' in user_permissions or 'hr.review_leaves' in user_permissions %}
         <a href="{% if 'hr.view_employees' in user_permissions %}{% url 'hr:employee_list' %}{% elif 'hr.view_tasks' in user_permissions %}{% url 'hr:task_list' %}{% elif 'hr.review_leaves' in user_permissions %}{% url 'hr:leave_list' %}{% else %}{% url 'hr:attendance_list' %}{% endif %}"
-           class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]">
+           class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]" data-crm-ui="ui.base.a36" data-crm-order="360">
             <div class="w-11 h-11 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
             </div>
@@ -1238,7 +1241,7 @@ window.apexMobileMerge = function (options) {
         {% endif %}
 
         {% if 'ads.view' in user_permissions %}
-        <a href="{% url 'ads:list' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]">
+        <a href="{% url 'ads:list' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]" data-crm-ui="ui.base.a37" data-crm-order="370">
             <div class="w-11 h-11 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
             </div>
@@ -1247,12 +1250,12 @@ window.apexMobileMerge = function (options) {
         {% endif %}
 
         {% if 'communications.view' in user_permissions %}
-        <a href="{% url 'communications:center' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]">
+        <a href="{% url 'communications:center' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]" data-crm-ui="ui.base.a38" data-crm-order="380">
           <div class="w-11 h-11 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10h8M8 14h5M5 19l2.5-2H18a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 1 1.73V19Z"/></svg></div><span class="text-xs font-medium text-gray-700">مدیریت پیام‌رسانی</span>
         </a>
         {% endif %}
         {% if 'categories.view' in user_permissions %}
-        <a href="{% url 'products:category_list' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]">
+        <a href="{% url 'products:category_list' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]" data-crm-ui="ui.base.a39" data-crm-order="390">
             <div class="w-11 h-11 bg-pink-100 text-pink-600 rounded-xl flex items-center justify-center">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
             </div>
@@ -1261,7 +1264,7 @@ window.apexMobileMerge = function (options) {
         {% endif %}
 
         {% if 'accounts.manage_users' in user_permissions %}
-        <a href="{% url 'accounts:user_list' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]">
+        <a href="{% url 'accounts:user_list' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]" data-crm-ui="ui.base.a40" data-crm-order="400">
             <div class="w-11 h-11 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
             </div>
@@ -1270,7 +1273,7 @@ window.apexMobileMerge = function (options) {
         {% endif %}
 
         {% if 'audit.view' in user_permissions %}
-        <a href="{% url 'audit:list' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]">
+        <a href="{% url 'audit:list' %}" class="flex flex-col items-center justify-center gap-2 p-3 bg-gray-50 rounded-2xl active:bg-gray-100 min-h-[92px]" data-crm-ui="ui.base.a41" data-crm-order="410">
             <div class="w-11 h-11 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
             </div>
@@ -1282,7 +1285,7 @@ window.apexMobileMerge = function (options) {
     {% include 'includes/_mobile_navigation_links.html' %}
 
     <div class="border-t border-gray-100 pt-4 space-y-2">
-        <a href="{% url 'hr:my_profile' %}" class="flex items-center gap-3 p-3 rounded-xl active:bg-gray-100">
+        <a href="{% url 'hr:my_profile' %}" class="flex items-center gap-3 p-3 rounded-xl active:bg-gray-100" data-crm-ui="ui.base.a42" data-crm-order="420">
             <div class="w-11 h-11 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center font-bold shadow-md">
                 {{ request.user.username|first|upper }}
             </div>
@@ -1295,7 +1298,7 @@ window.apexMobileMerge = function (options) {
 
         <form method="post" action="{% url 'accounts:logout' %}">
             {% csrf_token %}
-            <button type="submit" class="w-full flex items-center gap-3 p-3 rounded-xl active:bg-red-50">
+            <button type="submit" class="w-full flex items-center gap-3 p-3 rounded-xl active:bg-red-50" data-crm-ui="ui.base.button43" data-crm-order="430">
                 <div class="w-11 h-11 bg-red-100 rounded-full flex items-center justify-center">
                     <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                 </div>
@@ -1321,9 +1324,9 @@ window.apexMobileMerge = function (options) {
                        placeholder="جستجو در همه‌جا..."
                        class="w-full pr-10 pl-4 py-2.5 bg-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-sm">
             </div>
-            <button type="submit" class="px-4 py-2.5 bg-blue-600 text-white rounded-xl font-medium text-sm whitespace-nowrap">جستجو</button>
+            <button type="submit" class="px-4 py-2.5 bg-blue-600 text-white rounded-xl font-medium text-sm whitespace-nowrap" data-crm-ui="ui.base.button44" data-crm-order="440">جستجو</button>
         </form>
-        <button @click="searchOpen = false" class="w-10 h-10 flex items-center justify-center rounded-lg text-gray-500 active:bg-gray-100">
+        <button @click="searchOpen = false" class="w-10 h-10 flex items-center justify-center rounded-lg text-gray-500 active:bg-gray-100" data-crm-ui="ui.base.button45" data-crm-order="450">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
     </div>

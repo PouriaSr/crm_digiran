@@ -3,7 +3,7 @@
 {% block title %}{{ task.title }}{% endblock %}
 
 {% block mobile_leading %}
-<a href="{% url 'hr:task_list' %}" class="app-topbar-btn" aria-label="بازگشت">
+<a href="{% url 'hr:task_list' %}" class="app-topbar-btn" aria-label="بازگشت" data-crm-ui="ui.hr.taskdetail.a1" data-crm-order="10">
     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>
@@ -17,13 +17,13 @@
 {% load fa_numbers %}
 
 <div class="flex justify-between items-center mb-6">
-    <a href="{% url 'hr:task_list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به وظایف</a>
+    <a href="{% url 'hr:task_list' %}" class="text-blue-600 hover:underline text-sm" data-crm-ui="ui.hr.taskdetail.a2" data-crm-order="20">← بازگشت به وظایف</a>
     <div class="flex gap-2 flex-wrap">
         {% if 'hr.manage_tasks' in user_permissions and not task.source_type and not task.hiring_session_id %}
         <a href="{% url 'hr:task_edit' task.pk %}"
-           class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm">✏️ ویرایش</a>
+           class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm" data-crm-ui="ui.hr.taskdetail.a3" data-crm-order="30">✏️ ویرایش</a>
         <a href="{% url 'hr:task_delete' task.pk %}"
-           class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm">🗑 حذف</a>
+           class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm" data-crm-ui="ui.hr.taskdetail.a4" data-crm-order="40">🗑 حذف</a>
         {% endif %}
     </div>
 </div>
@@ -39,7 +39,7 @@
             {% if task.status == 'done' %}✓{% elif task.status == 'cancelled' %}✕{% else %}📋{% endif %}
         </div>
         <div class="flex-1">
-            <h1 class="text-xl font-bold text-gray-800 {% if task.status == 'done' %}line-through text-gray-400{% endif %}">{{ task.title }}</h1>
+            <h1 class="text-xl font-bold text-gray-800 {% if task.status == 'done' %}line-through text-gray-400{% endif %}" data-crm-ui="ui.hr.taskdetail.h15" data-crm-order="50">{{ task.title }}</h1>
 
             <div class="flex gap-2 mt-3 flex-wrap">
                 {% if task.status == 'pending' %}
@@ -71,28 +71,28 @@
 </div>
 
 <section class="bg-white rounded-xl shadow-sm p-5 mb-6">
-{% if task.source_type or task.hiring_session_id %}<p class="text-sm text-gray-600 mb-3">وضعیت این وظیفه از نتیجه عملیات مرتبط به‌روز می‌شود.</p>{% if task.status != 'cancelled' %}<a href="{{ work_url }}" class="inline-flex px-4 py-3 rounded-lg bg-blue-600 text-white text-sm">رفتن به انجام کار</a>{% endif %}{% elif can_report_own and 'hr.report_tasks' in user_permissions and task.status != 'cancelled' and task.status != 'done' %}<button type="button" data-manual-task-report="{{ task.pk }}" data-task-title="{{ task.title }}" class="px-4 py-3 rounded-lg bg-blue-600 text-white text-sm">ثبت گزارش و اتمام کار</button>{% endif %}
+{% if task.source_type or task.hiring_session_id %}<p class="text-sm text-gray-600 mb-3">وضعیت این وظیفه از نتیجه عملیات مرتبط به‌روز می‌شود.</p>{% if task.status != 'cancelled' %}<a href="{{ work_url }}" class="inline-flex px-4 py-3 rounded-lg bg-blue-600 text-white text-sm" data-crm-ui="ui.hr.taskdetail.a6" data-crm-order="60">رفتن به انجام کار</a>{% endif %}{% elif can_report_own and 'hr.report_tasks' in user_permissions and task.status != 'cancelled' and task.status != 'done' %}<button type="button" data-manual-task-report="{{ task.pk }}" data-task-title="{{ task.title }}" class="px-4 py-3 rounded-lg bg-blue-600 text-white text-sm" data-crm-ui="ui.hr.taskdetail.button7" data-crm-order="70">ثبت گزارش و اتمام کار</button>{% endif %}
 </section>
 <!-- ═══ تغییر سریع وضعیت (فقط برای دسترسی‌دارها) ═══ -->
 {% if 'hr.manage_tasks' in user_permissions and not task.source_type and not task.hiring_session_id %}
 <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
-    <h2 class="font-bold text-gray-700 mb-3 text-sm">تغییر سریع وضعیت</h2>
+    <h2 class="font-bold text-gray-700 mb-3 text-sm" data-crm-ui="ui.hr.taskdetail.h28" data-crm-order="80">تغییر سریع وضعیت</h2>
     <form data-crm-form method="post" action="{% url 'hr:task_toggle' task.pk %}" class="flex flex-wrap gap-2">
         {% csrf_token %}
         <button type="submit" name="status" value="pending"
-                class="px-4 py-2 rounded-lg text-sm {% if task.status == 'pending' %}bg-gray-500 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                class="px-4 py-2 rounded-lg text-sm {% if task.status == 'pending' %}bg-gray-500 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}" data-crm-ui="ui.hr.taskdetail.button9" data-crm-order="90">
             در انتظار
         </button>
         <button type="submit" name="status" value="in_progress"
-                class="px-4 py-2 rounded-lg text-sm {% if task.status == 'in_progress' %}bg-yellow-500 text-white{% else %}bg-yellow-50 text-yellow-700 hover:bg-yellow-100{% endif %}">
+                class="px-4 py-2 rounded-lg text-sm {% if task.status == 'in_progress' %}bg-yellow-500 text-white{% else %}bg-yellow-50 text-yellow-700 hover:bg-yellow-100{% endif %}" data-crm-ui="ui.hr.taskdetail.button10" data-crm-order="100">
             در حال انجام
         </button>
         <button type="submit" name="status" value="done"
-                class="px-4 py-2 rounded-lg text-sm {% if task.status == 'done' %}bg-green-500 text-white{% else %}bg-green-50 text-green-700 hover:bg-green-100{% endif %}">
+                class="px-4 py-2 rounded-lg text-sm {% if task.status == 'done' %}bg-green-500 text-white{% else %}bg-green-50 text-green-700 hover:bg-green-100{% endif %}" data-crm-ui="ui.hr.taskdetail.button11" data-crm-order="110">
             ✅ انجام شده
         </button>
         <button type="submit" name="status" value="cancelled"
-                class="px-4 py-2 rounded-lg text-sm {% if task.status == 'cancelled' %}bg-gray-400 text-white{% else %}bg-gray-50 text-gray-600 hover:bg-gray-100{% endif %}">
+                class="px-4 py-2 rounded-lg text-sm {% if task.status == 'cancelled' %}bg-gray-400 text-white{% else %}bg-gray-50 text-gray-600 hover:bg-gray-100{% endif %}" data-crm-ui="ui.hr.taskdetail.button12" data-crm-order="120">
             لغو شده
         </button>
     </form>
@@ -102,7 +102,7 @@
 <!-- ═══ اطلاعات ═══ -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
     <div class="bg-white rounded-xl shadow-sm p-6">
-        <h2 class="font-bold text-gray-700 mb-4">اطلاعات وظیفه</h2>
+        <h2 class="font-bold text-gray-700 mb-4" data-crm-ui="ui.hr.taskdetail.h213" data-crm-order="130">اطلاعات وظیفه</h2>
         <dl class="space-y-3 text-sm">
             <div class="flex justify-between">
                 <dt class="text-gray-500">مسئول:</dt>
@@ -124,7 +124,7 @@
     </div>
 
     <div class="bg-white rounded-xl shadow-sm p-6">
-        <h2 class="font-bold text-gray-700 mb-4">زمان‌ها</h2>
+        <h2 class="font-bold text-gray-700 mb-4" data-crm-ui="ui.hr.taskdetail.h214" data-crm-order="140">زمان‌ها</h2>
         <dl class="space-y-3 text-sm">
             <div class="flex justify-between">
                 <dt class="text-gray-500">تاریخ ایجاد:</dt>
@@ -146,10 +146,10 @@
 
 {% if task.description %}
 <div class="bg-white rounded-xl shadow-sm p-6">
-    <h2 class="font-bold text-gray-700 mb-4">توضیحات</h2>
+    <h2 class="font-bold text-gray-700 mb-4" data-crm-ui="ui.hr.taskdetail.h215" data-crm-order="150">توضیحات</h2>
     <p class="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{{ task.description }}</p>
 </div>
 {% endif %}
 
-<section class="bg-white rounded-xl shadow-sm p-5 mt-5"><h2 class="font-bold mb-4">گردش وضعیت و گزارش‌های وظیفه</h2>{% for event in task_events %}<article class="border-t border-gray-100 py-4"><div class="text-xs text-gray-500">{{ event.created_at|jdate:'Y/m/d · H:i' }} · {{ event.get_transition_display }}</div>{% if event.report %}<p class="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{{ event.report.text }}</p><div class="text-xs text-gray-400 mt-2">{% if event.report.author %}{{ event.report.author.get_full_name|default:event.report.author.username }}{% endif %} · {{ event.report.created_at|jdate:'Y/m/d · H:i' }}</div>{% elif event.report_required %}<p class="text-xs text-orange-600 mt-2">گزارش در انتظار ثبت</p>{% endif %}</article>{% empty %}<p class="text-sm text-gray-400">تغییر وضعیت یا گزارشی ثبت نشده است.</p>{% endfor %}{% include 'includes/_pagination.html' with page=task_events %}</section>
+<section class="bg-white rounded-xl shadow-sm p-5 mt-5"><h2 class="font-bold mb-4" data-crm-ui="ui.hr.taskdetail.h216" data-crm-order="160">گردش وضعیت و گزارش‌های وظیفه</h2>{% for event in task_events %}<article class="border-t border-gray-100 py-4"><div class="text-xs text-gray-500">{{ event.created_at|jdate:'Y/m/d · H:i' }} · {{ event.get_transition_display }}</div>{% if event.report %}<p class="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{{ event.report.text }}</p><div class="text-xs text-gray-400 mt-2">{% if event.report.author %}{{ event.report.author.get_full_name|default:event.report.author.username }}{% endif %} · {{ event.report.created_at|jdate:'Y/m/d · H:i' }}</div>{% elif event.report_required %}<p class="text-xs text-orange-600 mt-2">گزارش در انتظار ثبت</p>{% endif %}</article>{% empty %}<p class="text-sm text-gray-400">تغییر وضعیت یا گزارشی ثبت نشده است.</p>{% endfor %}{% include 'includes/_pagination.html' with page=task_events %}</section>
 {% endblock %}

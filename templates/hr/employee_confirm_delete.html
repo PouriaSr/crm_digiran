@@ -13,7 +13,7 @@
             </svg>
         </div>
 
-        <h1 class="text-xl font-bold text-gray-800 mb-2">حذف کارمند؟</h1>
+        <h1 class="text-xl font-bold text-gray-800 mb-2" data-crm-ui="ui.hr.employeeconfirmdelete.h11" data-crm-order="10">حذف کارمند؟</h1>
         <p class="text-gray-500 text-sm mb-6">
             آیا از حذف «<strong>{{ employee.full_name }}</strong>» مطمئن هستید؟
             <br>
@@ -22,10 +22,10 @@
 
         <form data-crm-form method="post" class="flex justify-center gap-3">
             {% csrf_token %}
-            <button type="submit" class="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium">
+            <button type="submit" class="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium" data-crm-ui="ui.hr.employeeconfirmdelete.button2" data-crm-order="20">
                 بله، حذف کن
             </button>
-            <a href="{% url 'hr:employee_detail' employee.pk %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+            <a href="{% url 'hr:employee_detail' employee.pk %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium" data-crm-ui="ui.hr.employeeconfirmdelete.a3" data-crm-order="30">
                 انصراف
             </a>
         </form>

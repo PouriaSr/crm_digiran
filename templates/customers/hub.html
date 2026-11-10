@@ -81,9 +81,9 @@
         <nav id="hub-tabs" aria-label="مراحل مرکز مشتریان" class="wf-tabs">
             {% for item in hub_tab_items %}
             {% if item.key == 'registration' and not registration_unlocked %}
-            <button disabled title="پس از ثبت یک پرونده، این مرحله فعال می‌شود" class="wf-tab">🔒 ثبت اطلاعات</button>
+            <button disabled title="پس از ثبت یک پرونده، این مرحله فعال می‌شود" class="wf-tab" data-crm-ui="ui.customers.hub.button1" data-crm-order="10">🔒 ثبت اطلاعات</button>
             {% else %}
-            <a href="{% url 'customers:hub' %}?tab={{ item.key }}" data-hub-tab="{{ item.key }}" {% if active_tab == item.key %}aria-current="page"{% endif %} class="wf-tab">
+            <a href="{% url 'customers:hub' %}?tab={{ item.key }}" data-hub-tab="{{ item.key }}" {% if active_tab == item.key %}aria-current="page"{% endif %} class="wf-tab" data-crm-ui="hub.tab.{{ item.key }}" data-crm-order="{{ item.position }}">
                 {% include 'customers/_workflow_tab_icon.html' with tab_key=item.key %}
                 <span>{{ item.label }}</span>{% if item.count != None %}<span class="wf-tab-count">{{ item.count|fa_num }}</span>{% endif %}
             </a>
@@ -98,10 +98,10 @@
         <div class="flex flex-col md:flex-row justify-between items-center gap-3">
             <form data-input-icon-left="action" method="get" class="crm-filter-form w-full md:w-1/2 relative group">
             <input type="hidden" name="tab" value="info"><input type="hidden" name="search_all" value="1">
-            {% if candidate_mode %}<input type="hidden" name="people" value="candidates">{% endif %}
+            {% if table_filters.person_status %}<input type="hidden" name="person_status" value="{{ table_filters.person_status }}">{% endif %}
             <input type="text" name="q" id="hub-search-input" x-model="searchQuery" placeholder="جستجوی نام یا شماره مشتری و مصاحبه‌کننده…"
                    class="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm shadow-sm group-hover:border-gray-300">
-            <button type="submit" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-400 rounded-lg group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
+            <button type="submit" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-400 rounded-lg group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors" data-crm-ui="ui.customers.hub.button3" data-crm-order="30">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </button>
         </form>
@@ -110,13 +110,13 @@
             {% if "calls.add" in user_permissions %}
             <button type="button" id="btn-new-call" onclick="openNewCallFromSearch()"
                     title="ثبت تماس یا ثبت اولیه مصاحبه‌کننده"
-                    class="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-md transition font-medium whitespace-nowrap">
+                    class="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-md transition font-medium whitespace-nowrap" data-crm-ui="ui.customers.hub.button4" data-crm-order="40">
                 <span aria-hidden="true">+</span> ثبت تماس جدید
             </button>
             {% endif %}
             {% if 'customers.delete' in user_permissions and not candidate_mode %}
             <a href="{% url 'customers:inactive_list' %}"
-               class="flex items-center justify-center gap-2 bg-red-600 text-white hover:bg-red-700 px-6 py-3 rounded-xl font-medium whitespace-nowrap shadow-md transition">
+               class="flex items-center justify-center gap-2 bg-red-600 text-white hover:bg-red-700 px-6 py-3 rounded-xl font-medium whitespace-nowrap shadow-md transition" data-crm-ui="ui.customers.hub.a5" data-crm-order="50">
                 مشتریان غیرفعال
             </a>
             {% endif %}
@@ -135,10 +135,10 @@
     <div x-show="tab === 'invoice'" x-transition.opacity style="display: none;">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 md:mb-6">
             <div>
-                <h2 class="text-xl font-bold text-gray-800">مدیریت فاکتورها</h2>
+                <h2 class="text-xl font-bold text-gray-800" data-crm-ui="ui.customers.hub.h26" data-crm-order="60">مدیریت فاکتورها</h2>
             </div>
             {% if 'invoices.add' in user_permissions %}
-            <a href="{% url 'sales:create' %}" class="px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-sm font-bold shadow-md transition flex items-center justify-center gap-2">
+            <a href="{% url 'sales:create' %}" class="px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-sm font-bold shadow-md transition flex items-center justify-center gap-2" data-crm-ui="ui.customers.hub.a7" data-crm-order="70">
                 <span>+</span> صدور فاکتور جدید
             </a>
             {% endif %}
@@ -148,11 +148,11 @@
                 <table class="w-full text-sm text-center">
                     <thead class="bg-gray-50/50 border-b border-gray-100 text-gray-500 text-xs">
                         <tr>
-                            <th class="p-4 font-semibold text-center">شماره فاکتور</th>
-                            <th class="p-4 font-semibold text-right hub-name-column">مشتری</th>
-                            <th class="p-4 font-semibold text-center">مبلغ</th>
-                            <th class="p-4 font-semibold text-center">وضعیت</th>
-                            <th class="p-4 font-semibold text-center">عملیات</th>
+                            <th class="p-4 font-semibold text-center" data-crm-ui="ui.customers.hub.th8" data-crm-order="10">شماره فاکتور</th>
+                            <th class="p-4 font-semibold text-right hub-name-column" data-crm-ui="ui.customers.hub.th9" data-crm-order="20">مشتری</th>
+                            <th class="p-4 font-semibold text-center" data-crm-ui="ui.customers.hub.th10" data-crm-order="30">مبلغ</th>
+                            <th class="p-4 font-semibold text-center" data-crm-ui="ui.customers.hub.th11" data-crm-order="40">وضعیت</th>
+                            <th class="p-4 font-semibold text-center" data-crm-ui="ui.customers.hub.th12" data-crm-order="50">عملیات</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-50">
@@ -166,7 +166,7 @@
                                 {% else %}<span class="px-3 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700">{{ inv.get_status_display }}</span>{% endif %}
                             </td>
                             <td class="p-4 text-center">
-                                <button type="button" class="wf-action" aria-expanded="false" aria-controls="invoice-preview-{{ inv.pk }}" onclick="toggleInvoicePreview(this)">جزئیات فاکتور</button>
+                                <button type="button" class="wf-action" aria-expanded="false" aria-controls="invoice-preview-{{ inv.pk }}" onclick="toggleInvoicePreview(this)" data-crm-ui="ui.customers.hub.button13" data-crm-order="130">جزئیات فاکتور</button>
                             </td>
                         </tr>
                         <tr id="invoice-preview-{{ inv.pk }}" hidden><td colspan="5" class="p-0">{% include 'customers/_invoice_hub_details.html' %}</td></tr>
@@ -197,8 +197,8 @@
 <div id="reassign-backdrop" class="fixed inset-0 z-[120] hidden items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         <div class="flex items-center justify-between p-5 border-b border-gray-100">
-            <h3 class="font-bold text-gray-800">انتقال مشتری</h3>
-            <button type="button" onclick="closeReassignModal()" class="text-gray-400 hover:text-gray-600">
+            <h3 class="font-bold text-gray-800" data-crm-ui="ui.customers.hub.h314" data-crm-order="140">انتقال مشتری</h3>
+            <button type="button" onclick="closeReassignModal()" class="text-gray-400 hover:text-gray-600" data-crm-ui="ui.customers.hub.button15" data-crm-order="150">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
@@ -209,7 +209,7 @@
                 مشتری <strong id="reassign-name" class="text-gray-800"></strong> به کدام کارمند منتقل شود؟
             </p>
             <div>
-                <label class="block text-xs font-bold text-gray-600 mb-1">کارمند مسئول جدید</label>
+                <label class="block text-xs font-bold text-gray-600 mb-1" data-crm-ui="ui.customers.hub.label16" data-crm-order="160">کارمند مسئول جدید</label>
                 <select name="assigned_to" id="reassign-user" required
                         class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl">
                     <option value="">انتخاب کنید...</option>
@@ -220,11 +220,11 @@
             </div>
             <div class="flex gap-2 pt-1">
                 <button type="submit"
-                        class="flex-1 py-2.5 bg-violet-600 text-white rounded-xl text-sm font-bold hover:bg-violet-700 transition">
+                        class="flex-1 py-2.5 bg-violet-600 text-white rounded-xl text-sm font-bold hover:bg-violet-700 transition" data-crm-ui="ui.customers.hub.button17" data-crm-order="170">
                     انتقال
                 </button>
                 <button type="button" onclick="closeReassignModal()"
-                        class="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-200 transition">
+                        class="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-200 transition" data-crm-ui="ui.customers.hub.button18" data-crm-order="180">
                     انصراف
                 </button>
             </div>

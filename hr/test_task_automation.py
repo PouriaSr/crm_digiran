@@ -152,7 +152,7 @@ class TaskAutomationTests(TestCase):
         old=Task.objects.get(source_key='call:'+str(call.pk))
         fu=FollowUp.objects.create(customer=self.customer,due_date=timezone.localdate(),created_by=self.owner)
         old.refresh_from_db();self.assertEqual(old.status,'cancelled')
-        self.assertEqual(Task.objects.filter(source_customer=self.customer).exclude(status__in=['done','cancelled']).count(),1)
+        self.assertEqual(Task.objects.filter(source_customer=self.customer).exclude(source_type='admission').exclude(status__in=['done','cancelled']).count(),1)
 
     def test_existing_members_task_denials_are_enabled_once_without_changing_other_permissions(self):
         import importlib
@@ -187,7 +187,7 @@ class TaskAutomationTests(TestCase):
         old=Task.objects.get(source_type='customer_followup')
         self.followup()
         old.refresh_from_db();self.assertEqual(old.status,'cancelled')
-        self.assertEqual(Task.objects.exclude(status__in=['done','cancelled']).count(),1)
+        self.assertEqual(Task.objects.exclude(source_type='admission').exclude(status__in=['done','cancelled']).count(),1)
 
     def test_actual_performer_can_report_without_global_task_management(self):
         manager=self.user('performing_manager','sales_manager')

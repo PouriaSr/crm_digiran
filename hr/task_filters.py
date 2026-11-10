@@ -33,18 +33,22 @@ def filter_task_dates(items, data, prefix=''):
     return items
 
 
-def order_tasks(items, sort):
+def order_tasks(items, sort, prefix=''):
     from django.utils import timezone
+    def key(name): return prefix + name
+    from django.db.models import Q
+    now=timezone.localtime()
+    late=(Q(**{key('due_date__lt'):now.date()}) | Q(**{key('due_date'):now.date(),key('due_time__lt'):now.time().replace(tzinfo=None)})) & ~Q(**{key('status__in'):['done','cancelled']})
     items = items.annotate(
-        _queue_priority=Case(When(priority='urgent', then=Value(0)), When(priority='high', then=Value(1)),
-                             When(priority='medium', then=Value(2)), default=Value(3), output_field=IntegerField()),
-        _queue_due=Case(When(overdue_condition(), then=Value(0)), When(due_date=timezone.localdate(), then=Value(1)),
-                        When(due_date__isnull=True, then=Value(3)), default=Value(2), output_field=IntegerField()),
+        _queue_priority=Case(When(**{key('priority'):'urgent'}, then=Value(0)), When(**{key('priority'):'high'}, then=Value(1)),
+                             When(**{key('priority'):'medium'}, then=Value(2)), default=Value(3), output_field=IntegerField()),
+        _queue_due=Case(When(late, then=Value(0)), When(**{key('due_date'):timezone.localdate()}, then=Value(1)),
+                        When(**{key('due_date__isnull'):True}, then=Value(3)), default=Value(2), output_field=IntegerField()),
     )
     orders = {
-        'newest': ['-created_at', '-pk'], 'oldest': ['created_at', 'pk'],
-        'due': [F('due_date').asc(nulls_last=True), F('due_time').asc(nulls_last=True), '-pk'],
-        'overdue': ['_queue_due', 'due_date', 'due_time', '-pk'],
-        'priority': ['_queue_priority', F('due_date').asc(nulls_last=True), '-pk'],
+        'newest': ['-'+key('created_at'), '-'+key('pk')], 'oldest': [key('created_at'), key('pk')],
+        'due': [F(key('due_date')).asc(nulls_last=True), F(key('due_time')).asc(nulls_last=True), '-pk'],
+        'overdue': ['_queue_due', key('due_date'), key('due_time'), '-'+key('pk')],
+        'priority': ['_queue_priority', F(key('due_date')).asc(nulls_last=True), '-pk'],
     }
     return items.order_by(*orders.get(sort, orders['newest']))

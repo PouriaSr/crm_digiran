@@ -75,7 +75,8 @@ class PrearrivalAssignmentTests(TestCase):
         self.assertTrue(task.notices.filter(user=self.second,read_at=None).exists())
         self.assertEqual(Task.objects.filter(source_type='admission').count(),1)
         self.person.refresh_from_db();self.person.assigned_to=self.operator;self.person.save()
-        task.refresh_from_db();self.assertEqual(task.status,'cancelled')
+        task.refresh_from_db();self.assertEqual(task.status,'pending')
+        self.assertEqual(task.assigned_user,self.first)
         self.assertFalse(Reception.objects.exists())
 
     def test_old_reception_assignments_backfill_without_duplicate_or_historical_reports(self):
@@ -87,8 +88,9 @@ class PrearrivalAssignmentTests(TestCase):
         backfill()
         self.assertEqual((Task.objects.count(),TaskNotice.objects.count(),TaskEvent.objects.count()),before)
         self.assertTrue(Task.objects.filter(source_type='admission',source_customer=self.person,assigned_user=self.first,status='pending').exists())
-        self.assertFalse(Task.objects.filter(source_type='admission',source_customer=already).exists())
-        self.assertFalse(TaskEvent.objects.filter(report_required=True).exists())
+        self.assertFalse(Task.objects.filter(source_type='admission',source_customer=already,status='pending').exists())
+        self.assertTrue(Task.objects.filter(source_type='admission',source_customer=already,status='done').exists())
+        self.assertFalse(TaskEvent.objects.filter(task__source_customer=self.person,report_required=True).exists())
 
     def test_explicit_assignment_to_manager_and_denied_receiver(self):
         self.assertEqual(self.assign(self.admin).status_code,302)

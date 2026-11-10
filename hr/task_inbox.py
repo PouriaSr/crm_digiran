@@ -94,6 +94,8 @@ def personal_inbox(user, params):
             # Match all changes of a task, then show its newest change.
             matching = notices.filter(digit_contains('task__title',query) | digit_contains('text',query)).values('task_id')
             items = items.filter(task_id__in=matching)
+    if view != 'work':
+        items = order_tasks(items, filter_data.get('sort'), 'task__')
     items = filter_task_dates(items, filter_data, '' if view == 'work' else 'task__') if valid_filters else items.none()
     page = Paginator(items, PAGE_SIZE).get_page(params.get('page', 1))
     rows = list(page)

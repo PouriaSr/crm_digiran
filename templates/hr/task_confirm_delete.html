@@ -13,17 +13,17 @@
             </svg>
         </div>
 
-        <h1 class="text-xl font-bold text-gray-800 mb-2">حذف وظیفه؟</h1>
+        <h1 class="text-xl font-bold text-gray-800 mb-2" data-crm-ui="ui.hr.taskconfirmdelete.h11" data-crm-order="10">حذف وظیفه؟</h1>
         <p class="text-gray-500 text-sm mb-6">
             آیا از حذف «<strong>{{ task.title }}</strong>» مطمئن هستید؟ این عمل قابل بازگشت نیست.
         </p>
 
         <form data-crm-form method="post" class="flex justify-center gap-3">
             {% csrf_token %}
-            <button type="submit" class="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium">
+            <button type="submit" class="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium" data-crm-ui="ui.hr.taskconfirmdelete.button2" data-crm-order="20">
                 بله، حذف کن
             </button>
-            <a href="{% url 'hr:task_detail' task.pk %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+            <a href="{% url 'hr:task_detail' task.pk %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium" data-crm-ui="ui.hr.taskconfirmdelete.a3" data-crm-order="30">
                 انصراف
             </a>
         </form>

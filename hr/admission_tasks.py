@@ -1,4 +1,4 @@
-"""Waiting candidates and reception assignments exist before a recorded visit."""
+"""Waiting people and reception assignments exist before a recorded visit."""
 from hashlib import sha256
 from django.db.models.functions import Coalesce
 from accounts.permissions import get_user_role, has_permission, ROLE_SECRETARY
@@ -15,7 +15,7 @@ def automatic_receiver(user):
 
 
 def latest_visit(person):
-    records=person.receptions.filter(person_type='interviewer') if person.is_interviewer else person.receptions
+    records=person.receptions.filter(person_type='interviewer' if person.is_interviewer else 'customer')
     return records.annotate(task_arrival=Coalesce('hiring__current_arrived_at','arrived_at','created_at')).order_by('-task_arrival','-pk').first()
 
 
@@ -37,7 +37,7 @@ def reconcile(person, request=False, receivers=None):
     from .task_automation import sync
     visit = latest_visit(person)
     owner = person.assigned_to
-    waiting = bool(person.is_interviewer and not person.is_deleted and not visit)
+    waiting = bool(not person.is_deleted and not visit)
     if waiting:
         request=True
         if not can_receive(owner):
@@ -60,11 +60,11 @@ def reconcile(person, request=False, receivers=None):
 def assignment_context(user, users=None):
     from django.contrib.auth.models import User
     from customers.access import is_card_manager
-    if not is_card_manager(user) or not has_permission(user,'customers.reassign'):
+    if not is_card_manager(user) or not has_permission(user,'customers.admission_assign'):
         return {}
     if users is None:
         users=User.objects.filter(is_active=True).prefetch_related('groups','permission_overrides').order_by('first_name','username')
-    return {'admission_assignees':[item for item in users if can_receive(item)]}
+    return {'admission_assignees':[item for item in users if can_receive(item)], 'admission_default_user':user, 'can_choose_admission':has_permission(user,'customers.admission_choose')}
 
 
 def backfill_assignments():
@@ -72,7 +72,7 @@ def backfill_assignments():
     from accounts.permissions import ROLE_TO_GROUP
     from customers.models import Customer, Reception
     active=Task.objects.filter(source_type='admission').exclude(status__in=['done','cancelled']).values('source_customer_id')
-    people=Customer.all_objects.alias(has_admission=Exists(Reception.objects.filter(customer_id=OuterRef('pk'),person_type='interviewer'))).filter(Q(is_interviewer=True,is_deleted=False,has_admission=False) | Q(assigned_to__groups__name__in=[ROLE_TO_GROUP[ROLE_SECRETARY],ROLE_SECRETARY]) | Q(pk__in=active)).distinct().select_related('assigned_to').prefetch_related('assigned_to__groups','assigned_to__permission_overrides')
+    people=Customer.all_objects.alias(has_admission=Exists(Reception.objects.filter(customer_id=OuterRef('pk')).filter(Q(person_type='interviewer',customer__is_interviewer=True)|Q(person_type='customer',customer__is_interviewer=False)))).filter(Q(is_deleted=False,has_admission=False) | Q(assigned_to__groups__name__in=[ROLE_TO_GROUP[ROLE_SECRETARY],ROLE_SECRETARY]) | Q(pk__in=active)).distinct().select_related('assigned_to').prefetch_related('assigned_to__groups','assigned_to__permission_overrides')
     receivers=eligible_receivers()
     for person in people.iterator(chunk_size=200):
         reconcile(person,request=automatic_receiver(person.assigned_to),receivers=receivers)

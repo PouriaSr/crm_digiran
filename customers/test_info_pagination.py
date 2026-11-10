@@ -45,21 +45,21 @@ class InformationPaginationTests(TestCase):
             page=response.context['customers']
             self.assertEqual(len(page),size)
             self.assertEqual(page.paginator.per_page,10)
-            self.assertEqual(response.context['table_filters']['sort'],'recent')
-            self.assertContains(response,'value="recent" selected')
+            self.assertEqual(response.context['table_filters']['date_field'],'created')
+            self.assertNotContains(response,'name="display_mode"')
             seen.extend(card.pk for card in page)
         self.assertEqual(seen,expected)
         response=self.client.get(self.hub,{'sort':'bad'})
-        self.assertEqual(response.context['table_filters']['sort'],'recent')
+        self.assertEqual(response.context['table_filters']['date_field'],'created')
 
     def test_expert_filter_matches_column_preserves_search_and_order_across_pages(self):
-        query={'tab':'info','contact_expert':self.manager.pk,'q':'صفحه','sort':'oldest'}
+        query={'tab':'info','contact_expert':self.manager.pk,'q':'صفحه'}
         first=self.client.get(self.hub,query)
-        self.assertEqual(list(first.context['customers']),self.cards[:10])
+        self.assertEqual(list(first.context['customers']),list(reversed(self.cards[:13]))[:10])
         self.assertContains(first,'contact_expert='+str(self.manager.pk))
-        self.assertContains(first,'sort=oldest')
+        self.assertNotContains(first,'name="sort"')
         second=self.client.get(self.hub,{**query,'page':2})
-        self.assertEqual(list(second.context['customers']),self.cards[10:13])
+        self.assertEqual(list(second.context['customers']),list(reversed(self.cards[:13]))[10:])
         self.assertEqual(second.context['customers'].paginator.count,13)
         self.assertEqual(self.client.get(self.hub,{'contact_expert':'invalid'}).context['customers'].paginator.count,0)
         self.assertEqual(self.client.get(self.hub,{'contact_expert':'unassigned'}).context['customers'].paginator.count,0)

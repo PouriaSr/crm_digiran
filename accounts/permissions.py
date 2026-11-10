@@ -50,6 +50,9 @@ ROLE_TO_GROUP = {
 # تعریف دسترسی‌ها
 # ═══════════════════════════════════════════════════════════
 PERMISSIONS = {
+    'system.configure': [ROLE_ADMIN, ROLE_SALES_MANAGER],
+    'customers.admission_assign': [ROLE_ADMIN, ROLE_SALES_MANAGER],
+    'customers.admission_choose': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'customers.candidate_view': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
     'customers.candidate_add': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
     'customers.candidate_edit': [ROLE_ADMIN, ROLE_SALES_MANAGER],
@@ -119,6 +122,9 @@ PERMISSIONS = {
 
 # ─── متادیتای نمایش دسترسی‌ها ───
 PERMISSION_META = {
+    'system.configure': ('تنظیمات سیستم', 'مدیریت اجزای سیستم', 'ویرایش تب‌ها، دکمه‌ها، ستون‌ها و اجزای رابط؛ فقط ادمین و سرپرست'),
+    'customers.admission_assign': ('عملیات مرکز مشتریان', 'واگذاری پذیرش به خود', 'واگذاری پیش‌فرض به کاربر واردشده؛ نیازمند نقش سرپرست یا ادمین و مجوز ثبت ورود'),
+    'customers.admission_choose': ('عملیات مرکز مشتریان', 'انتخاب مسئول دیگر برای پذیرش', 'نمایش انتخاب مسئول در پنجره واگذاری؛ بدون این مجوز مقصد همیشه خود کاربر است'),
     'customers.candidate_view': ('استخدام و مصاحبه‌کنندگان', 'فهرست و صفحه مصاحبه‌کننده', 'مشاهده افراد تحت مسئولیت یا ثبت‌شده توسط خود؛ سوابق مصاحبه و مدارک مجوز استخدام جدا دارند'),
     'customers.candidate_add': ('استخدام و مصاحبه‌کنندگان', 'ثبت اولیه مصاحبه‌کننده', 'ثبت فقط نام و شماره از فرم تماس؛ مجوز ثبت تماس نیز لازم است'),
     'customers.candidate_edit': ('استخدام و مصاحبه‌کنندگان', 'ویرایش هویت مصاحبه‌کننده', 'تغییر نام و شماره فرد تحت مسئولیت؛ سایر عملیات از گردش استخدام انجام می‌شوند'),
@@ -188,6 +194,8 @@ PERMISSION_META = {
 
 # New operation keys inherit existing per-user overrides until explicitly customized.
 PERMISSION_PARENT = {
+    'customers.admission_assign':'customers.reassign',
+    'customers.admission_choose':'customers.admission_assign',
     'customers.hiring_interview': 'customers.hiring',
     'customers.hiring_refer': 'customers.hiring',
     'customers.hiring_ads': 'customers.hiring',
@@ -269,7 +277,7 @@ def has_role(user, *roles):
     return get_user_role(user) in roles
 
 
-ROLE_RESTRICTED_PERMISSIONS = {'customers.delete': {ROLE_ADMIN, ROLE_SALES_MANAGER}}
+ROLE_RESTRICTED_PERMISSIONS = {key:{ROLE_ADMIN, ROLE_SALES_MANAGER} for key in ('customers.delete','system.configure','customers.admission_assign','customers.admission_choose')}
 
 
 def role_allows_permission(role, key):

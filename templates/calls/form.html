@@ -5,10 +5,10 @@
 {% block content %}
 
 <div class="mb-6">
-    <a href="{% url 'customers:hub' %}?tab=followup" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست</a>
+    <a href="{% url 'customers:hub' %}?tab=followup" class="text-blue-600 hover:underline text-sm" data-crm-ui="ui.calls.form.a1" data-crm-order="10">← بازگشت به لیست</a>
 </div>
 
-<h1 class="text-2xl font-bold text-gray-800 mb-6">{{ title }}</h1>
+<h1 class="text-2xl font-bold text-gray-800 mb-6" data-crm-ui="ui.calls.form.h12" data-crm-order="20">{{ title }}</h1>
 
 <form data-crm-form data-crm-page method="post" class="crm-form-page bg-white rounded-xl shadow-sm p-6">
     {% csrf_token %}
@@ -18,7 +18,7 @@
 
     <!-- مشتری مرتبط (اختیاری) -->
     <div class="mb-5">
-        <label class="block text-sm font-medium text-gray-700 mb-1.5">
+        <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.calls.form.label3" data-crm-order="30">
             مشتری مرتبط
             <span class="text-xs text-gray-400 font-normal">(اختیاری)</span>
         </label>
@@ -28,61 +28,61 @@
     <!-- اطلاعات اصلی -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">نام تماس‌گیرنده <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.calls.form.label4" data-crm-order="40">نام تماس‌گیرنده <span class="text-red-500">*</span></label>
             {{ form.caller_name }}
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">شماره تماس <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.calls.form.label5" data-crm-order="50">شماره تماس <span class="text-red-500">*</span></label>
             {{ form.call_number }}
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">نوع تماس</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.calls.form.label6" data-crm-order="60">نوع تماس</label>
             {{ form.call_type }}
         </div>
 
         <div>
-            <label for="{{ form.source.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1.5">منبع تماس{% if form.source.field.required %} <span class="text-red-500">*</span>{% endif %}</label>
+            <label for="{{ form.source.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.calls.form.label7" data-crm-order="70">منبع تماس{% if form.source.field.required %} <span class="text-red-500">*</span>{% endif %}</label>
             {{ form.source }}
             {% if form.source.errors %}<p class="text-xs text-red-600 mt-1">{{ form.source.errors.0 }}</p>{% endif %}
             {% if call.source_phone_snapshot %}<p class="text-xs text-gray-500 mt-1">منبع هنگام ثبت: {{ call.source_display }}</p>{% endif %}
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">وضعیت</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.calls.form.label8" data-crm-order="80">وضعیت</label>
             {{ form.status }}
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">هدف تماس</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.calls.form.label9" data-crm-order="90">هدف تماس</label>
             {{ form.purpose }}
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">مدت مکالمه (دقیقه)</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.calls.form.label10" data-crm-order="100">مدت مکالمه (دقیقه)</label>
             {{ form.duration }}
         </div>
 
         
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">انجام‌دهنده</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.calls.form.label11" data-crm-order="110">انجام‌دهنده</label>
             {{ form.called_by }}
         </div>
     </div>
 
     <!-- پیگیری -->
     <div class="mt-6 pt-6 border-t border-gray-100">
-        <h3 class="font-bold text-gray-700 mb-4 text-sm">پیگیری</h3>
+        <h3 class="font-bold text-gray-700 mb-4 text-sm" data-crm-ui="ui.calls.form.h312" data-crm-order="120">پیگیری</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">تاریخ پیگیری</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.calls.form.label13" data-crm-order="130">تاریخ پیگیری</label>
                 {{ form.follow_up_date }}
-</div><div><label for="{{ form.follow_up_time.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1.5">ساعت پیگیری</label>{{ form.follow_up_time }}{{ form.follow_up_time.errors }}
+</div><div><label for="{{ form.follow_up_time.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.calls.form.label14" data-crm-order="140">ساعت پیگیری</label>{{ form.follow_up_time }}{{ form.follow_up_time.errors }}
             </div>
             <div class="flex items-end pb-3">
-                <label id="followup-label" class="flex items-center gap-2 text-sm cursor-pointer">
+                <label id="followup-label" class="flex items-center gap-2 text-sm cursor-pointer" data-crm-ui="ui.calls.form.label15" data-crm-order="150">
                     {{ form.is_followed_up }}
                     <span>پیگیری انجام شده</span>
                 </label>
@@ -92,16 +92,16 @@
 
     <!-- یادداشت -->
     <div class="mt-6 pt-6 border-t border-gray-100">
-        <label class="block text-sm font-medium text-gray-700 mb-1.5">یادداشت مکالمه</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.calls.form.label16" data-crm-order="160">یادداشت مکالمه</label>
         {{ form.notes }}
     </div>
 
     <!-- دکمه‌ها -->
     <div class="crm-form-actions flex gap-3 mt-8 pt-6 border-t border-gray-100">
-        <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+        <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium" data-crm-ui="ui.calls.form.button17" data-crm-order="170">
             {{ submit_label }}
         </button>
-        <a href="{% url 'customers:hub' %}?tab=followup" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+        <a href="{% url 'customers:hub' %}?tab=followup" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium" data-crm-ui="ui.calls.form.a18" data-crm-order="180">
             انصراف
         </a>
     </div>

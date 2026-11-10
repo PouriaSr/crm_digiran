@@ -409,6 +409,7 @@
         }
     </style>
 {% include 'includes/_numerals.html' %}
+{% include 'includes/_interface_ui.html' %}
 </head>
 <body>
 
@@ -427,7 +428,7 @@
                 {% endif %}
             </div>
             <div class="company-info">
-                <h1>{{ company.name }}</h1>
+                <h1 data-crm-ui="ui.sales.print.h11" data-crm-order="10">{{ company.name }}</h1>
                 <p>{{ company.slogan }}</p>
             </div>
         </div>
@@ -441,7 +442,7 @@
     <!-- ═══ اطلاعات مشتری و فاکتور ═══ -->
     <div class="invoice-meta">
         <div class="meta-section">
-            <h3>مشخصات خریدار</h3>
+            <h3 data-crm-ui="ui.sales.print.h32" data-crm-order="20">مشخصات خریدار</h3>
             <div class="meta-item">
                 <span class="label">نام:</span>
                 <span class="value">{{ invoice.customer.name }}</span>
@@ -471,7 +472,7 @@
         </div>
 
         <div class="meta-section">
-            <h3>مشخصات فاکتور</h3>
+            <h3 data-crm-ui="ui.sales.print.h33" data-crm-order="30">مشخصات فاکتور</h3>
             <div class="meta-item">
                 <span class="label">تاریخ صدور:</span>
                 <span class="value" style="direction: rtl;">{{ invoice.issue_date|jdate:"Y/m/d H:i"|fa_digits }}</span>
@@ -508,11 +509,11 @@
         <table class="items-table">
             <thead>
                 <tr>
-                    <th>#</th>
-                    <th>شرح کالا / خدمات</th>
-                    <th>تعداد</th>
-                    <th>قیمت واحد</th>
-                    <th>جمع کل</th>
+                    <th data-crm-ui="ui.sales.print.th4" data-crm-order="10">#</th>
+                    <th data-crm-ui="ui.sales.print.th5" data-crm-order="20">شرح کالا / خدمات</th>
+                    <th data-crm-ui="ui.sales.print.th6" data-crm-order="30">تعداد</th>
+                    <th data-crm-ui="ui.sales.print.th7" data-crm-order="40">قیمت واحد</th>
+                    <th data-crm-ui="ui.sales.print.th8" data-crm-order="50">جمع کل</th>
                 </tr>
             </thead>
             <tbody>
@@ -630,10 +631,10 @@
 
 <!-- ═══ دکمه‌های عملیات ═══ -->
 <div class="print-actions">
-    <button class="btn btn-primary" onclick="window.print()">
+    <button class="btn btn-primary" onclick="window.print()" data-crm-ui="ui.sales.print.button9" data-crm-order="90">
         🖨 چاپ / ذخیره PDF
     </button>
-    <a href="{% url 'sales:detail' invoice.pk %}" class="btn btn-secondary">
+    <a href="{% url 'sales:detail' invoice.pk %}" class="btn btn-secondary" data-crm-ui="ui.sales.print.a10" data-crm-order="100">
         ← بازگشت
     </a>
 </div>

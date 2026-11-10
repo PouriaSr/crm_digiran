@@ -7,12 +7,12 @@
 
 <div class="page-header">
     <div>
-        <h1 class="text-2xl font-bold text-gray-800">کاربران سیستم</h1>
+        <h1 class="text-2xl font-bold text-gray-800" data-crm-ui="ui.accounts.userlist.h11" data-crm-order="10">کاربران سیستم</h1>
         <p class="text-sm text-gray-500 mt-1">مدیریت کاربران، نقش‌ها و دسترسی‌ها</p>
     </div>
     <div class="action-buttons action-buttons-hidden-mobile flex gap-2">
         <a href="{% url 'accounts:user_create' %}"
-           class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2">
+           class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2" data-crm-ui="ui.accounts.userlist.a2" data-crm-order="20">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
@@ -54,12 +54,12 @@
             {% endfor %}
         </select>
 
-        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700" data-crm-ui="ui.accounts.userlist.button3" data-crm-order="30">
             اعمال فیلتر
         </button>
 
         {% if search or current_role %}
-        <a href="{% url 'accounts:user_list' %}" class="text-sm text-gray-500 hover:text-gray-700">پاک کردن</a>
+        <a href="{% url 'accounts:user_list' %}" class="text-sm text-gray-500 hover:text-gray-700" data-crm-ui="ui.accounts.userlist.a4" data-crm-order="40">پاک کردن</a>
         {% endif %}
     </form>
 </div>
@@ -69,13 +69,13 @@
     <table class="crm-data-table responsive-table w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr class="text-gray-600">
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">کاربر</th>
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">نام کاربری</th>
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">نقش</th>
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">پرسنل</th>
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">آخرین ورود</th>
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">وضعیت</th>
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">عملیات</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.accounts.userlist.th5" data-crm-order="10">کاربر</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.accounts.userlist.th6" data-crm-order="20">نام کاربری</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.accounts.userlist.th7" data-crm-order="30">نقش</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.accounts.userlist.th8" data-crm-order="40">پرسنل</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.accounts.userlist.th9" data-crm-order="50">آخرین ورود</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.accounts.userlist.th10" data-crm-order="60">وضعیت</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.accounts.userlist.th11" data-crm-order="70">عملیات</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
@@ -120,7 +120,7 @@
                 <td class="px-4 py-3 text-right text-xs" data-label="پرسنل">
                     {% if item.user.employee_profile %}
                         <a href="{% url 'hr:employee_detail' item.user.employee_profile.pk %}"
-                           class="text-blue-600 hover:underline">
+                           class="text-blue-600 hover:underline" data-crm-ui="ui.accounts.userlist.a12" data-crm-order="120">
                             {{ item.user.employee_profile.full_name }}
                         </a>
                     {% else %}
@@ -140,22 +140,22 @@
                 <td class="px-4 py-3 text-right whitespace-nowrap">
                     <a href="{% url 'accounts:user_edit' item.user.pk %}"
                        class="text-yellow-600 hover:text-yellow-800 text-xs px-2 py-1 rounded hover:bg-yellow-50"
-                       title="ویرایش">ویرایش</a>
+                       title="ویرایش" data-crm-ui="ui.accounts.userlist.a13" data-crm-order="130">ویرایش</a>
                     <a href="{% url 'accounts:user_password' item.user.pk %}"
                        class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50"
-                       title="تغییر رمز">رمز</a>
+                       title="تغییر رمز" data-crm-ui="ui.accounts.userlist.a14" data-crm-order="140">رمز</a>
                     {% if item.user != request.user %}
                         <form data-crm-form method="post" action="{% url 'accounts:user_toggle' item.user.pk %}" class="inline-flex items-center justify-center">
                             {% csrf_token %}
                             <button type="submit"
                                     class="text-orange-600 hover:text-orange-800 text-xs px-2 py-1 rounded hover:bg-orange-50"
-                                    title="{% if item.user.is_active %}غیرفعال کن{% else %}فعال کن{% endif %}">
+                                    title="{% if item.user.is_active %}غیرفعال کن{% else %}فعال کن{% endif %}" data-crm-ui="ui.accounts.userlist.button15" data-crm-order="150">
                                 {% if item.user.is_active %}قطع{% else %}فعال{% endif %}
                             </button>
                         </form>
                         <a href="{% url 'accounts:user_delete' item.user.pk %}"
                            class="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50"
-                           title="حذف">حذف</a>
+                           title="حذف" data-crm-ui="ui.accounts.userlist.a16" data-crm-order="160">حذف</a>
                     {% endif %}
                 </td>
             </tr>
@@ -173,7 +173,7 @@
 
 {% block fab %}
 {% if 'accounts.manage_users' in user_permissions %}
-<a href="{% url 'accounts:user_create' %}" class="app-fab" title="کاربر جدید" aria-label="کاربر جدید">
+<a href="{% url 'accounts:user_create' %}" class="app-fab" title="کاربر جدید" aria-label="کاربر جدید" data-crm-ui="ui.accounts.userlist.a17" data-crm-order="170">
     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
     </svg>

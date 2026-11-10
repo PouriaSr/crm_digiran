@@ -24,7 +24,7 @@ class CandidateSeparationTests(TestCase):
         self.assertEqual(self.client.post(reverse('customers:hub_submit_call'),{'name':self.person.name,'mobile':self.person.mobile,'is_interviewer':'false'}).status_code,403)
 
     def test_candidates_are_not_in_customer_list_but_have_their_own_list(self):
-        response=self.client.get(reverse('customers:hub'),{'tab':'info'})
+        response=self.client.get(reverse('customers:hub'),{'tab':'info','person_status':'lead'})
         self.assertNotIn(self.person,list(response.context['customers']))
         response=self.client.get(reverse('customers:candidate_list'))
         self.assertContains(response,self.person.name)

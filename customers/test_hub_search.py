@@ -56,7 +56,7 @@ class HubSearchTest(TestCase):
     def test_search_no_result(self):
         r = self.client.get(f'{self.hub}?tab=info&q=zzzz-not-found')
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, 'هیچ مشتری')
+        self.assertContains(r, 'هیچ فردی')
 
     def test_search_empty(self):
         r = self.client.get(f'{self.hub}?tab=info&q=')

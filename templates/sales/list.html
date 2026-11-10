@@ -11,12 +11,12 @@
 <!-- Header -->
 <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
     <div>
-        <h1 class="text-2xl font-bold text-gray-800">فاکتورها</h1>
+        <h1 class="text-2xl font-bold text-gray-800" data-crm-ui="ui.sales.list.h11" data-crm-order="10">فاکتورها</h1>
         <p class="text-sm text-gray-500 mt-1">مدیریت فاکتورهای فروش</p>
     </div>
     {% if 'invoices.add' in user_permissions %}
     <div class="action-buttons-hidden-mobile"><a href="{% url 'sales:create' %}"
-       class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2">
+       class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2" data-crm-ui="ui.sales.list.a2" data-crm-order="20">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
         </svg>
@@ -86,39 +86,39 @@
 
         <div class="flex flex-col sm:flex-row flex-wrap gap-3 sm:items-center">
             <div class="flex items-center gap-2">
-                <label class="text-xs text-gray-500 whitespace-nowrap">از تاریخ:</label>
+                <label class="text-xs text-gray-500 whitespace-nowrap" data-crm-ui="ui.sales.list.label3" data-crm-order="30">از تاریخ:</label>
                 <input type="text" name="from_date" value="{{ from_date }}" data-jdp
                        placeholder="۱۴۰۵/۰۱/۰۱" autocomplete="off"
                        class="flex-1 sm:flex-none sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" dir="ltr">
             </div>
 
             <div class="flex items-center gap-2">
-                <label class="text-xs text-gray-500 whitespace-nowrap">تا تاریخ:</label>
+                <label class="text-xs text-gray-500 whitespace-nowrap" data-crm-ui="ui.sales.list.label4" data-crm-order="40">تا تاریخ:</label>
                 <input type="text" name="to_date" value="{{ to_date }}" data-jdp
                        placeholder="۱۴۰۵/۱۲/۲۹" autocomplete="off"
                        class="flex-1 sm:flex-none sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" dir="ltr">
             </div>
 
             <div class="flex items-center gap-2">
-                <label class="text-xs text-gray-500 whitespace-nowrap">از مبلغ:</label>
+                <label class="text-xs text-gray-500 whitespace-nowrap" data-crm-ui="ui.sales.list.label5" data-crm-order="50">از مبلغ:</label>
                 <input type="text" name="amount_min" value="{{ amount_min }}"
                        placeholder="۰" autocomplete="off"
                        class="flex-1 sm:flex-none sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" dir="ltr">
             </div>
 
             <div class="flex items-center gap-2">
-                <label class="text-xs text-gray-500 whitespace-nowrap">تا مبلغ:</label>
+                <label class="text-xs text-gray-500 whitespace-nowrap" data-crm-ui="ui.sales.list.label6" data-crm-order="60">تا مبلغ:</label>
                 <input type="text" name="amount_max" value="{{ amount_max }}"
                        placeholder="۹۹۹۹۹۹۹" autocomplete="off"
                        class="flex-1 sm:flex-none sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" dir="ltr">
             </div>
 
-            <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+            <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700" data-crm-ui="ui.sales.list.button7" data-crm-order="70">
                 اعمال فیلتر
             </button>
 
             {% if has_filters %}
-            <a href="{% url 'customers:hub' %}?tab=invoice" class="text-sm text-gray-500 hover:text-gray-700 text-center sm:text-right">پاک کردن فیلترها</a>
+            <a href="{% url 'customers:hub' %}?tab=invoice" class="text-sm text-gray-500 hover:text-gray-700 text-center sm:text-right" data-crm-ui="ui.sales.list.a8" data-crm-order="80">پاک کردن فیلترها</a>
             {% endif %}
         </div>
     </form>
@@ -140,21 +140,21 @@
     <table class="crm-data-table w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr class="text-gray-600">
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">شماره</th>
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">مشتری</th>
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">اقلام</th>
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">مبلغ نهایی</th>
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">وضعیت</th>
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">پرداخت</th>
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">تاریخ صدور</th>
-                <th class="text-right px-4 py-3 font-medium whitespace-nowrap">عملیات</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.sales.list.th9" data-crm-order="10">شماره</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.sales.list.th10" data-crm-order="20">مشتری</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.sales.list.th11" data-crm-order="30">اقلام</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.sales.list.th12" data-crm-order="40">مبلغ نهایی</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.sales.list.th13" data-crm-order="50">وضعیت</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.sales.list.th14" data-crm-order="60">پرداخت</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.sales.list.th15" data-crm-order="70">تاریخ صدور</th>
+                <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.sales.list.th16" data-crm-order="80">عملیات</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for invoice in page_obj %}
             <tr data-feedback-record="invoice:{{ invoice.pk }}" class="hover:bg-gray-50 transition">
                 <td class="px-4 py-3 text-right font-mono text-xs">
-                    <a href="{% url 'sales:detail' invoice.pk %}" class="text-blue-600 hover:underline" dir="ltr">{{ invoice.number }}</a>
+                    <a href="{% url 'sales:detail' invoice.pk %}" class="text-blue-600 hover:underline" dir="ltr" data-crm-ui="ui.sales.list.a17" data-crm-order="170">{{ invoice.number }}</a>
                 </td>
                 <td class="px-4 py-3 text-right">
                     <div class="font-medium text-gray-800">{{ invoice.customer.name }}</div>
@@ -177,9 +177,9 @@
                 <td class="px-4 py-3 text-right text-gray-500 text-xs" dir="ltr">{{ invoice.issue_date|jdate:"Y/m/d H:i" }}</td>
                 <td class="px-4 py-3 text-right whitespace-nowrap">
                     <div class="flex items-center gap-1">
-                        <a href="{% url 'sales:detail' invoice.pk %}" class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50">جزئیات</a>
+                        <a href="{% url 'sales:detail' invoice.pk %}" class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50" data-crm-ui="ui.sales.list.a18" data-crm-order="180">جزئیات</a>
                         {% if 'invoices.print' in user_permissions %}
-                        <a href="{% url 'sales:print' invoice.pk %}" target="_blank" class="text-gray-600 hover:text-gray-800 text-xs px-2 py-1 rounded hover:bg-gray-50">چاپ</a>
+                        <a href="{% url 'sales:print' invoice.pk %}" target="_blank" class="text-gray-600 hover:text-gray-800 text-xs px-2 py-1 rounded hover:bg-gray-50" data-crm-ui="ui.sales.list.a19" data-crm-order="190">چاپ</a>
                         {% endif %}
                     </div>
                 </td>
@@ -236,9 +236,9 @@
         </div>
         <!-- Actions -->
         <div class="px-4 py-3 border-t border-gray-100 flex gap-2">
-            <a href="{% url 'sales:detail' invoice.pk %}" class="flex-1 text-center py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium active:bg-blue-700 transition">جزئیات</a>
+            <a href="{% url 'sales:detail' invoice.pk %}" class="flex-1 text-center py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium active:bg-blue-700 transition" data-crm-ui="ui.sales.list.a20" data-crm-order="200">جزئیات</a>
             {% if 'invoices.print' in user_permissions %}
-            <a href="{% url 'sales:print' invoice.pk %}" target="_blank" class="flex-1 text-center py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium active:bg-gray-200 transition">چاپ</a>
+            <a href="{% url 'sales:print' invoice.pk %}" target="_blank" class="flex-1 text-center py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium active:bg-gray-200 transition" data-crm-ui="ui.sales.list.a21" data-crm-order="210">چاپ</a>
             {% endif %}
         </div>
     </article>
@@ -256,7 +256,7 @@
 
 {% block fab %}
 {% if 'invoices.add' in user_permissions %}
-<a href="{% url 'sales:create' %}" class="app-fab" title="فاکتور جدید" aria-label="فاکتور جدید">
+<a href="{% url 'sales:create' %}" class="app-fab" title="فاکتور جدید" aria-label="فاکتور جدید" data-crm-ui="ui.sales.list.a22" data-crm-order="220">
     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
     </svg>

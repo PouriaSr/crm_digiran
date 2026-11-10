@@ -1,0 +1,40 @@
+"""UI configuration never grants permission to the underlying operation."""
+import json
+from functools import lru_cache
+from pathlib import Path
+from django.urls import reverse, get_script_prefix
+from .permissions import get_user_role, has_permission
+
+
+@lru_cache(maxsize=1)
+def catalog():
+    return json.loads(Path(__file__).with_name('ui_catalog.json').read_text())
+
+
+def permitted(user, component):
+    return (component.enabled and (not component.roles or get_user_role(user) in component.roles)
+            and (not component.permission or has_permission(user, component.permission)))
+
+
+def internal_url(value):
+    prefix=get_script_prefix().rstrip('/')
+    return prefix+value if prefix and not (value==prefix or value.startswith(prefix+'/')) else value
+
+
+def interface_context(request):
+    if not request.user.is_authenticated:
+        return {}
+    from .models import InterfaceComponent
+    settings = list(InterfaceComponent.objects.all())
+    overrides = []
+    links = []
+    for item in settings:
+        visible = permitted(request.user, item)
+        if item.custom:
+            if visible and (not item.scope_path or request.path_info == item.scope_path):
+                links.append({'key': item.key, 'label': item.label, 'kind': item.kind,
+                              'url': internal_url(item.url) if item.url else reverse('accounts:interface_page', args=[item.pk])})
+        elif item.key in catalog():
+            overrides.append({'key': item.key, 'label': item.label if catalog()[item.key].get('label_mutable',True) and item.label!=catalog()[item.key]['label'] else '', 'order_changed':item.position!=catalog()[item.key]['position'], 'visible': visible, 'position': item.position,
+                              'kind': item.kind})
+    return {'interface_overrides': overrides, 'interface_links': links}

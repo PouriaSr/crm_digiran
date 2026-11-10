@@ -2,7 +2,7 @@
 {# ═══ تاریخچه‌ی تب پذیرش ═══ #}
 <div class="mt-4 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
     <div class="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
-        <h3 class="font-bold text-gray-800">تاریخچه پذیرش‌ها</h3>
+        <h3 class="font-bold text-gray-800" data-crm-ui="ui.customers.receptionhistory.h31" data-crm-order="10">تاریخچه پذیرش‌ها</h3>
         <span class="text-xs text-gray-400">برای {{ reception_history|length|fa_num }} مشتری ثبت شده است</span>
     </div>
 
@@ -11,7 +11,7 @@
         <div class="p-4" x-data="{ open: false }">
             <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
                 <a href="{% url 'customers:hub' %}?tab=reception&c={{ r.customer_id }}"
-                   class="font-bold text-gray-800 hover:text-emerald-600 transition">{{ r.customer.name }}</a>
+                   class="font-bold text-gray-800 hover:text-emerald-600 transition" data-crm-ui="ui.customers.receptionhistory.a2" data-crm-order="20">{{ r.customer.name }}</a>
                 <span class="text-xs text-gray-500 font-mono" dir="ltr">{{ r.customer.mobile }}</span>
                 <span class="px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-[11px] font-bold">{{ r.get_person_type_display|default:"—" }}</span>
                 {% if r.has_visit %}<span class="text-[11px] text-gray-500">{{ r.get_has_visit_display }}</span>{% endif %}
@@ -25,12 +25,12 @@
 
                 {% if r.updates %}
                 <button type="button" @click="open = !open"
-                        class="text-[11px] font-bold text-blue-600 hover:underline">
+                        class="text-[11px] font-bold text-blue-600 hover:underline" data-crm-ui="ui.customers.receptionhistory.button3" data-crm-order="30">
                     به‌روزرسانی‌ها ({{ r.updates|length|fa_num }})
                 </button>
                 {% endif %}
                 <a href="{% url 'customers:hub' %}?tab=reception&c={{ r.customer_id }}"
-                   class="text-[11px] text-emerald-600 hover:underline">ویرایش</a>
+                   class="text-[11px] text-emerald-600 hover:underline" data-crm-ui="ui.customers.receptionhistory.a4" data-crm-order="40">ویرایش</a>
             </div>
 
             {% if r.updates %}

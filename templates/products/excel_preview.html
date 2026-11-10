@@ -6,10 +6,10 @@
 {% include 'includes/_import_steps.html' with step=2 %}
 
 <div class="mb-6">
-    <a href="{% url 'products:excel_import' %}" class="text-blue-600 hover:underline text-sm">← بارگذاری فایل دیگر</a>
+    <a href="{% url 'products:excel_import' %}" class="text-blue-600 hover:underline text-sm" data-crm-ui="ui.products.excelpreview.a1" data-crm-order="10">← بارگذاری فایل دیگر</a>
 </div>
 
-<h1 class="text-2xl font-bold text-gray-800 mb-6">پیش‌نمایش ورود کالاها</h1>
+<h1 class="text-2xl font-bold text-gray-800 mb-6" data-crm-ui="ui.products.excelpreview.h12" data-crm-order="20">پیش‌نمایش ورود کالاها</h1>
 
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
     <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-gray-500">
@@ -40,14 +40,14 @@
         <table class="w-full text-sm">
             <thead class="bg-gray-50 border-b border-gray-200">
                 <tr class="text-gray-600">
-                    <th class="text-right px-4 py-3 font-medium whitespace-nowrap">#</th>
-                    <th class="text-right px-4 py-3 font-medium whitespace-nowrap">وضعیت</th>
-                    <th class="text-right px-4 py-3 font-medium whitespace-nowrap">نام کالا</th>
-                    <th class="text-right px-4 py-3 font-medium whitespace-nowrap">کد</th>
-                    <th class="text-right px-4 py-3 font-medium whitespace-nowrap">دسته</th>
-                    <th class="text-right px-4 py-3 font-medium whitespace-nowrap">قیمت</th>
-                    <th class="text-right px-4 py-3 font-medium whitespace-nowrap">موجودی</th>
-                    <th class="text-right px-4 py-3 font-medium whitespace-nowrap">خطاها</th>
+                    <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.products.excelpreview.th3" data-crm-order="10">#</th>
+                    <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.products.excelpreview.th4" data-crm-order="20">وضعیت</th>
+                    <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.products.excelpreview.th5" data-crm-order="30">نام کالا</th>
+                    <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.products.excelpreview.th6" data-crm-order="40">کد</th>
+                    <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.products.excelpreview.th7" data-crm-order="50">دسته</th>
+                    <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.products.excelpreview.th8" data-crm-order="60">قیمت</th>
+                    <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.products.excelpreview.th9" data-crm-order="70">موجودی</th>
+                    <th class="text-right px-4 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.products.excelpreview.th10" data-crm-order="80">خطاها</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -94,12 +94,12 @@
     {% csrf_token %}
     {% if result.valid %}
         <button type="submit" name="action" value="confirm"
-                class="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">
+                class="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium" data-crm-ui="ui.products.excelpreview.button11" data-crm-order="110">
             ✓ ذخیره‌ی {{ result.valid }} ردیف معتبر
         </button>
     {% endif %}
     <button type="submit" name="action" value="cancel"
-            class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+            class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium" data-crm-ui="ui.products.excelpreview.button12" data-crm-order="120">
         انصراف
     </button>
 </form>

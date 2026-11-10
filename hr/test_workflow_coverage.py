@@ -115,7 +115,7 @@ class WorkflowCoverageTests(TestCase):
         old=Task.objects.get(source_key=f'customer-followup:{self.person.pk}')
         call=Call.objects.create(customer=self.person,caller_name=self.person.name,call_number=self.person.mobile,status='followup',called_by=self.admin)
         old.refresh_from_db();self.assertEqual(old.status,'cancelled')
-        self.assertEqual(Task.objects.filter(source_customer=self.person).exclude(status__in=['done','cancelled']).count(),1)
+        self.assertEqual(Task.objects.filter(source_customer=self.person).exclude(source_type='admission').exclude(status__in=['done','cancelled']).count(),1)
         self.assertTrue(Task.objects.filter(source_key=f'call:{call.pk}',due_date=None).exists())
 
 

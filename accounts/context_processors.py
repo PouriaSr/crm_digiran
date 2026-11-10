@@ -34,8 +34,11 @@ def permissions_context(request):
     role = get_user_role(user)
     notifications = get_notifications(user)
 
+    from .interface import interface_context
     return {
+        **interface_context(request),
         'can_open_customer_hub': bool(allowed_tabs(user)),
+        'can_assign_admission': card_manager_for_request(request) and 'customers.admission_assign' in get_user_permissions(user),
         'can_transfer_cards': card_manager_for_request(request) and 'customers.reassign' in get_user_permissions(user),
         'can_transfer_calls': card_manager_for_request(request) and 'calls.reassign' in get_user_permissions(user),
         'user_permissions': get_user_permissions(user),

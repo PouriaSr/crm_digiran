@@ -37,7 +37,7 @@ class NotesColumnRemovedTest(TestCase):
         self.assertEqual(len(ths), 7)
 
     def test_expected_columns(self):
-        for col in ('نام مشتری', 'شماره تماس', 'منبع جذب', 'وضعیت پیگیری',
+        for col in ('نام فرد', 'شماره تماس', 'منبع جذب', 'پیگیری / آخرین ورود',
                     'کارشناس تماس', 'تاریخ ثبت', 'عملیات'):
             self.assertIn(col, self.header)
 

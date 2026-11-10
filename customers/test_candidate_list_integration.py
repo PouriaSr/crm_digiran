@@ -43,7 +43,7 @@ class CandidateListIntegrationTests(TestCase):
 
     def test_customer_mode_keeps_original_rows_and_old_candidate_url_is_compatible(self):
         response=self.client.get(self.hub,{'tab':'info'})
-        self.assertEqual([p.pk for p in response.context['customers']],[self.ordinary.pk])
+        self.assertEqual({p.pk for p in response.context['customers']},{self.ordinary.pk,self.fresh.pk,self.admitted.pk})
         response=self.client.get(reverse('customers:candidate_list'))
         self.assertTemplateUsed(response,'customers/hub.html')
         self.assertTrue(response.context['candidate_mode'])

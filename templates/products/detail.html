@@ -3,7 +3,7 @@
 {% block title %}{{ product.name }}{% endblock %}
 
 {% block mobile_leading %}
-<a href="{% url 'products:list' %}" class="app-topbar-btn" aria-label="بازگشت">
+<a href="{% url 'products:list' %}" class="app-topbar-btn" aria-label="بازگشت" data-crm-ui="ui.products.detail.a1" data-crm-order="10">
     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>
@@ -17,17 +17,17 @@
 {% load fa_numbers %}
 
 <div class="flex justify-between items-center mb-6">
-    <a href="{% url 'products:list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست</a>
+    <a href="{% url 'products:list' %}" class="text-blue-600 hover:underline text-sm" data-crm-ui="ui.products.detail.a2" data-crm-order="20">← بازگشت به لیست</a>
     <div class="flex gap-2">
         {% if product.is_deleted and 'products.delete' in user_permissions %}
         <a href="{% url 'products:restore' product.pk %}"
-           class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">♻️ بازگرداندن</a>
+           class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm" data-crm-ui="ui.products.detail.a3" data-crm-order="30">♻️ بازگرداندن</a>
         {% endif %}
         {% if 'products.edit' in user_permissions and not product.is_deleted %}
-        <a href="{% url 'products:edit' product.pk %}" class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm">✏️ ویرایش</a>
+        <a href="{% url 'products:edit' product.pk %}" class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm" data-crm-ui="ui.products.detail.a4" data-crm-order="40">✏️ ویرایش</a>
         {% endif %}
         {% if 'products.delete' in user_permissions and not product.is_deleted %}
-        <a href="{% url 'products:delete' product.pk %}" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm">🗑 حذف</a>
+        <a href="{% url 'products:delete' product.pk %}" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm" data-crm-ui="ui.products.detail.a5" data-crm-order="50">🗑 حذف</a>
         {% endif %}
     </div>
 </div>
@@ -54,7 +54,7 @@
             📦
         </div>
         <div class="flex-1">
-            <h1 class="text-xl font-bold text-gray-800">{{ product.name }}</h1>
+            <h1 class="text-xl font-bold text-gray-800" data-crm-ui="ui.products.detail.h16" data-crm-order="60">{{ product.name }}</h1>
             <p class="text-gray-500 font-mono text-sm mt-1" dir="ltr">{{ product.code }}</p>
             <div class="flex gap-2 mt-3 flex-wrap">
                 {% if product.category %}
@@ -89,7 +89,7 @@
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
     <div class="bg-white rounded-xl shadow-sm p-6">
-        <h2 class="font-bold text-gray-700 mb-4">موجودی</h2>
+        <h2 class="font-bold text-gray-700 mb-4" data-crm-ui="ui.products.detail.h27" data-crm-order="70">موجودی</h2>
         <dl class="space-y-3 text-sm">
             <div class="flex justify-between">
                 <dt class="text-gray-500">موجودی فعلی:</dt>
@@ -117,7 +117,7 @@
     </div>
 
     <div class="bg-white rounded-xl shadow-sm p-6">
-        <h2 class="font-bold text-gray-700 mb-4">اطلاعات</h2>
+        <h2 class="font-bold text-gray-700 mb-4" data-crm-ui="ui.products.detail.h28" data-crm-order="80">اطلاعات</h2>
         <dl class="space-y-3 text-sm">
             <div class="flex justify-between">
                 <dt class="text-gray-500">واحد:</dt>
@@ -187,7 +187,7 @@
 <!-- آخرین فاکتورهای مرتبط -->
 <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
     <div class="px-6 py-4 border-b border-gray-100">
-        <h2 class="font-bold text-gray-700 flex items-center gap-2">
+        <h2 class="font-bold text-gray-700 flex items-center gap-2" data-crm-ui="ui.products.detail.h29" data-crm-order="90">
             <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-sm">📄</span>
             آخرین فاکتورها
         </h2>
@@ -197,21 +197,21 @@
     <table class="w-full text-sm">
         <thead class="bg-gray-50">
             <tr class="text-gray-600">
-                <th class="text-right px-6 py-2.5 font-medium">فاکتور</th>
-                <th class="text-right px-6 py-2.5 font-medium">مشتری</th>
-                <th class="text-right px-6 py-2.5 font-medium">تعداد</th>
-                <th class="text-right px-6 py-2.5 font-medium">مبلغ</th>
-                <th class="text-right px-6 py-2.5 font-medium">تاریخ</th>
+                <th class="text-right px-6 py-2.5 font-medium" data-crm-ui="ui.products.detail.th10" data-crm-order="10">فاکتور</th>
+                <th class="text-right px-6 py-2.5 font-medium" data-crm-ui="ui.products.detail.th11" data-crm-order="20">مشتری</th>
+                <th class="text-right px-6 py-2.5 font-medium" data-crm-ui="ui.products.detail.th12" data-crm-order="30">تعداد</th>
+                <th class="text-right px-6 py-2.5 font-medium" data-crm-ui="ui.products.detail.th13" data-crm-order="40">مبلغ</th>
+                <th class="text-right px-6 py-2.5 font-medium" data-crm-ui="ui.products.detail.th14" data-crm-order="50">تاریخ</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for item in recent_items %}
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-3 text-right">
-                    <a href="{% url 'sales:detail' item.invoice.pk %}" class="text-blue-600 font-mono text-xs hover:underline" dir="ltr">{{ item.invoice.number }}</a>
+                    <a href="{% url 'sales:detail' item.invoice.pk %}" class="text-blue-600 font-mono text-xs hover:underline" dir="ltr" data-crm-ui="ui.products.detail.a15" data-crm-order="150">{{ item.invoice.number }}</a>
                 </td>
                 <td class="px-6 py-3 text-right text-xs">
-                    <a href="{% url 'customers:detail' item.invoice.customer.pk %}" class="text-gray-700 hover:text-blue-600">{{ item.invoice.customer.name }}</a>
+                    <a href="{% url 'customers:detail' item.invoice.customer.pk %}" class="text-gray-700 hover:text-blue-600" data-crm-ui="ui.products.detail.a16" data-crm-order="160">{{ item.invoice.customer.name }}</a>
                 </td>
                 <td class="px-6 py-3 text-right text-xs">{{ item.quantity }} {{ product.unit }}</td>
                 <td class="px-6 py-3 text-right text-xs font-bold" dir="ltr">{{ item.total_price|floatformat:0 }}</td>
@@ -230,7 +230,7 @@
 
 {% if product.description %}
 <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
-    <h2 class="font-bold text-gray-700 mb-4">توضیحات</h2>
+    <h2 class="font-bold text-gray-700 mb-4" data-crm-ui="ui.products.detail.h217" data-crm-order="170">توضیحات</h2>
     <p class="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{{ product.description }}</p>
 </div>
 {% endif %}

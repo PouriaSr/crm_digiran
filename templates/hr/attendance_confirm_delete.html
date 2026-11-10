@@ -13,7 +13,7 @@
             </svg>
         </div>
 
-        <h1 class="text-xl font-bold text-gray-800 mb-2">حذف رکورد حضور؟</h1>
+        <h1 class="text-xl font-bold text-gray-800 mb-2" data-crm-ui="ui.hr.attendanceconfirmdelete.h11" data-crm-order="10">حذف رکورد حضور؟</h1>
         <p class="text-gray-500 text-sm mb-6">
             آیا از حذف رکورد حضور «<strong>{{ attendance.employee.full_name }}</strong>» در تاریخ
             <strong dir="ltr">{{ attendance.date|jdate:"Y/m/d" }}</strong> مطمئن هستید؟
@@ -21,10 +21,10 @@
 
         <form data-crm-form method="post" class="flex justify-center gap-3">
             {% csrf_token %}
-            <button type="submit" class="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium">
+            <button type="submit" class="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium" data-crm-ui="ui.hr.attendanceconfirmdelete.button2" data-crm-order="20">
                 بله، حذف کن
             </button>
-            <a href="{% url 'hr:attendance_list' %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+            <a href="{% url 'hr:attendance_list' %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium" data-crm-ui="ui.hr.attendanceconfirmdelete.a3" data-crm-order="30">
                 انصراف
             </a>
         </form>

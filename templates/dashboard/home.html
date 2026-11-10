@@ -10,7 +10,7 @@
 <!-- ═══ خوش‌آمد + دکمه Excel ═══ -->
 <div class="page-header">
     <div>
-        <h1 class="text-2xl font-bold text-gray-800">
+        <h1 class="text-2xl font-bold text-gray-800" data-crm-ui="ui.dashboard.home.h11" data-crm-order="10">
             سلام {{ request.user.get_full_name|default:request.user.username }}، روز کاری خوبی داشته باشی 👋
         </h1>
         <p class="text-sm text-gray-500 mt-1">{{ today|fa_digits }} — خلاصه عملکرد سازمان شما</p>
@@ -19,7 +19,7 @@
     {% if 'dashboard.export' in user_permissions %}
     <div class="action-buttons flex gap-2">
 <a href="{% url 'dashboard:export_excel' %}?from_date={{ from_date_jalali }}&to_date={{ to_date_jalali }}&employee={{ filter_user_id }}"
-       class="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 text-sm font-medium shadow-sm">
+       class="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 text-sm font-medium shadow-sm" data-crm-ui="ui.dashboard.home.a2" data-crm-order="20">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -54,7 +54,7 @@
         <strong>{{ filter_user_selected.get_full_name|default:filter_user_selected.username }}</strong>
     </div>
     <a href="{% url 'dashboard:home' %}"
-       class="text-red-600 hover:underline text-xs px-3 py-1 bg-white rounded-lg">
+       class="text-red-600 hover:underline text-xs px-3 py-1 bg-white rounded-lg" data-crm-ui="ui.dashboard.home.a3" data-crm-order="30">
         حذف فیلتر
     </a>
 </div>
@@ -65,7 +65,7 @@
     <form method="get" class="crm-filter-form grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
         <!-- فیلد از تاریخ -->
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">از تاریخ</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.dashboard.home.label4" data-crm-order="40">از تاریخ</label>
             <input type="text" name="from_date" value="{{ from_date_jalali }}"
                    data-jdp data-jdp-time="false"
                    placeholder="۱۴۰۴/۰۱/۰۱"
@@ -74,7 +74,7 @@
 
         <!-- فیلد تا تاریخ -->
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">تا تاریخ</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.dashboard.home.label5" data-crm-order="50">تا تاریخ</label>
             <input type="text" name="to_date" value="{{ to_date_jalali }}"
                    data-jdp data-jdp-time="false"
                    placeholder="۱۴۰۵/۱۲/۲۹"
@@ -84,7 +84,7 @@
         <!-- فیلد کارمند -->
         {% if is_manager_view %}
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">کارمند</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.dashboard.home.label6" data-crm-order="60">کارمند</label>
             <select name="employee" class="w-full">
                 <option value="">👥 همه کاربران</option>
                 {% for u in filter_users_list %}
@@ -98,7 +98,7 @@
 
         <!-- دکمه‌ها -->
         <div class="flex gap-2 w-full">
-            <button type="submit" class="flex-1 px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 flex items-center justify-center gap-1.5 transition">
+            <button type="submit" class="flex-1 px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 flex items-center justify-center gap-1.5 transition" data-crm-ui="ui.dashboard.home.button7" data-crm-order="70">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
@@ -106,7 +106,7 @@
                 اعمال فیلتر
             </button>
             {% if from_date_jalali or to_date_jalali or filter_user_id %}
-            <a href="{% url 'dashboard:home' %}" class="px-4 py-2.5 bg-red-50 text-red-600 rounded-lg text-sm hover:bg-red-100 transition text-center flex items-center justify-center">
+            <a href="{% url 'dashboard:home' %}" class="px-4 py-2.5 bg-red-50 text-red-600 rounded-lg text-sm hover:bg-red-100 transition text-center flex items-center justify-center" data-crm-ui="ui.dashboard.home.a8" data-crm-order="80">
                 پاک کردن
             </a>
             {% endif %}
@@ -216,7 +216,7 @@
             <div class="font-bold text-red-800 text-sm text-right">وظایف عقب‌افتاده</div>
             <div class="text-xs text-red-600 text-right">{{ kpis.overdue_tasks|fa_num }} وظیفه از مهلت گذشته</div>
         </div>
-        <a href="{% url 'hr:task_list' %}" class="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700">مشاهده</a>
+        <a href="{% url 'hr:task_list' %}" class="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700" data-crm-ui="ui.dashboard.home.a9" data-crm-order="90">مشاهده</a>
     </div>
     {% endif %}
 
@@ -229,7 +229,7 @@
             <div class="font-bold text-yellow-800 text-sm text-right">درخواست‌های مرخصی</div>
             <div class="text-xs text-yellow-600 text-right">{{ kpis.pending_leaves|fa_num }} درخواست در انتظار تایید</div>
         </div>
-        <a href="{% url 'hr:leave_list' %}" class="text-xs px-3 py-1.5 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">بررسی</a>
+        <a href="{% url 'hr:leave_list' %}" class="text-xs px-3 py-1.5 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700" data-crm-ui="ui.dashboard.home.a10" data-crm-order="100">بررسی</a>
     </div>
     {% endif %}
 </div>
@@ -238,7 +238,7 @@
 <!-- ═══ ردیف: روند فروش + مقایسه ═══ -->
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
     <div class="lg:col-span-2 bg-white rounded-xl p-5 shadow-sm">
-        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2" data-crm-ui="ui.dashboard.home.h311" data-crm-order="110">
             <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-sm">📈</span>
             روند فروش بازه اخیر
         </h3>
@@ -246,7 +246,7 @@
     </div>
 
     <div class="bg-white rounded-xl p-5 shadow-sm">
-        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2" data-crm-ui="ui.dashboard.home.h312" data-crm-order="120">
             <span class="w-7 h-7 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm">📅</span>
             مقایسه فروش
         </h3>
@@ -257,7 +257,7 @@
 <!-- ═══ ردیف: منابع + قیف + وضعیت تماس‌ها ═══ -->
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
     <div class="bg-white rounded-xl p-5 shadow-sm">
-        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2" data-crm-ui="ui.dashboard.home.h313" data-crm-order="130">
             <span class="w-7 h-7 bg-green-100 text-green-600 rounded-lg flex items-center justify-center text-sm">🎯</span>
             منابع جذب مشتری
         </h3>
@@ -265,7 +265,7 @@
     </div>
 
     <div class="bg-white rounded-xl p-5 shadow-sm">
-        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2" data-crm-ui="ui.dashboard.home.h314" data-crm-order="140">
             <span class="w-7 h-7 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center text-sm">🔻</span>
             قیف فروش
         </h3>
@@ -273,7 +273,7 @@
     </div>
 
     <div class="bg-white rounded-xl p-5 shadow-sm">
-        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2" data-crm-ui="ui.dashboard.home.h315" data-crm-order="150">
             <span class="w-7 h-7 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center text-sm">📞</span>
             وضعیت تماس‌ها
         </h3>
@@ -284,7 +284,7 @@
 <!-- ═══ ردیف: عملکرد کارمندان (فقط برای مدیرها و بدون فیلتر کاربر) ═══ -->
 {% if is_manager_view and not filter_user_selected and employee_perf %}
 <div class="bg-white rounded-xl p-5 shadow-sm mb-6">
-    <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+    <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2" data-crm-ui="ui.dashboard.home.h316" data-crm-order="160">
         <span class="w-7 h-7 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm">⭐</span>
         عملکرد کارمندان فروش
     </h3>
@@ -296,7 +296,7 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
     <div class="bg-white rounded-xl p-5 shadow-sm">
-        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2" data-crm-ui="ui.dashboard.home.h317" data-crm-order="170">
             <span class="w-7 h-7 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center text-sm">🏆</span>
             پرفروش‌ترین کالاها
         </h3>
@@ -327,7 +327,7 @@
     </div>
 
     <div class="bg-white rounded-xl p-5 shadow-sm">
-        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2" data-crm-ui="ui.dashboard.home.h318" data-crm-order="180">
             <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-sm">👥</span>
             {% if filter_user_selected %}
                 اطلاعات فروش کاربر فیلترشده

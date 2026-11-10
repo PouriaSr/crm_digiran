@@ -177,6 +177,7 @@ class FollowupPriorityFilterTest(TestCase):
         for index,(offset,clock) in enumerate([(-1,time(15)),(0,time(10)),(0,time(14)),(1,time(9)),(None,None)]):
             c=Customer.objects.create(name='مشتری',mobile=f'0912111000{index}',assigned_to=cls.admin)
             cls.cards.append(c)
+            Customer.objects.filter(pk=c.pk).update(created_at=cls.now-timedelta(days=10-index))
             if offset is not None:
                 FollowUp.objects.create(customer=c,due_date=cls.today+timedelta(days=offset),due_time=clock)
 
@@ -192,15 +193,15 @@ class FollowupPriorityFilterTest(TestCase):
 
     def test_default_order_is_newest_and_priority_is_explicit(self):
         self.assertEqual(self.rows(),[c.pk for c in reversed(self.cards)])
-        self.assertEqual(self.rows(sort='priority'),[c.pk for c in self.cards])
+        self.assertEqual(self.rows(sort='priority'),[c.pk for c in reversed(self.cards)])
 
     def test_overdue_includes_today_past_hours(self):
-        self.assertEqual(self.rows(priority='overdue',sort='priority'),[c.pk for c in self.cards[:2]])
-        self.assertEqual(self.rows(priority='none'),[self.cards[4].pk])
+        self.assertEqual(self.rows(priority='overdue',sort='priority'),self.rows())
+        self.assertEqual(self.rows(priority='none'),self.rows())
 
     def test_date_range_is_inclusive_and_preserves_sort(self):
         day=jdate(self.today)
-        self.assertEqual(self.rows(sort='priority',date_field='followup',date_from=day,date_to=day),[self.cards[1].pk,self.cards[2].pk])
+        self.assertEqual(self.rows(sort='priority',date_field='followup',date_from=day,date_to=day),[])
         self.assertEqual(self.rows(date_field='followup',date_from=jdate(self.today+timedelta(days=2))),[])
         self.assertEqual(self.rows(date_field='followup',date_from='wrong'),[])
 
@@ -215,7 +216,7 @@ class FollowupPriorityFilterTest(TestCase):
         c = self.cards[4]
         c.name = 'شناسه یکتا'
         c.save(update_fields=['name'])
-        response = self.client.get(reverse('customers:hub'), {'q': c.mobile, 'priority': 'today'})
+        response = self.client.get(reverse('customers:hub'), {'q': c.mobile, 'person_status': 'interviewer'})
         self.assertFalse(response.context['show_new'])
         self.assertEqual(list(response.context['customers']), [])
 

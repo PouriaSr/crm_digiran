@@ -5,10 +5,10 @@
 {% block content %}
 
 <div class="mb-6">
-    <a href="{% url 'products:category_list' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به لیست دسته‌ها</a>
+    <a href="{% url 'products:category_list' %}" class="text-blue-600 hover:underline text-sm" data-crm-ui="ui.products.categoryform.a1" data-crm-order="10">← بازگشت به لیست دسته‌ها</a>
 </div>
 
-<h1 class="text-2xl font-bold text-gray-800 mb-6">{{ title }}</h1>
+<h1 class="text-2xl font-bold text-gray-800 mb-6" data-crm-ui="ui.products.categoryform.h12" data-crm-order="20">{{ title }}</h1>
 
 <form data-crm-form data-crm-page method="post" class="crm-form-page bg-white rounded-xl shadow-sm p-6 max-w-2xl">
     {% csrf_token %}
@@ -18,14 +18,14 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.products.categoryform.label3" data-crm-order="30">
                 نام دسته <span class="text-red-500">*</span>
             </label>
             {{ form.name }}
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.products.categoryform.label4" data-crm-order="40">
                 نام کوتاه (slug) <span class="text-red-500">*</span>
             </label>
             {{ form.slug }}
@@ -33,7 +33,7 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.products.categoryform.label5" data-crm-order="50">
                 آیکون (ایموجی)
             </label>
             {{ form.icon }}
@@ -41,7 +41,7 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.products.categoryform.label6" data-crm-order="60">
                 ترتیب نمایش
             </label>
             {{ form.order }}
@@ -49,14 +49,14 @@
         </div>
 
         <div class="flex items-end pb-3">
-            <label class="flex items-center gap-2 text-sm cursor-pointer">
+            <label class="flex items-center gap-2 text-sm cursor-pointer" data-crm-ui="ui.products.categoryform.label7" data-crm-order="70">
                 {{ form.is_active }}
                 <span>دسته فعال باشد</span>
             </label>
         </div>
 
         <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5" data-crm-ui="ui.products.categoryform.label8" data-crm-order="80">
                 توضیحات
             </label>
             {{ form.description }}
@@ -65,11 +65,11 @@
 
     <div class="crm-form-actions flex gap-3 mt-8 pt-6 border-t border-gray-100">
         <button type="submit"
-                class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+                class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium" data-crm-ui="ui.products.categoryform.button9" data-crm-order="90">
             {{ submit_label }}
         </button>
         <a href="{% url 'products:category_list' %}"
-           class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+           class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium" data-crm-ui="ui.products.categoryform.a10" data-crm-order="100">
             انصراف
         </a>
     </div>

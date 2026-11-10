@@ -28,31 +28,27 @@ class CompactFilterAndFeedbackTests(TestCase):
     def setUp(self):
         self.client.force_login(self.admin)
 
-    def test_one_control_sets_both_order_and_date_basis(self):
-        for mode,order,basis in [('recent',list(reversed(self.cards)),'created'),('oldest',self.cards,'created'),('followup',[self.cards[0],self.cards[2],self.cards[1]],'followup')]:
-            response=self.client.get(reverse('customers:hub'),{'tab':'info','display_mode':mode})
-            self.assertEqual(list(response.context['customers']),order)
-            self.assertEqual(response.context['table_filters']['date_field'],basis)
-            self.assertContains(response,'name="display_mode"')
-            self.assertNotContains(response,'name="date_field"')
-            self.assertNotContains(response,'name="sort"')
+    def test_only_information_filters_remain(self):
+        response=self.client.get(reverse('customers:hub'),{'tab':'info'})
+        self.assertEqual(list(response.context['customers']),list(reversed(self.cards)))
+        for name in ('source','person_status','date_from','date_to','contact_expert'):
+            self.assertContains(response,'name="'+name+'"')
+        for name in ('display_mode','date_field','sort','priority'):
+            self.assertNotContains(response,'name="'+name+'"')
 
-    def test_mode_is_authoritative_and_legacy_links_still_work(self):
-        response=self.client.get(reverse('customers:hub'),{'display_mode':'recent','date_field':'followup','sort':'priority'})
-        self.assertEqual(response.context['table_filters']['sort'],'recent')
-        response=self.client.get(reverse('customers:hub'),{'date_field':'followup'})
-        self.assertEqual(response.context['table_filters']['display_mode'],'followup')
-        response=self.client.get(reverse('customers:hub'),{'display_mode':'invalid'})
-        self.assertEqual(response.context['table_filters']['display_mode'],'recent')
+    def test_obsolete_modes_do_not_change_information_order_or_date_basis(self):
+        for mode in ('oldest','followup','invalid'):
+            response=self.client.get(reverse('customers:hub'),{'display_mode':mode,'sort':'priority','date_field':'followup'})
+            self.assertEqual(list(response.context['customers']),list(reversed(self.cards)))
+            self.assertEqual(response.context['table_filters']['date_field'],'created')
 
-    def test_date_range_uses_the_basis_of_the_combined_choice(self):
+    def test_date_range_always_uses_registration_date(self):
         import jdatetime
         when=timezone.localdate()+timedelta(days=1)
         day=jdatetime.date.fromgregorian(date=when).strftime('%Y/%m/%d')
-        response=self.client.get(reverse('customers:hub'),{'display_mode':'followup','date_from':day,'date_to':day})
-        self.assertEqual(list(response.context['customers']),[self.cards[0]])
-        response=self.client.get(reverse('customers:hub'),{'display_mode':'recent','date_from':day,'date_to':day})
-        self.assertFalse(list(response.context['customers']))
+        for old_mode in ('followup','recent'):
+            response=self.client.get(reverse('customers:hub'),{'display_mode':old_mode,'date_from':day,'date_to':day})
+            self.assertFalse(list(response.context['customers']))
 
     def feedback_request(self,path,data):
         request=RequestFactory().post(path,data)

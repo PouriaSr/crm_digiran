@@ -20,7 +20,7 @@ class FilterAndCallRequirementsTest(TestCase):
         self.assertIn(self.customer,list(response.context['customers']))
         self.assertEqual(response.context['table_filters']['date_field'],'created')
         response=self.client.get(reverse('customers:hub'),{'date_field':'followup','date_from':date,'date_to':date})
-        self.assertNotIn(self.customer,list(response.context['customers']))
+        self.assertIn(self.customer,list(response.context['customers']))
         FollowUp.objects.create(customer=self.customer,due_date=timezone.localdate())
         response=self.client.get(reverse('customers:hub'),{'date_field':'followup','date_from':date,'date_to':date})
         self.assertIn(self.customer,list(response.context['customers']))

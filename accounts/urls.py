@@ -1,11 +1,16 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
-from . import views, twofa_views
+from . import views, twofa_views, interface_views
 from .auth_views import RateLimitedLoginView
 
 app_name = 'accounts'
 
 urlpatterns = [
+    path('settings/', interface_views.settings, name='interface_settings'),
+    path('settings/new/', interface_views.edit, name='interface_create'),
+    path('settings/edit/<str:key>/', interface_views.edit, name='interface_edit'),
+    path('settings/reset/<str:key>/', interface_views.reset, name='interface_reset'),
+    path('pages/<int:pk>/', interface_views.page, name='interface_page'),
     # ورود/خروج
     path('login/', RateLimitedLoginView.as_view(), name='login'),
     path('logout/', auth_views.LogoutView.as_view(

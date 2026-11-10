@@ -206,23 +206,19 @@ def customer_hub(request):
         raise PermissionDenied('دسترسی این تب برای شما فعال نیست.')
     request._hub_tab = tab
     from hr.admission_tasks import assignment_context
-    unified_search = tab == 'info' and bool(request.GET.get('q', '').strip()) and request.GET.get('search_all') == '1'
-    if tab=='info' and request.GET.get('people')=='candidates' and not unified_search:
-        from .candidate_views import candidate_list_context
-        context=candidate_list_context(request)
-        context.update(assignment_context(request.user))
-        context.update(build_workflow_context(request))
-        context.update(active_tab='info',call_form=HubCallForm(user=request.user))
-        partial=request.headers.get('HX-Request') or request.headers.get('X-Requested-With')=='XMLHttpRequest' or request.GET.get('partial')=='1'
-        response=render(request,'customers/hub_table_partial.html' if partial else 'customers/hub.html',context)
-        if partial:response['X-Show-New-Customer']='false'
-        return response
+    # One information list; legacy candidate links select the status filter.
+    person_status = request.GET.get('person_status')
+    if person_status is None:
+        person_status = 'interviewer' if request.GET.get('people') == 'candidates' and not (request.GET.get('search_all')=='1' and request.GET.get('q','').strip()) else ''
+    if person_status == 'interviewer' and not has_permission(request.user,'customers.candidate_view'):
+        raise PermissionDenied('دسترسی فهرست مصاحبه‌کنندگان ندارید.')
+    unified_search = not person_status and has_permission(request.user, 'customers.candidate_view')
     search = request.GET.get('q', '').strip()
     
     from django.db.models import Prefetch
     open_due_sq, last_done_sq = _followup_annotation()
     people_scope = Q(is_interviewer=False)
-    if unified_search and has_permission(request.user, 'customers.candidate_view'):
+    if has_permission(request.user, 'customers.candidate_view'):
         from .candidate_views import candidate_queryset
         people_scope |= Q(pk__in=candidate_queryset(request.user).values('pk'))
     customers = (Customer.all_objects.filter(people_scope)
@@ -252,23 +248,21 @@ def customer_hub(request):
         When(open_fu_due__gt=today, then=Value(2)),
         default=Value(3), output_field=IntegerField(),
     ))
-    priority = request.GET.get('priority', '')
-    if priority == 'overdue':
-        customers = customers.filter(overdue)
-    elif priority == 'today':
-        customers = customers.filter(open_fu_due=today)
-    elif priority == 'upcoming':
-        customers = customers.filter(open_fu_due__gt=today)
-    elif priority == 'none':
-        customers = customers.filter(open_fu_due__isnull=True)
-    modes = {'recent': ('created','recent'), 'oldest': ('created','oldest'), 'followup': ('followup','priority')}
-    display_mode = request.GET.get('display_mode')
-    if display_mode is None:
-        # Old saved links still resolve to one consistent date basis and order.
-        display_mode = 'followup' if request.GET.get('date_field') == 'followup' or request.GET.get('sort') == 'priority' else 'oldest' if request.GET.get('sort') == 'oldest' else 'recent'
-    if display_mode not in modes:
-        display_mode = 'recent'
-    date_field, sort = modes[display_mode]
+    if person_status == 'interviewer':
+        customers = customers.filter(is_interviewer=True)
+    elif person_status in ('lead', 'potential'):
+        customers = customers.filter(is_interviewer=False, stage=person_status)
+    elif person_status:
+        customers = customers.none()
+    source = request.GET.get('source', '')
+    if source.startswith('ad:'):
+        source_id = source[3:]
+        customers = customers.filter(ad_source_id=source_id) if source_id.isascii() and source_id.isdigit() and len(source_id)<16 else customers.none()
+    elif source in dict(Customer.SOURCE_CHOICES):
+        customers = customers.filter(source=source)
+    elif source:
+        customers = customers.none()
+    date_field, sort, display_mode = 'created', 'recent', 'recent'
     field = 'created_at__date' if date_field == 'created' else 'open_fu_due'
     date_from, date_to = request.GET.get('date_from', ''), request.GET.get('date_to', '')
     start, end = parse_jalali(date_from), parse_jalali(date_to)
@@ -322,7 +316,10 @@ def customer_hub(request):
         'unified_search': unified_search,
         'active_tab': tab,
         'search': search,
-        'table_filters': {'priority': priority, 'date_field': date_field, 'date_from': date_from, 'date_to': date_to, 'sort': sort, 'display_mode': display_mode, 'contact_expert': expert},
+        'candidate_mode': person_status == 'interviewer',
+        'table_filters': {'source': source, 'person_status': person_status, 'date_field':'created', 'date_from':date_from, 'date_to':date_to, 'contact_expert':expert},
+        'info_source_choices': Customer.SOURCE_CHOICES,
+        'info_ad_sources': AdSource.objects.order_by('label','pk'),
         'stats': {
             'total_customers': total_customers,
             'total_leads': total_leads,
@@ -341,7 +338,7 @@ def customer_hub(request):
         'call_form': HubCallForm(user=request.user),
     }
     
-    if unified_search and has_permission(request.user, 'customers.candidate_view'):
+    if has_permission(request.user, 'customers.candidate_view'):
         from .candidate_views import candidate_queryset, prepare_candidate_actions
         candidate_rows = {person.pk: person for person in candidate_queryset(request.user).filter(pk__in=[p.pk for p in context['customers'] if p.is_interviewer])}
         prepare_candidate_actions(request.user, candidate_rows.values())

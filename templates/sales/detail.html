@@ -3,7 +3,7 @@
 {% block title %}{{ invoice.number }}{% endblock %}
 
 {% block mobile_leading %}
-<a href="{% url 'customers:hub' %}?tab=invoice" class="app-topbar-btn" aria-label="بازگشت">
+<a href="{% url 'customers:hub' %}?tab=invoice" class="app-topbar-btn" aria-label="بازگشت" data-crm-ui="ui.sales.detail.a1" data-crm-order="10">
     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>
@@ -18,7 +18,7 @@
 
 <div class="flex justify-between items-center mb-6">
     <a href="{% url 'customers:hub' %}?tab=invoice"
-       class="text-sm px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition flex items-center gap-1.5">
+       class="text-sm px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition flex items-center gap-1.5" data-crm-ui="ui.sales.detail.a2" data-crm-order="20">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
         </svg>
@@ -26,13 +26,13 @@
     </a>
     <div class="flex gap-2">
         {% if 'invoices.print' in user_permissions %}
-        <a href="{% url 'sales:print' invoice.pk %}" target="_blank" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">🖨 چاپ</a>
+        <a href="{% url 'sales:print' invoice.pk %}" target="_blank" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm" data-crm-ui="ui.sales.detail.a3" data-crm-order="30">🖨 چاپ</a>
         {% endif %}
         {% if 'invoices.edit' in user_permissions %}
-        <a href="{% url 'sales:edit' invoice.pk %}" class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm">✏️ ویرایش</a>
+        <a href="{% url 'sales:edit' invoice.pk %}" class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm" data-crm-ui="ui.sales.detail.a4" data-crm-order="40">✏️ ویرایش</a>
         {% endif %}
         {% if 'invoices.delete' in user_permissions %}
-        <a href="{% url 'sales:delete' invoice.pk %}" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm">🗑 حذف</a>
+        <a href="{% url 'sales:delete' invoice.pk %}" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm" data-crm-ui="ui.sales.detail.a5" data-crm-order="50">🗑 حذف</a>
         {% endif %}
     </div>
 </div>
@@ -69,18 +69,18 @@
 <!-- مشتری -->
 <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
     <div class="flex justify-between items-start">
-        <h2 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+        <h2 class="font-bold text-gray-700 mb-3 flex items-center gap-2" data-crm-ui="ui.sales.detail.h26" data-crm-order="60">
             <span class="w-7 h-7 bg-green-100 text-green-600 rounded-lg flex items-center justify-center text-sm">👤</span>
             مشتری
         </h2>
         {% if 'calls.add' in user_permissions %}
         <a href="{% url 'calls:create' %}?customer={{ invoice.customer.pk }}"
-           class="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-1">
+           class="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-1" data-crm-ui="ui.sales.detail.a7" data-crm-order="70">
             📞 ثبت تماس
         </a>
         {% endif %}
     </div>
-    <a href="{% url 'customers:detail' invoice.customer.pk %}" class="flex items-center gap-3 p-3 -m-3 rounded-lg hover:bg-blue-50 transition">
+    <a href="{% url 'customers:detail' invoice.customer.pk %}" class="flex items-center gap-3 p-3 -m-3 rounded-lg hover:bg-blue-50 transition" data-crm-ui="ui.sales.detail.a8" data-crm-order="80">
         <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xl">
             {{ invoice.customer.name|first|upper }}
         </div>
@@ -98,7 +98,7 @@
 <!-- اقلام فاکتور -->
 <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
     <div class="px-6 py-4 border-b border-gray-100">
-        <h2 class="font-bold text-gray-700 flex items-center gap-2">
+        <h2 class="font-bold text-gray-700 flex items-center gap-2" data-crm-ui="ui.sales.detail.h29" data-crm-order="90">
             <span class="w-7 h-7 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center text-sm">📦</span>
             اقلام فاکتور
         </h2>
@@ -106,11 +106,11 @@
     <table class="w-full text-sm">
         <thead class="bg-gray-50">
             <tr class="text-gray-600">
-                <th class="text-right px-4 py-3 font-medium">#</th>
-                <th class="text-right px-4 py-3 font-medium">کالا</th>
-                <th class="text-right px-4 py-3 font-medium">تعداد</th>
-                <th class="text-right px-4 py-3 font-medium">قیمت واحد</th>
-                <th class="text-right px-4 py-3 font-medium">جمع</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.sales.detail.th10" data-crm-order="10">#</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.sales.detail.th11" data-crm-order="20">کالا</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.sales.detail.th12" data-crm-order="30">تعداد</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.sales.detail.th13" data-crm-order="40">قیمت واحد</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.sales.detail.th14" data-crm-order="50">جمع</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
@@ -133,7 +133,7 @@
 <!-- مبالغ -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
     <div class="bg-white rounded-xl shadow-sm p-6">
-        <h2 class="font-bold text-gray-700 mb-4">اطلاعات فاکتور</h2>
+        <h2 class="font-bold text-gray-700 mb-4" data-crm-ui="ui.sales.detail.h215" data-crm-order="150">اطلاعات فاکتور</h2>
         <dl class="space-y-3 text-sm">
             <div class="flex justify-between">
                 <dt class="text-gray-500">تاریخ صدور:</dt>
@@ -163,7 +163,7 @@
     </div>
 
     <div class="bg-white rounded-xl shadow-sm p-6">
-        <h2 class="font-bold text-gray-700 mb-4">خلاصه مالی</h2>
+        <h2 class="font-bold text-gray-700 mb-4" data-crm-ui="ui.sales.detail.h216" data-crm-order="160">خلاصه مالی</h2>
         <dl class="space-y-3 text-sm">
             <div class="flex justify-between">
                 <dt class="text-gray-500">جمع اقلام:</dt>
@@ -189,7 +189,7 @@
 {% if invoice.logs.exists %}
 <div class="bg-white rounded-xl shadow-sm overflow-hidden mt-6">
     <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-        <h2 class="font-bold text-gray-700 flex items-center gap-2">
+        <h2 class="font-bold text-gray-700 flex items-center gap-2" data-crm-ui="ui.sales.detail.h217" data-crm-order="170">
             <span class="w-7 h-7 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm">📋</span>
             تاریخچه تغییرات
             <span class="text-xs text-gray-400 font-normal">({{ invoice.logs.count }} رویداد)</span>
@@ -233,7 +233,7 @@
 
 {% if invoice.notes %}
 <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
-    <h2 class="font-bold text-gray-700 mb-3">توضیحات</h2>
+    <h2 class="font-bold text-gray-700 mb-3" data-crm-ui="ui.sales.detail.h218" data-crm-order="180">توضیحات</h2>
     <p class="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{{ invoice.notes }}</p>
 </div>
 {% endif %}

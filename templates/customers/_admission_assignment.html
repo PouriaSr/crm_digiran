@@ -1,16 +1,16 @@
-{% if can_transfer_cards %}
+{% if can_assign_admission %}
 <style>#admission-assignment{width:min(480px,calc(100vw - 24px));padding:0;border:1px solid #e2e8f0;border-radius:20px;color:#334155;max-height:90dvh;overflow:auto}#admission-assignment::backdrop{background:#0f172a80;backdrop-filter:blur(3px)}</style>
 <dialog id="admission-assignment" aria-labelledby="admission-assignment-title" dir="rtl">
- <header class="flex items-center justify-between gap-3 border-b border-slate-100 p-5"><h2 id="admission-assignment-title" class="font-bold">واگذاری به مسئول پذیرش</h2><button type="button" data-close-admission aria-label="بستن" class="rounded-lg bg-slate-100 px-3 py-2">×</button></header>
+ <header class="flex items-center justify-between gap-3 border-b border-slate-100 p-5"><h2 id="admission-assignment-title" class="font-bold" data-crm-ui="ui.customers.admissionassignment.h21" data-crm-order="10">واگذاری به مسئول پذیرش</h2><button type="button" data-close-admission aria-label="بستن" class="rounded-lg bg-slate-100 px-3 py-2" data-crm-ui="ui.customers.admissionassignment.button2" data-crm-order="20">×</button></header>
  <form id="admission-assignment-form" data-crm-form data-local-submit method="post" class="p-5 space-y-5">
   {% csrf_token %}{% if person %}<input type="hidden" name="next" value="profile">{% endif %}
   <p class="text-sm">فرد: <strong data-admission-person></strong></p>
-  <div><label for="admission-assignee" class="block text-sm font-bold mb-2">مسئول ثبت ورود <span class="text-red-500">*</span></label>
+  <div><label for="admission-assignee" class="block text-sm font-bold mb-2" data-crm-ui="ui.customers.admissionassignment.label3" data-crm-order="30">مسئول ثبت ورود <span class="text-red-500">*</span></label>
    {% if not admission_assignees %}<p class="text-sm text-amber-700 mb-2" role="status">کاربر فعالی با دسترسی مشاهده وظایف، پذیرش و ثبت ورود وجود ندارد.</p>{% endif %}
-   <select id="admission-assignee" name="assigned_to" class="w-full border border-slate-200 rounded-xl p-3" required><option value="">انتخاب مسئول پذیرش…</option>{% for receiver in admission_assignees %}<option value="{{ receiver.pk }}">{{ receiver.get_full_name|default:receiver.username }}</option>{% endfor %}</select>
+   {% if can_choose_admission %}<select id="admission-assignee" name="assigned_to" class="w-full border border-slate-200 rounded-xl p-3" required><option value="">انتخاب مسئول پذیرش…</option>{% for receiver in admission_assignees %}<option value="{{ receiver.pk }}">{{ receiver.get_full_name|default:receiver.username }}</option>{% endfor %}</select>{% else %}<input id="admission-assignee" name="assigned_to" type="hidden" value="{{ request.user.pk }}"><p class="rounded-xl bg-slate-50 p-3">{{ request.user.get_full_name|default:request.user.username }}</p>{% endif %}
   </div>
   <p class="text-xs leading-7 bg-violet-50 text-violet-800 rounded-xl p-3">وظیفه و اعلان برای مسئول انتخاب‌شده ایجاد می‌شود؛ ثبت ورود فقط هنگام مراجعه واقعی فرد انجام خواهد شد.</p>
-  <div class="flex gap-2"><button type="submit" {% if not admission_assignees %}disabled{% endif %} class="rounded-xl bg-violet-600 text-white px-4 py-3 font-bold flex-1">واگذاری و ایجاد وظیفه</button><button type="button" data-close-admission class="rounded-xl border px-4 py-3">انصراف</button></div>
+  <div class="flex gap-2"><button type="submit" {% if not admission_assignees %}disabled{% endif %} class="rounded-xl bg-violet-600 text-white px-4 py-3 font-bold flex-1" data-crm-ui="ui.customers.admissionassignment.button4" data-crm-order="40">واگذاری و ایجاد وظیفه</button><button type="button" data-close-admission class="rounded-xl border px-4 py-3" data-crm-ui="ui.customers.admissionassignment.button5" data-crm-order="50">انصراف</button></div>
  </form>
 </dialog>
 <script>
@@ -19,7 +19,7 @@
  const box=document.getElementById('admission-assignment'),form=box.querySelector('form'),field=box.querySelector('[name=assigned_to]');
  document.addEventListener('click',event=>{
   const button=event.target.closest('[data-admission-assign]');
-  if(button){form.action="{% url 'customers:admission_assign' 0 %}".replace('/0/','/'+button.dataset.admissionAssign+'/');form.querySelectorAll('[data-feedback-field],.crm-inline-feedback').forEach(el=>el.remove());field.removeAttribute('aria-invalid');if(field.tomselect)field.tomselect.clear(true);else field.value='';box.querySelector('[data-admission-person]').textContent=button.dataset.admissionName;box.showModal();}
+  if(button){form.action="{% url 'customers:admission_assign' 0 %}".replace('/0/','/'+button.dataset.admissionAssign+'/');form.querySelectorAll('[data-feedback-field],.crm-inline-feedback').forEach(el=>el.remove());field.removeAttribute('aria-invalid');const value='{{ request.user.pk }}';if(field.tomselect)field.tomselect.setValue(value,true);else field.value=value;box.querySelector('[data-admission-person]').textContent=button.dataset.admissionName;box.showModal();}
   if(event.target.closest('[data-close-admission]'))box.close();
  });
 })();

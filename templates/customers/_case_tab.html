@@ -2,19 +2,19 @@
 <div x-show="tab === 'case'" x-transition.opacity style="display:none" class="space-y-5">
     {% include 'customers/_workflow_filters.html' with filter_tab='case' %}
     <section class="wf-panel">
-        <header class="wf-panel-head"><div><h2 class="wf-title">پرونده مشتریان ارجاع‌شده</h2><p class="wf-subtitle">مشتری را انتخاب و فیلدهای باقی‌مانده را تکمیل کنید؛ مشخصات قبلی حفظ شده‌اند.</p></div></header>
-        <div class="wf-picker"><label for="case-person" class="wf-label">انتخاب مشتری برای تکمیل پرونده</label><form method="get" class="crm-filter-form"><input type="hidden" name="tab" value="case"><input type="hidden" name="edit_case" value="1"><select id="case-person" name="r" onchange="this.form.submit()" data-placeholder="جستجوی مشتری ارجاع‌شده" class="w-full rounded-xl border border-gray-200 p-2.5 text-sm"><option value="">انتخاب کنید...</option>{% for rec in case_choices %}<option value="{{ rec.pk }}" {% if case_record.pk == rec.pk %}selected{% endif %}>{{ rec.customer.name }} — {{ rec.customer.mobile }}</option>{% endfor %}</select></form></div>
+        <header class="wf-panel-head"><div><h2 class="wf-title" data-crm-ui="ui.customers.casetab.h21" data-crm-order="10">پرونده مشتریان ارجاع‌شده</h2><p class="wf-subtitle">مشتری را انتخاب و فیلدهای باقی‌مانده را تکمیل کنید؛ مشخصات قبلی حفظ شده‌اند.</p></div></header>
+        <div class="wf-picker"><label for="case-person" class="wf-label" data-crm-ui="ui.customers.casetab.label2" data-crm-order="20">انتخاب مشتری برای تکمیل پرونده</label><form method="get" class="crm-filter-form"><input type="hidden" name="tab" value="case"><input type="hidden" name="edit_case" value="1"><select id="case-person" name="r" onchange="this.form.submit()" data-placeholder="جستجوی مشتری ارجاع‌شده" class="w-full rounded-xl border border-gray-200 p-2.5 text-sm"><option value="">انتخاب کنید...</option>{% for rec in case_choices %}<option value="{{ rec.pk }}" {% if case_record.pk == rec.pk %}selected{% endif %}>{{ rec.customer.name }} — {{ rec.customer.mobile }}</option>{% endfor %}</select></form></div>
     </section>
     {% if case_record and case_form and "customers.case_edit" in user_permissions %}
     <details data-feedback-record="reception:{{ case_record.pk }}" id="case-editor" class="wf-editor" data-open-case="{% url 'customers:case_open' case_record.pk %}" {% if not case_record.case_completed_at or case_form.errors or request.GET.edit_case %}open{% endif %}>
         <summary>{% if case_record.case_completed_at %}ویرایش پرونده{% else %}تکمیل پرونده{% endif %} — {{ case_customer.name }} <span class="font-normal text-xs text-gray-400 mr-2">برای باز و بسته کردن فرم کلیک کنید</span></summary>
         <div class="wf-editor-content">
-    <div class="hr-alert mb-4">زمان انتظار این نوبت تکمیل پرونده: <strong data-case-clock>در حال شروع…</strong><span data-case-clock-error class="block text-red-700"></span><button type="button" class="wf-action mt-2" data-case-clock-retry>به‌روزرسانی تایمر</button></div>
+    <div class="hr-alert mb-4">زمان انتظار این نوبت تکمیل پرونده: <strong data-case-clock>در حال شروع…</strong><span data-case-clock-error class="block text-red-700"></span><button type="button" class="wf-action mt-2" data-case-clock-retry data-crm-ui="ui.customers.casetab.button3" data-crm-order="30">به‌روزرسانی تایمر</button></div>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="font-bold text-gray-800">پرونده مراجعه‌کننده — {{ case_customer.name }}</h3>
+                <h3 class="font-bold text-gray-800" data-crm-ui="ui.customers.casetab.h34" data-crm-order="40">پرونده مراجعه‌کننده — {{ case_customer.name }}</h3>
                 {% if case_customer.stage == 'potential' %}
                 <span class="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 font-bold">بالقوه</span>
                 {% else %}
@@ -32,47 +32,47 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">شرایط <span class="text-red-500">*</span></label>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" data-crm-ui="ui.customers.casetab.label5" data-crm-order="50">شرایط <span class="text-red-500">*</span></label>
                         {{ case_form.condition }}
                         {% if case_form.condition.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.condition.errors.0 }}</p>{% endif %}
                     </div>
 
                     <div x-show="cond === 'cheque'" x-cloak>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">چک برای <span class="text-red-500">*</span></label>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" data-crm-ui="ui.customers.casetab.label6" data-crm-order="60">چک برای <span class="text-red-500">*</span></label>
                         {{ case_form.cheque_owner }}
                         {% if case_form.cheque_owner.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.cheque_owner.errors.0 }}</p>{% endif %}
                     </div>
 
                     <div x-show="cond === 'cheque' && owner === 'other'" x-cloak>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">نام صاحب چک <span class="text-red-500">*</span></label>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" data-crm-ui="ui.customers.casetab.label7" data-crm-order="70">نام صاحب چک <span class="text-red-500">*</span></label>
                         {{ case_form.cheque_other_name }}
                         {% if case_form.cheque_other_name.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.cheque_other_name.errors.0 }}</p>{% endif %}
                     </div>
 
                     <div x-show="cond === 'cheque' && owner === 'other'" x-cloak>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">شماره تماس صاحب چک <span class="text-red-500">*</span></label>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" data-crm-ui="ui.customers.casetab.label8" data-crm-order="80">شماره تماس صاحب چک <span class="text-red-500">*</span></label>
                         {{ case_form.cheque_other_phone }}
                         {% if case_form.cheque_other_phone.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.cheque_other_phone.errors.0 }}</p>{% endif %}
                     </div>
 
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">شغل <span class="text-red-500">*</span></label>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" data-crm-ui="ui.customers.casetab.label9" data-crm-order="90">شغل <span class="text-red-500">*</span></label>
                         {{ case_form.job }}
                         {% if case_form.job.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.job.errors.0 }}</p>{% endif %}
                     </div>
 
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">رتبه اعتباری <span class="text-red-500">*</span></label>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" data-crm-ui="ui.customers.casetab.label10" data-crm-order="100">رتبه اعتباری <span class="text-red-500">*</span></label>
                         {{ case_form.credit_rank }}
                         {% if case_form.credit_rank.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.credit_rank.errors.0 }}</p>{% endif %}
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">وام‌های فعال</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-2" data-crm-ui="ui.customers.casetab.label11" data-crm-order="110">وام‌های فعال</label>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {% for cb in case_form.active_loans %}
-                        <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm cursor-pointer hover:bg-gray-50">
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm cursor-pointer hover:bg-gray-50" data-crm-ui="ui.customers.casetab.label12" data-crm-order="120">
                             {{ cb.tag }}
                             <span>{{ cb.choice_label }}</span>
                         </label>
@@ -82,31 +82,31 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="md:col-span-2">
-                        <label class="block text-sm font-bold text-gray-700 mb-1">کالا</label>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" data-crm-ui="ui.customers.casetab.label13" data-crm-order="130">کالا</label>
                         {{ case_form.product }}
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">تعداد</label>
+                        <label class="block text-sm font-bold text-gray-700 mb-1" data-crm-ui="ui.customers.casetab.label14" data-crm-order="140">تعداد</label>
                         {{ case_form.quantity }}
                         {% if case_form.quantity.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.quantity.errors.0 }}</p>{% endif %}
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">نتیجه مراجعه <span class="text-red-500">*</span></label>
+                    <label class="block text-sm font-bold text-gray-700 mb-1" data-crm-ui="ui.customers.casetab.label15" data-crm-order="150">نتیجه مراجعه <span class="text-red-500">*</span></label>
                     {{ case_form.visit_result }}
                     {% if case_form.visit_result.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.visit_result.errors.0 }}</p>{% endif %}
                 </div>
 
                 <button type="submit"
-                        class="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition">
+                        class="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition" data-crm-ui="ui.customers.casetab.button16" data-crm-order="160">
                     ثبت اطلاعات
                 </button>
             </form>
         </div>
 
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
-            <h3 class="font-bold text-gray-800">خلاصه پرونده</h3>
+            <h3 class="font-bold text-gray-800" data-crm-ui="ui.customers.casetab.h317" data-crm-order="170">خلاصه پرونده</h3>
             {% if customer_case %}
             <div class="space-y-2 text-sm">
                 <div class="flex justify-between"><span class="text-gray-500">شرایط</span><span class="font-bold">{{ customer_case.get_condition_display|default:"—" }}</span></div>
@@ -140,7 +140,7 @@
     </details>
     {% endif %}
     <section class="wf-panel">
-        <header class="wf-panel-head"><div><h3 class="wf-title">فهرست پرونده‌ها و اطلاعات این مرحله <span class="wf-tab-count">{{ case_records.paginator.count|fa_num }}</span></h3><p class="wf-subtitle">جزئیات هر پرونده به‌صورت کشویی در همان ردیف نمایش داده می‌شود.</p></div>{% include 'customers/_workflow_search.html' with search_tab='case' search_label='پرونده‌ها' %}</header>
+        <header class="wf-panel-head"><div><h3 class="wf-title" data-crm-ui="ui.customers.casetab.h318" data-crm-order="180">فهرست پرونده‌ها و اطلاعات این مرحله <span class="wf-tab-count">{{ case_records.paginator.count|fa_num }}</span></h3><p class="wf-subtitle">جزئیات هر پرونده به‌صورت کشویی در همان ردیف نمایش داده می‌شود.</p></div>{% include 'customers/_workflow_search.html' with search_tab='case' search_label='پرونده‌ها' %}</header>
         <div id="workflow-case-results" data-live-results>
 <div class="wf-list">
             <div class="wf-list-head" aria-hidden="true"><span>نام مشتری</span><span>شماره تماس</span><span>وضعیت پرونده</span><span>زمان ارجاع</span><span>انتظار / شرایط</span><span>کارشناس مسئول</span><span>عملیات</span></div>
@@ -152,7 +152,7 @@
                     <time class="wf-time" data-label="ارجاع:" title="{{ rec.referred_at|jdate:'Y/m/d H:i:s' }}">{{ rec.referred_at|jdate:'Y/m/d H:i' }}</time>
                     <span class="wf-metric text-xs">{% if rec.latest_work %}{% with work=rec.latest_work.0 %}<span class="block" data-case-clock data-case-work-id="{{ work.pk }}" data-start="{{ work.started_at|date:'c' }}" data-end="{{ work.ended_at|date:'c' }}" data-server-now="{% now 'c' %}">{{ work.minutes|fa_num }} دقیقه</span>{% endwith %}{% else %}<span class="wf-unset">شروع نشده</span>{% endif %}<span class="text-gray-400">{{ rec.customer.case.get_condition_display|default:'تعیین نشده' }}</span></span>
                     <span class="wf-owner" title="{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% endif %}">{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% else %}تعیین نشده{% endif %}</span>
-                    <span class="wf-actions">{% if "customers.case_edit" in user_permissions %}<a class="wf-action" href="?tab=case&r={{ rec.pk }}&edit_case=1#case-editor" onclick="event.stopPropagation()">{% if rec.case_completed_at %}ویرایش پرونده{% else %}تکمیل پرونده{% endif %}</a>{% endif %}{% include 'customers/_workflow_row_toggle.html' %}</span>
+                    <span class="wf-actions">{% if "customers.case_edit" in user_permissions %}<a class="wf-action" href="?tab=case&r={{ rec.pk }}&edit_case=1#case-editor" onclick="event.stopPropagation()" data-crm-ui="ui.customers.casetab.a19" data-crm-order="190">{% if rec.case_completed_at %}ویرایش پرونده{% else %}تکمیل پرونده{% endif %}</a>{% endif %}{% include 'customers/_workflow_row_toggle.html' %}</span>
                 </summary>
                 {% include 'customers/_workflow_record_details.html' %}
             </details>

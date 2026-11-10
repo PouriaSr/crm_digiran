@@ -16,7 +16,7 @@
  data-call-fu-done="{% if call.is_followed_up %}1{% else %}0{% endif %}">
  <header class="wf-call-heading">
   <div><span class="wf-badge wf-badge-neutral">{{ call.get_contact_type_display }}</span><time title="تاریخ و ساعت ثبت"><bdi dir="ltr">{{ call.call_date|jdate:"Y/m/d · H:i:s" }}</bdi></time></div>
-  {% if history_call_editable %}<button type="button" onclick="openCallEdit(this)" title="ویرایش این تماس" aria-label="ویرایش تماس" class="wf-action">ویرایش تماس</button>{% endif %}
+  {% if history_call_editable %}<button type="button" onclick="openCallEdit(this)" title="ویرایش این تماس" aria-label="ویرایش تماس" class="wf-action" data-crm-ui="ui.customers.callhistoryitems.button1" data-crm-order="10">ویرایش تماس</button>{% endif %}
  </header>
  <dl class="wf-call-facts"><div title="هدف تماس"><dt>هدف:</dt><dd>{{ call.get_purpose_display }}</dd></div><div title="وضعیت تماس"><dt>وضعیت:</dt><dd><span class="wf-badge {% if call.status == 'answered' %}wf-badge-done{% elif call.status == 'busy' %}wf-badge-wait bg-amber-50 text-amber-700{% else %}wf-badge-neutral{% endif %}">{{ call.get_status_display }}</span></dd></div>{% if call.requested_condition %}<div><dt>شرایط درخواستی</dt><dd>{{ call.get_requested_condition_display }}</dd></div>{% endif %}{% if call.is_followed_up %}<div><dt>نتیجه پیگیری</dt><dd class="text-emerald-700">پیگیری انجام شد</dd></div>{% endif %}</dl>
  <dl class="wf-call-facts"><div><dt>منبع هنگام ثبت</dt><dd>{{ call.source_display }}</dd></div></dl>

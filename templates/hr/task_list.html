@@ -9,13 +9,13 @@
 
 <div class="page-header">
     <div>
-        <h1 class="text-2xl font-bold text-gray-800">{% if current_scope == 'mine' %}وظایف من{% else %}وظایف{% endif %}</h1>
+        <h1 class="text-2xl font-bold text-gray-800" data-crm-ui="ui.hr.tasklist.h11" data-crm-order="10">{% if current_scope == 'mine' %}وظایف من{% else %}وظایف{% endif %}</h1>
         <p class="text-sm text-gray-500 mt-1">مدیریت تسک‌ها و پیگیری‌ها</p>
     </div>
     {% if 'hr.manage_tasks' in user_permissions %}
     <div class="action-buttons action-buttons-hidden-mobile flex gap-2">
         <a href="{% url 'hr:task_create' %}"
-           class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2">
+           class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2" data-crm-ui="ui.hr.tasklist.a2" data-crm-order="20">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
@@ -66,8 +66,8 @@
         <select name="due" aria-label="مهلت انجام" class="px-4 py-2 border border-gray-300 rounded-lg text-sm"><option value="">همه موعدها</option><option value="overdue" {% if current_due == 'overdue' %}selected{% endif %}>عقب‌افتاده</option><option value="today" {% if current_due == 'today' %}selected{% endif %}>موعد امروز</option><option value="upcoming" {% if current_due == 'upcoming' %}selected{% endif %}>در پیش</option></select>
         <select name="source" aria-label="بخش مرتبط"><option value="">همه بخش‌ها</option><option value="manual" {% if current_source == 'manual' %}selected{% endif %}>وظیفه دستی</option><option value="followup" {% if current_source == 'followup' %}selected{% endif %}>پیگیری مشتری</option><option value="admission" {% if current_source == 'admission' %}selected{% endif %}>ثبت ورود در پذیرش</option><option value="reception" {% if current_source == 'reception' %}selected{% endif %}>ارجاع پذیرش</option><option value="invitation" {% if current_source == 'invitation' %}selected{% endif %}>دعوت به همکاری</option><option value="case" {% if current_source == 'case' %}selected{% endif %}>پرونده</option><option value="registration" {% if current_source == 'registration' %}selected{% endif %}>ثبت اطلاعات</option><option value="interview" {% if current_source == 'interview' %}selected{% endif %}>مصاحبه اول</option><option value="repeat" {% if current_source == 'repeat' %}selected{% endif %}>مصاحبه مجدد</option><option value="call" {% if current_source == 'call' %}selected{% endif %}>تماس</option><option value="invoice" {% if current_source == 'invoice' %}selected{% endif %}>فاکتور</option><option value="leave" {% if current_source == 'leave' %}selected{% endif %}>مرخصی</option></select>
         <select name="report" aria-label="گزارش کار"><option value="">همه گزارش‌ها</option><option value="pending" {% if current_report == 'pending' %}selected{% endif %}>در انتظار گزارش</option><option value="submitted" {% if current_report == 'submitted' %}selected{% endif %}>گزارش ثبت‌شده</option></select>
-        {% for field in queue_filters %}<div><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field.errors }}{{ field }}</div>{% endfor %}
-        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">اعمال</button>
+        {% for field in queue_filters %}<div><label for="{{ field.id_for_label }}" data-crm-ui="ui.hr.tasklist.label3" data-crm-order="30">{{ field.label }}</label>{{ field.errors }}{{ field }}</div>{% endfor %}
+        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700" data-crm-ui="ui.hr.tasklist.button4" data-crm-order="40">اعمال</button>
     </form>
 </div>
 
@@ -76,19 +76,19 @@
     <table class="crm-data-table responsive-table w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr class="text-gray-600">
-                <th class="text-right px-4 py-3 font-medium">عنوان</th>
-                <th class="text-right px-4 py-3 font-medium">مسئول</th>
-                <th class="text-right px-4 py-3 font-medium">اولویت</th>
-                <th class="text-right px-4 py-3 font-medium">وضعیت</th>
-                <th class="text-right px-4 py-3 font-medium">مهلت</th>
-                <th class="text-right px-4 py-3 font-medium">عملیات</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.hr.tasklist.th5" data-crm-order="10">عنوان</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.hr.tasklist.th6" data-crm-order="20">مسئول</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.hr.tasklist.th7" data-crm-order="30">اولویت</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.hr.tasklist.th8" data-crm-order="40">وضعیت</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.hr.tasklist.th9" data-crm-order="50">مهلت</th>
+                <th class="text-right px-4 py-3 font-medium" data-crm-ui="ui.hr.tasklist.th10" data-crm-order="60">عملیات</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             {% for task in page_obj %}
             <tr data-feedback-record="task:{{ task.pk }}" class="hover:bg-gray-50 {% if task.is_overdue %}bg-red-50{% endif %}">
                 <td class="px-4 py-3 text-right">
-                    <a href="{% url 'hr:task_detail' task.pk %}" class="font-medium text-gray-800 hover:text-blue-600">{{ task.title }}</a>
+                    <a href="{% url 'hr:task_detail' task.pk %}" class="font-medium text-gray-800 hover:text-blue-600" data-crm-ui="ui.hr.tasklist.a11" data-crm-order="110">{{ task.title }}</a>
                     {% if task.source_type or task.hiring_session_id %}<span class="text-xs text-blue-600 block mt-1">گردش کار خودکار</span>{% endif %}{% if task.description %}<div class="text-xs text-gray-400 mt-0.5">{{ task.description|truncatechars:50 }}</div>{% endif %}
                 </td>
                 <td class="px-4 py-3 text-right text-xs" data-label="مسئول">{{ task.responsible_display }}</td>
@@ -109,9 +109,9 @@
                     {% if task.is_overdue %}<span class="block text-xs">! عقب‌افتاده</span>{% endif %}
                 </td>
                 <td class="px-4 py-3 text-right whitespace-nowrap">
-                    <a href="{% url 'hr:task_detail' task.pk %}" class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50">جزئیات</a>
+                    <a href="{% url 'hr:task_detail' task.pk %}" class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50" data-crm-ui="ui.hr.tasklist.a12" data-crm-order="120">جزئیات</a>
                     {% if 'hr.manage_tasks' in user_permissions and not task.hiring_session_id and not task.source_type %}
-                    <a href="{% url 'hr:task_edit' task.pk %}" class="text-yellow-600 hover:text-yellow-800 text-xs px-2 py-1 rounded hover:bg-yellow-50">ویرایش</a>
+                    <a href="{% url 'hr:task_edit' task.pk %}" class="text-yellow-600 hover:text-yellow-800 text-xs px-2 py-1 rounded hover:bg-yellow-50" data-crm-ui="ui.hr.tasklist.a13" data-crm-order="130">ویرایش</a>
                     {% endif %}
                 </td>
             </tr>
@@ -129,7 +129,7 @@
 
 {% block fab %}
 {% if 'hr.manage_tasks' in user_permissions %}
-<a href="{% url 'hr:task_create' %}" class="app-fab" title="وظیفه جدید" aria-label="وظیفه جدید">
+<a href="{% url 'hr:task_create' %}" class="app-fab" title="وظیفه جدید" aria-label="وظیفه جدید" data-crm-ui="ui.hr.tasklist.a14" data-crm-order="140">
     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
     </svg>

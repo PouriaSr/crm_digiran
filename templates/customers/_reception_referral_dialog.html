@@ -1,12 +1,12 @@
 <dialog id="reception-referral-dialog" class="wf-referral-dialog" aria-labelledby="referral-title">
     <form data-crm-form method="post" action="{% url 'customers:reception_action' %}">
         {% csrf_token %}<input type="hidden" name="action" value="refer"><input type="hidden" name="reception" id="referral-reception-id">
-        <div class="flex items-center justify-between gap-3"><h3 id="referral-title" class="wf-title">ارجاع مراجعه‌کننده</h3><button type="button" onclick="this.closest('dialog').close()" class="text-gray-400 p-1" aria-label="بستن">✕</button></div>
+        <div class="flex items-center justify-between gap-3"><h3 id="referral-title" class="wf-title" data-crm-ui="ui.customers.receptionreferraldialog.h31" data-crm-order="10">ارجاع مراجعه‌کننده</h3><button type="button" onclick="this.closest('dialog').close()" class="text-gray-400 p-1" aria-label="بستن" data-crm-ui="ui.customers.receptionreferraldialog.button2" data-crm-order="20">✕</button></div>
         <p id="referral-person-name" class="mt-4 text-sm font-bold text-gray-700"></p><p id="referral-destination" class="wf-subtitle"></p>
-        <label for="referral-user" class="wf-label mt-5">کاربر مسئول را انتخاب کنید</label>
+        <label for="referral-user" class="wf-label mt-5" data-crm-ui="ui.customers.receptionreferraldialog.label3" data-crm-order="30">کاربر مسئول را انتخاب کنید</label>
         <select id="referral-user" name="user" required class="no-search"><option value="">انتخاب کاربر...</option></select>
         <p class="wf-subtitle mt-3">با ثبت ارجاع، کاربر انتخاب‌شده مسئول پرونده یا مصاحبه خواهد بود.</p>
-        <div class="mt-6 flex gap-2"><button class="wf-action wf-primary" style="padding:10px 18px">ثبت ارجاع</button><button type="button" class="wf-action" onclick="this.closest('dialog').close()">انصراف</button></div>
+        <div class="mt-6 flex gap-2"><button class="wf-action wf-primary" style="padding:10px 18px" data-crm-ui="ui.customers.receptionreferraldialog.button4" data-crm-order="40">ثبت ارجاع</button><button type="button" class="wf-action" onclick="this.closest('dialog').close()" data-crm-ui="ui.customers.receptionreferraldialog.button5" data-crm-order="50">انصراف</button></div>
     </form>
 </dialog>
 <template id="referral-case-options"><option value="">انتخاب کاربر مسئول...</option>{% for operator in referral_users %}<option value="{{ operator.pk }}">{{ operator.get_full_name|default:operator.username }}</option>{% endfor %}</template>

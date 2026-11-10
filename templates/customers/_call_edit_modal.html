@@ -3,8 +3,8 @@
 <div id="ce-backdrop" class="fixed inset-0 z-[130] hidden items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
     <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div class="bg-gradient-to-r from-slate-700 to-slate-800 p-5 text-white flex justify-between items-center">
-            <h2 class="text-lg font-bold">ویرایش تماس</h2>
-            <button type="button" onclick="closeCallEdit()" class="text-white/80 hover:text-white">
+            <h2 class="text-lg font-bold" data-crm-ui="ui.customers.calleditmodal.h21" data-crm-order="10">ویرایش تماس</h2>
+            <button type="button" onclick="closeCallEdit()" class="text-white/80 hover:text-white" data-crm-ui="ui.customers.calleditmodal.button2" data-crm-order="20">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
@@ -26,7 +26,7 @@
             </div>
 
             <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">تاریخ تماس</label>
+                <label class="block text-sm font-bold text-gray-700 mb-1" data-crm-ui="ui.customers.calleditmodal.label3" data-crm-order="30">تاریخ تماس</label>
                 <input type="text" name="call_date" id="ce-date" data-jdp data-jdp-time="false"
                        placeholder="۱۴۰۵/۰۸/۰۲"
                        class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-slate-500 focus:outline-none">
@@ -35,7 +35,7 @@
             {# فیلدهای تماس عادی #}
             <div id="ce-normal" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">وضعیت</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-1" data-crm-ui="ui.customers.calleditmodal.label4" data-crm-order="40">وضعیت</label>
                     <select name="status" id="ce-status"
                             class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-slate-500 focus:outline-none no-search">
                         <option value="answered">پاسخ داده شد</option>
@@ -45,7 +45,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">هدف تماس</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-1" data-crm-ui="ui.customers.calleditmodal.label5" data-crm-order="50">هدف تماس</label>
                     <select name="purpose" id="ce-purpose"
                             class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-slate-500 focus:outline-none no-search">
                         <option value="sale">فروش</option>
@@ -60,20 +60,20 @@
 
             {# تبدیل تماس عادی به پیگیری #}
             <div id="ce-need-box" class="border-t border-gray-100 pt-3">
-                <label class="flex items-center gap-2 text-sm font-bold text-orange-700 cursor-pointer">
+                <label class="flex items-center gap-2 text-sm font-bold text-orange-700 cursor-pointer" data-crm-ui="ui.customers.calleditmodal.label6" data-crm-order="60">
                     <input type="checkbox" name="needs_followup" id="ce-needs-followup" value="1"
                            class="w-4 h-4 rounded text-orange-600 border-gray-300"
                            onchange="document.getElementById('ce-need-date-row').classList.toggle('hidden', !this.checked); document.getElementById('ce-need-time').required = this.checked; document.getElementById('ce-need-date').required = this.checked">
                     نیاز به پیگیری (تبدیل به تماس پیگیری)
                 </label>
                 <div id="ce-need-date-row" class="hidden mt-3">
-                    <label class="block text-xs font-bold text-orange-700 mb-1">
+                    <label class="block text-xs font-bold text-orange-700 mb-1" data-crm-ui="ui.customers.calleditmodal.label7" data-crm-order="70">
                         تاریخ پیگیری <span class="text-red-500">*</span>
                     </label>
                     <input type="text" name="needs_followup_date" id="ce-need-date" data-jdp data-jdp-time="false"
                            placeholder="۱۴۰۵/۰۸/۱۵"
                            class="w-full px-3 py-2 text-sm bg-orange-50/50 border border-orange-200 rounded-xl focus:bg-white focus:border-orange-500 focus:outline-none">
-                    <label for="ce-need-time" class="block text-xs font-bold mt-3">ساعت پیگیری *</label>
+                    <label for="ce-need-time" class="block text-xs font-bold mt-3" data-crm-ui="ui.customers.calleditmodal.label8" data-crm-order="80">ساعت پیگیری *</label>
                     <input type="time" name="needs_followup_time" id="ce-need-time" class="w-full px-3 py-2 border rounded-xl" dir="ltr">
                 </div>
             </div>
@@ -81,14 +81,14 @@
             {# فیلدهای تماس پیگیری #}
             <div id="ce-followup" class="space-y-3 hidden">
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">تاریخ پیگیری</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-1" data-crm-ui="ui.customers.calleditmodal.label9" data-crm-order="90">تاریخ پیگیری</label>
                     <input type="text" name="follow_up_date" id="ce-fu-date" data-jdp data-jdp-time="false"
                            placeholder="۱۴۰۵/۰۸/۱۵"
                            class="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-slate-500 focus:outline-none">
                 </div>
-                <label for="ce-fu-time" class="block text-sm font-bold">ساعت پیگیری *</label>
+                <label for="ce-fu-time" class="block text-sm font-bold" data-crm-ui="ui.customers.calleditmodal.label10" data-crm-order="100">ساعت پیگیری *</label>
                 <input type="time" name="follow_up_time" id="ce-fu-time" class="w-full px-3 py-2 border rounded-xl" dir="ltr">
-                <label class="flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer">
+                <label class="flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer" data-crm-ui="ui.customers.calleditmodal.label11" data-crm-order="110">
                     <input type="checkbox" name="is_followed_up" id="ce-fu-done" value="1"
                            class="w-4 h-4 rounded text-emerald-600 border-gray-300">
                     پیگیری انجام شد
@@ -96,7 +96,7 @@
             </div>
 
             <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">
+                <label class="block text-sm font-bold text-gray-700 mb-1" data-crm-ui="ui.customers.calleditmodal.label12" data-crm-order="120">
                     شرح مکالمه <span class="text-red-500">*</span>
                 </label>
                 <textarea name="notes" id="ce-notes" rows="3" required
@@ -106,11 +106,11 @@
 
             <div class="crm-form-actions flex gap-2 pt-1">
                 <button type="submit"
-                        class="flex-1 py-2.5 bg-slate-700 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition">
+                        class="flex-1 py-2.5 bg-slate-700 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition" data-crm-ui="ui.customers.calleditmodal.button13" data-crm-order="130">
                     ذخیره تغییرات
                 </button>
                 <button type="button" onclick="closeCallEdit()"
-                        class="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-200 transition">
+                        class="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-200 transition" data-crm-ui="ui.customers.calleditmodal.button14" data-crm-order="140">
                     انصراف
                 </button>
             </div>

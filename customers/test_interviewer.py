@@ -27,7 +27,7 @@ class InterviewerFlowTest(TestCase):
 
     def test_interviewers_use_separate_information_list(self):
         self.arrive()
-        ids = [row.pk for row in self.client.get(self.hub).context['customers']]
+        ids = [row.pk for row in self.client.get(self.hub,{'person_status':'lead'}).context['customers']]
         self.assertNotIn(self.cand.pk, ids); self.assertIn(self.other.pk, ids)
         self.assertContains(self.client.get(reverse('customers:candidate_list')),self.cand.name)
 

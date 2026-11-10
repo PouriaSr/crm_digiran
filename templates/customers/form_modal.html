@@ -2,9 +2,9 @@
  <div class="crm-modal-shell" role="dialog" aria-modal="true" aria-labelledby="customer-modal-title">
   <form data-crm-form hx-post="{% if form_action %}{{ form_action }}{% elif customer %}{% url 'customers:edit' customer.pk %}{% else %}{% url 'customers:create' %}{% endif %}?is_modal=1" hx-target="#new-customer-modal-backdrop" hx-swap="outerHTML" @change="if ($event.target.name === 'source') sourceVal = $event.target.value" x-data="{sourceVal:'{{ form.source.value|default:'website'|escapejs }}'}">
    {% csrf_token %}
-   <header class="crm-modal-head"><div><h3 id="customer-modal-title">{{ title }}</h3><p>فیلدهای ستاره‌دار الزامی‌اند؛ تغییرات در پایان ثبت می‌شوند.</p></div><button type="button" onclick="closeNewCustomerModal()" class="rounded-xl bg-slate-100 text-slate-500" aria-label="بستن فرم مشتری">✕</button></header>
+   <header class="crm-modal-head"><div><h3 id="customer-modal-title" data-crm-ui="ui.customers.formmodal.h31" data-crm-order="10">{{ title }}</h3><p>فیلدهای ستاره‌دار الزامی‌اند؛ تغییرات در پایان ثبت می‌شوند.</p></div><button type="button" onclick="closeNewCustomerModal()" class="rounded-xl bg-slate-100 text-slate-500" aria-label="بستن فرم مشتری" data-crm-ui="ui.customers.formmodal.button2" data-crm-order="20">✕</button></header>
    <div class="crm-modal-body">{% include 'includes/_form_errors.html' %}{% include 'customers/_customer_fields.html' %}</div>
-   <footer class="crm-form-actions"><button type="submit">{{ submit_label }}</button><button type="button" onclick="closeNewCustomerModal()">انصراف</button></footer>
+   <footer class="crm-form-actions"><button type="submit" data-crm-ui="ui.customers.formmodal.button3" data-crm-order="30">{{ submit_label }}</button><button type="button" onclick="closeNewCustomerModal()" data-crm-ui="ui.customers.formmodal.button4" data-crm-order="40">انصراف</button></footer>
   </form>
  </div>
 </div>

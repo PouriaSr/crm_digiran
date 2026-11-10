@@ -6,32 +6,32 @@
 
 <div class="max-w-2xl mx-auto">
     <div class="mb-6">
-        <a href="{% url 'hr:my_profile' %}" class="text-blue-600 hover:underline text-sm">← بازگشت به پروفایل</a>
+        <a href="{% url 'hr:my_profile' %}" class="text-blue-600 hover:underline text-sm" data-crm-ui="ui.hr.profileedit.a1" data-crm-order="10">← بازگشت به پروفایل</a>
     </div>
 
-    <h1 class="text-2xl font-bold text-gray-800 mb-6">ویرایش اطلاعات شخصی</h1>
+    <h1 class="text-2xl font-bold text-gray-800 mb-6" data-crm-ui="ui.hr.profileedit.h12" data-crm-order="20">ویرایش اطلاعات شخصی</h1>
 
     <form data-crm-form data-crm-page method="post" class="crm-form-page bg-white rounded-xl shadow-sm p-6">
         {% csrf_token %}
 
         {% include 'includes/_form_errors.html' %}
 
-        <section class="crm-form-section"><header class="crm-form-section-head"><span>1</span><div><h2>نام و ارتباط</h2><p>مشخصات شخصی و راه‌های ارتباطی شما.</p></div></header><div class="crm-form-grid">
+        <section class="crm-form-section"><header class="crm-form-section-head"><span>1</span><div><h2 data-crm-ui="ui.hr.profileedit.h23" data-crm-order="30">نام و ارتباط</h2><p>مشخصات شخصی و راه‌های ارتباطی شما.</p></div></header><div class="crm-form-grid">
 {% include 'includes/_form_field.html' with field=form.first_name %}
 {% include 'includes/_form_field.html' with field=form.last_name %}
 {% include 'includes/_form_field.html' with field=form.mobile %}
 {% include 'includes/_form_field.html' with field=form.email %}
 </div></section>
-<section class="crm-form-section"><header class="crm-form-section-head"><span>2</span><div><h2>مشخصات تکمیلی</h2><p>تاریخ تولد و نشانی.</p></div></header><div class="crm-form-grid">
+<section class="crm-form-section"><header class="crm-form-section-head"><span>2</span><div><h2 data-crm-ui="ui.hr.profileedit.h24" data-crm-order="40">مشخصات تکمیلی</h2><p>تاریخ تولد و نشانی.</p></div></header><div class="crm-form-grid">
 {% include 'includes/_form_field.html' with field=form.birth_date %}
 {% include 'includes/_form_field.html' with field=form.address wide=True %}
 </div></section>
 <p class="crm-form-hint">برای تغییر کد ملی، سمت شغلی یا نوع قرارداد، با مسئول منابع انسانی تماس بگیرید.</p>
 <div class="crm-form-actions flex gap-3 mt-8 pt-6 border-t border-gray-100">
-            <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+            <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium" data-crm-ui="ui.hr.profileedit.button5" data-crm-order="50">
                 ذخیره تغییرات
             </button>
-            <a href="{% url 'hr:my_profile' %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+            <a href="{% url 'hr:my_profile' %}" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium" data-crm-ui="ui.hr.profileedit.a6" data-crm-order="60">
                 انصراف
             </a>
         </div>

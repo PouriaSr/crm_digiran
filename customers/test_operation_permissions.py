@@ -57,8 +57,9 @@ class OperationPermissionsTest(TestCase):
             self.assertFalse(has_permission(self.owner,key),key)
             self.assertNotIn(key,get_user_permissions(self.owner))
             self.permission(self.owner,key,True)
-            self.assertTrue(has_permission(self.owner,key),key)
-            self.assertIn(key,get_user_permissions(self.owner))
+            from accounts.permissions import role_allows_permission, get_user_role
+            self.assertEqual(has_permission(self.owner,key),role_allows_permission(get_user_role(self.owner),key),key)
+            self.assertEqual(key in get_user_permissions(self.owner),role_allows_permission(get_user_role(self.owner),key),key)
 
     def test_read_only_reception_cannot_register_or_refer(self):
         self.permission(self.owner,'customers.reception',True)

@@ -8,12 +8,12 @@
 <!-- Header -->
 <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
     <div>
-        <h1 class="text-2xl font-bold text-gray-800">تماس‌ها</h1>
+        <h1 class="text-2xl font-bold text-gray-800" data-crm-ui="ui.calls.list.h11" data-crm-order="10">تماس‌ها</h1>
         <p class="text-sm text-gray-500 mt-1">مدیریت و پیگیری تماس‌های ورودی و خروجی</p>
     </div>
     {% if 'calls.add' in user_permissions %}
     <div class="action-buttons-hidden-mobile"><a href="{% url 'calls:create' %}"
-       class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2">
+       class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2" data-crm-ui="ui.calls.list.a2" data-crm-order="20">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
         </svg>
@@ -47,14 +47,14 @@
     <form method="get" class="crm-filter-form grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
 
         <div class="sm:col-span-2 lg:col-span-1">
-            <label class="block text-xs font-medium text-gray-600 mb-1.5">جستجو</label>
+            <label class="block text-xs font-medium text-gray-600 mb-1.5" data-crm-ui="ui.calls.list.label3" data-crm-order="30">جستجو</label>
             <input type="text" name="q" value="{{ search }}"
                    placeholder="نام، شماره یا یادداشت..."
                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
         </div>
 
         <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1.5">وضعیت</label>
+            <label class="block text-xs font-medium text-gray-600 mb-1.5" data-crm-ui="ui.calls.list.label4" data-crm-order="40">وضعیت</label>
             <select name="status" class="w-full">
                 <option value="">همه وضعیت‌ها</option>
                 {% for value, label in status_choices %}
@@ -64,7 +64,7 @@
         </div>
 
         <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1.5">نوع تماس</label>
+            <label class="block text-xs font-medium text-gray-600 mb-1.5" data-crm-ui="ui.calls.list.label5" data-crm-order="50">نوع تماس</label>
             <select name="call_type" class="w-full">
                 <option value="">همه انواع</option>
                 {% for value, label in type_choices %}
@@ -74,7 +74,7 @@
         </div>
 
         <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1.5">هدف</label>
+            <label class="block text-xs font-medium text-gray-600 mb-1.5" data-crm-ui="ui.calls.list.label6" data-crm-order="60">هدف</label>
             <select name="purpose" class="w-full">
                 <option value="">همه اهداف</option>
                 {% for value, label in purpose_choices %}
@@ -84,7 +84,7 @@
         </div>
 
         <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1.5">پیگیری</label>
+            <label class="block text-xs font-medium text-gray-600 mb-1.5" data-crm-ui="ui.calls.list.label7" data-crm-order="70">پیگیری</label>
             <select name="followup" class="w-full">
                 <option value="">همه پیگیری‌ها</option>
                 <option value="pending" {% if current_followup == 'pending' %}selected{% endif %}>در انتظار</option>
@@ -94,7 +94,7 @@
         </div>
 
         <div class="sm:col-span-2 lg:col-span-1">
-            <label class="block text-xs font-medium text-gray-600 mb-1.5">کارمند</label>
+            <label class="block text-xs font-medium text-gray-600 mb-1.5" data-crm-ui="ui.calls.list.label8" data-crm-order="80">کارمند</label>
             <select name="employee" class="w-full">
                 <option value="">همه کارمندان</option>
                 {% for emp in employees %}
@@ -106,11 +106,11 @@
         </div>
 
         <div class="flex gap-2 w-full sm:col-span-2 lg:col-span-2">
-            <button type="submit" class="flex-1 px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition">
+            <button type="submit" class="flex-1 px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition" data-crm-ui="ui.calls.list.button9" data-crm-order="90">
                 اعمال فیلتر
             </button>
             {% if search or current_status or current_call_type or current_purpose or current_employee or current_followup %}
-            <a href="{% url 'customers:hub' %}?tab=followup" class="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 transition text-center flex items-center justify-center">
+            <a href="{% url 'customers:hub' %}?tab=followup" class="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 transition text-center flex items-center justify-center" data-crm-ui="ui.calls.list.a10" data-crm-order="100">
                 پاک کردن
             </a>
             {% endif %}
@@ -124,15 +124,15 @@
     <table class="crm-data-table w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr class="text-gray-600">
-                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">تماس‌گیرنده</th>
-                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">شماره</th>
-                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">نوع</th>
-                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">وضعیت</th>
-                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">هدف</th>
-                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">پیگیری</th>
-                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">کارمند</th>
-                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">تاریخ</th>
-                <th class="text-right px-3 py-3 font-medium whitespace-nowrap">عملیات</th>
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.calls.list.th11" data-crm-order="10">تماس‌گیرنده</th>
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.calls.list.th12" data-crm-order="20">شماره</th>
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.calls.list.th13" data-crm-order="30">نوع</th>
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.calls.list.th14" data-crm-order="40">وضعیت</th>
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.calls.list.th15" data-crm-order="50">هدف</th>
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.calls.list.th16" data-crm-order="60">پیگیری</th>
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.calls.list.th17" data-crm-order="70">کارمند</th>
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.calls.list.th18" data-crm-order="80">تاریخ</th>
+                <th class="text-right px-3 py-3 font-medium whitespace-nowrap" data-crm-ui="ui.calls.list.th19" data-crm-order="90">عملیات</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
@@ -203,14 +203,14 @@
                     <div class="flex items-center gap-1">
                         <a href="{% url 'calls:detail' call.pk %}"
                            class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50"
-                           title="جزئیات">
+                           title="جزئیات" data-crm-ui="ui.calls.list.a20" data-crm-order="200">
                             جزئیات
                         </a>
                         {% if can_transfer_calls %}
                         <button type="button"
                                 onclick="openReassign({{ call.pk }}, '{{ call.caller_name|escapejs }}')"
                                 class="text-yellow-600 hover:text-yellow-800 text-xs px-2 py-1 rounded hover:bg-yellow-50 flex items-center gap-1"
-                                title="ارجاع به کارمند دیگر">
+                                title="ارجاع به کارمند دیگر" data-crm-ui="ui.calls.list.button21" data-crm-order="210">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
@@ -289,10 +289,10 @@
         </div>
         <!-- Actions -->
         <div class="px-4 py-3 border-t border-gray-100 flex gap-2">
-            <a href="{% url 'calls:detail' call.pk %}" class="flex-1 text-center py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium active:bg-blue-700 transition">جزئیات</a>
+            <a href="{% url 'calls:detail' call.pk %}" class="flex-1 text-center py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium active:bg-blue-700 transition" data-crm-ui="ui.calls.list.a22" data-crm-order="220">جزئیات</a>
             {% if can_transfer_calls %}
             <button type="button" onclick="openReassign({{ call.pk }}, '{{ call.caller_name|escapejs }}')"
-                    class="flex-1 text-center py-2.5 bg-yellow-50 text-yellow-700 rounded-xl text-sm font-medium active:bg-yellow-100 transition">
+                    class="flex-1 text-center py-2.5 bg-yellow-50 text-yellow-700 rounded-xl text-sm font-medium active:bg-yellow-100 transition" data-crm-ui="ui.calls.list.button23" data-crm-order="230">
                 ارجاع
             </button>
             {% endif %}
@@ -324,9 +324,9 @@
                               d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
                     </svg>
                 </div>
-                <h3 class="font-bold text-gray-800">ارجاع تماس</h3>
+                <h3 class="font-bold text-gray-800" data-crm-ui="ui.calls.list.h324" data-crm-order="240">ارجاع تماس</h3>
             </div>
-            <button onclick="closeReassignModal()" class="text-gray-400 hover:text-gray-600">
+            <button onclick="closeReassignModal()" class="text-gray-400 hover:text-gray-600" data-crm-ui="ui.calls.list.button25" data-crm-order="250">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -343,7 +343,7 @@
                     به کدام کارمند ارجاع شود؟
                 </p>
 
-                <label class="block text-sm font-medium text-gray-700 mb-2">
+                <label class="block text-sm font-medium text-gray-700 mb-2" data-crm-ui="ui.calls.list.label26" data-crm-order="260">
                     کارمند جدید <span class="text-red-500">*</span>
                 </label>
                 <select name="called_by" id="reassign-select" required
@@ -361,7 +361,7 @@
 
             <div class="flex gap-2">
                 <button type="submit" id="reassign-submit-btn"
-                        class="flex-1 px-4 py-2.5 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm font-medium flex items-center justify-center gap-2">
+                        class="flex-1 px-4 py-2.5 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm font-medium flex items-center justify-center gap-2" data-crm-ui="ui.calls.list.button27" data-crm-order="270">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
@@ -369,7 +369,7 @@
                     ارجاع کن
                 </button>
                 <button type="button" onclick="closeReassignModal()"
-                        class="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">
+                        class="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium" data-crm-ui="ui.calls.list.button28" data-crm-order="280">
                     انصراف
                 </button>
             </div>
@@ -478,7 +478,7 @@
 
 {% block fab %}
 {% if 'calls.add' in user_permissions %}
-<a href="{% url 'calls:create' %}" class="app-fab" title="تماس جدید" aria-label="تماس جدید">
+<a href="{% url 'calls:create' %}" class="app-fab" title="تماس جدید" aria-label="تماس جدید" data-crm-ui="ui.calls.list.a29" data-crm-order="290">
     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
     </svg>

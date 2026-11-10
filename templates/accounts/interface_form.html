@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block title %}ویرایش تنظیمات جزء{% endblock %}
+{% block content %}
+<section class="max-w-3xl mx-auto"><a class="inline-block text-blue-600 py-3 mb-4" href="{% url 'accounts:interface_settings' %}">← تنظیمات سیستم</a><h1 class="text-xl font-bold mb-3">{% if definition %}تنظیم {{ definition.label }}{% else %}تب یا دکمه سفارشی{% endif %}</h1>
+{% if definition %}<p class="text-xs text-slate-500 mb-4" dir="ltr">{{ component.key }} · {{ definition.path }}</p>{% endif %}
+<form data-crm-form data-crm-page method="post" class="crm-form-page bg-white p-5 border rounded-2xl">{% csrf_token %}{{ form.revision }}{% include 'includes/_form_errors.html' %}<div class="crm-form-grid">{% for field in form %}{% if not field.is_hidden %}{% include 'includes/_form_field.html' with field=field wide=True %}{% endif %}{% endfor %}</div><div class="crm-form-actions"><button type="submit" class="bg-blue-600 text-white rounded-xl px-5 py-3">ذخیره تنظیمات</button><a href="{% url 'accounts:interface_settings' %}" class="border rounded-xl px-5 py-3">انصراف</a></div></form>
+{% if component.pk %}<form method="post" action="{% url 'accounts:interface_reset' component.key %}" class="mt-5 bg-white border rounded-xl p-4">{% csrf_token %}<input type="hidden" name="revision" value="{{ component.revision }}"><p class="text-sm text-slate-500 mb-3">{% if component.custom %}این جزء سفارشی از رابط حذف می‌شود. سابقه تغییرات باقی می‌ماند.{% else %}عنوان، نمایش، ترتیب و نقش‌های این جزء به تعریف اصلی برمی‌گردند.{% endif %}</p><button type="submit" class="border border-red-200 text-red-600 rounded-xl px-4 py-3">{% if component.custom %}حذف جزء سفارشی{% else %}بازگردانی پیش‌فرض{% endif %}</button></form>{% endif %}
+</section>{% endblock %}

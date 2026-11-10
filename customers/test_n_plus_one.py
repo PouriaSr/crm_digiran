@@ -34,6 +34,13 @@ class HubNPlusOneTest(TestCase):
         self.assertEqual(response.status_code, 200)
         queries = len(connection.queries)
         self.assertLess(
-            queries, 30,
+            queries, 34,  # Settings and source choices add fixed queries, independent of row count.
             f'N+1 detected: {queries} queries for 5 customers.'
         )
+
+        # Increasing the number of visible cards must not add per-card queries.
+        Customer.objects.bulk_create([Customer(name=f'کارت بیشتر {i}',mobile=f'0912333{i:04}',assigned_to=self.sales) for i in range(15)])
+        reset_queries()
+        expanded=self.client.get(reverse('customers:hub'))
+        self.assertEqual(expanded.status_code,200)
+        self.assertLessEqual(len(connection.queries),queries+1)
