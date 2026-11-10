@@ -8,7 +8,7 @@ from .permissions import get_user_role, has_permission
 
 @lru_cache(maxsize=1)
 def catalog():
-    return json.loads(Path(__file__).with_name('ui_catalog.json').read_text())
+    return json.loads(Path(__file__).with_name('ui_catalog.json').read_text(encoding='utf-8'))
 
 
 def permitted(user, component):

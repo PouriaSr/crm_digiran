@@ -993,11 +993,11 @@ window.apexMobileMerge = function (options) {
             {% if 'accounts.manage_users' in user_permissions or 'audit.view' in user_permissions or 'system.configure' in user_permissions %}
             <div class="pt-3 mt-3 border-t border-white/10">
                 <div class="px-3 py-1 text-xs text-gray-400 mb-1">تنظیمات سیستم</div>
-{% if 'system.configure' in user_permissions %}<a href="{% url 'accounts:interface_settings' %}" class="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-white/10">تنظیمات سیستم</a>{% endif %}
+{% if 'system.configure' in user_permissions %}<a href="{% url 'accounts:interface_settings' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition">{% include 'includes/_system_settings_icon.html' %}<span>تنظیمات سیستم</span></a>{% endif %}
                 {% if 'accounts.manage_users' in user_permissions %}
                 <a href="{% url 'accounts:user_list' %}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'accounts' and 'user' in request.resolver_match.url_name %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition" data-crm-ui="ui.base.a15" data-crm-order="150">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M21 21v-2a6 6 0 0 0-4-5.7"/></svg>
                     <span>کاربران سیستم</span>
                 </a>
                 {% endif %}

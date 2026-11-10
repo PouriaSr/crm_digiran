@@ -6,5 +6,5 @@
 {% if 'hr.view_tasks' in user_permissions %}<a href="{% url 'hr:task_list' %}" data-crm-ui="ui.includes.mobilenavigationlinks.a5" data-crm-order="50">صفحه وظایف</a>{% endif %}
 {% if 'hr.review_leaves' in user_permissions %}<a href="{% url 'hr:leave_list' %}" data-crm-ui="ui.includes.mobilenavigationlinks.a6" data-crm-order="60">مرخصی‌ها</a>{% endif %}
 {% if 'hr.attendance' in user_permissions %}<a href="{% url 'hr:attendance_list' %}" data-crm-ui="ui.includes.mobilenavigationlinks.a7" data-crm-order="70">حضور و غیاب</a><a href="{% url 'hr:attendance_report' %}" data-crm-ui="ui.includes.mobilenavigationlinks.a8" data-crm-order="80">گزارش ماهانه</a>{% endif %}
-{% if 'system.configure' in user_permissions %}<a href="{% url 'accounts:interface_settings' %}">تنظیمات سیستم</a>{% endif %}
+{% if 'system.configure' in user_permissions %}<a href="{% url 'accounts:interface_settings' %}" class="gap-3">{% include 'includes/_system_settings_icon.html' %}<span>تنظیمات سیستم</span></a>{% endif %}
 </nav>
