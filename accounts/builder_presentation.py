@@ -77,10 +77,16 @@ def section_preview(section):
             if isinstance(field, forms.ChoiceField) and not isinstance(field, forms.ModelChoiceField):
                 options = [{'value': str(v), 'label': str(l)} for v, l in field.choices
                            if v and not isinstance(l, (tuple, list))][:30]
-            fields[name] = {'key': name, 'label': str(field.label or name), 'field_type': field_type(field),
+            from .structure_forms_runtime import PROTECTED
+            model=getattr(getattr(import_string(path),'_meta',None),'model',None)
+            try:native=model._meta.get_field(name) if model else None
+            except Exception:native=None
+            locked=name in PROTECTED or bool(native and not native.null and not native.blank and not native.has_default())
+            fields[name] = {'visibility_locked':locked,'key': name, 'label': str(field.label or name), 'field_type': field_type(field),
                             'required': field.required, 'enabled': True, 'readonly': False,
                             'position': index * 10, 'placeholder': str(field.widget.attrs.get('placeholder', '')),
-                            'help_text': '', 'default_value': '', 'choices': options, 'native': True}
+                            'help_text': '', 'default_value': '', 'choices': options, 'native': True, 'in_primary': True}
+    primary_fields=list(fields)
     if section.key == 'info':
         for index, name in enumerate(('name','mobile','is_interviewer','call_type','purpose','call_status')):
             if name in fields: fields[name]['position'] = index * 10
@@ -88,10 +94,20 @@ def section_preview(section):
         for item in section.fields.all():
             key = item.native_name or item.key
             prior = fields.get(key, {})
+            in_primary = not item.native_name or key in primary_fields
+            enabled,required = item.enabled,item.required
+            if item.native_name and in_primary:
+                from .structure_forms_runtime import PROTECTED
+                model=getattr(getattr(import_string(paths[-1]),'_meta',None),'model',None)
+                try:native=model._meta.get_field(key) if model else None
+                except Exception:native=None
+                hard_required=bool(native and not native.null and not native.blank and not native.has_default() and not item.default_value)
+                required=prior.get('required',False) if key in PROTECTED else item.required or hard_required
+                if key in PROTECTED or required:enabled=True
             fields[key] = {**prior, **{name: getattr(item, name) for name in
                 ('label', 'field_type', 'required', 'enabled', 'readonly', 'position', 'placeholder',
                  'help_text', 'default_value', 'minimum', 'maximum', 'max_length')},
-                'key': key, 'native': bool(item.native_name),
+                'key': key, 'native': bool(item.native_name), 'in_primary': in_primary, 'enabled': enabled, 'required':required, 'roles':item.roles,
                 'choices': [{'value': v, 'label': l} for v, l in choice_pairs(item)] or prior.get('choices', [])}
     columns = [{'key': item.key, **{name: getattr(item, name) for name in
                 ('label', 'source', 'component_key', 'enabled', 'position', 'width', 'align', 'display',
@@ -101,14 +117,15 @@ def section_preview(section):
                'owner': str(item.assignee) if item.assignee_id else item.assignee_role or 'مالک رکورد'}
               for item in section.stages.select_related('assignee')] if section.pk else []
     transitions = [{'key': str(item.pk), 'label': item.label, 'source': str(item.source_id),
-                    'target': str(item.target_id), 'enabled': item.enabled, 'require_note': item.require_note}
+                    'target': str(item.target_id), 'enabled': item.enabled, 'require_note': item.require_note, 'roles':item.roles}
                    for item in section.transitions.all()] if section.pk else []
     path = definition.get('path')
     live_url = internal_url(path + ('?tab=' + definition['tab'] if definition.get('tab') else '')) if path else (
         reverse('accounts:structure_data', args=[section.key]) if section.pk else '')
-    return {'label': section.label, 'fields': list(fields.values()), 'columns': columns,
+    from .builder_usage import decorate_preview
+    return decorate_preview(section, {'primary_fields':primary_fields,'label': section.label, 'section_enabled':section.enabled, 'section_roles':section.roles, 'section_permission':section.permission, 'fields': list(fields.values()), 'columns': columns,
             'stages': stages, 'transitions': transitions, 'page_size': section.page_size,
-            'live_url': live_url}
+            'live_url': live_url})
 
 
 def element_meta(kind):
@@ -135,5 +152,7 @@ def section_cards(sections):
         section.builder_category = 'custom' if section.custom else ('customers' if section.key in
             ('info','reception','case','registration','hiring','calls','invoices') else 'hr' if section.key in
             ('employees','tasks','leaves','attendance') else 'system' if section.key=='users' else 'business')
+        from .builder_usage import usage
+        section.builder_usage=usage('hidden','بخش غیرفعال') if not section.enabled else usage('conditional','فعال · دسترسی محدود') if section.roles or section.permission else usage('used','بخش فعال')
         section.builder_description, section.builder_icon = descriptions.get(section.key, ('فرم، فهرست و تنظیمات این بخش', 'columns'))
     return result

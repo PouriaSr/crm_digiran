@@ -1,0 +1,1 @@
+{% if usage %}<span class="sb-usage sb-usage-{{ usage.state }}" data-usage-badge="{{ usage.state }}" {% if usage.note %}title="{{ usage.note }}"{% endif %}><span aria-hidden="true">{% if usage.state == 'used' %}✓{% elif usage.state == 'conditional' or usage.state == 'unlinked' %}◇{% else %}—{% endif %}</span>{{ usage.label }}</span>{% endif %}

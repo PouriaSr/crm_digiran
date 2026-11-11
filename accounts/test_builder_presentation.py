@@ -111,3 +111,63 @@ class BuilderPresentationTests(TestCase):
         InterfaceComponent.objects.create(key=key,label='تنظیم',kind='button',behavior={'action_kind':'navigate','destination':'/test/accounts/settings/'})
         request=RequestFactory().get('/customers/hub/');request.user=user
         self.assertFalse(next(item for item in interface_context(request)['interface_overrides'] if item['key']==key)['visible'])
+
+    def test_primary_inventory_distinguishes_contact_form_from_other_customer_forms(self):
+        from customers.forms import HubCallForm
+        from django import forms
+        expected={name for name,field in HubCallForm.base_fields.items() if not isinstance(field.widget,forms.HiddenInput)}
+        page=self.client.get(reverse('accounts:structure_section',args=['info']))
+        inventory={item['name']:item for item in page.context['native_fields']}
+        self.assertEqual({key for key,item in inventory.items() if item['primary']},expected)
+        self.assertEqual(page.context['native_primary_count'],len(expected))
+        self.assertEqual(inventory['name']['usage']['state'],'used')
+        self.assertEqual(inventory['email']['usage']['state'],'other')
+        SectionField.objects.create(section=self.section,key='email_rule',native_name='email',label='ایمیل اصلاحی',field_type='email')
+        SectionField.objects.create(section=self.section,key='email_rule_second',native_name='email',label='قاعده دوم ایمیل',field_type='email')
+        preview=section_preview(self.section)
+        self.assertFalse(next(field for field in preview['fields'] if field['key']=='email')['in_primary'])
+        self.assertEqual(len([f for f in preview['fields'] if f['in_primary'] and f['enabled']]),len(expected))
+        SectionField.objects.create(section=self.section,key='notes_hidden',native_name='notes',label='شرح',field_type='text',enabled=False,required=False)
+        page=self.client.get(reverse('accounts:structure_section',args=['info']))
+        self.assertFalse(next(item for item in page.context['native_fields'] if item['name']=='notes')['primary'])
+        self.assertEqual(page.context['native_primary_count'],len(expected)-1)
+
+    def test_added_disabled_and_role_limited_fields_and_columns_have_matching_usage(self):
+        field=SectionField.objects.create(section=self.section,key='new_input',label='ورودی تازه',field_type='text')
+        column=SectionColumn.objects.create(section=self.section,key='new_column',label='ستون تازه',source='extra:new_input',filterable=True)
+        preview=section_preview(self.section)
+        self.assertEqual(next(f for f in preview['fields'] if f['key']==field.key)['usage']['state'],'used')
+        self.assertEqual(preview['columns'][0]['filter_usage']['state'],'used')
+        field.roles=['sales'];field.save()
+        self.assertEqual(section_preview(self.section)['columns'][0]['usage']['state'],'conditional')
+        field.enabled=False;field.save()
+        preview=section_preview(self.section)
+        self.assertEqual(next(f for f in preview['fields'] if f['key']==field.key)['usage']['state'],'hidden')
+        self.assertEqual(preview['columns'][0]['usage']['state'],'unavailable')
+        self.assertEqual(preview['columns'][0]['filter_usage']['state'],'hidden')
+        page=self.client.get(reverse('accounts:structure_section',args=['info']))
+        self.assertContains(page,'data-usage-entity="field:new_input" data-usage-state="hidden"')
+        self.assertContains(page,'data-usage-entity="column:new_column" data-usage-state="unavailable"')
+
+    def test_workflow_usage_requires_reachable_enabled_path(self):
+        from accounts.models import SectionStage,SectionTransition
+        first=SectionStage.objects.create(section=self.section,label='شروع',initial=True)
+        second=SectionStage.objects.create(section=self.section,label='مرحله دیگر')
+        action=SectionTransition.objects.create(section=self.section,source=first,target=second,label='رفتن',enabled=False)
+        self.assertEqual(next(s for s in section_preview(self.section)['stages'] if s['key']==str(second.pk))['usage']['state'],'unlinked')
+        action.enabled=True;action.save()
+        preview=section_preview(self.section)
+        self.assertTrue(all(s['usage']['state']=='used' for s in preview['stages']))
+        self.assertEqual(preview['transitions'][0]['usage']['state'],'used')
+        second.enabled=False;second.save()
+        self.assertEqual(section_preview(self.section)['transitions'][0]['usage']['state'],'hidden')
+
+    def test_default_and_hidden_components_are_distinguished_without_enabling_anything(self):
+        from accounts.structure_views import scoped_components
+        from accounts.interface import catalog
+        key=next(k for k,v in catalog().items() if v['kind']=='button' and 'info' in __import__('accounts.structure_registry',fromlist=['component_scopes']).component_scopes(k,v))
+        row=next(row for row in scoped_components(self.section) if row['key']==key)
+        self.assertEqual(row['usage']['state'],'used');self.assertFalse(row['configured'])
+        InterfaceComponent.objects.create(key=key,label='پنهان',kind='button',enabled=False)
+        row=next(row for row in scoped_components(self.section) if row['key']==key)
+        self.assertEqual(row['usage']['state'],'hidden');self.assertTrue(row['configured'])

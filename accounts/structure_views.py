@@ -23,14 +23,15 @@ def audit_snapshot(item):
     return json.loads(json.dumps(model_to_dict(item),default=str))
 
 
-def scoped_components(section):
+def scoped_components(section, preview=None):
     from .models import InterfaceComponent
     overrides={item.key:item for item in InterfaceComponent.objects.all()}
     rows=[{'key':key,**definition,'label':overrides[key].label if key in overrides else definition['label']}
           for key,definition in catalog().items() if section.key in component_scopes(key,definition)]
     rows += [{'key':item.key,'label':item.label,'kind':item.kind,'custom':True}
              for item in overrides.values() if item.custom and item.scope_key==section.key]
-    return rows
+    from .builder_usage import annotate_components
+    return annotate_components(section,rows,preview or section_preview(section),overrides)
 
 
 @login_required
@@ -59,21 +60,26 @@ def section_edit(request,section_key=None):
                     InterfaceComponent.objects.update_or_create(key='hub.tab.'+tab,defaults={**values,'kind':'tab','section':'مرکز مشتریان'})
                 InterfaceChange.objects.create(key='section:'+item.key,action='update' if before else 'create',before=before,after=audit_snapshot(item),actor=request.user)
                 return redirect(reverse('accounts:structure_section',args=[item.key])+'?saved=1#section-settings')
-    related=scoped_components(section) if section.pk else []
+    preview=section_preview(section)
+    related=scoped_components(section,preview) if section.pk else []
     related=[item for item in related if not item['key'].startswith('hub.tab.')]
-    native_fields={}
-    if section.pk:
-        from django.utils.module_loading import import_string
-        existing_fields={field.native_name:field for field in section.fields.all() if field.native_name}
-        for path in SECTIONS.get(section.key,{}).get('forms',[]):
-            cls=import_string(path)
-            for name,field in cls.base_fields.items():
-                if name in ('password','password1','password2','id'):continue
-                native_fields.setdefault(name,{'name':name,'label':str(field.label or name),'rule':existing_fields.get(name)})
-    return render(request,'accounts/structure_section.html',{'section':section,'form':form,'related_components':related,'native_fields':list(native_fields.values()),
-        'builder_preview':section_preview(section),'editor_groups':editor_groups(form,'section'),
-        'native_definition':SECTIONS.get(section.key),'fields_list':section.fields.all() if section.pk else [],
-        'columns_list':section.columns.all() if section.pk else [],'stages_list':section.stages.all() if section.pk else [],'transitions_list':section.transitions.select_related('source','target') if section.pk else []})
+    from .builder_usage import native_inventory
+    native_fields=native_inventory(section,preview) if section.pk else []
+    definitions={item.key:item for item in section.fields.all()} if section.pk else {}
+    for field in preview['fields']:
+        key=next((key for key,item in definitions.items() if (item.native_name or key)==field['key']),None)
+        if key:definitions[key].builder_usage=field['usage']
+    columns=list(section.columns.all()) if section.pk else []
+    for item,metadata in zip(columns,preview['columns']):
+        item.builder_usage=metadata['usage'];item.filter_usage=metadata['filter_usage'];item.search_usage=metadata['search_usage']
+    stages=list(section.stages.all()) if section.pk else []
+    transitions=list(section.transitions.select_related('source','target')) if section.pk else []
+    for items,key in ((stages,'stages'),(transitions,'transitions')):
+        for item,metadata in zip(items,preview[key]):item.builder_usage=metadata['usage']
+    return render(request,'accounts/structure_section.html',{'section':section,'form':form,'related_components':related,'native_fields':native_fields,'native_primary_count':sum(item['primary'] for item in native_fields),
+        'builder_preview':preview,'editor_groups':editor_groups(form,'section'),
+        'native_definition':SECTIONS.get(section.key),'fields_list':list(definitions.values()),
+        'columns_list':columns,'stages_list':stages,'transitions_list':transitions})
 
 
 EDITORS={'field':(SectionField,FieldForm),'column':(SectionColumn,ColumnForm),'stage':(SectionStage,StageForm),'transition':(SectionTransition,TransitionForm)}

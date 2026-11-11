@@ -94,6 +94,12 @@ def edit(request, key=None):
     preview_section=SectionSchema.objects.filter(key=scope).first() if scope else SectionSchema.objects.filter(key__in=candidates).first()
     preview=section_preview(preview_section) if preview_section else {'label':'بخش نمونه','fields':[],'columns':[],'stages':[],'transitions':[]}
     preview['component_kind']=definition['kind'] if definition else instance.kind
+    if preview_section:
+        from .builder_usage import annotate_components
+        row={'key':instance.key,'custom':instance.custom}
+        annotated=annotate_components(preview_section,[row],preview,{instance.key:instance})[0]
+        preview['component_usage']=annotated['usage']
+        preview['component_visibility_locked']=annotated['visibility_locked']
     return render(request,'accounts/interface_form.html',{'form':form,'component':instance,'definition':definition,'scope':scope,
         'builder_preview':preview,'editor_groups':editor_groups(form,'component')})
 
