@@ -54,6 +54,10 @@ def component_scopes(key, definition):
     for scope in ('reception','case','registration','hiring'):
         if scope in path:return [scope]
     if '_workflow' in path:return ['reception','case','registration','hiring']
+    if path.startswith('customers/_interview') or path in ('customers/_recruitment_tab.html','customers/candidate_detail.html'):return ['hiring']
+    if path.startswith('customers/_invoice'):return ['invoices']
+    if path.startswith('customers/_admission'):return ['info','reception']
+    if path in ('customers/_candidate_actions.html','customers/_candidate_identity.html','customers/_candidate_filters.html'):return ['info','hiring']
     if path.endswith('_customer_fields.html'):return ['info','registration']
     if path.startswith('customers/'):
         return ['info']
@@ -72,3 +76,24 @@ def component_scopes(key, definition):
     if '_workflow' in path:return ['reception','case','registration','hiring']
     prefix=path.split('/')[0]
     return {'products':['products','categories'],'calls':['calls'],'sales':['invoices'],'hr':['employees','tasks','leaves','attendance'],'ads':['ads','ad_sources']}.get(prefix,[])
+
+# Only these templates contain the corresponding data-entry form. A list/filter
+# button cannot open a selector belonging to an unrelated record form.
+FORM_TEMPLATES = {
+ 'customers/_call_modal.html':['customers.forms.HubCallForm'],
+ 'customers/_customer_fields.html':['customers.forms.CustomerForm'],
+ 'customers/form.html':['customers.forms.CustomerForm'],
+ 'customers/form_modal.html':['customers.forms.CustomerForm'],
+ 'customers/_case_tab.html':['customers.forms.CustomerCaseForm'],
+ 'customers/_interview_modal.html':['customers.hiring_forms.InterviewForm'],
+ 'products/form.html':['products.forms.ProductForm'],
+ 'products/category_form.html':['products.forms.CategoryForm'],
+ 'calls/form.html':['calls.forms.CallForm'],
+ 'sales/form.html':['sales.forms.InvoiceForm'],
+ 'hr/employee_form.html':['hr.forms.EmployeeForm'],
+ 'hr/task_form.html':['hr.forms.TaskForm'],
+ 'hr/leave_form.html':['hr.forms.LeaveRequestForm'],
+ 'hr/attendance_form.html':['hr.forms.AttendanceForm'],
+ 'ads/ad_form.html':['ads.forms.AdForm'],
+ 'accounts/user_form.html':['accounts.forms.UserCreateForm','accounts.forms.UserEditForm'],
+}

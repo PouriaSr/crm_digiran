@@ -62,7 +62,7 @@ def section_edit(request,section_key=None):
                 return redirect(reverse('accounts:structure_section',args=[item.key])+'?saved=1#section-settings')
     preview=section_preview(section)
     related=scoped_components(section,preview) if section.pk else []
-    related=[item for item in related if not item['key'].startswith('hub.tab.')]
+    related=[item for item in related if item['kind'] in ('button','link','heading')]
     from .builder_usage import native_inventory
     native_fields=native_inventory(section,preview) if section.pk else []
     definitions={item.key:item for item in section.fields.all()} if section.pk else {}
@@ -78,7 +78,8 @@ def section_edit(request,section_key=None):
         for item,metadata in zip(items,preview[key]):item.builder_usage=metadata['usage']
     return render(request,'accounts/structure_section.html',{'section':section,'form':form,'related_components':related,'native_fields':native_fields,'native_primary_count':sum(item['primary'] for item in native_fields),
         'builder_preview':preview,'editor_groups':editor_groups(form,'section'),
-        'native_definition':SECTIONS.get(section.key),'fields_list':list(definitions.values()),
+        'native_definition':SECTIONS.get(section.key),'fields_list':[item for item in definitions.values() if not item.native_name],
+        'base_columns':[item for item in preview.get('base_columns',[]) if item['component_key'] not in {column.component_key for column in columns}],
         'columns_list':columns,'stages_list':stages,'transitions_list':transitions})
 
 

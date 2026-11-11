@@ -229,7 +229,7 @@ class BehaviorBuilderTests(TestCase):
         from accounts.interface import catalog
         from accounts.structure_registry import component_scopes
         from accounts.models import InterfaceComponent
-        key=next(key for key,meta in catalog().items() if meta['kind']=='button' and 'info' in component_scopes(key,meta))
+        key=next(key for key,meta in catalog().items() if meta['kind']=='button' and meta.get('path')=='customers/_call_modal.html' and meta['label']=='ثبت تماس')
         response=self.client.post(reverse('accounts:interface_edit',args=[key])+'?scope=info',{'label':'انتخاب شرایط','enabled':'on','position':'100','revision':'0','action_kind':'popup','popup_text':'شرایط را انتخاب کنید','popup_target':'requested_condition','appearance':'primary'})
         self.assertEqual(response.status_code,302)
         self.assertEqual(InterfaceComponent.objects.get(key=key).behavior['popup_target'],'requested_condition')

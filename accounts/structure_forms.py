@@ -40,6 +40,8 @@ class SectionForm(Styled,forms.ModelForm):
         fields=['label','enabled','roles','permission','position','page_size','sort_source','descending','gate_save','replace_form_logic','revision']
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
+        if self.instance.key!='info':self.fields.pop('replace_form_logic',None)
+        if self.instance.custom or not SECTIONS.get(self.instance.key,{}).get('forms'):self.fields.pop('gate_save',None)
         self.fields['page_size'].min_value=5;self.fields['page_size'].max_value=100
         self.fields['sort_source']=forms.ChoiceField(label='مرتب‌سازی پیش‌فرض',required=False,choices=[('','ترتیب فعلی')]+([item for item in source_choices(self.instance) if item[0]!='system:record'] if self.instance.pk else []))
         self.style()

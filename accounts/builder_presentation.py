@@ -42,7 +42,7 @@ GROUPS = {
 def editor_groups(form, kind):
     result = []
     for title, hint, names, advanced in GROUPS[kind]:
-        fields = [form[name] for name in names.split(',') if name in form.fields]
+        fields = [form[name] for name in names.split(',') if name in form.fields and not form[name].is_hidden]
         for bound in fields:
             if isinstance(bound.field.widget, forms.Textarea):
                 bound.field.widget.attrs['rows'] = 3 if bound.name != 'options' else 4
@@ -57,20 +57,23 @@ def field_type(field):
     if isinstance(field, forms.DecimalField): return 'decimal'
     if isinstance(field, forms.IntegerField): return 'integer'
     if isinstance(field, forms.DateField): return 'date'
-    if isinstance(field, forms.ChoiceField): return 'choice'
+    if isinstance(field, (forms.ChoiceField,forms.ModelChoiceField)): return 'choice'
     if isinstance(field, forms.EmailField): return 'email'
     if isinstance(field, forms.URLField): return 'url'
     if isinstance(field.widget, forms.Textarea): return 'longtext'
     return 'text'
 
 
-def section_preview(section):
+def section_preview(section, focus_field=None, form_path=None):
     """Only field definitions and synthetic examples; no customer/task values."""
     fields = {}
     definition = SECTIONS.get(section.key, {})
     paths = definition.get('forms', [])
-    # The main information entry point is the new-contact form.
-    for path in paths[-1:]:
+    # Secondary-form controls must be previewed in their actual form, not the contact form.
+    active_path=next((path for path in reversed(paths) if focus_field in import_string(path).base_fields),paths[-1] if paths else None)
+    if form_path in paths:active_path=form_path
+    active_paths=[active_path] if active_path else []
+    for path in active_paths:
         for index, (name, field) in enumerate(import_string(path).base_fields.items()):
             if name.startswith('password') or isinstance(field.widget, forms.HiddenInput): continue
             options = []
@@ -98,7 +101,7 @@ def section_preview(section):
             enabled,required = item.enabled,item.required
             if item.native_name and in_primary:
                 from .structure_forms_runtime import PROTECTED
-                model=getattr(getattr(import_string(paths[-1]),'_meta',None),'model',None)
+                model=getattr(getattr(import_string(active_path),'_meta',None),'model',None)
                 try:native=model._meta.get_field(key) if model else None
                 except Exception:native=None
                 hard_required=bool(native and not native.null and not native.blank and not native.has_default() and not item.default_value)
@@ -123,7 +126,7 @@ def section_preview(section):
     live_url = internal_url(path + ('?tab=' + definition['tab'] if definition.get('tab') else '')) if path else (
         reverse('accounts:structure_data', args=[section.key]) if section.pk else '')
     from .builder_usage import decorate_preview
-    from .behavior_service import prototypes,effective_options
+    from .behavior_service import prototypes,effective_options,empty_locked
     prototypes_map=prototypes(section)
     for field in fields.values():
         name=field['key'] if field['native'] else 'extra_'+field['key']
@@ -133,8 +136,9 @@ def section_preview(section):
             if options:field['choices']=[{'value':option['key'],'label':option['label']} for option in options]
         if section.pk:
             field['inspector_url']=reverse('accounts:behavior_inspector',args=[section.key,name])
+    protected=empty_locked(section)
     rules=[{'id':str(rule.pk),'label':rule.label,'source':rule.source,'operator':rule.operator,'value':rule.value,
-            'action':rule.action,'target':rule.target,'argument':rule.argument,'multiple':isinstance(prototypes_map.get(rule.target),forms.MultipleChoiceField),'roles':rule.roles,'enabled':rule.enabled}
+            'action':rule.action,'target':rule.target,'argument':rule.argument,'multiple':isinstance(prototypes_map.get(rule.target),forms.MultipleChoiceField),'roles':rule.roles,'enabled':rule.enabled and not (rule.target in protected and rule.action in ('hide','optional','clear'))}
            for rule in section.behaviors.all()] if section.pk else []
     from crm.middleware import get_current_request
     from .permissions import get_user_role
@@ -142,7 +146,7 @@ def section_preview(section):
     preview_role=get_user_role(request.user) if request and getattr(request,'user',None) and request.user.is_authenticated else 'admin'
     result=decorate_preview(section, {'primary_fields':primary_fields,'label': section.label, 'section_enabled':section.enabled, 'section_roles':section.roles, 'section_permission':section.permission, 'fields': list(fields.values()),
             'columns':columns,'stages':stages,'transitions':transitions,'page_size':section.page_size,'live_url':live_url,
-            'preview_role':preview_role,'behavior_rules':rules,'replace_form_logic':section.replace_form_logic})
+            'preview_role':preview_role,'focus_field':focus_field,'behavior_rules':rules,'replace_form_logic':section.replace_form_logic})
     if section.pk:
         result['section_edit_url']=reverse('accounts:structure_section',args=[section.key])+'#section-settings'
         from .interface import catalog

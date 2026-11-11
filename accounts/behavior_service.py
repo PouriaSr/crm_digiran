@@ -20,11 +20,44 @@ def prototypes(section):
     if section.pk:
         for definition in section.fields.all():
             if not definition.native_name and definition.enabled:fields['extra_'+definition.key]=typed_field(definition)
+    if section.pk:
+        for setting in section.fields.all():
+            if setting.native_name in fields and setting.readonly:fields[setting.native_name].disabled=True
     return fields
 
 
+def rule_capabilities(section, fields=None):
+    """Offer only type-compatible operations between controls sharing a real form."""
+    fields=fields if fields is not None else prototypes(section)
+    extras={name for name in fields if name.startswith('extra_')}
+    groups=[set(import_string(path).base_fields)&set(fields)|extras for path in SECTIONS.get(section.key,{}).get('forms',[])] or [set(fields)]
+    protected=empty_locked(section)
+    result={}
+    for source,field in fields.items():
+        peers=set().union(*(group for group in groups if source in group))
+        targets={action:[] for action in ('show','hide','require','optional','set','clear','choices','popup','notice')}
+        for name in fields:
+            if name not in peers:continue
+            target=fields[name]
+            for action in targets:
+                if action in ('hide','optional','clear') and name in protected:continue
+                if action in ('show','hide','optional','set','clear','choices') and name in LOCKED:continue
+                if action=='set' and (isinstance(target,forms.ModelChoiceField) or target.disabled):continue
+                if action in ('clear','choices') and target.disabled:continue
+                if action in ('require','optional') and (target.disabled or isinstance(target,forms.BooleanField)):continue
+                if action=='choices' and (not isinstance(target,forms.ChoiceField) or isinstance(target,forms.ModelChoiceField)):continue
+                if action=='popup' and not isinstance(target,(forms.ChoiceField,forms.ModelChoiceField)):continue
+                targets[action].append(name)
+        operators=['equals','not_equals','filled','empty','in']
+        if isinstance(field,(forms.IntegerField,forms.DecimalField,forms.FloatField)):operators+=['gt','lt']
+        elif isinstance(field,forms.MultipleChoiceField) or not isinstance(field,(forms.ChoiceField,forms.ModelChoiceField,forms.BooleanField,forms.DateField)):operators+=['contains']
+        result[source]={'targets':targets,'operators':operators}
+    return result
+
+
 def empty_locked(section):
-    result=set(LOCKED)
+    from .structure_forms_runtime import PROTECTED
+    result=set(LOCKED)|PROTECTED
     for path in SECTIONS.get(section.key,{}).get('forms',[]):
         cls=import_string(path);model=getattr(getattr(cls,'_meta',None),'model',None)
         if model:

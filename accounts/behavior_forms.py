@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from .models import SectionBehavior,SectionOption
 from .permissions import ROLE_DISPLAY
 from .structure_forms import Styled
-from .behavior_service import prototypes,base_options,effective_options,LOCKED,empty_locked
+from .behavior_service import prototypes,base_options,effective_options,LOCKED,empty_locked,rule_capabilities
 
 
 class BehaviorForm(Styled,forms.ModelForm):
@@ -17,13 +17,22 @@ class BehaviorForm(Styled,forms.ModelForm):
     def __init__(self,*args,section,actor=None,**kwargs):
         super().__init__(*args,**kwargs);self.section=section;self.instance.section=section;self.prototypes=prototypes(section)
         choices=[(name,str(field.label or name)) for name,field in self.prototypes.items()]
-        self.fields['source']=forms.ChoiceField(label='وقتی ورودی',choices=choices)
+        self.fields['source']=forms.ChoiceField(label='وقتی ورودی',choices=[('','انتخاب ورودی…')]+choices)
         self.fields['target']=forms.ChoiceField(label='ورودی مقصد',choices=[('','بدون ورودی مقصد')]+choices,required=False)
         self.fields['value'].help_text='مقدار ذخیره‌شده گزینه؛ برای شرط «یکی از» مقدارها را با کاما جدا کنید.'
         self.fields['argument'].help_text='برای محدودکردن گزینه‌ها، شناسه گزینه‌ها را با کاما جدا کنید.'
         self.fields['argument'].widget=forms.Textarea(attrs={'rows':3})
         source=self.data.get('source') if self.is_bound else self.initial.get('source') or self.instance.source
         operator=self.data.get('operator') if self.is_bound else self.initial.get('operator') or self.instance.operator
+        self.capabilities=rule_capabilities(section,self.prototypes)
+        action=self.data.get('action') if self.is_bound else self.initial.get('action') or self.instance.action
+        capabilities=self.capabilities.get(source)
+        if capabilities:
+            self.fields['operator'].choices=[(key,label) for key,label in SectionBehavior.OPERATORS if key in capabilities['operators']]
+            self.fields['action'].choices=[('', 'انتخاب نتیجه…')]+[(key,label) for key,label in SectionBehavior.ACTIONS if key in ('add_tag','remove_tag','popup','notice') or capabilities['targets'].get(key)]
+            allowed=capabilities['targets'].get(action,[])
+            self.fields['target'].choices=[('','بدون ورودی مقصد')]+[(name,str(self.prototypes[name].label or name)) for name in allowed]
+        elif not source:self.fields['target'].choices=[('','ابتدا شرط را انتخاب کنید')]
         prototype=self.prototypes.get(source)
         from .structure_service import can_access
         if isinstance(prototype,forms.ModelChoiceField) and actor and can_access(actor,section) and operator in ('equals','not_equals'):
@@ -82,9 +91,11 @@ class OptionForm(Styled,forms.ModelForm):
         native=not field_name.startswith('extra_')
         self.fields['base_value']=forms.ChoiceField(label='رفتار پایه در فرآیند اصلی',required=native,choices=[('','گزینه مستقل')]+[(item['key'],item['label']) for item in choices])
         self.fields['base_value'].help_text='گزینه جدید می‌تواند عنوان و قواعد مستقل داشته باشد؛ رفتار پایه مسیر ذخیره در فرآیند اصلی را مشخص می‌کند.'
+        self.fields['key'].required=False
+        self.fields['key'].label='شناسه فنی گزینه'
         if self.instance.pk:self.fields['key'].disabled=True
         self.style()
     def clean_key(self):
-        key=self.cleaned_data['key']
+        key=self.cleaned_data.get('key') or self.instance.key
         if key.startswith('_'):raise forms.ValidationError('شناسه با حرف یا عدد شروع شود.')
         return key

@@ -43,8 +43,16 @@ class InterfaceForm(forms.ModelForm):
                 from .models import SectionSchema
                 from .behavior_service import prototypes
                 section=SectionSchema.objects.filter(key=scope).first()
-                if section:targets += [(name,str(field.label or name)) for name,field in prototypes(section).items()]
+                if section:
+                    from .structure_registry import FORM_TEMPLATES,SECTIONS
+                    from django.utils.module_loading import import_string
+                    paths=[path for path in FORM_TEMPLATES.get(definition.get('path',''),[]) if path in SECTIONS.get(scope,{}).get('forms',[])]
+                    names=set().union(*(set(import_string(path).base_fields) for path in paths)) if paths else set()
+                    targets += [(name,str(field.label or name)) for name,field in prototypes(section).items() if (name in names or paths and name.startswith('extra_')) and isinstance(field,(forms.ChoiceField,forms.ModelChoiceField))]
             self.fields['popup_target']=forms.ChoiceField(label='ورودی قابل انتخاب در پنجره',required=False,choices=targets,initial=self.instance.behavior.get('popup_target',''))
+            if len(targets)==1:
+                self.fields['popup_target'].widget=forms.HiddenInput()
+                self.fields['popup_target'].initial=''
             self.fields['tooltip']=forms.CharField(label='راهنمای دکمه',max_length=300,required=False,initial=self.instance.behavior.get('tooltip',''))
         self.fields['label'].required = True
         self.fields['label'].max_length = 180

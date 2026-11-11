@@ -9,15 +9,16 @@ from django.views.decorators.http import require_http_methods,require_POST
 from .permissions import require_roles,require_permission,ROLE_ADMIN,ROLE_SALES_MANAGER
 from .models import SectionSchema,SectionBehavior,SectionOption,InterfaceChange
 from .behavior_forms import BehaviorForm,OptionForm
-from .behavior_service import prototypes,base_options,effective_options
+from .behavior_service import prototypes,base_options,effective_options,rule_capabilities
 from .builder_presentation import section_preview
 from .structure_views import audit_snapshot
 
 
 def catalog_payload(section):
     result={}
-    for name,field in prototypes(section).items():
-        result[name]={'label':str(field.label or name),'options':([{'key':'true','label':'انتخاب شده'},{'key':'false','label':'انتخاب نشده'}] if isinstance(field,forms.BooleanField) else effective_options(section,name,field)),'condition_options':effective_options(section,name,field,True),'multiple':isinstance(field,forms.MultipleChoiceField),'reference':isinstance(field,forms.ModelChoiceField),'reference_url':reverse('accounts:behavior_reference_options',args=[section.key])+'?field='+name}
+    fields=prototypes(section);capabilities=rule_capabilities(section,fields)
+    for name,field in fields.items():
+        result[name]={**capabilities[name],'action_choices':[{'key':key,'label':label} for key,label in SectionBehavior.ACTIONS if key in ('add_tag','remove_tag','popup','notice') or capabilities[name]['targets'].get(key)],'operator_choices':[{'key':key,'label':label} for key,label in SectionBehavior.OPERATORS if key in capabilities[name]['operators']],'label':str(field.label or name),'options':([{'key':'true','label':'انتخاب شده'},{'key':'false','label':'انتخاب نشده'}] if isinstance(field,forms.BooleanField) else effective_options(section,name,field)),'condition_options':effective_options(section,name,field,True),'multiple':isinstance(field,forms.MultipleChoiceField),'reference':isinstance(field,forms.ModelChoiceField),'reference_url':reverse('accounts:behavior_reference_options',args=[section.key])+'?field='+name}
     return result
 
 
@@ -38,13 +39,22 @@ def inspector(request,section_key,field_name):
         from .interface import internal_url
         definition=next((entry for entry in SECTIONS.values() if entry['model']==field.queryset.model._meta.label),None)
         if definition:reference_url=internal_url(definition['path']+('?tab='+definition['tab'] if definition.get('tab') else ''))
-    rules=section.behaviors.filter(source=field_name)
+    rules=list(section.behaviors.filter(source=field_name))
+    fields=prototypes(section)
+    capabilities=rule_capabilities(section,fields).get(field_name,{})
+    labels={option['key']:option['label'] for option in effective_options(section,field_name,field,True)}
+    for rule in rules:
+        rule.supported=rule.operator in capabilities.get('operators',[]) and (not rule.target or rule.target in capabilities.get('targets',{}).get(rule.action,[]))
+        rule.display_value=labels.get(rule.value,rule.value)
+        rule.target_label=str(fields[rule.target].label) if rule.target in fields else ''
+
     native_rule=section.fields.filter(native_name=field_name).first() if not field_name.startswith('extra_') else section.fields.filter(key=field_name[6:]).first()
     edit_url=reverse('accounts:structure_element_edit',args=[section.key,'field',native_rule.pk]) if native_rule else reverse('accounts:structure_element_create',args=[section.key,'field'])+'?native='+field_name
-    preview=section_preview(section)
+    preview=section_preview(section,focus_field=field_name)
     for metadata in preview['fields']:
         if (metadata['key'] if metadata['native'] else 'extra_'+metadata['key'])==field_name:metadata['highlight']=True;metadata['context_selected']=True
-    return render(request,'accounts/behavior_inspector.html',{'section':section,'field_name':field_name,'field_label':field.label,'options':effective_options(section,field_name,field,True),
+    options=effective_options(section,field_name,field,True)
+    return render(request,'accounts/behavior_inspector.html',{'section':section,'field_name':field_name,'field_label':field.label,'options':options,'active_options':[o for o in options if o['enabled']],'archived_options':[o for o in options if not o['enabled']],'active_rules':[r for r in rules if r.enabled],'archived_rules':[r for r in rules if not r.enabled],
         'reference_url':reference_url,'reference':isinstance(field,forms.ModelChoiceField),'choice_field':isinstance(field,forms.ChoiceField),'rules':rules,'edit_url':edit_url,'builder_preview':preview})
 
 
@@ -75,7 +85,7 @@ def option_edit(request,section_key,field_name,pk=None):
             saved=form.save(commit=False);saved.revision=before.get('revision',0)+1;saved.save()
             InterfaceChange.objects.create(key=f'option:{section.key}:{field_name}:{saved.key}',action='update' if before else 'create',before=before,after=audit_snapshot(saved),actor=request.user)
             return redirect(inspector_url(section,field_name)+'?saved=1')
-    return render(request,'accounts/behavior_editor.html',{'section':section,'form':form,'item':item,'editor_type':'option','field_name':field_name,'field_label':prototype.label,'behavior_catalog':catalog_payload(section),'builder_preview':{**section_preview(section),'editing_field_name':field_name}})
+    return render(request,'accounts/behavior_editor.html',{'section':section,'form':form,'item':item,'editor_type':'option','field_name':field_name,'field_label':prototype.label,'behavior_catalog':catalog_payload(section),'builder_preview':{**section_preview(section,focus_field=field_name),'editing_field_name':field_name}})
 
 
 @login_required
@@ -96,7 +106,14 @@ def rule_edit(request,section_key,pk=None):
             saved=form.save(commit=False);saved.revision=before.get('revision',0)+1;saved.save()
             InterfaceChange.objects.create(key=f'behavior:{section.key}:{saved.pk}',action='update' if before else 'create',before=before,after=audit_snapshot(saved),actor=request.user)
             return redirect(inspector_url(section,saved.source)+'?saved=1')
-    return render(request,'accounts/behavior_editor.html',{'section':section,'form':form,'item':item,'editor_type':'rule','field_name':item.source or request.GET.get('source',''),'behavior_catalog':catalog_payload(section),'builder_preview':section_preview(section)})
+    preview=section_preview(section,focus_field=form.data.get('source') if form.is_bound else item.source or request.GET.get('source',''))
+    from .structure_registry import SECTIONS
+    from django.utils.module_loading import import_string
+    preview['rule_forms']=[]
+    for path in SECTIONS.get(section.key,{}).get('forms',[]):
+        variant=section_preview(section,form_path=path)
+        preview['rule_forms'].append({'names':list(import_string(path).base_fields),'fields':variant['fields'],'primary_fields':variant['primary_fields']})
+    return render(request,'accounts/behavior_editor.html',{'section':section,'form':form,'item':item,'editor_type':'rule','field_name':item.source or request.GET.get('source',''),'behavior_catalog':catalog_payload(section),'builder_preview':preview})
 
 
 @login_required

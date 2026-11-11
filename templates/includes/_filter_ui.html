@@ -92,7 +92,7 @@
     if(label){let head=label.closest('.crm-entry-head');if(!head){head=document.createElement('div');head.className='crm-entry-head';label.before(head);
       if(label.contains(field)&&!['checkbox','radio'].includes(field.type)){const fresh=document.createElement('label');fresh.htmlFor=field.id;fresh.textContent=title;for(const attr of ['data-crm-ui','data-crm-order'])if(label.hasAttribute(attr))fresh.setAttribute(attr,label.getAttribute(attr));head.appendChild(fresh);head.after(field);if(field.tomselect)field.after(field.tomselect.wrapper);label.remove();}
       else{head.appendChild(label);if(!label.contains(field))label.htmlFor=field.id;}
-     }head.appendChild(hint);
+     }head.querySelectorAll(':scope > .crm-filter-help').forEach(old=>old.remove());head.appendChild(hint);
     }else{const line=document.createElement('div');line.className='crm-inline-info';field.before(line);line.appendChild(field);if(field.tomselect)line.appendChild(field.tomselect.wrapper);line.appendChild(hint);}
    }
   }
