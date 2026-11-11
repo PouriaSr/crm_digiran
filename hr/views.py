@@ -191,10 +191,12 @@ def task_list(request):
 
     employee = request.GET.get('employee', '')
     if employee:
-        tasks = tasks.filter(assigned_to_id=employee)
+        tasks = tasks.filter(assigned_to_id=employee) if employee.isascii() and employee.isdigit() and len(employee)<16 else tasks.none()
 
     responsible = request.GET.get('responsible', '')
-    if responsible:
+    if responsible.startswith('e:') and responsible[2:].isascii() and responsible[2:].isdigit() and len(responsible)<18:
+        tasks=tasks.filter(assigned_to_id=responsible[2:])
+    elif responsible:
         tasks = tasks.filter(Q(assigned_user_id=responsible) | Q(assigned_to__user_id=responsible)) if responsible.isascii() and responsible.isdigit() and len(responsible)<16 else tasks.none()
 
     # مهلت انجام، هماهنگ با نشان عقب‌افتاده و اعلان‌ها
@@ -203,18 +205,14 @@ def task_list(request):
         tasks = tasks.filter(overdue_condition())
     elif due == 'today':
         tasks = tasks.filter(due_date=today).exclude(status__in=['done','cancelled'])
+    elif due == 'undated':
+        tasks = tasks.filter(due_date__isnull=True)
     elif due == 'upcoming':
-        tasks = tasks.filter(due_date__gte=today).exclude(overdue_condition()).exclude(status__in=['done','cancelled'])
+        tasks = tasks.filter(due_date__gt=today).exclude(overdue_condition()).exclude(status__in=['done','cancelled'])
 
     source = request.GET.get('source', '')
-    if source == 'manual':
-        tasks = tasks.filter(source_type='', hiring_session__isnull=True)
-    elif source == 'repeat':
-        tasks = tasks.filter(hiring_session__isnull=False)
-    elif source == 'followup':
-        tasks = tasks.filter(source_type__in=['followup','customer_followup'])
-    elif source in ('admission','reception','case','registration','interview','invitation','call','invoice','leave'):
-        tasks = tasks.filter(source_type=source)
+    from .task_filters import filter_task_source,available_sources
+    tasks=filter_task_source(tasks,source)
     report_status = request.GET.get('report', '')
     if report_status == 'pending':
         tasks = tasks.filter(events__report_required=True,events__report__isnull=True).distinct()
@@ -240,12 +238,14 @@ def task_list(request):
     from django.contrib.auth.models import User
     responsible_users = User.objects.filter(Q(direct_tasks__in=base_qs) | Q(employee_profile__tasks__in=base_qs)).distinct().order_by('username')
 
+    unlinked=list(employees.filter(user__isnull=True))
+    for emp in unlinked:emp.filter_key='e:'+str(emp.pk)
     context = {
-        'page_obj': page_obj,
+        'unlinked_employees':unlinked,'page_obj': page_obj,
         'stats': stats,
         'search': search,
         'current_scope': scope, 'queue_filters': queue_filters,
-        'current_source': source, 'current_report':report_status,
+        'source_choices':available_sources(base_qs),'current_source': source, 'current_report':report_status,
         'current_status': status,
         'current_priority': priority,
         'current_employee': employee,

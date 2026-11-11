@@ -90,13 +90,13 @@ class TaskAutomationTests(TestCase):
         self.assertFalse(task.events.filter(report_required=True).exists())
         self.assertFalse(visible_tasks(self.admin).filter(pk=task.pk).exists())
 
-    def test_case_completion_creates_registration_and_finishes_case(self):
+    def test_registration_completion_creates_case_and_finishes_registration(self):
         rec=Reception.objects.create(customer=self.customer,person_type='customer',referred_at=timezone.now(),referred_to=self.admin)
-        task=Task.objects.get(source_key='case:'+str(rec.pk));self.assertEqual(task.assigned_user,self.admin)
+        task=Task.objects.get(source_key='registration:'+str(rec.pk));self.assertEqual(task.assigned_user,self.admin)
         with patch('hr.task_automation.get_current_user',return_value=self.admin):
-            rec.case_completed_at=timezone.now();rec.case_completed_by=self.admin;rec.save()
+            rec.registration_completed_at=timezone.now();rec.registration_completed_by=self.admin;rec.save()
         task.refresh_from_db();self.assertEqual(task.status,'done')
-        self.assertEqual(Task.objects.get(source_key='registration:'+str(rec.pk)).status,'pending')
+        self.assertEqual(Task.objects.get(source_key='case:'+str(rec.pk)).status,'pending')
         self.assertTrue(task.events.get().report_required)
 
     def test_existing_database_backfill_is_idempotent_and_does_not_invent_past_reports(self):

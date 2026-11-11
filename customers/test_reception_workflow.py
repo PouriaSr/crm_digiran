@@ -141,8 +141,8 @@ class ReceptionWorkflowTest(TestCase):
         self.assertIsNone(rec.wait_started_at)
         self.assertIsNone(rec.wait_ended_at)
 
-    def test_explicit_case_denial_excludes_referral_target(self):
-        UserPermissionOverride.objects.create(user=self.manager, permission_key='customers.case', granted=False)
+    def test_explicit_registration_denial_excludes_referral_target(self):
+        UserPermissionOverride.objects.create(user=self.manager, permission_key='customers.registration', granted=False)
         rec = self.arrive()
         self.assertEqual(self.refer(rec).status_code, 400)
         page = self.client.get(self.hub, {'tab': 'reception'})
@@ -152,8 +152,8 @@ class ReceptionWorkflowTest(TestCase):
         rec = self.arrive('customer')
         self.assertEqual(self.refer(rec).status_code, 302)
         self.client.force_login(self.manager)
-        self.assertFalse(self.client.get(self.hub, {'tab': 'registration'}).context['registration_unlocked'])
-        self.assertEqual(self.save_case(rec).status_code, 302)
+        self.assertTrue(self.client.get(self.hub, {'tab': 'registration'}).context['registration_unlocked'])
+        self.assertEqual(self.save_case(rec).status_code, 409)
         page = self.client.get(self.hub, {'tab': 'registration'})
         self.assertTrue(page.context['registration_unlocked'])
         self.assertIn(rec.pk, [x.pk for x in page.context['registration_choices']])
@@ -165,6 +165,8 @@ class ReceptionWorkflowTest(TestCase):
         rec.refresh_from_db(); self.customer.refresh_from_db()
         self.assertIsNotNone(rec.registration_completed_at)
         self.assertEqual(self.customer.address, 'آدرس کامل')
+        self.assertEqual(self.save_case(rec).status_code,302)
+        rec.refresh_from_db();self.assertIsNotNone(rec.case_completed_at)
 
     def test_case_and_registration_direct_post_cannot_skip_stages(self):
         rec = self.arrive()
@@ -179,6 +181,7 @@ class ReceptionWorkflowTest(TestCase):
     def test_invalid_case_preserves_values_and_does_not_unlock(self):
         rec = self.arrive(); self.refer(rec)
         self.client.force_login(self.manager)
+        self.client.post(reverse('customers:registration_form',args=[rec.pk]),self.profile_data())
         response = self.save_case(rec, job='', cheque_other_name='نام باقی بماند')
         self.assertEqual(response.status_code, 400)
         self.assertContains(response, 'نام باقی بماند', status_code=400)
@@ -205,8 +208,9 @@ class ReceptionWorkflowTest(TestCase):
         rec = self.arrive(); self.refer(rec, self.operator)
         self.client.force_login(self.operator)
         self.assertEqual(self.client.get(self.hub, {'tab': 'info'}).status_code, 403)
-        self.assertEqual(self.save_case(rec).status_code, 302)
         popup = reverse('customers:registration_form', args=[rec.pk])
+        self.assertEqual(self.client.post(popup,self.profile_data()).status_code,302)
+        self.assertEqual(self.save_case(rec).status_code,302)
         self.assertEqual(self.client.get(popup).status_code, 200)
         self.customer.assigned_to = self.manager; self.customer.save()
         self.assertEqual(self.save_case(rec).status_code, 403)

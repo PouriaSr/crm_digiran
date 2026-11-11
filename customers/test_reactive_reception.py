@@ -43,14 +43,15 @@ class ReactiveReceptionTest(TestCase):
         self.arrive(self.c1)
         self.assertFalse(self.client.get(self.hub, {'tab': 'case'}).context['case_choices'].exists())
 
-    def test_referral_enables_case_selector_without_info_submitted(self):
+    def test_referral_enables_registration_selector_without_info_submitted(self):
         rec = self.arrive(self.c1)
         rec.person_type='customer'; rec.save(update_fields=['person_type'])
         Customer.objects.filter(pk=self.c1.pk).update(is_interviewer=False)
         self.client.post(reverse('customers:reception_action'), {'reception': rec.pk, 'action': 'refer', 'user': self.user.pk})
         response = self.client.get(self.hub, {'tab': 'case', 'r': rec.pk})
-        self.assertEqual(response.context['case_record'], rec)
-        self.assertIsNotNone(response.context['case_form'])
+        self.assertIsNone(response.context['case_record'])
+        self.assertIn(rec.pk,[item.pk for item in response.context['registration_choices']])
+        self.assertIsNone(response.context['case_form'])
 
     def test_hub_sends_no_cache_headers(self):
         self.assertIn('no-cache', self.client.get(self.hub)['Cache-Control'])

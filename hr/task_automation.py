@@ -1,3 +1,4 @@
+from django.db.models import Q
 """Deterministic workflow tasks. A unique source key prevents repeated assignments."""
 from contextvars import ContextVar
 from django.contrib.auth.models import User
@@ -44,17 +45,18 @@ def actor_or(user=None):
     return actor if actor and actor.is_authenticated else user
 
 
-def sync(key, kind, obj, title, owner, state, customer=None, date=None, time=None, description=None, allow_unassigned=False):
+def sync(key, kind, obj, title, owner, state, customer=None, date=None, time=None, description=None, allow_unassigned=False, priority=None):
     with transaction.atomic():
         task = Task.objects.select_for_update().filter(source_key=key).first()
         if task and task.status == 'done' and state == 'cancelled':
             return task
         if not task and (state in ('done', 'cancelled') or not owner and not allow_unassigned):
             return None
-        default_help = {'followup':'پیگیری مشتری را انجام دهید و نتیجه تماس را در مرکز مشتریان ثبت کنید.', 'case':'اطلاعات و مدارک مشتری را در تب پرونده تکمیل و ثبت اطلاعات کنید.', 'registration':'اطلاعات مرحله نهایی مشتری را در تب ثبت اطلاعات تکمیل و ذخیره کنید.', 'interview':'جلسه مصاحبه و ارزیابی کارجو را در تب استخدام ثبت کنید.', 'call':'تماس را پیگیری و نتیجه را در بخش تماس‌ها ثبت کنید.', 'invoice':'فاکتور را بررسی و صادر کنید؛ دریافت وجه را با وضعیت پرداخت‌شده در همان فاکتور ثبت کنید.', 'leave':'درخواست مرخصی را بررسی و نتیجه تأیید یا رد را ثبت کنید.'}
+        default_help = {'followup':'پیگیری مشتری را انجام دهید و نتیجه تماس را در مرکز مشتریان ثبت کنید.', 'case':'پس از ثبت اطلاعات، پرونده مشتری را تکمیل و ذخیره کنید.', 'registration':'پس از ارجاع پذیرش، مشخصات مشتری را در تب ثبت اطلاعات تکمیل کنید؛ سپس پرونده فعال می‌شود.', 'interview':'جلسه مصاحبه و ارزیابی کارجو را در تب استخدام ثبت کنید.', 'call':'تماس را پیگیری و نتیجه را در بخش تماس‌ها ثبت کنید.', 'invoice':'فاکتور را بررسی و صادر کنید؛ دریافت وجه را با وضعیت پرداخت‌شده در همان فاکتور ثبت کنید.', 'leave':'درخواست مرخصی را بررسی و نتیجه تأیید یا رد را ثبت کنید.'}
         description = description or default_help.get(kind,'وظیفه را در بخش مربوط انجام دهید.')
         values = dict(description=description, title=title[:200], assigned_user=owner, source_type=kind, source_id=obj.pk,
                       source_customer=customer, status=state if owner or allow_unassigned else 'cancelled', due_date=date, due_time=time)
+        if priority is not None:values['priority']=priority
         if task:
             if all(getattr(task, name) == value for name, value in values.items()):
                 return task
@@ -113,7 +115,7 @@ def sync_reception(rec):
     owner = choose_owner(preferred, 'customers.reception_refer')
     sync('reception:'+str(rec.pk), 'reception', rec, 'ارجاع مراجعه‌کننده — '+customer.name, owner,
          'cancelled' if customer.is_deleted else 'done' if rec.referred_at else 'pending', customer,
-         description='ورود ثبت شده است؛ مسئول مرحله بعد را در تب پذیرش انتخاب و فرد را به پرونده یا استخدام ارجاع دهید.')
+         description='ورود ثبت شده است؛ مسئول مرحله بعد را در تب پذیرش انتخاب و فرد را به ثبت اطلاعات یا استخدام ارجاع دهید.')
     if not rec.referred_at:
         return
     if rec.person_type == 'interviewer':
@@ -122,15 +124,24 @@ def sync_reception(rec):
         if app:
             sync_hiring(app)
         return
-    owner = choose_owner([customer.assigned_to, rec.referred_to], 'customers.case_edit')
     cancel = customer.is_deleted
-    working = rec.work_sessions.exists()
-    sync('case:'+str(rec.pk), 'case', rec, 'تکمیل پرونده — '+customer.name, owner,
-         'cancelled' if cancel else 'done' if rec.case_completed_at else 'in_progress' if working else 'pending', customer)
-    if rec.case_completed_at:
-        owner = choose_owner([customer.assigned_to, rec.case_completed_by, rec.referred_to], 'customers.registration_edit')
-        sync('registration:'+str(rec.pk), 'registration', rec, 'ثبت اطلاعات — '+customer.name, owner,
-             'cancelled' if cancel else 'done' if rec.registration_completed_at else 'pending', customer)
+    owner = choose_owner([customer.assigned_to, rec.referred_to], 'customers.registration_edit')
+    seed=Task.objects.filter(source_key='registration:'+str(rec.pk)).first()
+    if seed is None:seed=Task.objects.filter(source_key='case:'+str(rec.pk)).exclude(status__in=['done','cancelled']).first()
+    sync('registration:'+str(rec.pk), 'registration', rec, 'ثبت اطلاعات — '+customer.name, owner,
+         'cancelled' if cancel else 'done' if rec.registration_completed_at else 'pending', customer,
+         date=seed.due_date if seed else None,time=seed.due_time if seed else None,priority=seed.priority if seed else None)
+    if rec.registration_completed_at or rec.case_completed_at:
+        owner = choose_owner([customer.assigned_to, rec.registration_completed_by, rec.referred_to], 'customers.case_edit')
+        working = rec.work_sessions.filter(ended_at__isnull=True).exists()
+        prior=Task.objects.filter(source_key='case:'+str(rec.pk)).first()
+        sync('case:'+str(rec.pk), 'case', rec, 'تکمیل پرونده — '+customer.name, owner,
+             'cancelled' if cancel else 'done' if rec.case_completed_at else 'in_progress' if working else 'pending', customer,
+             date=prior.due_date if prior else None,time=prior.due_time if prior else None)
+    else:
+        # Old premature work is withdrawn, not marked as performed or reported.
+        for task in Task.objects.filter(source_key='case:'+str(rec.pk)).exclude(status__in=['done','cancelled']):
+            sync(task.source_key,'case',rec,task.title,task.assigned_user,'cancelled',customer,date=task.due_date,time=task.due_time)
 
 
 def sync_hiring(app):
@@ -221,7 +232,7 @@ def backfill():
         backfill_assignments()
         for item in FollowUp.objects.filter(is_done=False, customer__is_deleted=False).select_related('customer__assigned_to', 'created_by').iterator():
             sync_followup(item)
-        for item in Reception.objects.filter(workflow_version=2, registration_completed_at__isnull=True, customer__is_deleted=False).select_related('customer__assigned_to').iterator():
+        for item in Reception.objects.filter(workflow_version=2, customer__is_deleted=False).filter(Q(registration_completed_at__isnull=True)|Q(case_completed_at__isnull=True)).select_related('customer__assigned_to').iterator():
             sync_reception(item)
         for item in HiringApplication.objects.select_related('reception__customer__assigned_to').iterator():
             sync_hiring(item)

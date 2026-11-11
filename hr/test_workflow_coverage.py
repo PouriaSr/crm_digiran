@@ -35,7 +35,7 @@ class WorkflowCoverageTests(TestCase):
         self.assertTrue(TaskNotice.objects.filter(task=task,user=self.secretary,read_at=None).exists())
         rec.referred_at=timezone.now();rec.referred_to=self.admin;rec.save()
         task.refresh_from_db();self.assertEqual(task.status,'done')
-        self.assertTrue(Task.objects.filter(source_key=f'case:{rec.pk}',status='pending').exists())
+        self.assertTrue(Task.objects.filter(source_key=f'registration:{rec.pk}',status='pending').exists())
 
     def test_repeat_tracks_model_saves_and_never_creates_from_unsaved_draft(self):
         app=self.application()
@@ -78,11 +78,11 @@ class WorkflowCoverageTests(TestCase):
         self.assertFalse(TaskEvent.objects.filter(report_required=True).exists())
 
     def test_assignment_requires_view_and_edit_and_deleted_candidate_cancels(self):
-        UserPermissionOverride.objects.create(user=self.secretary,permission_key='customers.case',granted=True)
-        UserPermissionOverride.objects.create(user=self.secretary,permission_key='customers.case_edit',granted=False)
+        UserPermissionOverride.objects.create(user=self.secretary,permission_key='customers.registration',granted=True)
+        UserPermissionOverride.objects.create(user=self.secretary,permission_key='customers.registration_edit',granted=False)
         self.person.assigned_to=self.secretary;self.person.save()
         rec=Reception.objects.create(customer=self.person,person_type='customer',referred_at=timezone.now(),referred_to=self.admin)
-        self.assertEqual(Task.objects.get(source_key=f'case:{rec.pk}').assigned_user,self.admin)
+        self.assertEqual(Task.objects.get(source_key=f'registration:{rec.pk}').assigned_user,self.admin)
         rec.delete()
         self.person.assigned_to=self.admin;self.person.save()
         app=self.application()
@@ -134,7 +134,7 @@ class WorkflowPermissionRefreshTests(TransactionTestCase):
         self.assertEqual(task.assigned_user,user)
         with transaction.atomic():
             override=UserPermissionOverride.objects.create(user=user,permission_key='hr.view_tasks',granted=False)
-            UserPermissionOverride.objects.create(user=user,permission_key='customers.case_edit',granted=False)
+            UserPermissionOverride.objects.create(user=user,permission_key='customers.registration_edit',granted=False)
         task.refresh_from_db();self.assertEqual(task.assigned_user,admin)
         override.delete()
         task.refresh_from_db();self.assertEqual(task.assigned_user,user)

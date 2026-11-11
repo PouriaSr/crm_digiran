@@ -8,7 +8,7 @@ from crm.pagination import PAGE_SIZE
 from crm.numerals import digit_contains
 from .models import Task, TaskEvent, TaskNotice
 from .task_access import owned_tasks, source_url, visible_tasks, overdue_condition
-from .task_filters import TaskQueueFilters, filter_task_dates, order_tasks
+from .task_filters import TaskQueueFilters, filter_task_dates, order_tasks, filter_task_properties, available_sources
 
 
 def inbox_records(user):
@@ -96,6 +96,7 @@ def personal_inbox(user, params):
             items = items.filter(task_id__in=matching)
     if view != 'work':
         items = order_tasks(items, filter_data.get('sort'), 'task__')
+    items = filter_task_properties(items,filter_data,'' if view == 'work' else 'task__')
     items = filter_task_dates(items, filter_data, '' if view == 'work' else 'task__') if valid_filters else items.none()
     page = Paginator(items, PAGE_SIZE).get_page(params.get('page', 1))
     rows = list(page)
@@ -131,7 +132,8 @@ def personal_inbox(user, params):
         payload.append(row)
     auto_reports = [report_item(event) for event in events.select_related('task').order_by('pk')[:PAGE_SIZE]]
     newest = notices.order_by('-pk').first()
-    return {'counts': counts, 'attention_count': counts['attention'], 'due_counts': due_counts,
+    filter_scope=work if view=='work' else records.filter(pk__in=(events if view=='reports' else notices).values('task_id'))
+    return {'filter_choices':{'source':available_sources(filter_scope),'status':[(key,label) for key,label in Task.STATUS_CHOICES if view!='work' or key not in ('done','cancelled')],'priority':Task.PRIORITY_CHOICES},'counts': counts, 'attention_count': counts['attention'], 'due_counts': due_counts,
             'unread': notices.filter(read_at__isnull=True).count(), 'pending_reports': events.count(),
             'reports': auto_reports, 'notices': [{'id': newest.pk,'task':newest.task_id,'title':newest.text,'url':reverse('hr:task_detail',args=[newest.task_id])}] if newest else [],
             'view': view, 'due': due, 'query': query, 'items': payload, 'filter_errors': queue_filters.errors.get_json_data(),

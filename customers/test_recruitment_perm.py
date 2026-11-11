@@ -19,7 +19,7 @@ class RegistrationTabPermissionTest(TestCase):
 
     def test_admin_has_registration_tab(self):
         self.client.force_login(self.admin)
-        self.assertContains(self.client.get(self.hub), '🔒 ثبت اطلاعات')
+        self.assertContains(self.client.get(self.hub), 'data-hub-tab="registration"')
 
     def test_manager_has_all_hub_tabs(self):
         self.client.force_login(self.manager)

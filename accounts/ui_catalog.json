@@ -4368,10 +4368,10 @@
     "path": "customers/form_modal.html"
   },
   "ui.customers.hub.button1": {
-    "label": "🔒 ثبت اطلاعات",
+    "label": "🔒 پرونده",
     "section": "مرکز مشتریان",
     "kind": "button",
-    "position": 10,
+    "position": 30,
     "path": "customers/hub.html"
   },
   "ui.customers.hub.button3": {
@@ -8107,14 +8107,14 @@
     "label": "پرونده",
     "section": "مرکز مشتریان",
     "kind": "tab",
-    "position": 20,
+    "position": 30,
     "path": "customers/hub.html"
   },
   "hub.tab.registration": {
     "label": "ثبت اطلاعات",
     "section": "مرکز مشتریان",
     "kind": "tab",
-    "position": 30,
+    "position": 20,
     "path": "customers/hub.html"
   },
   "hub.tab.hiring": {

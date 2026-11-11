@@ -268,7 +268,7 @@ class Reception(models.Model):
         ordering = ['-created_at']
         constraints = [models.UniqueConstraint(
             fields=['customer'],
-            condition=models.Q(workflow_version=2, registration_completed_at__isnull=True),
+            condition=models.Q(workflow_version=2) & (models.Q(registration_completed_at__isnull=True)|models.Q(case_completed_at__isnull=True)),
             name='one_open_reception_per_customer',
         )]
 
@@ -285,7 +285,7 @@ class Reception(models.Model):
     def can_submit_info(self):
         """دکمه‌ی «ثبت اطلاعات مشتری» چه زمانی فعال شود"""
         if self.workflow_version == 2:
-            return bool(self.case_completed_at)
+            return bool(self.referred_at)
         return self.answers_complete and self.customer.stage == 'potential'
 
     @property

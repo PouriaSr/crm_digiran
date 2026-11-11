@@ -1,5 +1,5 @@
 from crm.pagination import PAGE_SIZE, paginate
-"""Admission -> referral -> case -> profile, with server-side stage/permission gates."""
+"""Admission -> referral -> profile -> case, with server-side stage/permission gates."""
 from crm.numerals import digit_contains
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -23,7 +23,7 @@ from crm.duplicate_check import normalize_digits
 
 TAB_PERMISSIONS = {
     'info': 'customers.info', 'reception': 'customers.reception',
-    'case': 'customers.case', 'registration': 'customers.registration',
+    'registration': 'customers.registration', 'case': 'customers.case',
     'hiring': 'customers.hiring',
     'invoice': 'customers.invoices',
 }
@@ -85,8 +85,8 @@ def hiring_records(user):
 def referral_users(person_type='customer'):
     # Honor effective per-user overrides, including explicit denials.
     users = User.objects.filter(is_active=True).prefetch_related('groups', 'permission_overrides').order_by('first_name', 'username')
-    permission = 'customers.hiring' if person_type == 'interviewer' else 'customers.case'
-    operation = 'customers.hiring_interview' if person_type == 'interviewer' else 'customers.case_edit'
+    permission = 'customers.hiring' if person_type == 'interviewer' else 'customers.registration'
+    operation = 'customers.hiring_interview' if person_type == 'interviewer' else 'customers.registration_edit'
     return [user for user in users if has_permission(user, permission) and has_permission(user, operation)]
 
 
@@ -132,11 +132,11 @@ def build_workflow_context(request):
             context['workflow_filters_active'] = any(request.GET.get(name) for name in filters.fields)
         from crm.pagination import paginate
         return paginate(request,search_records(records,query if active == tab else ''),page_key)
-    context = {'allowed_hub_tabs': tabs, 'registration_unlocked': False, 'workflow_query': query,
+    context = {'allowed_hub_tabs': tabs, 'registration_unlocked': False, 'case_unlocked': False, 'workflow_query': query,
                'hub_tab_items': [{'key': tab, 'icon': labels[tab][0], 'label': labels[tab][1], 'position':list(TAB_PERMISSIONS).index(tab)*10} for tab in tabs]}
     visible = editable_records(request.user).filter(customer__is_interviewer=False)
     if 'registration' in tabs:
-        ready = visible.filter(person_type='customer', case_completed_at__isnull=False).order_by('-case_completed_at', '-pk')
+        ready = visible.filter(person_type='customer', referred_at__isnull=False).order_by('-referred_at', '-pk')
         context.update(registration_unlocked=ready.exists(), registration_choices=ready, registration_records=paginated(ready, 'registration', 'registration_page'),
                        registration_record=selected_record(request, ready))
     if 'reception' in tabs:
@@ -152,7 +152,7 @@ def build_workflow_context(request):
                        legacy_receptions=paginate(request, Reception.objects.filter(workflow_version=1, customer__is_deleted=False).exclude(customer__is_interviewer=True,person_type='customer')
                        .select_related('customer', 'created_by').order_by('-created_at','-pk'), 'legacy_reception_page'))
     if 'case' in tabs:
-        records = visible.filter(person_type='customer', referred_at__isnull=False).order_by('-referred_at', '-pk')
+        records = visible.filter(person_type='customer', referred_at__isnull=False, registration_completed_at__isnull=False).order_by('-registration_completed_at', '-pk')
         rec = selected_record(request, records)
         case = getattr(rec.customer, 'case', None) if rec else None
         form = None
@@ -164,7 +164,7 @@ def build_workflow_context(request):
         legacy_cases = CustomerCase.objects.filter(customer__is_deleted=False, customer__receptions__workflow_version=1)
         if not is_card_manager(request.user):
             legacy_cases = legacy_cases.filter(customer__assigned_to=request.user)
-        context.update(case_choices=records, case_records=paginated(records, 'case', 'case_page'), case_record=rec,
+        context.update(case_unlocked=records.exists(), case_choices=records, case_records=paginated(records, 'case', 'case_page'), case_record=rec,
                        case_customer=rec.customer if rec else None, customer_case=case,
                        case_form=form,
                        legacy_cases=paginate(request, legacy_cases.distinct().select_related('customer', 'product').order_by('-updated_at','-pk'), 'legacy_case_page'))
@@ -234,7 +234,7 @@ def reception_action(request):
             response.status_code = 400
             return response
         current = Reception.objects.filter(customer=customer, workflow_version=2,
-                                           registration_completed_at__isnull=True).first()
+                                            ).filter(Q(registration_completed_at__isnull=True)|Q(case_completed_at__isnull=True)).first()
         from accounts.structure_service import schema,RecordForm,save_record
         from django.contrib.contenttypes.models import ContentType
         section=schema('reception',request)
@@ -292,8 +292,8 @@ def reception_action(request):
         messages.info(request, 'این مراجعه قبلاً ارجاع شده است؛ زمان و مسئول قبلی حفظ شدند.')
         return redirect(back_to('reception', rec))
     target = get_object_or_404(User.objects, pk=posted_pk(request, 'user'), is_active=True)
-    permission = 'customers.hiring' if rec.person_type == 'interviewer' else 'customers.case'
-    operation = 'customers.hiring_interview' if rec.person_type == 'interviewer' else 'customers.case_edit'
+    permission = 'customers.hiring' if rec.person_type == 'interviewer' else 'customers.registration'
+    operation = 'customers.hiring_interview' if rec.person_type == 'interviewer' else 'customers.registration_edit'
     if not has_permission(target, permission) or not has_permission(target, operation):
         return HttpResponse('کاربر انتخاب‌شده دسترسی مرحله بعد این مراجعه را ندارد.', status=400)
     now = timezone.now()
@@ -303,7 +303,7 @@ def reception_action(request):
     customer.save(update_fields=['assigned_to', 'updated_at'])
     record_change(rec, request.user, [{'label': 'ارجاع پذیرش', 'old': 'در انتظار',
                                      'new': target.get_full_name() or target.username}])
-    destination = 'استخدام' if rec.person_type == 'interviewer' else 'پرونده'
+    destination = 'استخدام' if rec.person_type == 'interviewer' else 'ثبت اطلاعات'
     messages.success(request, f'ارجاع ثبت شد؛ فرد در تب {destination} کاربر مسئول قرار گرفت.')
     return redirect(admission_destination(request.user, rec))
 
@@ -368,8 +368,8 @@ def case_open(request, pk):
         raise PermissionDenied('این فرد در مسیر استخدام قرار دارد.')
     if not can_edit_card(request.user, rec.customer):
         raise PermissionDenied('دسترسی تکمیل این پرونده را ندارید.')
-    if not rec.referred_at:
-        return HttpResponse('ابتدا ارجاع پذیرش را ثبت کنید.', status=409)
+    if not rec.referred_at or not rec.registration_completed_at:
+        return HttpResponse('ابتدا ارجاع پذیرش و ثبت اطلاعات را تکمیل کنید.', status=409)
     session = start_case_work(rec, request.user)
     return JsonResponse({'id': session.pk, 'started_at': session.started_at.isoformat(), 'server_now': timezone.now().isoformat(), 'seconds': session.seconds})
 
@@ -387,8 +387,8 @@ def case_save(request):
         raise PermissionDenied('پرونده فقط برای مسئول کارت، سرپرست و ادمین قابل تکمیل است.')
     if rec.person_type != 'customer' or customer.is_interviewer:
         return HttpResponse('این مراجعه در مسیر استخدام قرار دارد.', status=409)
-    if not rec.referred_at:
-        return HttpResponse('ابتدا مراجعه‌کننده را از پذیرش ارجاع دهید.', status=409)
+    if not rec.referred_at or not rec.registration_completed_at:
+        return HttpResponse('ابتدا ارجاع پذیرش و ثبت اطلاعات را تکمیل کنید.', status=409)
     case = CustomerCase.objects.filter(customer=customer).first()
     before = case_snapshot(case)
     form = CustomerCaseForm(request.POST, instance=case)
@@ -412,7 +412,7 @@ def case_save(request):
         from .hub_views import _log_record_update, CASE_LABELS
         after = case_snapshot(case)
         _log_record_update(customer, 'case', before, after, CASE_LABELS, request.user)
-        messages.success(request, 'پرونده ذخیره شد؛ مرحله ثبت اطلاعات برای این فرد فعال است.')
+        messages.success(request, 'پرونده ذخیره شد؛ مراحل ثبت اطلاعات و پرونده این مراجعه تکمیل شدند.')
         return redirect(back_to('case', rec))
     # Render submitted values and errors; no partial writes and no lost input.
     from .hub_views import customer_hub
@@ -437,8 +437,8 @@ def registration_form(request, pk):
         raise PermissionDenied('ثبت اطلاعات فقط برای مسئول کارت، سرپرست و ادمین مجاز است.')
     if rec.person_type != 'customer' or customer.is_interviewer:
         return HttpResponse('اطلاعات این فرد در تب استخدام نمایش داده می‌شود.', status=409)
-    if not rec.referred_at or not rec.case_completed_at:
-        return HttpResponse('ابتدا ارجاع و ثبت پرونده را تکمیل کنید.', status=409)
+    if not rec.referred_at:
+        return HttpResponse('ابتدا ارجاع پذیرش را تکمیل کنید.', status=409)
     # Same profile popup, fully prefilled. The tab permission authorizes this stage.
     form = CustomerForm(request.POST if request.method == 'POST' else None, instance=customer, limited=not has_permission(request.user, 'customers.profile_full'))
     form.fields.pop('assigned_to', None)  # Changing ownership is a separate operation.
@@ -448,7 +448,7 @@ def registration_form(request, pk):
             rec.registration_completed_at, rec.registration_completed_by = timezone.now(), request.user
             rec.info_submitted = True
             rec.save(update_fields=['registration_completed_at', 'registration_completed_by', 'info_submitted', 'updated_at'])
-        messages.success(request, 'اطلاعات مراجعه‌کننده با موفقیت ثبت شد.')
+        messages.success(request, 'اطلاعات مراجعه‌کننده ثبت شد؛ مرحله پرونده برای این فرد فعال است.')
         if request.headers.get('HX-Request'):
             return HttpResponse(status=204, headers={'HX-Redirect': back_to('registration', rec), 'HX-Trigger': 'closeModal'})
         return redirect(back_to('registration', rec))

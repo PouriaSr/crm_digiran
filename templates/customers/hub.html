@@ -80,8 +80,8 @@
     {% endif %}<div class="wf-tabs-shell">
         <nav id="hub-tabs" aria-label="مراحل مرکز مشتریان" class="wf-tabs">
             {% for item in hub_tab_items %}
-            {% if item.key == 'registration' and not registration_unlocked %}
-            <button disabled title="پس از ثبت یک پرونده، این مرحله فعال می‌شود" class="wf-tab" data-crm-ui="ui.customers.hub.button1" data-crm-order="10">🔒 ثبت اطلاعات</button>
+            {% if item.key == 'case' and not case_unlocked %}
+            <button disabled title="پس از ثبت اطلاعات، پرونده فعال می‌شود" class="wf-tab" data-crm-ui="ui.customers.hub.button1" data-crm-order="{{ item.position }}">🔒 پرونده</button>
             {% else %}
             <a href="{% url 'customers:hub' %}?tab={{ item.key }}" data-hub-tab="{{ item.key }}" {% if active_tab == item.key %}aria-current="page"{% endif %} class="wf-tab" data-crm-ui="hub.tab.{{ item.key }}" data-crm-order="{{ item.position }}">
                 {% include 'customers/_workflow_tab_icon.html' with tab_key=item.key %}

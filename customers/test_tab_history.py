@@ -31,6 +31,8 @@ class TabHistoryTest(TestCase):
         rec = Reception.objects.get(customer=self.customer)
         self.client.post(reverse('customers:reception_action'),
                          {'reception': rec.pk, 'action': 'refer', 'user': self.user.pk})
+        from django.utils import timezone
+        rec.registration_completed_at=timezone.now();rec.save(update_fields=['registration_completed_at'])
         return rec
 
     # ── پذیرش ──

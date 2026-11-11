@@ -2,7 +2,7 @@
 <div x-show="tab === 'reception'" class="space-y-5" style="display:none">
     {% include 'customers/_workflow_filters.html' with filter_tab='reception' %}
     <section class="wf-panel">
-        <header class="wf-panel-head"><div><h2 class="wf-title" data-crm-ui="ui.customers.receptiontab.h21" data-crm-order="10">پذیرش مراجعه‌کننده</h2><p class="wf-subtitle">تاریخ و ساعت ورود ثبت می‌شود؛ سپس فرد را به مسئول پرونده یا استخدام ارجاع دهید.</p></div><span class="wf-badge wf-badge-neutral">مشتری ← پرونده · مصاحبه‌کننده ← استخدام</span></header>
+        <header class="wf-panel-head"><div><h2 class="wf-title" data-crm-ui="ui.customers.receptiontab.h21" data-crm-order="10">پذیرش مراجعه‌کننده</h2><p class="wf-subtitle">تاریخ و ساعت ورود ثبت می‌شود؛ سپس فرد را به مسئول ثبت اطلاعات یا استخدام ارجاع دهید.</p></div><span class="wf-badge wf-badge-neutral">مشتری ← ثبت اطلاعات · مصاحبه‌کننده ← استخدام</span></header>
         {% if "customers.reception_add" in user_permissions %}
         <form data-crm-form method="post" enctype="multipart/form-data" data-arrival-form action="{% url 'customers:reception_action' %}" class="wf-panel-body wf-arrival-fields">
             {% csrf_token %}<input type="hidden" name="action" value="arrive">

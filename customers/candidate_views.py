@@ -155,7 +155,7 @@ def admission_assign(request, pk):
     if not can_receive(target):
         return reject('کاربر مقصد باید دسترسی مشاهده وظایف، پذیرش و ثبت ورود داشته باشد.')
     if not needs_arrival(latest_visit(person)):
-        return reject('ورود این فرد قبلاً ثبت شده است؛ ابتدا مراجعه جاری را در پذیرش، پرونده یا استخدام ادامه دهید.')
+        return reject('ورود این فرد قبلاً ثبت شده است؛ ابتدا مراجعه جاری را در پذیرش، ثبت اطلاعات، پرونده یا استخدام ادامه دهید.')
     person.assigned_to=target
     person.save(update_fields=['assigned_to','updated_at'])
     reconcile(person,request=True)

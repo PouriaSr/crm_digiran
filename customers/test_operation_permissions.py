@@ -76,7 +76,7 @@ class OperationPermissionsTest(TestCase):
 
     def test_read_only_case_and_registration(self):
         self.client.force_login(self.manager)
-        rec=Reception.objects.create(customer=self.customer,person_type='customer',referred_at=timezone.now(),case_completed_at=timezone.now())
+        rec=Reception.objects.create(customer=self.customer,person_type='customer',referred_at=timezone.now(),registration_completed_at=timezone.now(),case_completed_at=timezone.now())
         self.permission(self.manager,'customers.case_edit',False)
         self.permission(self.manager,'customers.registration_edit',False)
         self.assertEqual(self.client.post(reverse('customers:case_save'),{'reception':rec.pk}).status_code,403)
@@ -112,7 +112,7 @@ class OperationPermissionsTest(TestCase):
     def test_personal_profile_denial_hides_fields_and_ignores_spoofed_values(self):
         self.client.force_login(self.manager)
         self.permission(self.manager,'customers.profile_full',False)
-        rec=Reception.objects.create(customer=self.customer,person_type='customer',referred_at=timezone.now(),case_completed_at=timezone.now())
+        rec=Reception.objects.create(customer=self.customer,person_type='customer',referred_at=timezone.now(),registration_completed_at=timezone.now(),case_completed_at=timezone.now())
         url=reverse('customers:registration_form',args=[rec.pk])
         self.assertNotContains(self.client.get(url),'id="id_address"')
         before=self.customer.address

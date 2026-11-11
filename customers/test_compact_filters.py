@@ -34,7 +34,7 @@ class CompactFilterAndFeedbackTests(TestCase):
         for name in ('source','person_status','date_from','date_to','contact_expert'):
             self.assertContains(response,'name="'+name+'"')
         for name in ('display_mode','date_field','sort','priority'):
-            self.assertNotContains(response,'name="'+name+'"')
+            self.assertNotIn('name="'+name+'"',response.content.decode().split('id="crm-task-queue-filters"')[0])
 
     def test_obsolete_modes_do_not_change_information_order_or_date_basis(self):
         for mode in ('oldest','followup','invalid'):

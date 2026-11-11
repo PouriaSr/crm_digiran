@@ -70,7 +70,7 @@ class AdvancedPermissionsTest(TestCase):
         c = self.client
         c.force_login(self.support)
         hub = c.get(reverse('customers:hub') + '?tab=info').content.decode('utf-8')
-        self.assertIn("🔒 ثبت اطلاعات", hub)
+        self.assertIn('data-hub-tab="registration"', hub)
         rec = c.get(reverse('customers:hub') + '?tab=reception').content.decode('utf-8')
         self.assertNotIn('تاریخچه پذیرش‌ها', rec)
 

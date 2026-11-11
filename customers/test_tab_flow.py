@@ -17,12 +17,12 @@ class TabOrderAndCaseLockTest(TestCase):
 
     def test_tab_order(self):
         items = self.client.get(self.hub).context['hub_tab_items']
-        self.assertEqual([item['key'] for item in items], ['info', 'reception', 'case', 'registration', 'hiring', 'invoice'])
+        self.assertEqual([item['key'] for item in items], ['info', 'reception', 'registration', 'case', 'hiring', 'invoice'])
 
-    def test_registration_locked_before_case(self):
+    def test_case_locked_before_registration(self):
         response = self.client.get(self.hub)
         self.assertFalse(response.context['registration_unlocked'])
-        self.assertContains(response, '🔒 ثبت اطلاعات')
+        self.assertContains(response, '🔒 پرونده')
 
     def test_direct_empty_case_url_does_not_open_a_form(self):
         response = self.client.get(self.hub, {'tab': 'case', 'c': self.customer.pk})
@@ -34,8 +34,12 @@ class TabOrderAndCaseLockTest(TestCase):
         rec = Reception.objects.get(customer=self.customer)
         self.client.post(reverse('customers:reception_action'), {'action': 'refer', 'reception': rec.pk, 'user': self.user.pk})
         response = self.client.get(self.hub, {'tab': 'case', 'r': rec.pk})
+        self.assertIsNone(response.context['case_form'])
+        self.assertTrue(response.context['registration_unlocked'])
+        from django.utils import timezone
+        rec.registration_completed_at=timezone.now();rec.save(update_fields=['registration_completed_at'])
+        response=self.client.get(self.hub,{'tab':'case','r':rec.pk})
         self.assertIsNotNone(response.context['case_form'])
-        self.assertFalse(response.context['registration_unlocked'])
 
     def test_old_info_submitted_flag_does_not_unlock_registration(self):
         Reception.objects.create(customer=self.customer, person_type='customer', has_visit='yes', wait_choice='30', info_submitted=True)

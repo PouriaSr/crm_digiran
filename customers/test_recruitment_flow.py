@@ -69,6 +69,7 @@ class NewRecruitmentFlowTests(TestCase):
         self.assertIsNone(rec.wait_started_at)
         self.assertFalse(rec.is_waiting)
         self.refer(rec)
+        rec.registration_completed_at=self.now;rec.save(update_fields=['registration_completed_at'])
         url = reverse('customers:case_open', args=[rec.pk])
         with patch('django.utils.timezone.now', return_value=self.now + timedelta(minutes=2)):
             first = self.client.post(url)
@@ -218,6 +219,7 @@ class NewRecruitmentFlowTests(TestCase):
 
     def test_invalid_case_save_keeps_clock_and_stale_tab_cannot_finish_new_round(self):
         rec=self.arrive('customer');self.refer(rec)
+        rec.registration_completed_at=self.now;rec.save(update_fields=['registration_completed_at'])
         work=self.client.post(reverse('customers:case_open',args=[rec.pk])).json()['id']
         data={'reception':rec.pk,'work_session':work,'condition':'cash','job':'private','credit_rank':'A1','quantity':1,'visit_result':'review'}
         invalid=self.client.post(reverse('customers:case_save'),dict(data,job=''))

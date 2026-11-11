@@ -18,7 +18,7 @@ def filter_workflow_records(request, records, stage):
         workflow_owner = forms.ModelChoiceField(label='کاربر مسئول', required=False, queryset=User.objects.filter(pk__in=owners).order_by('username'))
         workflow_person = forms.ChoiceField(label='نوع مراجعه‌کننده', required=False, choices=[('', 'همه افراد'), ('customer','مشتری'), ('interviewer','مصاحبه‌کننده')])
         workflow_status = forms.ChoiceField(label='وضعیت مرحله', required=False, choices=[('', 'همه وضعیت‌ها')] + status_choices[stage])
-        workflow_date_basis = forms.ChoiceField(label='تاریخ بر اساس', required=False, choices=[('arrival','ورود'), ('referral','ارجاع'), ('case','ثبت پرونده'), ('registration','ثبت اطلاعات'), ('work','شروع تکمیل پرونده')])
+        workflow_date_basis = forms.ChoiceField(label='تاریخ بر اساس', required=False, choices=[('arrival','ورود'), ('referral','ارجاع'), ('registration','ثبت اطلاعات'), ('case','ثبت پرونده'), ('work','شروع تکمیل پرونده')])
         workflow_from = forms.CharField(label='از تاریخ', required=False, widget=forms.TextInput(attrs={'data-jdp':'', 'autocomplete':'off'}))
         workflow_to = forms.CharField(label='تا تاریخ', required=False, widget=forms.TextInput(attrs={'data-jdp':'', 'autocomplete':'off'}))
     data = request.GET.copy()

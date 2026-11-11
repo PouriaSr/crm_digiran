@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.db.models.signals import post_save, pre_save, post_delete
 from django.dispatch import receiver
 from .models import Task
@@ -49,7 +50,7 @@ def workflow_changed(sender, instance, raw=False, **kwargs):
         transaction.on_commit(update_flag)
         for item in instance.followups.filter(is_done=False):
             service.sync_followup(item)
-        for item in instance.receptions.filter(workflow_version=2, registration_completed_at__isnull=True):
+        for item in instance.receptions.filter(workflow_version=2).filter(Q(registration_completed_at__isnull=True)|Q(case_completed_at__isnull=True)):
             service.sync_reception(item)
         from customers.models import HiringApplication
         for item in HiringApplication.objects.filter(reception__customer=instance):

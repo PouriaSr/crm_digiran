@@ -20,7 +20,7 @@ def latest_visit(person):
 
 
 def needs_arrival(rec):
-    if not rec or rec.workflow_version == 1 or rec.registration_completed_at:
+    if not rec or rec.workflow_version == 1 or (rec.registration_completed_at and rec.case_completed_at):
         return True
     app = getattr(rec, 'hiring', None)
     return bool(app and app.status == 'repeat' and app.latest_session_id and app.latest_session.saved_at
