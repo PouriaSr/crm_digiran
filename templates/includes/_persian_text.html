@@ -1,0 +1,22 @@
+{# Display normalization only: form values, identifiers and stored data remain authoritative. #}
+<style>
+.crm-label-title{unicode-bidi:isolate}.crm-optional,.crm-required,[data-behavior-required]{unicode-bidi:isolate;display:inline-block;vertical-align:baseline;white-space:nowrap;letter-spacing:normal}
+.crm-optional[hidden],.crm-required[hidden],[data-behavior-required][hidden]{display:none!important}
+:lang(fa) .responsive-table td[data-label]::before{letter-spacing:normal;text-transform:none}
+</style>
+<script>
+(function(){'use strict';if(window.CRMPersianText)return;
+const skip='script,style,input,textarea,pre,code,kbd,samp,[contenteditable]:not([contenteditable="false"]),[data-text="preserve"],[data-digits="preserve"],[lang="ar"]';
+const attributeSkip=skip.replace('input,textarea,','');
+const attributes=['title','placeholder','aria-label','alt','label','data-label'];
+function normalize(value){return String(value??'').replace(/[\uFB50-\uFDFF\uFE70-\uFEFC]/g,char=>char.normalize('NFKC')).replace(/[يى]/g,'ی').replace(/ك/g,'ک').replace(/([\u0600-\u06ff])[\u0640\u200d]+/g,'$1');}
+function excluded(element){return !element||!!element.closest(skip);}
+function text(node){const host=node.parentElement;if(excluded(host)||host.closest('option:not([value])'))return;const value=normalize(node.data);if(value!==node.data)node.data=value;}
+function attrs(element){if(element.closest(attributeSkip))return;for(const name of attributes){if(name==='label'&&!element.matches('option,optgroup'))continue;const prior=element.getAttribute(name);if(prior===null)continue;const value=normalize(prior);if(value!==prior)element.setAttribute(name,value);}}
+function prepare(root=document.body){if(!root)return;if(root.nodeType===Node.TEXT_NODE){text(root);return;}if(root.nodeType!==Node.ELEMENT_NODE&&root.nodeType!==Node.DOCUMENT_NODE&&root.nodeType!==Node.DOCUMENT_FRAGMENT_NODE)return;if(root.nodeType===Node.ELEMENT_NODE&&root.matches('input,textarea')){attrs(root);return;}if(root.nodeType===Node.ELEMENT_NODE&&excluded(root))return;
+const walker=document.createTreeWalker(root,NodeFilter.SHOW_ELEMENT|NodeFilter.SHOW_TEXT,{acceptNode(node){if(node.nodeType===Node.ELEMENT_NODE)return node.matches('input,textarea')?NodeFilter.FILTER_ACCEPT:excluded(node)?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT;return NodeFilter.FILTER_ACCEPT;}});if(root.nodeType===Node.ELEMENT_NODE)attrs(root);let node;while(node=walker.nextNode())if(node.nodeType===Node.TEXT_NODE)text(node);else attrs(node);}
+let frame=0;const pending=new Set();function schedule(node){pending.add(node);if(frame)return;frame=requestAnimationFrame(()=>{frame=0;const nodes=new Set(pending);pending.clear();for(const root of nodes){if(!root.isConnected)continue;let parent=root.parentNode;while(parent&&!nodes.has(parent))parent=parent.parentNode;if(!parent)prepare(root);}});}
+function start(){prepare(document.body);new MutationObserver(changes=>{for(const change of changes){if(change.type==='characterData')schedule(change.target);else if(change.type==='attributes')attrs(change.target);else for(const node of change.addedNodes)if(node.nodeType===Node.ELEMENT_NODE||node.nodeType===Node.TEXT_NODE)schedule(node);}}).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:attributes});}
+window.CRMPersianText={normalize,prepare};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
+</script>

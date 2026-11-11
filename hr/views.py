@@ -502,7 +502,7 @@ def leave_review(request, pk):
         if action not in ('approve', 'reject'):
             messages.error(
                 request,
-                'عملیات نامعتبر است. لطفاً یکی از گزینه‌های «تایید» یا «رد» را انتخاب کنید.'
+                'عملیات نامعتبر است. لطفاً یکی از گزینه‌های «تأیید» یا «رد» را انتخاب کنید.'
             )
             return redirect('hr:leave_review', pk=pk)
 

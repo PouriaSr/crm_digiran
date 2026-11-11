@@ -186,8 +186,8 @@ class LeaveRequest(models.Model):
     ]
 
     STATUS_CHOICES = [
-        ('pending', 'در انتظار تایید'),
-        ('approved', 'تایید شده'),
+        ('pending', 'در انتظار تأیید'),
+        ('approved', 'تأیید شده'),
         ('rejected', 'رد شده'),
         ('cancelled', 'لغو شده'),
     ]

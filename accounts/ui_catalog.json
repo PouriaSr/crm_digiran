@@ -140,7 +140,7 @@
     "path": "accounts/2fa_setup.html"
   },
   "ui.accounts.2fasetup.h24": {
-    "label": "۲ تایید کد ۶ رقمی",
+    "label": "۲ تأیید کد ۶ رقمی",
     "section": "کاربران و حساب",
     "kind": "heading",
     "position": 40,
@@ -175,14 +175,14 @@
     "path": "accounts/2fa_verify.html"
   },
   "ui.accounts.2faverify.label2": {
-    "label": "کد تایید",
+    "label": "کد تأیید",
     "section": "کاربران و حساب",
     "kind": "field",
     "position": 20,
     "path": "accounts/2fa_verify.html"
   },
   "ui.accounts.2faverify.button3": {
-    "label": "تایید و ورود",
+    "label": "تأیید و ورود",
     "section": "کاربران و حساب",
     "kind": "button",
     "position": 30,
@@ -6084,7 +6084,7 @@
     "path": "hr/leave_review.html"
   },
   "ui.hr.leavereview.button4": {
-    "label": "✅ تایید درخواست",
+    "label": "✅ تأیید درخواست",
     "section": "منابع انسانی",
     "kind": "button",
     "position": 40,
