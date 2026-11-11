@@ -1,0 +1,5 @@
+{% for group in editor_groups %}
+ {% if group.advanced %}<details class="sb-disclosure" {% if group.open %}open{% endif %}><summary>{{ group.title }}</summary>{% else %}<section class="sb-group"><h2>{{ group.title }}</h2>{% if group.hint %}<p>{{ group.hint }}</p>{% endif %}{% endif %}
+ <div class="crm-form-grid">{% for field in group.fields %}{% include 'includes/_form_field.html' %}{% endfor %}</div>
+ {% if group.advanced %}</details>{% else %}</section>{% endif %}
+{% endfor %}

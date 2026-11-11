@@ -11,6 +11,7 @@ from .models import InterfaceComponent, InterfaceChange, SectionSchema
 from .permissions import require_permission, require_roles, ROLE_ADMIN, ROLE_SALES_MANAGER
 from .interface import catalog, permitted, internal_url
 from .interface_forms import InterfaceForm
+from .builder_presentation import section_cards, editor_groups, section_preview
 
 
 def snapshot(component):
@@ -48,7 +49,7 @@ def settings(request):
     preferred=['مرکز مشتریان','راهبری سیستم','منابع انسانی','پیام‌رسانی','کالاها','فاکتورها','تبلیغات','کاربران و حساب','تماس‌ها','داشبورد']
     rows.sort(key=lambda row:(preferred.index(row['section']) if row['section'] in preferred else 99, {'tab':0,'button':1,'column':2,'field':3,'link':4}.get(row['kind'],5),row.get('position',100),row['key']))
     return render(request,'accounts/interface_settings.html',{'components':paginate(request,rows), 'sections':sections,
-        'section_cards':SectionSchema.objects.order_by('position','pk') if not request.GET.get('q') and not scope else [],'scope':scope,
+        'section_cards':section_cards(SectionSchema.objects.order_by('position','pk')) if not request.GET.get('q') and not scope else [],'scope':scope,
         'component_count':len(catalog()), 'changes':InterfaceChange.objects.select_related('actor')[:8], 'query':query})
 
 
@@ -88,7 +89,13 @@ def edit(request, key=None):
             InterfaceChange.objects.create(key=component.key,action='update' if before else 'create',before=before,after=snapshot(component),actor=request.user)
             messages.success(request,'تنظیم ذخیره شد و در بارگذاری بعدی صفحات اعمال می‌شود.')
             return redirect('accounts:structure_section',section_key=scope) if scope else redirect('accounts:interface_settings')
-    return render(request,'accounts/interface_form.html',{'form':form,'component':instance,'definition':definition,'scope':scope})
+    from .structure_registry import component_scopes
+    candidates=component_scopes(key,definition) if definition else []
+    preview_section=SectionSchema.objects.filter(key=scope).first() if scope else SectionSchema.objects.filter(key__in=candidates).first()
+    preview=section_preview(preview_section) if preview_section else {'label':'بخش نمونه','fields':[],'columns':[],'stages':[],'transitions':[]}
+    preview['component_kind']=definition['kind'] if definition else instance.kind
+    return render(request,'accounts/interface_form.html',{'form':form,'component':instance,'definition':definition,'scope':scope,
+        'builder_preview':preview,'editor_groups':editor_groups(form,'component')})
 
 
 @login_required

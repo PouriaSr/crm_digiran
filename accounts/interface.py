@@ -2,6 +2,8 @@
 import json
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import unquote,urlsplit
+import re
 from django.urls import reverse, get_script_prefix
 from .permissions import get_user_role, has_permission
 
@@ -11,8 +13,13 @@ def catalog():
     return json.loads(Path(__file__).with_name('ui_catalog.json').read_text(encoding='utf-8'))
 
 
+def settings_destination(value):
+    path=unquote(urlsplit(value or '').path)
+    return bool(re.search(r'(?:^|/)accounts/settings(?:/|$)',path))
+
+
 def permitted(user, component):
-    return (component.enabled and (not component.roles or get_user_role(user) in component.roles)
+    return ((not settings_destination(component.url) or has_permission(user,'system.configure')) and component.enabled and (not component.roles or get_user_role(user) in component.roles)
             and (not component.permission or has_permission(user, component.permission)))
 
 
@@ -36,6 +43,8 @@ def interface_context(request):
     links = []
     for item in settings:
         visible = permitted(request.user, item)
+        if item.behavior.get('action_kind')=='navigate' and settings_destination(item.behavior.get('destination')):
+            visible=visible and has_permission(request.user,'system.configure')
         if item.custom:
             from .structure_registry import scope_for_request
             if visible and (not item.scope_path or request.path_info == item.scope_path) and (not item.scope_key or item.scope_key==scope_for_request(request)):

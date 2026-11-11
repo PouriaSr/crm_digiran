@@ -16,6 +16,7 @@ from .structure_registry import SECTIONS,component_scopes
 from .structure_service import schema,RecordForm,require_access,native_subject,native_visible,record_access,save_record,transition_record,typed_field,serialized
 from .structure_forms import SectionForm,FieldForm,ColumnForm,StageForm,TransitionForm
 from .interface import catalog
+from .builder_presentation import section_preview, editor_groups, element_meta
 
 
 def audit_snapshot(item):
@@ -23,7 +24,13 @@ def audit_snapshot(item):
 
 
 def scoped_components(section):
-    return [{'key':key,**definition} for key,definition in catalog().items() if section.key in component_scopes(key,definition)]
+    from .models import InterfaceComponent
+    overrides={item.key:item for item in InterfaceComponent.objects.all()}
+    rows=[{'key':key,**definition,'label':overrides[key].label if key in overrides else definition['label']}
+          for key,definition in catalog().items() if section.key in component_scopes(key,definition)]
+    rows += [{'key':item.key,'label':item.label,'kind':item.kind,'custom':True}
+             for item in overrides.values() if item.custom and item.scope_key==section.key]
+    return rows
 
 
 @login_required
@@ -51,7 +58,7 @@ def section_edit(request,section_key=None):
                     values={'label':item.label,'enabled':item.enabled,'roles':item.roles,'permission':item.permission,'position':item.position,'revision':existing.revision+1 if existing else 1,'updated_by':request.user}
                     InterfaceComponent.objects.update_or_create(key='hub.tab.'+tab,defaults={**values,'kind':'tab','section':'مرکز مشتریان'})
                 InterfaceChange.objects.create(key='section:'+item.key,action='update' if before else 'create',before=before,after=audit_snapshot(item),actor=request.user)
-                return redirect('accounts:structure_section',section_key=item.key)
+                return redirect(reverse('accounts:structure_section',args=[item.key])+'?saved=1#section-settings')
     related=scoped_components(section) if section.pk else []
     related=[item for item in related if not item['key'].startswith('hub.tab.')]
     native_fields={}
@@ -64,6 +71,7 @@ def section_edit(request,section_key=None):
                 if name in ('password','password1','password2','id'):continue
                 native_fields.setdefault(name,{'name':name,'label':str(field.label or name),'rule':existing_fields.get(name)})
     return render(request,'accounts/structure_section.html',{'section':section,'form':form,'related_components':related,'native_fields':list(native_fields.values()),
+        'builder_preview':section_preview(section),'editor_groups':editor_groups(form,'section'),
         'native_definition':SECTIONS.get(section.key),'fields_list':section.fields.all() if section.pk else [],
         'columns_list':section.columns.all() if section.pk else [],'stages_list':section.stages.all() if section.pk else [],'transitions_list':section.transitions.select_related('source','target') if section.pk else []})
 
@@ -108,9 +116,13 @@ def element_edit(request,section_key,kind,pk=None):
                 old_data=record.data.copy();record.data={**record.data,saved.key:value};record.revision+=1;record.save(update_fields=['data','revision','updated_at'])
                 SectionRecordEvent.objects.create(record=record,actor=request.user,before={'data':old_data},after={'data':record.data},note='تبدیل نوع فیلد با ویرایش ساختار')
             InterfaceChange.objects.create(key=f'section:{section.key}:{kind}:{saved.pk}',action='update' if before else 'create',before=before,after=audit_snapshot(saved),actor=request.user)
-            messages.success(request,'ساختار این بخش ذخیره شد.')
-            return redirect('accounts:structure_section',section_key=section.key)
-    return render(request,'accounts/structure_element.html',{'section':section,'element':item,'form':form,'kind':kind})
+            panel=element_meta(kind)[2]
+            return redirect(reverse('accounts:structure_section',args=[section.key])+'?saved=1#section-'+panel)
+    title,hint,panel=element_meta(kind)
+    return render(request,'accounts/structure_element.html',{'section':section,'element':item,'form':form,'kind':kind,
+        'builder_preview':section_preview(section),'editor_groups':editor_groups(form,kind),
+        'editor_title':title,'editor_hint':hint,'editor_panel':panel,
+        'editor_key':(item.native_name or item.key) if kind=='field' else item.key if kind=='column' else str(item.pk) if item.pk else 'draft'})
 
 
 @login_required

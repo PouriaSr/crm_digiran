@@ -1165,9 +1165,9 @@ window.apexMobileMerge = function (options) {
         <main class="p-4 lg:p-6">
             {% include 'includes/_feedback_messages.html' %}
 
-            {% if structure_custom_sections %}<nav class="crm-custom-links" aria-label="بخش‌های داده سفارشی">{% for section in structure_custom_sections %}<a href="{% url 'accounts:structure_data' section.key %}">{{ section.label }}</a>{% endfor %}</nav>{% endif %}
+            {% if not is_system_settings %}{% if structure_custom_sections %}<nav class="crm-custom-links" aria-label="بخش‌های داده سفارشی">{% for section in structure_custom_sections %}<a href="{% url 'accounts:structure_data' section.key %}">{{ section.label }}</a>{% endfor %}</nav>{% endif %}
             {% if interface_links %}<nav class="crm-custom-links" aria-label="بخش‌های سفارشی">{% for link in interface_links %}<a href="{{ link.url }}" data-crm-ui="ui.base.a28" data-crm-order="280">{{ link.label }}</a>{% endfor %}</nav>{% endif %}
-            {% include 'includes/_structure_toolbar.html' %}
+            {% endif %}{% include 'includes/_structure_toolbar.html' %}
             {% block content %}{% endblock %}
         </main>
     </div>
