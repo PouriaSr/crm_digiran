@@ -39,6 +39,10 @@ def filter_form(request,section):
         if column.source.startswith('extra:'):
             field=typed_field(fields[column.source[6:]])
             field.required=False;field.disabled=False
+            if fields[column.source[6:]].field_type=='choice':
+                from .behavior_service import effective_options
+                options=effective_options(section,'extra_'+column.source[6:],field,True)
+                field.choices=[('','همه')]+[(item['key'],item['label']+(' (قدیمی)' if not item.get('enabled',True) else '')) for item in options]
             if fields[column.source[6:]].field_type=='boolean':field=forms.ChoiceField(choices=[('','همه'),('true','بله'),('false','خیر')],required=False)
         else:field=forms.CharField(required=False)
         field.label=column.label
@@ -121,13 +125,13 @@ def native_value(subject,path):
 def attach_rows(request,section,page):
     columns=allowed_columns(section,request.user)
     hidden=[column.component_key for column in section.columns.all() if not column.enabled and column.component_key]
-    if not columns and not hidden:return
+    if not columns and not hidden and not any(rule.enabled and rule.action in ('add_tag','remove_tag') for rule in section.behaviors.all()):return
     relation=adapter(section,page.object_list.model) if hasattr(page.object_list,'model') else None
     if relation is None:return
     row_kind=page.object_list.model._meta.model_name if hasattr(page.object_list,'model') else ''
     records=list(page)
     if section.custom:
-        request._structure_list_payload={'section':section.key,'row_kind':'sectionrecord','hidden':hidden,'rows':{str(row.pk):{'values':{column.key:row.data.get(column.source[6:],'') for column in columns if column.source.startswith('extra:')},'url':reverse('accounts:structure_record',args=[section.key,row.pk])} for row in records},'columns':column_payload(columns)}
+        request._structure_list_payload={'section':section.key,'row_kind':'sectionrecord','hidden':hidden,'rows':{str(row.pk):{'values':{column.key:row.data.get(column.source[6:],'') for column in columns if column.source.startswith('extra:')},'tags':row.data.get('_behavior_tags',[]),'url':reverse('accounts:structure_record',args=[section.key,row.pk])} for row in records},'columns':column_payload(columns)}
         page.object_list=records
         return
     subjects={}
@@ -147,9 +151,12 @@ def attach_rows(request,section,page):
             if column.source.startswith('extra:'):
                 values[column.key]=record.data.get(column.source[6:],'') if record else ''
                 definition=next((field for field in section.fields.all() if field.key==column.source[6:]),None)
-                if definition and definition.field_type=='choice':values[column.key]=dict(choice_pairs(definition)).get(str(values[column.key]),values[column.key])
+                if definition and definition.field_type=='choice':
+                    from .behavior_service import effective_options
+                    labels={item['key']:item['label'] for item in effective_options(section,'extra_'+definition.key,typed_field(definition),True)}
+                    values[column.key]=labels.get(str(values[column.key]),values[column.key])
             elif column.source.startswith('native:'):values[column.key]=native_value(subject,column.source[7:])
-        result[str(pk)]={'values':values,'url':reverse('accounts:structure_native_record',args=[section.key,subject.pk])}
+        result[str(pk)]={'values':values,'tags':record.data.get('_behavior_tags',[]) if record else [],'url':reverse('accounts:structure_native_record',args=[section.key,subject.pk])}
     request._structure_list_payload={'section':section.key,'hidden':hidden, 'row_kind':row_kind, 'rows':result,'columns':column_payload(columns)}
     page.object_list=records
 

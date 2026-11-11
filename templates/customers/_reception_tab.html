@@ -1,4 +1,4 @@
-{% load fa_numbers %}
+{% load fa_numbers interface_tags %}
 <div x-show="tab === 'reception'" class="space-y-5" style="display:none">
     {% include 'customers/_workflow_filters.html' with filter_tab='reception' %}
     <section class="wf-panel">
@@ -9,7 +9,7 @@
             <div><label for="arrival-customer" class="wf-label" data-crm-ui="ui.customers.receptiontab.label2" data-crm-order="20">مراجعه‌کننده</label><select id="arrival-customer" name="customer" required autocomplete="off" data-placeholder="جستجوی نام یا شماره مراجعه‌کننده" class="w-full rounded-xl border border-gray-200 p-2.5 text-sm"><option value="">انتخاب کنید...</option>{% for person in reception_customers %}<option value="{{ person.pk }}" data-interviewer="{{ person.is_interviewer|yesno:'yes,no' }}" {% if request.GET.c == person.pk|stringformat:'s' %}selected{% endif %}>{{ person.name }} — {{ person.mobile }}{% if person.is_interviewer %} — مصاحبه‌کننده{% endif %}</option>{% endfor %}</select></div>
             <fieldset><legend class="wf-label">مراجعه‌کننده، مشتری است یا مصاحبه‌کننده؟</legend><div class="grid grid-cols-2 gap-2"><label class="wf-choice" data-crm-ui="ui.customers.receptiontab.label3" data-crm-order="30"><input type="radio" name="person_type" value="customer" required {% if request.POST.person_type == 'customer' %}checked{% endif %}>مشتری</label><label class="wf-choice" data-crm-ui="ui.customers.receptiontab.label4" data-crm-order="40"><input type="radio" name="person_type" value="interviewer" required {% if request.POST.person_type == 'interviewer' %}checked{% endif %}>مصاحبه‌کننده</label></div></fieldset>
             <div data-arrival-resume class="hr-hidden hr-span"><div class="hr-fields"><div><label class="wf-label" data-crm-ui="ui.customers.receptiontab.label5" data-crm-order="50">بارگذاری رزومه (اختیاری)</label>{{ arrival_resume_form.resume }}{{ arrival_resume_form.resume.errors }}<p class="wf-unset mt-2">PDF، DOC یا DOCX؛ حداکثر ۱۰ مگابایت.</p></div><div><label class="wf-label" data-crm-ui="ui.customers.receptiontab.label6" data-crm-order="60">آگهی موقعیت شغلی (در صورت مشخص بودن)</label>{{ arrival_resume_form.job_ad }}{{ arrival_resume_form.job_ad.errors }}</div></div></div><button class="wf-action wf-primary" style="padding:12px 20px" data-crm-ui="ui.customers.receptiontab.button7" data-crm-order="70">ثبت ورود</button>
-        {% if structure_arrival_form %}<div class="crm-form-grid">{% for field in structure_arrival_form %}{% if not field.is_hidden %}{% include 'includes/_form_field.html' %}{% endif %}{% endfor %}</div>{% endif %}</form>
+        {% if structure_arrival_form %}{% behavior_payload structure_arrival_form %}<div class="crm-form-grid">{% for field in structure_arrival_form %}{% if not field.is_hidden %}{% include 'includes/_form_field.html' %}{% endif %}{% endfor %}</div>{% endif %}</form>
         {% endif %}
     </section>
     <section class="wf-panel">

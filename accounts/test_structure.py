@@ -30,8 +30,8 @@ class StructureBuilderTests(TestCase):
         own=self.create_field();foreign=self.create_field(self.products)
         page=self.client.get(reverse('accounts:structure_section',args=['info']))
         self.assertContains(page,'فرم و فیلدهای اطلاعات')
-        self.assertContains(page,reverse('accounts:structure_element_edit',args=['info','field',own.pk]))
-        self.assertNotContains(page,reverse('accounts:structure_element_edit',args=['products','field',foreign.pk]))
+        self.assertContains(page,reverse('accounts:behavior_inspector',args=['info','extra_'+own.key]))
+        self.assertNotContains(page,reverse('accounts:behavior_inspector',args=['products','extra_'+foreign.key]))
         self.assertEqual(self.client.get(reverse('accounts:structure_element_edit',args=['info','field',foreign.pk])).status_code,404)
         product_key='ui.products.form.h12'
         self.assertEqual(self.client.get(reverse('accounts:interface_edit',args=[product_key]),{'scope':'info'}).status_code,403)

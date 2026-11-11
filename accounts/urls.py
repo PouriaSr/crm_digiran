@@ -1,11 +1,18 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
-from . import views, twofa_views, interface_views, structure_views
+from . import views, twofa_views, interface_views, structure_views, behavior_views
 from .auth_views import RateLimitedLoginView
 
 app_name = 'accounts'
 
 urlpatterns = [
+    path('settings/sections/<slug:section_key>/reference-options/', behavior_views.reference_options, name='behavior_reference_options'),
+    path('settings/sections/<slug:section_key>/inputs/<str:field_name>/', behavior_views.inspector, name='behavior_inspector'),
+    path('settings/sections/<slug:section_key>/inputs/<str:field_name>/options/new/', behavior_views.option_edit, name='behavior_option_create'),
+    path('settings/sections/<slug:section_key>/inputs/<str:field_name>/options/<int:pk>/', behavior_views.option_edit, name='behavior_option_edit'),
+    path('settings/sections/<slug:section_key>/rules/new/', behavior_views.rule_edit, name='behavior_rule_create'),
+    path('settings/sections/<slug:section_key>/rules/<int:pk>/', behavior_views.rule_edit, name='behavior_rule_edit'),
+    path('settings/sections/<slug:section_key>/behaviors/<str:kind>/<int:pk>/archive/', behavior_views.archive, name='behavior_archive'),
     path('settings/sections/new/', structure_views.section_edit, name='structure_create'),
     path('settings/sections/<slug:section_key>/apply-existing/', structure_views.apply_existing, name='structure_apply_existing'),
     path('settings/sections/<slug:section_key>/', structure_views.section_edit, name='structure_section'),

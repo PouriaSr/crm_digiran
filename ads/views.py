@@ -117,8 +117,7 @@ def ad_list(request):
         'platforms': AdPlatform.objects.filter(is_active=True).count(),
     }
 
-    paginator = Paginator(qs, PAGE_SIZE)
-    page_obj = paginator.get_page(request.GET.get('page'))
+    page_obj = paginate(request, qs)
 
     # گزارش
     report_qs = Ad.objects.all()

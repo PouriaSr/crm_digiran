@@ -10,7 +10,7 @@ GROUPS = {
     'section': [
         ('نام و نمایش', 'عنوانی که کاربران در سیستم می‌بینند.', 'label,enabled,position', False),
         ('نمایش فهرست', 'تعداد ردیف‌ها و ترتیب اولیه فهرست.', 'page_size,sort_source,descending', False),
-        ('دسترسی و فرآیند پیشرفته', '', 'roles,permission,gate_save', True),
+        ('دسترسی و فرآیند پیشرفته', '', 'roles,permission,gate_save,replace_form_logic', True),
     ],
     'field': [
         ('مشخصات ورودی', 'عنوان و نوع اطلاعاتی که کاربر وارد می‌کند.', 'label,field_type,required,enabled', False),
@@ -33,7 +33,7 @@ GROUPS = {
     ],
     'component': [
         ('عنوان و نمایش', '', 'label,kind,enabled,appearance', False),
-        ('عملکرد و راهنما', '', 'action_kind,destination,url,body,confirmation,tooltip', False),
+        ('عملکرد و راهنما', '', 'action_kind,destination,url,body,confirmation,tooltip,popup_text,popup_target', False),
         ('دسترسی و جایگاه پیشرفته', '', 'roles,permission,position,scope_path', True),
     ],
 }
@@ -83,7 +83,7 @@ def section_preview(section):
             except Exception:native=None
             locked=name in PROTECTED or bool(native and not native.null and not native.blank and not native.has_default())
             fields[name] = {'visibility_locked':locked,'key': name, 'label': str(field.label or name), 'field_type': field_type(field),
-                            'required': field.required, 'enabled': True, 'readonly': False,
+                            'multiple':isinstance(field,forms.MultipleChoiceField),'required': field.required, 'enabled': True, 'readonly': False,
                             'position': index * 10, 'placeholder': str(field.widget.attrs.get('placeholder', '')),
                             'help_text': '', 'default_value': '', 'choices': options, 'native': True, 'in_primary': True}
     primary_fields=list(fields)
@@ -123,9 +123,41 @@ def section_preview(section):
     live_url = internal_url(path + ('?tab=' + definition['tab'] if definition.get('tab') else '')) if path else (
         reverse('accounts:structure_data', args=[section.key]) if section.pk else '')
     from .builder_usage import decorate_preview
-    return decorate_preview(section, {'primary_fields':primary_fields,'label': section.label, 'section_enabled':section.enabled, 'section_roles':section.roles, 'section_permission':section.permission, 'fields': list(fields.values()), 'columns': columns,
-            'stages': stages, 'transitions': transitions, 'page_size': section.page_size,
-            'live_url': live_url})
+    from .behavior_service import prototypes,effective_options
+    prototypes_map=prototypes(section)
+    for field in fields.values():
+        name=field['key'] if field['native'] else 'extra_'+field['key']
+        prototype=prototypes_map.get(name)
+        if prototype is not None:
+            options=effective_options(section,name,prototype)
+            if options:field['choices']=[{'value':option['key'],'label':option['label']} for option in options]
+        if section.pk:
+            field['inspector_url']=reverse('accounts:behavior_inspector',args=[section.key,name])
+    rules=[{'id':str(rule.pk),'label':rule.label,'source':rule.source,'operator':rule.operator,'value':rule.value,
+            'action':rule.action,'target':rule.target,'argument':rule.argument,'multiple':isinstance(prototypes_map.get(rule.target),forms.MultipleChoiceField),'roles':rule.roles,'enabled':rule.enabled}
+           for rule in section.behaviors.all()] if section.pk else []
+    from crm.middleware import get_current_request
+    from .permissions import get_user_role
+    request=get_current_request()
+    preview_role=get_user_role(request.user) if request and getattr(request,'user',None) and request.user.is_authenticated else 'admin'
+    result=decorate_preview(section, {'primary_fields':primary_fields,'label': section.label, 'section_enabled':section.enabled, 'section_roles':section.roles, 'section_permission':section.permission, 'fields': list(fields.values()),
+            'columns':columns,'stages':stages,'transitions':transitions,'page_size':section.page_size,'live_url':live_url,
+            'preview_role':preview_role,'behavior_rules':rules,'replace_form_logic':section.replace_form_logic})
+    if section.pk:
+        result['section_edit_url']=reverse('accounts:structure_section',args=[section.key])+'#section-settings'
+        from .interface import catalog
+        from .structure_registry import component_scopes
+        paths={'info':'customers/hub_table_partial.html','products':'products/list.html','categories':'products/category_list.html','calls':'calls/list.html','invoices':'sales/list.html','employees':'hr/employee_list.html','tasks':'hr/task_list.html','leaves':'hr/leave_list.html','attendance':'hr/attendance_list.html','ads':'ads/ad_list.html','ad_sources':'ads/source_list.html','ad_platforms':'ads/platform_list.html','ad_processes':'ads/process_list.html','users':'accounts/user_list.html'}
+        result['base_columns']=[{'key':key,'label':meta['label'],'component_key':key,'enabled':True,'width':130,'align':'right' if index==0 else 'center','source':'native:name' if index==0 else 'sample:text','edit_url':reverse('accounts:interface_edit',args=[key])+'?scope='+section.key}
+            for index,(key,meta) in enumerate((pair for pair in catalog().items() if pair[1]['kind']=='column' and pair[1].get('path')==paths.get(section.key)))][:12]
+        candidates=[(key,meta) for key,meta in catalog().items() if meta['kind']=='button' and section.key in component_scopes(key,meta) and any(word in meta['label'] for word in ('ثبت تماس','ذخیره','ثبت کالا','ثبت فاکتور','ثبت ارزیابی'))]
+        if candidates:
+            key,meta=candidates[0]
+            result['submit_edit_url']=reverse('accounts:interface_edit',args=[key])+'?scope='+section.key
+        for column in columns:column['edit_url']=reverse('accounts:structure_element_edit',args=[section.key,'column',section.columns.get(key=column['key']).pk])
+        for stage in stages:stage['edit_url']=reverse('accounts:structure_element_edit',args=[section.key,'stage',int(stage['key'])])
+    return result
+
 
 
 def element_meta(kind):

@@ -59,8 +59,7 @@ def user_list(request):
         'admins': User.objects.filter(is_superuser=True).count(),
     }
 
-    paginator = Paginator(users, PAGE_SIZE)
-    page_obj = paginator.get_page(request.GET.get('page', 1))
+    page_obj = paginate(request, users)
 
     users_data = []
     for u in page_obj:

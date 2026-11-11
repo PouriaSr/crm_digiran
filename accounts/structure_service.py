@@ -19,11 +19,13 @@ def all_schemas(request=None):
         request=get_current_request()
     if request is not None and hasattr(request,'_section_schemas'):return request._section_schemas
     from django.db.models import Exists,OuterRef
-    from .models import SectionColumn,SectionTransition
+    from .models import SectionColumn,SectionTransition,SectionBehavior,SectionOption
     items=SectionSchema.objects.order_by('position','pk').annotate(_has_fields=Exists(SectionField.objects.filter(section_id=OuterRef('pk'))),
         _has_columns=Exists(SectionColumn.objects.filter(section_id=OuterRef('pk'))),
         _has_stages=Exists(SectionStage.objects.filter(section_id=OuterRef('pk'))),
-        _has_transitions=Exists(SectionTransition.objects.filter(section_id=OuterRef('pk'))))
+        _has_transitions=Exists(SectionTransition.objects.filter(section_id=OuterRef('pk'))),
+        _has_behaviors=Exists(SectionBehavior.objects.filter(section_id=OuterRef('pk'))),
+        _has_options=Exists(SectionOption.objects.filter(section_id=OuterRef('pk'))))
     result={item.key:item for item in items}
     if request is not None:request._section_schemas=result
     return result
@@ -34,7 +36,7 @@ def schema(key, request=None):
     if item and not getattr(item,'_structure_prefetched',False):
         from django.db.models import prefetch_related_objects
         lookups=[]
-        for name in ('fields','columns','stages','transitions'):
+        for name in ('fields','columns','stages','transitions','behaviors','options'):
             if getattr(item,'_has_'+name):lookups.append(name)
             else:
                 if not hasattr(item,'_prefetched_objects_cache'):item._prefetched_objects_cache={}
@@ -99,6 +101,9 @@ def typed_field(item):
     elif item.field_type=='email':field=forms.EmailField(max_length=item.max_length or 254,**common)
     elif item.field_type=='url':field=forms.URLField(max_length=item.max_length or 500,**common)
     else:field=forms.CharField(max_length=item.max_length or 500,**common)
+    if item.default_value:
+        try:field.initial=field.to_python(item.default_value)
+        except ValidationError:pass
     field.widget.attrs.update(widget_attrs)
     field.widget.attrs['id']='structure_'+item.key
     return field
@@ -124,7 +129,10 @@ class RecordForm(forms.Form):
             if item.native_name:continue
             self.fields['extra_'+item.key]=typed_field(item)
             if record and item.key in record.data:self.initial['extra_'+item.key]=record.data[item.key]
+        from .behavior_service import configure_behavior
+        configure_behavior(self,section,user)
     def clean(self):
+        if getattr(self,'_behavior_error',None):raise self._behavior_error
         data=super().clean()
         stage=self.record.stage if self.record and self.record.stage_id else active_stage(self.section)
         if stage:
@@ -137,7 +145,8 @@ class RecordForm(forms.Form):
         return data
 
     def values(self):
-        return {item.key:serialized(self.cleaned_data['extra_'+item.key]) for item in self.definitions if not item.native_name}
+        from .behavior_service import behavior_values
+        return {**{item.key:serialized(self.cleaned_data['extra_'+item.key]) for item in self.definitions if not item.native_name},**behavior_values(self)}
 
 
 def native_visible(user, section, subject, edit=False):

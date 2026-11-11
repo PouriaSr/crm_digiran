@@ -64,6 +64,15 @@ def edit(request, key=None):
     if request.method=='GET' and key and key.startswith('hub.tab.') and request.GET.get('details')!='1':
         target='invoices' if key.endswith('.invoice') else key.split('.')[-1]
         return redirect('accounts:structure_section',section_key=target)
+    if request.method=='GET' and definition and definition['kind']=='column' and request.GET.get('details')!='1':
+        from .structure_registry import component_scopes
+        from .models import SectionColumn
+        targets=component_scopes(key,definition)
+        target=scope if scope in targets else next(iter(targets),None)
+        if scope and scope not in targets:raise PermissionDenied
+        if target and SectionSchema.objects.filter(key=target).exists():
+            column=SectionColumn.objects.filter(section__key=target,component_key=key).first()
+            return redirect('accounts:structure_element_edit',section_key=target,kind='column',pk=column.pk) if column else redirect(reverse('accounts:structure_element_create',args=[target,'column'])+'?component='+key)
     if scope and definition:
         from .structure_registry import component_scopes
         if scope not in component_scopes(key,definition):raise PermissionDenied('این جزء به بخش انتخاب‌شده مربوط نیست.')
@@ -76,7 +85,7 @@ def edit(request, key=None):
             **({name:definition[name] for name in ('kind','section','label','position')} if definition else {'kind':'tab','section':'سفارشی'}))
         instance.revision=0
     before = snapshot(instance) if instance.pk else {}
-    form=InterfaceForm(request.POST or None, instance=instance, definition=definition)
+    form=InterfaceForm(request.POST or None, instance=instance, definition=definition, scope=scope or None)
     if request.method=='POST' and form.is_valid():
         if form.cleaned_data.get('revision') != before.get('revision',0):
             form.add_error(None,'این تنظیم هم‌زمان تغییر کرده است؛ صفحه را تازه کنید و دوباره بررسی کنید.')
@@ -93,6 +102,7 @@ def edit(request, key=None):
     candidates=component_scopes(key,definition) if definition else []
     preview_section=SectionSchema.objects.filter(key=scope).first() if scope else SectionSchema.objects.filter(key__in=candidates).first()
     preview=section_preview(preview_section) if preview_section else {'label':'بخش نمونه','fields':[],'columns':[],'stages':[],'transitions':[]}
+    preview['component_edit_url']=reverse('accounts:interface_edit',args=[instance.key])+('?scope='+scope if scope else '') if instance.key else ''
     preview['component_kind']=definition['kind'] if definition else instance.kind
     if preview_section:
         from .builder_usage import annotate_components

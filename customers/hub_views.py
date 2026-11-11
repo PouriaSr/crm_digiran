@@ -371,6 +371,7 @@ def customer_hub(request):
 @login_required
 @require_permission('calls.add')
 @require_POST
+@transaction.atomic
 def hub_submit_call(request):
     back = f"{reverse('customers:hub')}?tab=call"
     form = HubCallForm(request.POST, user=request.user)

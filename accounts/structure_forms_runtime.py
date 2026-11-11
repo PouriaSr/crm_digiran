@@ -41,6 +41,7 @@ def configure_form(cls, scopes):
             if item.native_name:
                 if item.native_name not in self.fields:continue
                 field=self.fields[item.native_name]
+                if hasattr(field,'choices'):field._structure_original_choices=field.choices
                 if field.disabled:continue
                 field.label=item.label;field.help_text=item.help_text
                 field.widget.attrs['placeholder']=item.placeholder
@@ -68,14 +69,39 @@ def configure_form(cls, scopes):
             name='extra_'+item.key
             self.fields[name]=typed_field(item);self.structure_extra_names.append(name)
             if stored and item.key in stored.data:self.initial[name]=stored.data[item.key]
+        from .behavior_service import configure_behavior,LOCKED
+        data=self.data.copy() if self.is_bound else None
+        for definition in self.structure_definitions:
+            name=definition.native_name or 'extra_'+definition.key
+            if definition.default_value and name in self.fields and name not in LOCKED:
+                if not getattr(instance,'pk',None):
+                    try:default=self.fields[name].to_python(definition.default_value)
+                    except Exception:default=definition.default_value
+                    self.initial.setdefault(name,default)
+                if data is not None and data.get(name) in (None,'') and not self.fields[name].disabled:data[name]=definition.default_value
+        if data is not None:self.data=data
+        configure_behavior(self,section,actor)
         # Existing fields retain their rendering contracts; extras get their own block.
     cls.__init__=init
     old_clean=cls.clean
     @wraps(old_clean)
     def clean(self):
+        if getattr(self,'_behavior_error',None):raise self._behavior_error
+        from .behavior_service import canonicalize
+        canonicalize(self)
         for item in getattr(self,'structure_definitions',[]):
             if item.native_name and item.default_value and self.cleaned_data.get(item.native_name) in (None,'') and item.native_name in self.fields:
                 self.cleaned_data[item.native_name]=self.fields[item.native_name].clean(item.default_value)
+        model=getattr(getattr(self,'_meta',None),'model',None)
+        if model:
+            for name in list(self.cleaned_data):
+                if self.cleaned_data[name] is not None:continue
+                try:native=model._meta.get_field(name)
+                except Exception:continue
+                if not native.null:
+                    default=native.get_default() if native.has_default() else None
+                    if default is not None:self.cleaned_data[name]=self.fields[name].clean(default)
+                    else:self.add_error(name,'این مقدار برای ساختار اصلی داده لازم است.')
         extras={key:value for key,value in self.cleaned_data.items() if key.startswith('extra_')}
         result=old_clean(self)
         if result is not None:result.update(extras)
@@ -86,6 +112,11 @@ def configure_form(cls, scopes):
             if section.gate_save and anchor is not None and anchor.pk and (not stored or not stored.stage_id or stored.stage.status!='done'):
                 raise forms.ValidationError('ابتدا گردش‌کار این بخش را در اطلاعات تکمیلی و مراحل تکمیل کنید.')
             initial=next((stage for stage in section.stages.all() if stage.initial and stage.enabled),None)
+            active=stored.stage if stored and stored.stage_id else initial
+            if active:
+                from .structure_service import validate_stage
+                values={**(stored.data if stored else {}),**extra_values(self)}
+                validate_stage(active,values)
             if initial:
                 for key in initial.required_fields:
                     name='extra_'+key
@@ -104,7 +135,8 @@ def configure_form(cls, scopes):
 
 
 def extra_values(form):
-    return {item.key:serialized(form.cleaned_data.get('extra_'+item.key)) for item in getattr(form,'structure_definitions',[]) if not item.native_name and 'extra_'+item.key in form.cleaned_data}
+    from .behavior_service import behavior_values
+    return {**{item.key:serialized(form.cleaned_data.get('extra_'+item.key)) for item in getattr(form,'structure_definitions',[]) if not item.native_name and 'extra_'+item.key in form.cleaned_data},**behavior_values(form)}
 
 
 def save_form_extras(form,subject):

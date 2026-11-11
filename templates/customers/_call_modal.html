@@ -97,8 +97,8 @@
                                 <div class="flex items-center justify-between mb-2 gap-2">
                                     <label for="id_customer_analysis" class="block text-sm font-medium text-slate-700" data-crm-ui="ui.customers.callmodal.label13" data-crm-order="130">تحلیل مشتری <span class="text-red-500">*</span></label>
                                     <span class="rounded-full px-2.5 py-0.5 text-xs font-bold"
-                                          :class="customerAnalysis === 'potential' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'"
-                                          x-text="customerAnalysis === 'potential' ? 'بالقوه' : 'سرنخ'"></span>
+                                          :class="customerAnalysisBase === 'potential' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'"
+                                          x-text="customerAnalysisBase === 'potential' ? 'بالقوه' : 'سرنخ'"></span>
                                 </div>
                                 {{ call_form.customer_analysis }}
                             </div>
@@ -114,15 +114,15 @@
                         <div class="rounded-xl border p-3 transition" :class="needsFollowup ? 'border-orange-200 bg-orange-50' : 'border-slate-200 bg-slate-50'">
                             <label for="hub_needs_followup" class="flex items-center gap-3 cursor-pointer" data-crm-ui="ui.customers.callmodal.label16" data-crm-order="160">
                                 {{ call_form.needs_followup }}
-                                <template x-if="customerAnalysis === 'potential'">
+                                <template x-if="!replaceBehavior && customerAnalysisBase === 'potential'">
                                     <input type="hidden" name="needs_followup" value="on">
                                 </template>
                                 <span>
                                     <span class="block text-sm font-bold text-slate-700">نیاز به پیگیری</span>
-                                    <span class="block mt-1 text-xs text-slate-500"><span x-text="customerAnalysis === 'potential' ? 'برای مشتری دارای قصد خرید، تاریخ پیگیری را انتخاب کنید.' : 'در صورت نیاز، پیگیری را فعال و تاریخ را مشخص کنید.'"></span></span>
+                                    <span class="block mt-1 text-xs text-slate-500"><span x-text="customerAnalysisBase === 'potential' ? 'برای مشتری دارای قصد خرید، تاریخ پیگیری را انتخاب کنید.' : 'در صورت نیاز، پیگیری را فعال و تاریخ را مشخص کنید.'"></span></span>
                                 </span>
                             </label>
-                            <div x-show="needsFollowup" x-cloak class="mt-3 pt-3 border-t border-orange-100">
+                            <div x-show="needsFollowup || replaceBehavior" x-cloak class="mt-3 pt-3 border-t border-orange-100">
                                 <label for="hub_followup_date" class="block text-xs font-bold text-orange-800 mb-2" data-crm-ui="ui.customers.callmodal.label17" data-crm-order="170">تاریخ پیگیری <span class="text-red-500">*</span></label>
                                 {{ call_form.follow_up_date }}
                                 <label for="hub_followup_time" class="block text-xs font-bold text-orange-800 mt-3 mb-2" data-crm-ui="ui.customers.callmodal.label18" data-crm-order="180">ساعت پیگیری <span class="text-red-500">*</span></label>
@@ -202,9 +202,12 @@ function callModalWidget() {
             }).format(time);
         },
 
+        get replaceBehavior() { return this.$el.querySelector('form')?.dataset.behaviorReplace === 'true'; },
+        choiceBase(name, value) { return window.CRMBehaviors?.canonical(this.$el.querySelector('form'), name, value) ?? value; },
+        get customerAnalysisBase() { return this.choiceBase('customer_analysis', this.customerAnalysis); },
         applyCustomerAnalysis(value) {
-            value = value === 'potential' ? 'potential' : 'lead';
-            this.customerAnalysis = value;
+            if (this.replaceBehavior) return;
+            value = this.choiceBase('customer_analysis', value);
             this.needsFollowup = value === 'potential';
             this.sendAddress = this.needsFollowup;
         },
@@ -295,6 +298,7 @@ function callModalWidget() {
                     input.value = value;
                 }
                 this.applyCustomerAnalysis('lead');
+                if (form) form.dispatchEvent(new Event('behavior:refresh'));
             });
             fill(true);                 // فوری (حتی اگر Alpine آماده نباشد)
             try {

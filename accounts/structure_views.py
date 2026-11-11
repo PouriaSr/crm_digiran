@@ -100,18 +100,26 @@ def element_edit(request,section_key,kind,pk=None):
     item=get_object_or_404(model.objects.select_for_update(),pk=pk,section=section) if pk else model(section=section)
     if not pk and kind in ('field','column'):item.key=kind+'_'+uuid4().hex[:12]
     before=audit_snapshot(item) if item.pk else {}
+    if kind=='column' and not pk and request.GET.get('component'):
+        component=request.GET['component'];definition=catalog().get(component)
+        if not definition or definition['kind']!='column' or section.key not in component_scopes(component,definition):raise PermissionDenied
+        item.component_key=component;item.label=definition['label']
     form=form_class(request.POST or None,instance=item,section=section,**({'initial':{'native_name':request.GET.get('native','')}} if kind=='field' and not pk and request.GET.get('native') else {}))
     if not item.pk:form.initial['revision']=0
     if request.method=='POST' and form.is_valid():
         if form.cleaned_data.get('revision')!=before.get('revision',0):form.add_error(None,'این جزء هم‌زمان تغییر کرده است؛ صفحه را تازه کنید.')
         converted=[]
-        if kind=='field' and item.pk and not item.native_name and not form.errors:
+        if kind=='field' and item.pk and not item.native_name and not form.errors and any(before.get(name)!=audit_snapshot(item).get(name) for name in ('field_type','choices','minimum','maximum','max_length')):
             # Validate type/options changes against all stored values before applying anything.
             errors=[]
             for record in section.records.all().iterator():
                 value=record.data.get(item.key)
                 if value in (None,''):continue
-                try:new=serialized(typed_field(item).clean(value))
+                validator=typed_field(item);validator.required=False
+                if item.field_type=='choice':
+                    from .behavior_service import effective_options
+                    validator.choices=[('', 'انتخاب کنید…')]+[(option['key'],option['label']) for option in effective_options(section,'extra_'+item.key,validator,True)]
+                try:new=serialized(validator.clean(value))
                 except ValidationError:
                     errors.append(str(record.pk));continue
                 if new!=value:converted.append((record,new))

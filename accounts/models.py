@@ -89,6 +89,7 @@ class SectionSchema(models.Model):
     page_size = models.PositiveSmallIntegerField('تعداد در هر صفحه',default=10)
     sort_source = models.CharField('مرتب‌سازی پیش‌فرض',max_length=100,blank=True)
     descending = models.BooleanField('نزولی',default=True)
+    replace_form_logic = models.BooleanField('جایگزینی رفتارهای خودکار فرم با قواعد این بخش',default=False)
     gate_save = models.BooleanField('تکمیل گردش‌کار قبل از ویرایش اصلی',default=False)
     revision = models.PositiveIntegerField(default=1)
     updated_at = models.DateTimeField(auto_now=True)
@@ -206,3 +207,37 @@ class SectionRecordEvent(models.Model):
     note = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     class Meta: ordering=['-pk']
+
+
+class SectionOption(models.Model):
+    section = models.ForeignKey(SectionSchema,on_delete=models.CASCADE,related_name='options')
+    field_name = models.CharField('ورودی',max_length=100)
+    key = models.CharField('شناسه گزینه',max_length=100)
+    label = models.CharField('عنوان گزینه',max_length=180)
+    base_value = models.CharField('رفتار پایه گزینه',max_length=120,blank=True)
+    enabled = models.BooleanField('نمایش گزینه',default=True)
+    position = models.IntegerField('ترتیب',default=100)
+    revision = models.PositiveIntegerField(default=1)
+    class Meta:
+        ordering=['position','pk']
+        constraints=[models.UniqueConstraint(fields=['section','field_name','key'],name='unique_section_option')]
+    def __str__(self):return self.label
+
+
+class SectionBehavior(models.Model):
+    OPERATORS=[('equals','برابر است با'),('not_equals','برابر نیست با'),('filled','مقدار دارد'),('empty','خالی است'),('contains','شامل است'),('in','یکی از این مقادیر است'),('gt','بیشتر است از'),('lt','کمتر است از')]
+    ACTIONS=[('show','نمایش ورودی'),('hide','پنهان‌کردن ورودی'),('require','الزامی‌کردن ورودی'),('optional','اختیاری‌کردن ورودی'),('set','تنظیم مقدار'),('clear','پاک‌کردن مقدار'),('add_tag','افزودن برچسب'),('remove_tag','حذف برچسب'),('popup','بازکردن پنجره راهنما یا انتخاب'),('notice','نمایش پیام کنار ورودی'),('choices','محدودکردن گزینه‌های ورودی')]
+    section = models.ForeignKey(SectionSchema,on_delete=models.CASCADE,related_name='behaviors')
+    label = models.CharField('نام قاعده',max_length=180)
+    source = models.CharField('وقتی این ورودی',max_length=100)
+    operator = models.CharField('شرط',max_length=20,choices=OPERATORS,default='equals')
+    value = models.CharField('مقدار شرط',max_length=1000,blank=True)
+    action = models.CharField('این کار انجام شود',max_length=25,choices=ACTIONS)
+    target = models.CharField('ورودی مقصد',max_length=100,blank=True)
+    argument = models.TextField('مقدار، متن یا عنوان برچسب',blank=True,max_length=3000)
+    roles = models.JSONField('فقط برای نقش‌های انتخاب‌شده',default=list,blank=True)
+    enabled = models.BooleanField('فعال',default=True)
+    position = models.IntegerField('ترتیب اجرا',default=100)
+    revision = models.PositiveIntegerField(default=1)
+    class Meta:ordering=['position','pk']
+    def __str__(self):return self.label

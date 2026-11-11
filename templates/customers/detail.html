@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load fa_numbers card_access %}
+{% load fa_numbers card_access interface_tags %}
 
 {% block title %}{{ customer.name }}{% endblock %}
 
@@ -107,7 +107,7 @@
             {{ customer.name|first|upper }}
         </div>
         <div class="flex-1">
-            <h1 class="text-2xl font-bold text-gray-800" data-crm-ui="ui.customers.detail.h19" data-crm-order="90">{{ customer.name }}{% if customer.is_interviewer %}<span class="ms-2 rounded-md bg-purple-50 text-purple-700 text-xs px-2 py-1">مصاحبه‌کننده</span>{% endif %}</h1>
+            <h1 class="text-2xl font-bold text-gray-800" data-crm-ui="ui.customers.detail.h19" data-crm-order="90">{{ customer.name }}{% if customer.is_interviewer %}<span class="ms-2 rounded-md bg-purple-50 text-purple-700 text-xs px-2 py-1">مصاحبه‌کننده</span>{% endif %}</h1>{% behavior_labels 'info' customer as labels %}{% include 'includes/_behavior_labels.html' %}
             <p class="text-gray-500 font-mono mt-1" dir="ltr">{{ customer.mobile }}</p>
             <p class="text-xs text-gray-400 mt-2">
                 ثبت‌شده توسط

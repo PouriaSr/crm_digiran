@@ -48,8 +48,7 @@ def employee_list(request):
         'inactive': Employee.objects.filter(is_active=False).count(),
     }
 
-    paginator = Paginator(employees, PAGE_SIZE)
-    page_obj = paginator.get_page(request.GET.get('page', 1))
+    page_obj = paginate(request, employees)
 
     context = {
         'page_obj': page_obj,
@@ -235,8 +234,7 @@ def task_list(request):
         tasks = order_tasks(filter_task_dates(tasks, queue_filters.cleaned_data), queue_filters.cleaned_data.get('sort'))
     else:
         tasks = tasks.none()
-    paginator = Paginator(tasks, PAGE_SIZE)
-    page_obj = paginator.get_page(request.GET.get('page', 1))
+    page_obj = paginate(request, tasks)
 
     employees = Employee.objects.filter(is_active=True,tasks__in=base_qs).distinct()
     from django.contrib.auth.models import User
@@ -448,8 +446,7 @@ def leave_list(request):
         'rejected': stats_qs.filter(status='rejected').count(),
     }
 
-    paginator = Paginator(leaves, PAGE_SIZE)
-    page_obj = paginator.get_page(request.GET.get('page', 1))
+    page_obj = paginate(request, leaves)
 
     context = {
         'page_obj': page_obj,
@@ -576,8 +573,7 @@ def attendance_list(request):
         ).count(),
     }
 
-    paginator = Paginator(attendances, PAGE_SIZE)
-    page_obj = paginator.get_page(request.GET.get('page', 1))
+    page_obj = paginate(request, attendances)
 
     employees = Employee.objects.filter(is_active=True)
 

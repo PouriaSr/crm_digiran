@@ -196,8 +196,7 @@ def invoice_list(request):
             'total': qs.aggregate(s=Sum('total'))['s'] or 0,
         }
 
-    paginator = Paginator(qs, PAGE_SIZE)
-    page_obj = paginator.get_page(request.GET.get('page', 1))
+    page_obj = paginate(request, qs)
 
     context = {
         'page_obj': page_obj,

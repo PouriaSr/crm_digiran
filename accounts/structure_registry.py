@@ -34,7 +34,8 @@ def scope_for_request(request):
     if name in ('customers:hub','customers:hub_submit_call'):
         if name.endswith(':hub'):
             from customers.reception_workflow import allowed_tabs
-            tab=request.GET.get('tab') or next(iter(allowed_tabs(request.user)),None)
+            tab=getattr(request,'_hub_tab',None) or request.GET.get('tab') or next(iter(allowed_tabs(request.user)),None)
+            tab={'call':'info','followup':'info','visit':'info','recruitment':'hiring'}.get(tab,tab)
             return 'invoices' if tab=='invoice' else tab
         return 'info'
     if name in ('customers:detail','customers:edit','customers:create','customers:form_modal'):return 'info'

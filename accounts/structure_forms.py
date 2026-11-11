@@ -1,4 +1,5 @@
 import re
+from copy import deepcopy
 from django import forms
 from django.core.exceptions import ValidationError
 from django.apps import apps
@@ -36,7 +37,7 @@ class SectionForm(Styled,forms.ModelForm):
     revision=forms.IntegerField(widget=forms.HiddenInput,required=False)
     class Meta:
         model=SectionSchema
-        fields=['label','enabled','roles','permission','position','page_size','sort_source','descending','gate_save','revision']
+        fields=['label','enabled','roles','permission','position','page_size','sort_source','descending','gate_save','replace_form_logic','revision']
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
         self.fields['page_size'].min_value=5;self.fields['page_size'].max_value=100
@@ -110,15 +111,23 @@ class FieldForm(Styled,forms.ModelForm):
                         allowed={str(value) for value,label in prototype.choices if not isinstance(label,(list,tuple))}
                         if any(item['value'] not in allowed for item in choices):self.add_error('options','مقدار جدید برای وضعیت اصلی معتبر نیست؛ برای گزینه‌های مستقل، فیلد سفارشی بسازید.')
                 if data.get('default_value'):
-                    try:cls.base_fields[native_name].clean(data['default_value'])
+                    validator=deepcopy(cls.base_fields[native_name])
+                    if isinstance(validator,forms.ChoiceField) and not isinstance(validator,forms.ModelChoiceField):
+                        from .behavior_service import effective_options
+                        validator.choices=[('', 'انتخاب کنید…')]+[(option['key'],option['label']) for option in effective_options(self.section,native_name,validator)]
+                    try:validator.clean(data['default_value'])
                     except ValidationError as error:self.add_error('default_value',error)
         if data.get('minimum') is not None and data.get('maximum') is not None and data['minimum']>data['maximum']:self.add_error('maximum','حداکثر نباید کمتر از حداقل باشد.')
         if data.get('max_length') and data['max_length']>50000:self.add_error('max_length','حداکثر طول مجاز ۵۰۰۰۰ است.')
         for key in ('field_type','required','minimum','maximum','max_length','default_value'):
             if key in data:setattr(self.instance,key,data[key])
         self.instance.choices=choices
-        if data.get('default_value'):
-            try:typed_field(self.instance).clean(data['default_value'])
+        if data.get('default_value') and not native_name:
+            validator=typed_field(self.instance)
+            if data.get('field_type')=='choice':
+                from .behavior_service import effective_options
+                validator.choices=[('', 'انتخاب کنید…')]+[(option['key'],option['label']) for option in effective_options(self.section,'extra_'+self.instance.key,validator)]
+            try:validator.clean(data['default_value'])
             except forms.ValidationError as error:self.add_error('default_value',error)
         return data
     def save(self,commit=True):
@@ -140,7 +149,7 @@ class ColumnForm(Styled,forms.ModelForm):
     def __init__(self,*args,section,**kwargs):
         super().__init__(*args,**kwargs)
         self.instance.section=section
-        self.fields['source'].choices=source_choices(section)
+        self.fields['source'].choices=[('','انتخاب داده ستون…')]+source_choices(section)
         from .interface import catalog
         from .structure_registry import component_scopes
         self.fields['component_key']=forms.ChoiceField(label='ستون موجود یا ستون جدید',required=False,choices=[('','افزودن ستون جدید')]+[(key,value['label']) for key,value in catalog().items() if value['kind']=='column' and section.key in component_scopes(key,value)])

@@ -80,8 +80,7 @@ def call_list(request):
     }
 
     # ═══ صفحه‌بندی ═══
-    paginator = Paginator(calls, PAGE_SIZE)
-    page_obj = paginator.get_page(request.GET.get('page', 1))
+    page_obj = paginate(request, calls)
 
     # ═══ dropdown فیلتر: فقط کاربرانی که حداقل یک تماس دارند ═══
     employees = User.objects.filter(calls__isnull=False).distinct()

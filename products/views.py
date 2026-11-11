@@ -61,8 +61,7 @@ def product_list(request):
     )
     stats['deleted'] = Product.all_objects.filter(is_deleted=True).count()
 
-    paginator = Paginator(products, PAGE_SIZE)
-    page_obj = paginator.get_page(request.GET.get('page', 1))
+    page_obj = paginate(request, products)
 
     context = {
         'page_obj': page_obj,

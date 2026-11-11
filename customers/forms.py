@@ -273,7 +273,7 @@ class HubCallForm(forms.Form):
         ('ads', 'تبلیغات'),
         ('followup', 'پیگیری'),
         ('busy', 'مشغول'),
-    ], widget=forms.Select(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all', 'x-model': 'callType', '@change': "callStatus = ({missed: 'missed', busy: 'busy'})[callType] || 'answered'; purpose = callType === 'followup' ? 'followup' : 'sale'"}))
+    ], widget=forms.Select(attrs={'class': 'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all', 'x-model': 'callType', '@change': "if (!replaceBehavior) { callStatus = ({missed: 'missed', busy: 'busy'})[choiceBase('call_type', callType)] || 'answered'; purpose = choiceBase('call_type', callType) === 'followup' ? 'followup' : 'sale'; }"}))
     
     purpose = forms.ChoiceField(
         label='هدف تماس', choices=Call.CALL_PURPOSE_CHOICES, required=False,
@@ -323,8 +323,8 @@ class HubCallForm(forms.Form):
         widget=forms.CheckboxInput(attrs={
             'class': 'w-5 h-5 rounded text-orange-600 border-gray-300 focus:ring-orange-500',
             'x-model': 'needsFollowup',
-            ':disabled': "customerAnalysis === 'potential'",
-            '@change': 'sendAddress = $el.checked',
+            ':disabled': "!replaceBehavior && customerAnalysisBase === 'potential'",
+            '@change': 'if (!replaceBehavior) sendAddress = $el.checked',
             'id': 'hub_needs_followup',
         }))
     
@@ -360,7 +360,7 @@ class HubCallForm(forms.Form):
         data = super().clean()
         if data.get('is_interviewer'):
             return {key: data[key] for key in ('name', 'mobile', 'is_interviewer') if key in data}
-        if data.get('customer_analysis') == 'potential':
+        if data.get('customer_analysis') == 'potential' and not getattr(self,'structure_replace_logic',False):
             data['needs_followup'] = True
         if data.get('needs_followup'):
             from .scheduling import parse_followup_time
