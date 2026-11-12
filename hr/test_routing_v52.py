@@ -131,4 +131,3 @@ class AutomaticPermissionRoutingTests(TransactionTestCase):
         self.assertEqual(Task.objects.filter(source_key=task.source_key).count(),1)
         data=self.client.get(reverse('hr:task_inbox'),{'source':'case'}).json()
         self.assertEqual(next(row for row in data['items'] if row['task']==task.pk)['stage_status'],'در انتظار تکمیل پرونده')
-
