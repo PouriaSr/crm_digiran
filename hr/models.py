@@ -119,6 +119,7 @@ class Task(models.Model):
     source_id = models.PositiveBigIntegerField(null=True, blank=True, editable=False)
     source_customer = models.ForeignKey('customers.Customer', null=True, blank=True, on_delete=models.SET_NULL, related_name='workflow_tasks', editable=False)
 
+    queued_at = models.DateTimeField('آخرین تخصیص یا فعال‌سازی', null=True, blank=True, editable=False)
     completed_at = models.DateTimeField('تاریخ اتمام', null=True, blank=True)
 
     created_at = models.DateTimeField('تاریخ ایجاد', auto_now_add=True)
@@ -177,7 +178,11 @@ class Task(models.Model):
     def save(self, *args, **kwargs):
         with transaction.atomic():
             if self.pk:
-                Task.objects.select_for_update().filter(pk=self.pk).exists()
+                previous = Task.objects.select_for_update().filter(pk=self.pk).values('status', 'assigned_user_id', 'assigned_to_id').first()
+                if previous and self.status not in ('done', 'cancelled') and (previous['status'] in ('done', 'cancelled') or previous['assigned_user_id'] != self.assigned_user_id or previous['assigned_to_id'] != self.assigned_to_id):
+                    self.queued_at = timezone.now()
+                    if kwargs.get('update_fields'):
+                        kwargs['update_fields'] = set(kwargs['update_fields']) | {'queued_at'}
             if self.status == 'done' and not self.completed_at:
                 self.completed_at = timezone.now()
             elif self.status != 'done':

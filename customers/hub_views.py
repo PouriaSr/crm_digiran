@@ -80,6 +80,8 @@ def _close_open_followups(customer, note=''):
         fu.done_note = note
         fu.save(update_fields=['is_done', 'done_at', 'done_note'])
         n += 1
+    from .case_outcomes import finish_case_followups
+    finish_case_followups(customer)
     return n
 
 
@@ -110,6 +112,7 @@ CASE_LABELS = {
     'product': 'کالا',
     'quantity': 'تعداد',
     'visit_result': 'نتیجه مراجعه',
+    'cancel_reason': 'دلیل کنسلی', 'result_notes': 'توضیحات نتیجه مراجعه',
 }
 
 

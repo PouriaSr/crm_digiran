@@ -1,5 +1,6 @@
 import jdatetime
 from django import forms
+from django.contrib.auth.models import User
 from ads.widgets import ContactSourceSelect, SourceSelect
 
 from crm.duplicate_check import (
@@ -382,6 +383,8 @@ class HubCallForm(forms.Form):
 class CustomerCaseForm(forms.ModelForm):
     """فرم پرونده‌ی مشتری — تب سوم مرکز مشتریان"""
 
+    sales_owner = forms.ModelChoiceField(label='ارجاع پیگیری به کارشناس فروش', queryset=User.objects.none(), required=False)
+
     active_loans = forms.MultipleChoiceField(
         label='وام‌های فعال',
         choices=CustomerCase.LOAN_CHOICES,
@@ -395,7 +398,7 @@ class CustomerCaseForm(forms.ModelForm):
         model = CustomerCase
         fields = [
             'condition', 'cheque_owner', 'cheque_other_name', 'cheque_other_phone',
-            'job', 'credit_rank', 'active_loans', 'product', 'quantity', 'visit_result',
+            'job', 'credit_rank', 'active_loans', 'product', 'quantity', 'visit_result', 'cancel_reason', 'result_notes',
         ]
         widgets = {
             'condition': forms.Select(attrs={
@@ -432,8 +435,22 @@ class CustomerCaseForm(forms.ModelForm):
             }),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, user=None, reception=None, **kwargs):
+        from crm.middleware import get_current_user
+        from accounts.permissions import has_permission
+        from .case_outcomes import sales_choices
+        self.actor = user or get_current_user()
         super().__init__(*args, **kwargs)
+        self.can_refer = bool(self.actor and has_permission(self.actor, 'customers.case_refer'))
+        self.fields['sales_owner'].queryset = sales_choices() if self.can_refer else self.fields['sales_owner'].queryset.none()
+        self.fields['sales_owner'].empty_label = 'انتخاب کارشناس فروش…'
+        self.fields['sales_owner'].label_from_instance = lambda user: user.get_full_name() or user.username
+        if reception and reception.case_followup_owner_id:
+            self.initial['sales_owner'] = reception.case_followup_owner_id if self.can_refer else None
+        for name in ('cancel_reason', 'result_notes', 'sales_owner'):
+            self.fields[name].widget.attrs.update({'class':'w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm'})
+        self.fields['result_notes'].widget = forms.Textarea(attrs={'class':'w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm','rows':3,'placeholder':'توضیحات نتیجه مراجعه…'})
+        self.fields['visit_result'].widget.attrs['data-case-result'] = ''
         self.fields['product'].queryset = Product.objects.filter(is_active=True).order_by('name')
         self.fields['product'].empty_label = 'انتخاب کالا...'
         self.fields['condition'].required = True
@@ -451,6 +468,16 @@ class CustomerCaseForm(forms.ModelForm):
                     self.add_error('cheque_other_name', 'نام صاحب چک الزامی است.')
                 if not cleaned.get('cheque_other_phone'):
                     self.add_error('cheque_other_phone', 'شماره تماس صاحب چک الزامی است.')
+        if cleaned.get('visit_result') == 'abandoned':
+            if not cleaned.get('cancel_reason'):
+                self.add_error('cancel_reason', 'دلیل انصراف را انتخاب کنید.')
+            if not (cleaned.get('result_notes') or '').strip():
+                self.add_error('result_notes', 'توضیحات انصراف را وارد کنید.')
+        elif cleaned.get('visit_result') == 'bought':
+            cleaned['cancel_reason'] = ''
+            cleaned['result_notes'] = ''
+        else:
+            cleaned['cancel_reason'] = ''
         return cleaned
 
 

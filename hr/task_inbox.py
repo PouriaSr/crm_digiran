@@ -2,6 +2,7 @@
 from django.core.paginator import Paginator
 from django.db.models import Count, Exists, Max, Min, OuterRef, Q
 from django.urls import reverse
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from accounts.permissions import get_user_permissions
 from crm.pagination import PAGE_SIZE
@@ -48,6 +49,8 @@ def report_item(event):
 
 
 def personal_inbox(user, params):
+    from .task_automation import reconcile_pending_cases
+    reconcile_pending_cases(user)
     records, work, events, notices = inbox_records(user)
     counts = inbox_counts(records, work, events, notices)
     today = timezone.localdate()
@@ -106,7 +109,7 @@ def personal_inbox(user, params):
     first_by_task = {event.task_id: event for event in events.filter(pk__in=first_events,task_id__in=task_ids).select_related('task')}
     payload = []
     action_permissions = {'admission':'customers.reception_add','reception':'customers.reception_refer','invitation':'customers.hiring_interview','case':'customers.case_edit','registration':'customers.registration_edit','interview':'customers.hiring_interview',
-                          'followup':'customers.followup','customer_followup':'customers.followup','call':'calls.edit','invoice':'invoices.edit','leave':'hr.review_leaves'}
+                          'followup':'customers.followup','case_followup':'customers.followup','customer_followup':'customers.followup','call':'calls.edit','invoice':'invoices.edit','leave':'hr.review_leaves'}
     for item in rows:
         task = item if view == 'work' else item.task
         row = {'task': task.pk, 'title': task.title, 'url': reverse('hr:task_detail',args=[task.pk]),
@@ -119,7 +122,7 @@ def personal_inbox(user, params):
                 from accounts.structure_service import can_access
                 configured=SectionRecord.objects.select_related('section').filter(pk=task.source_id).first()
                 can_act=bool(configured and can_access(user,configured.section,True))
-            row.update(description=(task.description or '')[:600], due_date=task.due_date.isoformat() if task.due_date else None,
+            row.update(description=(task.description or '')[:600], queued_at=timezone.localtime(task.queued_at or task.created_at).isoformat(), due_date=task.due_date.isoformat() if task.due_date else None,
                        due_time=task.due_time.strftime('%H:%M') if task.due_time else None, overdue=task.is_overdue,
                        priority=task.get_priority_display(), priority_key=task.priority,
                        manual=not task.source_type and not task.hiring_session_id, can_act=can_act,
@@ -130,7 +133,7 @@ def personal_inbox(user, params):
         else:
             row.update(notice=item.pk, summary=item.text, when=timezone.localtime(item.created_at).isoformat(), unread=bool(unread_counts.get(task.pk)))
         payload.append(row)
-    auto_reports = [report_item(event) for event in events.select_related('task').order_by('pk')[:PAGE_SIZE]]
+    auto_reports = [report_item(event) for event in events.filter(pk__in=first_events).select_related('task').annotate(_queued=Coalesce('task__queued_at','task__created_at')).order_by('-_queued','-task_id','pk')[:PAGE_SIZE]]
     newest = notices.order_by('-pk').first()
     filter_scope=work if view=='work' else records.filter(pk__in=(events if view=='reports' else notices).values('task_id'))
     return {'filter_choices':{'source':available_sources(filter_scope),'status':[(key,label) for key,label in Task.STATUS_CHOICES if view!='work' or key not in ('done','cancelled')],'priority':Task.PRIORITY_CHOICES},'counts': counts, 'attention_count': counts['attention'], 'due_counts': due_counts,

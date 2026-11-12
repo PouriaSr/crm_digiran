@@ -34,6 +34,9 @@ def workflow_changed(sender, instance, raw=False, **kwargs):
                  'sales.Invoice': service.sync_invoice, 'hr.LeaveRequest': service.sync_leave}
     if name in functions:
         functions[name](instance)
+        if name == 'calls.Call' and getattr(instance, '_case_followup_performed', False) and instance.customer_id:
+            from customers.case_outcomes import finish_case_followups
+            finish_case_followups(instance.customer)
     elif name == 'customers.CaseWorkSession':
         service.sync_reception(instance.reception)
     elif name == 'customers.InterviewSession':
@@ -55,6 +58,9 @@ def workflow_changed(sender, instance, raw=False, **kwargs):
         from customers.models import HiringApplication
         for item in HiringApplication.objects.filter(reception__customer=instance):
             service.sync_hiring(item)
+        from customers.case_outcomes import sync_case_followup
+        for rec in instance.receptions.filter(case_result='abandoned',case_followup_owner__isnull=False,case_followup_done_at__isnull=True):
+            sync_case_followup(rec)
         for item in instance.calls.filter(status='followup', is_followed_up=False):
             service.sync_call(item)
         for item in instance.invoices.filter(status__in=['draft', 'issued']):
@@ -65,7 +71,7 @@ def workflow_deleted(sender, instance, **kwargs):
     labels = {'customers.FollowUp': 'followup', 'customers.Reception': 'case', 'customers.HiringApplication': 'interview', 'customers.InterviewSession':'invitation', 'calls.Call': 'call', 'sales.Invoice': 'invoice', 'hr.LeaveRequest': 'leave'}
     kinds = [labels[sender._meta.label]]
     if sender._meta.label == 'customers.Reception':
-        kinds.extend(['registration', 'reception'])
+        kinds.extend(['registration', 'reception','case_followup'])
     for task in Task.objects.filter(source_type__in=kinds, source_id=instance.pk).exclude(status__in=['done', 'cancelled']):
         task.status = 'cancelled'
         task.save()
@@ -112,3 +118,11 @@ def user_access_after(sender, instance, raw=False, **kwargs):
     if not raw and getattr(instance, '_task_access_changed', False):
         from .task_automation import schedule_backfill
         schedule_backfill()
+
+
+@receiver(pre_save, sender='calls.Call', dispatch_uid='hr.case_followup_performed')
+def case_followup_performed(sender, instance, raw=False, **kwargs):
+    if raw:
+        return
+    old = sender.objects.filter(pk=instance.pk).values('is_followed_up').first() if instance.pk else None
+    instance._case_followup_performed = bool(instance.is_followed_up and (not old or not old['is_followed_up']))

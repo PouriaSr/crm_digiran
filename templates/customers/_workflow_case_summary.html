@@ -8,4 +8,6 @@
     {% if case.product %}<div><dt>تعداد</dt><dd>{{ case.quantity|fa_num }} عدد</dd></div>{% endif %}
     <div><dt>نتیجه مراجعه</dt><dd>{{ case.get_visit_result_display|default:'ثبت نشده' }}</dd></div>
     {% if case.condition == 'cheque' %}<div><dt>چک برای</dt><dd>{{ case.get_cheque_owner_display|default:'تعیین نشده' }}</dd></div>{% if case.cheque_owner == 'other' %}<div><dt>نام صاحب چک</dt><dd>{{ case.cheque_other_name|default:'ثبت نشده' }}</dd></div><div><dt>شماره صاحب چک</dt><dd><bdi dir="ltr">{{ case.cheque_other_phone|default:'ثبت نشده' }}</bdi></dd></div>{% endif %}{% endif %}
+    {% if case.cancel_reason %}<div><dt>دلیل کنسلی</dt><dd>{{ case.get_cancel_reason_display }}</dd></div>{% endif %}
+    {% if case.result_notes %}<div class="wf-field-long"><dt>توضیحات نتیجه مراجعه</dt><dd>{{ case.result_notes }}</dd></div>{% endif %}
 </dl>

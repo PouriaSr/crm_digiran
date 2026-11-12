@@ -39,7 +39,7 @@ def workflow_records():
     return Reception.objects.filter(workflow_version=2, customer__is_deleted=False).exclude(customer__is_interviewer=True,person_type='customer').annotate(case_first_started_at=Subquery(CaseWorkSession.objects.filter(reception_id=OuterRef('pk')).order_by('started_at','pk').values('started_at')[:1])).select_related(
         'customer', 'customer__assigned_to', 'customer__created_by', 'customer__ad_source', 'customer__case', 'customer__case__product',
         'referred_to', 'referred_by', 'created_by', 'case_completed_by', 'registration_completed_by',
-        'registration_last_saved_by', 'registration_last_edited_by', 'case_last_saved_by', 'case_last_edited_by',
+        'registration_last_saved_by', 'registration_last_edited_by', 'case_last_saved_by', 'case_last_edited_by', 'case_followup_owner',
     ).prefetch_related(Prefetch(
         'customer__calls',
         queryset=Call.objects.select_related('called_by').order_by('-call_date', '-pk')[:1],
@@ -159,7 +159,12 @@ def build_workflow_context(request):
         case = getattr(rec.customer, 'case', None) if rec else None
         form = None
         if rec:
-            form = CustomerCaseForm(instance=case, initial=case_initial(rec.customer, case))
+            initial = case_initial(rec.customer, case)
+            if rec.case_result:
+                initial.update(visit_result=rec.case_result, cancel_reason=rec.case_cancel_reason, result_notes=rec.case_result_notes)
+            elif not rec.case_completed_at:
+                initial.update(visit_result='', cancel_reason='', result_notes='')
+            form = CustomerCaseForm(instance=case, initial=initial, user=request.user, reception=rec)
         bound = getattr(request, '_workflow_bound_form', None)
         if bound is not None:
             form = bound
@@ -353,7 +358,7 @@ def case_snapshot(case):
     if not case:
         return {}
     values = {key: str(getattr(case, key) or '') for key in CustomerCaseForm.Meta.fields}
-    for key in ('condition', 'cheque_owner', 'job', 'visit_result'):
+    for key in ('condition', 'cheque_owner', 'job', 'visit_result', 'cancel_reason'):
         values[key] = getattr(case, f'get_{key}_display')()
     return values
 
@@ -399,7 +404,7 @@ def case_save(request):
         return HttpResponse('ابتدا ارجاع پذیرش و ثبت اطلاعات را تکمیل کنید.', status=409)
     case = CustomerCase.objects.filter(customer=customer).first()
     before = case_snapshot(case)
-    form = CustomerCaseForm(request.POST, instance=case)
+    form = CustomerCaseForm(request.POST, instance=case, user=request.user, reception=rec)
     original = snapshot(form)
     if form.is_valid():
         active = CaseWorkSession.objects.filter(reception=rec, ended_at__isnull=True).first()
@@ -415,11 +420,20 @@ def case_save(request):
         case.save()
         active.ended_at, active.ended_by = max(timezone.now(), active.started_at), request.user
         active.save(update_fields=['ended_at', 'ended_by'])
-        record_submission(rec, 'case', request.user, original != snapshot(form))
+        referral_changed = bool(case.visit_result == 'abandoned' and form.can_refer and getattr(form.cleaned_data.get('sales_owner'), 'pk', None) != rec.case_followup_owner_id)
+        record_submission(rec, 'case', request.user, original != snapshot(form) or referral_changed)
+        from .case_outcomes import save_outcome
+        save_outcome(rec, case, form.cleaned_data.get('sales_owner'), request.user)
         from .hub_views import _log_record_update, CASE_LABELS
         after = case_snapshot(case)
         _log_record_update(customer, 'case', before, after, CASE_LABELS, request.user)
-        messages.success(request, 'پرونده ذخیره شد؛ مراحل ثبت اطلاعات و پرونده این مراجعه تکمیل شدند.')
+        if case.visit_result == 'abandoned':
+            if rec.case_followup_owner_id:
+                messages.success(request, 'پرونده ذخیره شد؛ پیگیری انصراف برای کارشناس فروش انتخاب‌شده ثبت شد.')
+            else:
+                messages.warning(request, 'انصراف ذخیره شد؛ برای ساخت تسک پیگیری، کارشناس فروش را تعیین کنید.')
+        else:
+            messages.success(request, 'پرونده ذخیره شد؛ مراحل ثبت اطلاعات و پرونده این مراجعه تکمیل شدند.')
         return redirect(back_to('case', rec))
     # Render submitted values and errors; no partial writes and no lost input.
     from .hub_views import customer_hub
@@ -453,6 +467,8 @@ def registration_form(request, pk):
     if request.method == 'POST' and form.is_valid():
         form.save()
         record_submission(rec, 'registration', request.user, original != snapshot(form))
+        from hr.task_automation import sync_reception
+        sync_reception(rec)
         from hr.models import Task
         handoff=Task.objects.filter(source_key='case:'+str(rec.pk)).select_related('assigned_user','assigned_to__user').first()
         if rec.case_completed_at:

@@ -271,6 +271,12 @@ class Reception(models.Model):
     case_last_edited_at = models.DateTimeField('آخرین ویرایش پرونده', null=True, blank=True, editable=False)
     case_last_edited_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', editable=False)
 
+    case_result = models.CharField('نتیجه این مراجعه', max_length=20, blank=True, editable=False)
+    case_cancel_reason = models.CharField('دلیل انصراف این مراجعه', max_length=40, blank=True, editable=False)
+    case_result_notes = models.TextField('توضیحات نتیجه این مراجعه', blank=True, editable=False)
+    case_followup_owner = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', editable=False)
+    case_followup_done_at = models.DateTimeField(null=True, blank=True, editable=False)
+
     class Meta:
         verbose_name = 'پذیرش حضوری'
         verbose_name_plural = 'پذیرش‌های حضوری'
@@ -308,6 +314,10 @@ class Reception(models.Model):
     def wait_display(self):
         seconds = self.wait_seconds
         return f'{seconds // 3600:02}:{seconds // 60 % 60:02}:{seconds % 60:02}'
+
+    @property
+    def case_cancel_reason_display(self):
+        return dict(CustomerCase.CANCEL_REASONS).get(self.case_cancel_reason, self.case_cancel_reason)
 
     @property
     def case_wait_timing(self):
@@ -437,6 +447,13 @@ class CustomerCase(models.Model):
         ('digipay', 'دیجی‌پی'),
         ('gsm', 'جی‌اس‌ام'),
     ]
+    CANCEL_REASONS = [
+        ('interest', 'درصد سود'), ('price', 'مبلغ کالا'),
+        ('down_payment', 'نداشتن پیش پرداخت'), ('no_cheque', 'نداشتن چک'),
+        ('credit', 'رتبه اعتباری ضعیف'), ('instant_limit', 'سقف بالای تحویل آنی'),
+        ('cheque_count', 'محدودیت تعداد چک'), ('installments', 'شرایط پرداخت اقساط'),
+        ('overdue', 'داشتن معوق و برگشتی'), ('followup', 'پیگیری'), ('guarantor', 'نداشتن ضامن'),
+    ]
     RESULT_CHOICES = [
         ('bought', 'خرید کرد'),
         ('abandoned', 'منصرف شد'),
@@ -467,6 +484,9 @@ class CustomerCase(models.Model):
 
     visit_result = models.CharField('نتیجه مراجعه', max_length=20,
                                     choices=RESULT_CHOICES, blank=True)
+
+    cancel_reason = models.CharField('دلیل کنسلی', max_length=40, choices=CANCEL_REASONS, blank=True)
+    result_notes = models.TextField('توضیحات نتیجه مراجعه', blank=True)
 
     created_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True,

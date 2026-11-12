@@ -98,6 +98,12 @@
                     {% if case_form.visit_result.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.visit_result.errors.0 }}</p>{% endif %}
                 </div>
 
+                <section data-case-result-fields class="rounded-xl border border-blue-100 bg-blue-50/40 p-4 space-y-4">
+                    <div data-case-cancel><label for="{{ case_form.cancel_reason.id_for_label }}" class="wf-label">دلیل کنسلی <span class="text-red-500">*</span></label>{{ case_form.cancel_reason }}{% for error in case_form.cancel_reason.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}</div>
+                    <div><label for="{{ case_form.result_notes.id_for_label }}" class="wf-label">توضیحات نتیجه مراجعه <span data-case-cancel class="text-red-500">*</span></label>{{ case_form.result_notes }}{% for error in case_form.result_notes.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}</div>
+                    {% if case_form.can_refer %}<div data-case-cancel><label for="{{ case_form.sales_owner.id_for_label }}" class="wf-label">ارجاع پیگیری به کارشناس فروش</label>{{ case_form.sales_owner }}{% for error in case_form.sales_owner.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}<p class="wf-subtitle mt-2">با ثبت پرونده، کارت به کارشناس انتخاب‌شده منتقل می‌شود و تسک پیگیری همراه با دلیل و توضیحات انصراف برای او ساخته می‌شود.</p></div>{% else %}<p data-case-cancel class="wf-subtitle">انتخاب کارشناس فروش نیازمند دسترسی «ارجاع انصراف به فروش» است.</p>{% endif %}
+                </section>
+
                 <button type="submit"
                         class="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition" data-crm-ui="ui.customers.casetab.button16" data-crm-order="160">
                     ثبت اطلاعات
@@ -122,7 +128,7 @@
                 <div class="flex justify-between"><span class="text-gray-500">وام‌ها</span><span class="font-bold text-left">{{ customer_case.loans_display|default:"—" }}</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">کالا</span><span class="font-bold">{{ customer_case.product.name|default:"—" }}</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">تعداد</span><span class="font-bold">{{ customer_case.quantity|fa_num }}</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">نتیجه</span><span class="font-bold">{{ customer_case.get_visit_result_display|default:"—" }}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">نتیجه</span><span class="font-bold">{{ customer_case.get_visit_result_display|default:"—" }}</span></div>{% if customer_case.cancel_reason %}<div class="flex justify-between gap-3"><span>دلیل کنسلی</span><span>{{ customer_case.get_cancel_reason_display }}</span></div>{% endif %}{% if customer_case.result_notes %}<p class="wf-note-box">{{ customer_case.result_notes }}</p>{% endif %}
             </div>
             <p class="text-[11px] text-gray-400 pt-2 border-t border-gray-100">
                 ثبت‌کننده:

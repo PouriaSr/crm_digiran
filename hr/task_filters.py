@@ -1,5 +1,6 @@
 from django import forms
 from django.db.models import Case, IntegerField, Value, When, F
+from django.db.models.functions import Coalesce
 from audit.views import _parse_jalali_date
 from .task_access import overdue_condition
 
@@ -57,8 +58,9 @@ def order_tasks(items, sort, prefix=''):
                         When(**{key('due_date__isnull'):True}, then=Value(3)), default=Value(2), output_field=IntegerField()),
     )
     items=items.annotate(_queue_stage=Case(*[When(**{key('source_type'):kind},then=Value(i)) for i,kind in enumerate(['admission','reception','registration','case','interview','invitation'])],default=Value(99),output_field=IntegerField()))
+    items = items.annotate(_queue_newest=Coalesce(key('queued_at'),key('created_at')))
     orders = {
-        'newest': ['-'+key('created_at'), '-'+key('pk')], 'oldest': [key('created_at'), key('pk')],
+        'newest': ['-_queue_newest', '-'+key('pk')], 'oldest': [key('created_at'), key('pk')],
         'due': [F(key('due_date')).asc(nulls_last=True), F(key('due_time')).asc(nulls_last=True), '-pk'],
         'overdue': ['_queue_due', key('due_date'), key('due_time'), '-'+key('pk')],
         'workflow': ['_queue_stage','_queue_priority','-'+key('created_at'),'-'+key('pk')],
@@ -68,7 +70,7 @@ def order_tasks(items, sort, prefix=''):
 
 
 TASK_SOURCES=[('manual','وظیفه دستی'),('admission','ثبت ورود در پذیرش'),('reception','ارجاع پذیرش'),
-              ('registration','ثبت اطلاعات'),('case','تکمیل پرونده'),('followup','پیگیری مشتری'),
+              ('registration','ثبت اطلاعات'),('case','تکمیل پرونده'),('case_followup','پیگیری انصراف پرونده'),('followup','پیگیری مشتری'),
               ('interview','مصاحبه اول'),('repeat','مصاحبه مجدد'),('invitation','دعوت به همکاری'),
               ('call','تماس'),('invoice','فاکتور'),('leave','مرخصی'),('structure','فرآیند سفارشی')]
 

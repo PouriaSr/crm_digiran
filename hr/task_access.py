@@ -33,18 +33,18 @@ def visible_tasks(user):
     from customers.access import is_card_manager
     if not is_card_manager(user):
         records = records.filter(Q(source_type='') | Q(assigned_user=user) | Q(events__report_user=user)).distinct()
-    permissions = {'admission':'customers.reception', 'reception':'customers.reception', 'invitation':'customers.hiring', 'customer_followup':'customers.followup', 'followup':'customers.followup', 'case':'customers.case', 'registration':'customers.registration', 'interview':'customers.hiring', 'call':'calls.view', 'invoice':'invoices.view', 'leave':'hr.review_leaves'}
+    permissions = {'admission':'customers.reception', 'reception':'customers.reception', 'invitation':'customers.hiring', 'case_followup':'customers.followup', 'customer_followup':'customers.followup', 'followup':'customers.followup', 'case':'customers.case', 'registration':'customers.registration', 'interview':'customers.hiring', 'call':'calls.view', 'invoice':'invoices.view', 'leave':'hr.review_leaves'}
     for kind, permission in permissions.items():
         if not has_permission(user, permission):
             records = records.exclude(source_type=kind)
     if not is_card_manager(user):
-        records = records.exclude(Q(source_type__in=['case','registration','interview','invitation','followup','customer_followup','call']) & ~Q(source_customer__assigned_to=user) & Q(source_customer__isnull=False))
+        records = records.exclude(Q(source_type__in=['case','registration','interview','invitation','followup','customer_followup','case_followup','call']) & ~Q(source_customer__assigned_to=user) & Q(source_customer__isnull=False))
     records = records.exclude(source_customer__is_deleted=True)
     if not has_permission(user,'customers.candidate_view'):
         from accounts.models import SectionRecord
         private=SectionRecord.objects.filter(section__key='info').values('pk')
         records=records.exclude(source_type='structure',source_id__in=private,source_customer__is_interviewer=True)
-    records = records.exclude(source_customer__is_interviewer=True,source_type__in=['followup','customer_followup','case','registration','call','invoice'])
+    records = records.exclude(source_customer__is_interviewer=True,source_type__in=['followup','customer_followup','case_followup','case','registration','call','invoice'])
     from accounts.models import SectionSchema,SectionRecord
     from accounts.structure_service import can_access,all_schemas
     allowed=[section.pk for section in all_schemas().values() if can_access(user,section)]
@@ -92,7 +92,7 @@ def source_url(task):
         from customers.models import InterviewSession
         rec = InterviewSession.objects.filter(pk=task.source_id).values_list('application__reception_id', flat=True).first()
         return reverse('customers:hub') + '?' + urlencode({'tab': 'hiring', 'r': rec})
-    if task.source_type in ('followup','customer_followup'):
+    if task.source_type in ('followup','customer_followup','case_followup'):
         return reverse('customers:hub') + '?' + urlencode({'tab': 'info', 'q': task.source_customer.mobile if task.source_customer else ''})
     if task.source_type == 'call':
         return reverse('calls:detail', args=[task.source_id])

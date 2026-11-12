@@ -95,7 +95,7 @@ def sync_customer_flag(customer):
         if existing and existing.status not in ('done','cancelled'):
             existing.status='cancelled';existing.save()
         return
-    if customer.followups.filter(is_done=False).exists() or customer.calls.filter(status='followup', is_followed_up=False).exists():
+    if customer.followups.filter(is_done=False).exists() or customer.calls.filter(status='followup', is_followed_up=False).exists() or customer.receptions.filter(case_result='abandoned',case_followup_owner__isnull=False,case_followup_done_at__isnull=True).exists():
         if existing and existing.status not in ('done','cancelled'):
             existing.status='cancelled';existing.save()
         return
@@ -114,6 +114,8 @@ def withdraw_stages(rec,kinds):
 
 
 def sync_reception(rec):
+    from customers.case_outcomes import sync_case_followup
+    sync_case_followup(rec)
     from .admission_tasks import reconcile, automatic_receiver
     reconcile(rec.customer)
     if (rec.customer.is_interviewer and rec.person_type != 'interviewer') or rec.workflow_version != 2:
@@ -249,6 +251,9 @@ def backfill():
             sync_followup(item)
         for item in Reception.objects.filter(workflow_version=2, customer__is_deleted=False).filter(Q(registration_completed_at__isnull=True)|Q(case_completed_at__isnull=True)).select_related('customer__assigned_to').iterator():
             sync_reception(item)
+        for item in Reception.objects.filter(case_result='abandoned',case_followup_owner__isnull=False,case_followup_done_at__isnull=True).select_related('customer','case_followup_owner').iterator():
+            from customers.case_outcomes import sync_case_followup
+            sync_case_followup(item)
         for item in HiringApplication.objects.select_related('reception__customer__assigned_to').iterator():
             sync_hiring(item)
         for item in Customer.objects.filter(needs_followup=True,is_deleted=False).iterator():
@@ -262,7 +267,7 @@ def backfill():
         # Reconcile tasks whose sources were completed, deleted or changed with bulk updates.
         sources = {'admission':(Customer.all_objects,reconcile), 'followup':(FollowUp,sync_followup), 'customer_followup':(Customer.all_objects,sync_customer_flag),
                    'reception':(Reception,sync_reception), 'case':(Reception,sync_reception),
-                   'registration':(Reception,sync_reception), 'interview':(HiringApplication,sync_hiring),
+                   'case_followup':(Reception,sync_reception), 'registration':(Reception,sync_reception), 'interview':(HiringApplication,sync_hiring),
                    'call':(Call,sync_call), 'invoice':(Invoice,sync_invoice), 'leave':(LeaveRequest,sync_leave)}
         from customers.models import InterviewSession
         sources['invitation'] = (InterviewSession,sync_invitation)
@@ -281,5 +286,27 @@ def backfill():
             owner = task_owner(task)
             if owner and not TaskNotice.objects.filter(task=task, user=owner).exists():
                 TaskNotice.objects.create(task=task, user=owner, text=('وظیفه فعال شما: '+task.title)[:250])
+    finally:
+        quiet.reset(token)
+
+
+def reconcile_pending_cases(user):
+    """Repair a missing handoff without starting work or requesting historic reports."""
+    if not has_permission(user, 'customers.case'):
+        return
+    from django.db.models import Exists, OuterRef, Value, CharField
+    from django.db.models.functions import Cast, Concat
+    from customers.models import Reception
+    from customers.access import is_card_manager
+    active = Task.objects.filter(source_type='case',source_key=Concat(Value('case:'),Cast(OuterRef('pk'),output_field=CharField())),status__in=['pending','in_progress'])
+    records = Reception.objects.filter(workflow_version=2,person_type='customer',customer__is_deleted=False,
+        customer__is_interviewer=False,referred_at__isnull=False,registration_completed_at__isnull=False,
+        case_completed_at__isnull=True).annotate(_has_task=Exists(active)).filter(_has_task=False)
+    if not is_card_manager(user):
+        records = records.filter(customer__assigned_to=user)
+    token = quiet.set(True)
+    try:
+        for rec in records.select_related('customer__assigned_to','referred_to','registration_completed_by'):
+            sync_reception(rec)
     finally:
         quiet.reset(token)

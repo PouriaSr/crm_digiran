@@ -15,7 +15,7 @@
             <details class="wf-record" data-reception-id="{{ rec.pk }}">
                 <summary class="wf-summary">
                     {% include 'customers/_workflow_row_name.html' %}
-                    <span class="wf-state"><span class="wf-badge {% if rec.registration_completed_at %}wf-badge-done{% else %}wf-badge-wait{% endif %}">{% if rec.registration_completed_at %}اطلاعات ثبت شده{% else %}آماده ثبت اطلاعات{% endif %}</span></span>
+                    <span class="wf-state"><span class="wf-badge {% if rec.registration_completed_at %}wf-badge-done{% else %}wf-badge-wait{% endif %}">{% if rec.registration_completed_at %}اطلاعات ثبت شده{% else %}آماده ثبت اطلاعات{% endif %}</span>{% if rec.registration_completed_at and not rec.case_completed_at %}<span class="wf-subtitle">در انتظار تکمیل پرونده</span>{% endif %}</span>
                     <time class="wf-time" data-label="ارجاع:" title="{{ rec.referred_at|jdate:'Y/m/d H:i' }}">{{ rec.referred_at|jdate:'Y/m/d H:i' }}</time>
                     <span class="wf-metric text-xs text-gray-500">{% if rec.registration_completed_at %}{{ rec.registration_completed_at|jdate:'m/d H:i' }}{% else %}در انتظار{% endif %}</span>
                     <span class="wf-owner" title="{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% endif %}">{% if rec.customer.assigned_to %}{{ rec.customer.assigned_to.get_full_name|default:rec.customer.assigned_to.username }}{% else %}تعیین نشده{% endif %}</span>
