@@ -9,7 +9,7 @@
     <details data-feedback-record="reception:{{ case_record.pk }}" id="case-editor" class="wf-editor" data-open-case="{% url 'customers:case_open' case_record.pk %}" {% if not case_record.case_completed_at or case_form.errors or request.GET.edit_case %}open{% endif %}>
         <summary>{% if case_record.case_completed_at %}ویرایش پرونده{% else %}تکمیل پرونده{% endif %} — {{ case_customer.name }} <span class="font-normal text-xs text-gray-400 mr-2">برای باز و بسته کردن فرم کلیک کنید</span></summary>
         <div class="wf-editor-content">
-    <div class="hr-alert mb-4">زمان انتظار این نوبت تکمیل پرونده: <strong data-case-clock>در حال شروع…</strong><span data-case-clock-error class="block text-red-700"></span><button type="button" class="wf-action mt-2" data-case-clock-retry data-crm-ui="ui.customers.casetab.button3" data-crm-order="30">به‌روزرسانی تایمر</button></div>
+    <div class="hr-alert mb-4">مدت کار روی این نوبت پرونده: <strong data-case-clock>در حال شروع…</strong><span data-case-clock-error class="block text-red-700"></span><button type="button" class="wf-action mt-2" data-case-clock-retry data-crm-ui="ui.customers.casetab.button3" data-crm-order="30">به‌روزرسانی تایمر</button></div>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">

@@ -1,5 +1,5 @@
-from django.db.models import Q
 """Deterministic workflow tasks. A unique source key prevents repeated assignments."""
+from django.db.models import Q
 from contextvars import ContextVar
 from django.contrib.auth.models import User
 from django.db import transaction
@@ -25,12 +25,13 @@ def task_owner(task):
     return task.assigned_user or (task.assigned_to.user if task.assigned_to_id else None)
 
 
-def choose_owner(preferred, permission):
+def choose_owner(preferred, permission, customer=None):
     views = {'customers.case_edit':'customers.case', 'customers.registration_edit':'customers.registration',
              'customers.reception_refer':'customers.reception', 'customers.hiring_interview':'customers.hiring',
              'customers.followup':'customers.info', 'calls.edit':'calls.view', 'invoices.edit':'invoices.view'}
+    from customers.access import can_edit_card
     def eligible(user):
-        return user and user.is_active and has_permission(user, 'hr.view_tasks') and has_permission(user, permission) and (permission not in views or has_permission(user, views[permission]))
+        return (not customer or can_edit_card(user,customer)) and user and user.is_active and has_permission(user, 'hr.view_tasks') and has_permission(user, permission) and (permission not in views or has_permission(user, views[permission]))
     for user in preferred:
         if eligible(user):
             return user
@@ -45,7 +46,7 @@ def actor_or(user=None):
     return actor if actor and actor.is_authenticated else user
 
 
-def sync(key, kind, obj, title, owner, state, customer=None, date=None, time=None, description=None, allow_unassigned=False, priority=None):
+def sync(key, kind, obj, title, owner, state, customer=None, date=None, time=None, description=None, allow_unassigned=True, priority=None, completed_at=None):
     with transaction.atomic():
         task = Task.objects.select_for_update().filter(source_key=key).first()
         if task and task.status == 'done' and state == 'cancelled':
@@ -54,8 +55,11 @@ def sync(key, kind, obj, title, owner, state, customer=None, date=None, time=Non
             return None
         default_help = {'followup':'پیگیری مشتری را انجام دهید و نتیجه تماس را در مرکز مشتریان ثبت کنید.', 'case':'پس از ثبت اطلاعات، پرونده مشتری را تکمیل و ذخیره کنید.', 'registration':'پس از ارجاع پذیرش، مشخصات مشتری را در تب ثبت اطلاعات تکمیل کنید؛ سپس پرونده فعال می‌شود.', 'interview':'جلسه مصاحبه و ارزیابی کارجو را در تب استخدام ثبت کنید.', 'call':'تماس را پیگیری و نتیجه را در بخش تماس‌ها ثبت کنید.', 'invoice':'فاکتور را بررسی و صادر کنید؛ دریافت وجه را با وضعیت پرداخت‌شده در همان فاکتور ثبت کنید.', 'leave':'درخواست مرخصی را بررسی و نتیجه تأیید یا رد را ثبت کنید.'}
         description = description or default_help.get(kind,'وظیفه را در بخش مربوط انجام دهید.')
-        values = dict(description=description, title=title[:200], assigned_user=owner, source_type=kind, source_id=obj.pk,
+        values = dict(description=description, title=title[:200], assigned_user=owner, assigned_to=None, source_type=kind, source_id=obj.pk,
                       source_customer=customer, status=state if owner or allow_unassigned else 'cancelled', due_date=date, due_time=time)
+        if state=='done' and task and task.status=='done':
+            values['assigned_user']=task.assigned_user;values['assigned_to']=task.assigned_to
+        if state=='done' and completed_at is not None:values['completed_at']=completed_at
         if priority is not None:values['priority']=priority
         if task:
             if all(getattr(task, name) == value for name, value in values.items()):
@@ -74,13 +78,13 @@ def sync_followup(item):
         Task.objects.filter(source_key='followup:'+str(item.pk)).exclude(status__in=['done','cancelled']).update(status='cancelled')
         return
     from customers.access import is_card_manager
-    owner = choose_owner([customer.assigned_to, item.created_by if is_card_manager(item.created_by) else None], 'customers.followup')
+    owner = choose_owner([customer.assigned_to, item.created_by if is_card_manager(item.created_by) else None], 'customers.followup', customer=customer)
     state = 'cancelled' if customer.is_deleted else 'done' if item.is_done else 'follow_up'
     if not item.is_done:
         sync_customer_flag(customer)
     for call in customer.calls.filter(follow_up_date=item.due_date):
         sync_call(call)
-    return sync('followup:'+str(item.pk), 'followup', item, 'پیگیری مشتری — '+customer.name, owner, state, customer, item.due_date, item.due_time, description=(item.note + ('\nنتیجه ثبت‌شده: '+item.done_note if item.is_done and item.done_note else '')).strip() or None)
+    return sync('followup:'+str(item.pk), 'followup', item, 'پیگیری مشتری — '+customer.name, owner, state, customer, item.due_date, item.due_time, description=(item.note + ('\nنتیجه ثبت‌شده: '+item.done_note if item.is_done and item.done_note else '')).strip() or None,completed_at=item.done_at)
 
 
 def sync_customer_flag(customer):
@@ -97,10 +101,16 @@ def sync_customer_flag(customer):
         return
     if not customer.needs_followup and not existing:
         return
-    owner = choose_owner([customer.assigned_to], 'customers.followup')
+    owner = choose_owner([customer.assigned_to], 'customers.followup', customer=customer)
     sync(key, 'customer_followup', customer, 'پیگیری مشتری بدون موعد — '+customer.name, owner,
          'cancelled' if customer.is_deleted else 'follow_up' if customer.needs_followup else 'done', customer,
          description='این مشتری نیاز به پیگیری دارد اما موعدی ثبت نشده است. تماس را ثبت و نیاز به پیگیری یا موعد بعدی را مشخص کنید.')
+
+
+def withdraw_stages(rec,kinds):
+    for task in Task.objects.filter(source_id=rec.pk,source_type__in=kinds).exclude(status__in=['done','cancelled']):
+        sync(task.source_key,task.source_type,rec,task.title,task.assigned_user,'cancelled',rec.customer,
+             date=task.due_date,time=task.due_time)
 
 
 def sync_reception(rec):
@@ -117,27 +127,29 @@ def sync_reception(rec):
          'cancelled' if customer.is_deleted else 'done' if rec.referred_at else 'pending', customer,
          description='ورود ثبت شده است؛ مسئول مرحله بعد را در تب پذیرش انتخاب و فرد را به ثبت اطلاعات یا استخدام ارجاع دهید.')
     if not rec.referred_at:
+        withdraw_stages(rec,['registration','case'])
         return
     if rec.person_type == 'interviewer':
+        withdraw_stages(rec,['registration','case'])
         from customers.models import HiringApplication
         app = HiringApplication.objects.filter(reception=rec).first()
         if app:
             sync_hiring(app)
         return
     cancel = customer.is_deleted
-    owner = choose_owner([customer.assigned_to, rec.referred_to], 'customers.registration_edit')
+    owner = choose_owner([customer.assigned_to, rec.referred_to], 'customers.registration_edit',customer=customer)
     seed=Task.objects.filter(source_key='registration:'+str(rec.pk)).first()
     if seed is None:seed=Task.objects.filter(source_key='case:'+str(rec.pk)).exclude(status__in=['done','cancelled']).first()
     sync('registration:'+str(rec.pk), 'registration', rec, 'ثبت اطلاعات — '+customer.name, owner,
          'cancelled' if cancel else 'done' if rec.registration_completed_at else 'pending', customer,
-         date=seed.due_date if seed else None,time=seed.due_time if seed else None,priority=seed.priority if seed else None)
+         date=seed.due_date if seed else None,time=seed.due_time if seed else None,priority=seed.priority if seed else None,completed_at=rec.registration_completed_at)
     if rec.registration_completed_at or rec.case_completed_at:
-        owner = choose_owner([customer.assigned_to, rec.registration_completed_by, rec.referred_to], 'customers.case_edit')
+        owner = choose_owner([customer.assigned_to, rec.registration_completed_by, rec.referred_to], 'customers.case_edit',customer=customer)
         working = rec.work_sessions.filter(ended_at__isnull=True).exists()
         prior=Task.objects.filter(source_key='case:'+str(rec.pk)).first()
         sync('case:'+str(rec.pk), 'case', rec, 'تکمیل پرونده — '+customer.name, owner,
              'cancelled' if cancel else 'done' if rec.case_completed_at else 'in_progress' if working else 'pending', customer,
-             date=prior.due_date if prior else None,time=prior.due_time if prior else None)
+             date=prior.due_date if prior else None,time=prior.due_time if prior else None,completed_at=rec.case_completed_at)
     else:
         # Old premature work is withdrawn, not marked as performed or reported.
         for task in Task.objects.filter(source_key='case:'+str(rec.pk)).exclude(status__in=['done','cancelled']):
@@ -151,11 +163,12 @@ def sync_hiring(app):
     from .admission_tasks import reconcile
     reconcile(customer)
     active = bool(rec.referred_at or rec.workflow_version == 1)
-    owner = choose_owner([customer.assigned_to, rec.referred_to], 'customers.hiring_interview')
+    owner = choose_owner([customer.assigned_to, rec.referred_to], 'customers.hiring_interview',customer=customer)
     session = InterviewSession.objects.filter(application=app, kind='first').order_by('pk').first()
     state = 'done' if session and session.saved_at else 'in_progress' if session and session.started_at else 'pending'
     sync('interview:'+str(app.pk), 'interview', app, 'مصاحبه اول — '+customer.name, owner,
-         'cancelled' if customer.is_deleted or not active else state, customer)
+         'cancelled' if customer.is_deleted or not active else state, customer,
+         completed_at=session.saved_at if session else None)
     from customers.recruitment_tasks import sync_interview_task
     for item in app.sessions.all():
         sync_interview_task(item, actor_or())
@@ -164,7 +177,7 @@ def sync_hiring(app):
 
 def sync_invitation(session):
     rec = session.application.reception
-    owner = choose_owner([rec.customer.assigned_to, rec.referred_to], 'customers.hiring_interview')
+    owner = choose_owner([rec.customer.assigned_to, rec.referred_to], 'customers.hiring_interview',customer=rec.customer)
     state = 'cancelled' if rec.customer.is_deleted or not (rec.referred_at or rec.workflow_version == 1) or not session.saved_at or not session.invite else 'done' if session.will_attend == 'no' or session.collaboration else 'follow_up'
     when = timezone.localtime(session.invitation_at) if session.invitation_at else None
     sync('invitation:'+str(session.pk), 'invitation', session, 'پیگیری دعوت به همکاری — '+rec.customer.name, owner,
@@ -174,11 +187,11 @@ def sync_invitation(session):
 
 def sync_call(call):
     # A FollowUp is authoritative when both representations describe one appointment.
-    if call.customer_id and call.customer.followups.filter(due_date=call.follow_up_date).exists():
+    if call.customer_id and call.follow_up_date and call.customer.followups.filter(due_date=call.follow_up_date,due_time=call.follow_up_time).filter(Q(is_done=False)|Q(done_at__gte=call.created_at)|Q(done_at__isnull=True,created_at__gte=call.created_at)).exists():
         for task in Task.objects.filter(source_key='call:'+str(call.pk)).exclude(status__in=['done','cancelled']):
             task.status='cancelled'; task.save()
         return
-    owner = choose_owner([call.customer.assigned_to if call.customer_id else None, call.called_by, call.created_by], 'calls.edit')
+    owner = choose_owner([call.customer.assigned_to if call.customer_id else None, call.called_by, call.created_by], 'calls.edit',customer=call.customer)
     state = 'done' if call.is_followed_up else 'follow_up' if call.status == 'followup' else 'cancelled'
     if call.customer_id and state == 'follow_up':
         sync_customer_flag(call.customer)
@@ -205,13 +218,15 @@ def record_change(task, before=None):
     previous_owner = task_owner(before) if before else None
     actor = actor_or()
     assignment = bool(owner and (not before or owner.pk != getattr(previous_owner, 'pk', None) or before.status in ('done','cancelled') and task.status not in ('done','cancelled')))
+    if previous_owner and previous_owner.pk!=getattr(owner,'pk',None):
+        TaskNotice.objects.filter(task=task,read_at__isnull=True).exclude(user=owner).update(read_at=timezone.now())
     if assignment:
         TaskNotice.objects.filter(task=task, read_at__isnull=True).exclude(user=owner).update(read_at=timezone.now())
         if task.status not in ('done', 'cancelled'):
             TaskNotice.objects.create(task=task, user=owner, text=('وظیفه جدید: '+task.title)[:250])
     if before and before.status != task.status:
         report_user = actor or owner
-        required = bool(not quiet.get() and report_user and task.status in ('done', 'follow_up') and before.status not in ('done', 'cancelled'))
+        required = bool(not quiet.get() and report_user and has_permission(report_user,'hr.view_tasks') and has_permission(report_user,'hr.report_tasks') and task.status in ('done', 'follow_up') and before.status not in ('done', 'cancelled'))
         event = TaskEvent.objects.create(snapshot={'title':task.title,'description':task.description or ''}, task=task, from_status=before.status, to_status=task.status, actor=actor, report_user=report_user, report_required=required)
         if owner and not quiet.get() and not assignment:
             TaskNotice.objects.create(task=task, user=owner, text=('وضعیت «'+task.title+'»: '+task.get_status_display())[:250])

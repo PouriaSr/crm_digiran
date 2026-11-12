@@ -11,11 +11,11 @@ def sync_interview_task(session, actor):
     from hr.task_automation import choose_owner
     from django.db import transaction
     rec = session.application.reception
-    user = choose_owner([rec.customer.assigned_to, rec.referred_to], 'customers.hiring_interview')
+    user = choose_owner([rec.customer.assigned_to, rec.referred_to], 'customers.hiring_interview',customer=rec.customer)
     with transaction.atomic():
         task = Task.objects.select_for_update().filter(hiring_session=session).first()
         valid = (session.saved_at and session.result == 'repeat' and session.next_interview_at
-                 and not rec.customer.is_deleted and user
+                 and not rec.customer.is_deleted
                  and (rec.referred_at or rec.workflow_version == 1))
         if not valid:
             if task and task.status not in ('done', 'cancelled'):
@@ -33,6 +33,8 @@ def sync_interview_task(session, actor):
                   'status':state, 'priority':'high', 'source_customer':rec.customer,
                   'performed_session':successor, **owner_fields(user)}
         if task:
+            if state == 'done' and task.status == 'done':
+                values.update(assigned_user=task.assigned_user, assigned_to=task.assigned_to)
             if all(getattr(task,key)==value for key,value in values.items()):
                 return task
             for key,value in values.items():setattr(task,key,value)
@@ -58,6 +60,8 @@ def finish_interview_task(session):
 
 
 def reassign_interview_tasks(application, user):
+    from hr.task_automation import choose_owner
+    user = choose_owner([user], 'customers.hiring_interview', customer=application.reception.customer)
     for task in Task.objects.filter(hiring_session__application=application,status__in=['pending','in_progress']):
         for key,value in owner_fields(user).items():setattr(task,key,value)
         task.save()

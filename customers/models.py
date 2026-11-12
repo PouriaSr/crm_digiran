@@ -262,6 +262,15 @@ class Reception(models.Model):
     registration_completed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL,
                                                   related_name='receptions_registered')
 
+    registration_last_saved_at = models.DateTimeField('آخرین ذخیره اطلاعات', null=True, blank=True, editable=False)
+    registration_last_saved_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', editable=False)
+    registration_last_edited_at = models.DateTimeField('آخرین ویرایش اطلاعات', null=True, blank=True, editable=False)
+    registration_last_edited_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', editable=False)
+    case_last_saved_at = models.DateTimeField('آخرین ذخیره پرونده', null=True, blank=True, editable=False)
+    case_last_saved_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', editable=False)
+    case_last_edited_at = models.DateTimeField('آخرین ویرایش پرونده', null=True, blank=True, editable=False)
+    case_last_edited_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', editable=False)
+
     class Meta:
         verbose_name = 'پذیرش حضوری'
         verbose_name_plural = 'پذیرش‌های حضوری'
@@ -299,6 +308,21 @@ class Reception(models.Model):
     def wait_display(self):
         seconds = self.wait_seconds
         return f'{seconds // 3600:02}:{seconds // 60 % 60:02}:{seconds % 60:02}'
+
+    @property
+    def case_wait_timing(self):
+        """Queue time ends at first real case work, never at form completion/edit."""
+        from django.db.models import Min
+        first=getattr(self,'case_first_started_at',None) if hasattr(self,'case_first_started_at') else self.work_sessions.aggregate(value=Min('started_at'))['value']
+        ready=self.registration_completed_at
+        historical=bool((first and ready and first<ready) or (self.case_completed_at and ready and self.case_completed_at<ready))
+        if historical or not ready and (first or self.case_completed_at):ready=self.referred_at
+        if self.person_type!='customer':return {'ready':False}
+        known=bool(ready and (first or not self.case_completed_at))
+        seconds=max(0,int(((first or timezone.now())-ready).total_seconds())) if known else None
+        return {'ready':bool(ready or first or self.case_completed_at),'started_at':ready,'ended_at':first,
+                'seconds':seconds,'display':f'{seconds//3600:02}:{seconds//60%60:02}:{seconds%60:02}' if seconds is not None else 'ثبت نشده',
+                'waiting':bool(ready and not first and not self.case_completed_at),'historical':historical}
 
 
 # ═══════════════════════════════════════════════════════════════

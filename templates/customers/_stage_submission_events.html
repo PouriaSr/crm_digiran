@@ -1,0 +1,6 @@
+{% load fa_numbers %}
+<dl class="wf-fields wf-submission-events">
+ <div><dt>ثبت اولیه</dt><dd>{% if first_at %}<bdi dir="ltr">{{ first_at|jdate:'Y/m/d · H:i:s' }}</bdi><small>{{ first_by|user_label }}</small>{% else %}هنوز ثبت نشده{% endif %}</dd></div>
+ <div><dt>آخرین ذخیره</dt><dd>{% if saved_at %}<bdi dir="ltr">{{ saved_at|jdate:'Y/m/d · H:i:s' }}</bdi><small>{{ saved_by|user_label }}</small>{% elif first_at %}در سوابق ثبت نشده{% else %}—{% endif %}</dd></div>
+ <div><dt>آخرین ویرایش</dt><dd>{% if edited_at %}<bdi dir="ltr">{{ edited_at|jdate:'Y/m/d · H:i:s' }}</bdi><small>{{ edited_by|user_label }}</small>{% elif saved_at %}ویرایشی ثبت نشده{% elif first_at %}در سوابق ثبت نشده{% else %}—{% endif %}</dd></div>
+</dl>

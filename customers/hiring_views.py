@@ -103,7 +103,7 @@ def hiring_context(request, records):
     for rec in page:
         application = getattr(rec, 'hiring', None)
         if application:
-            application.session_history = paginate(request, application.sessions.select_related('job_ad','interviewer','invited_by','saved_by').order_by('-round_number'), f'sessions_{rec.pk}_page')
+            application.session_history = paginate(request, application.sessions.select_related('job_ad','interviewer','invited_by','saved_by','first_saved_by','last_saved_by','last_edited_by').order_by('-round_number'), f'sessions_{rec.pk}_page')
             application.referral_history = paginate(request, application.referrals.select_related('from_user','to_user','actor').order_by('-created_at','-pk'), f'referrals_{rec.pk}_page')
     ad_scope = Q(applications__reception__customer__is_deleted=False)
     if not is_card_manager(request.user):
@@ -276,6 +276,8 @@ def persist_session(request, rec, application, session, editing=False):
         return HttpResponse('جلسات قبلی فقط در تاریخچه قابل مشاهده‌اند.', status=409)
     form = InterviewForm(request.POST, instance=session, customer=rec.customer,
                          can_documents=has_permission(request.user, 'customers.hiring_documents'))
+    from .stage_tracking import snapshot
+    original = snapshot(form)
     valid = form.is_valid()
     resume_form = None
     if has_permission(request.user, 'customers.hiring_documents') and request.FILES.get('resume'):
@@ -294,8 +296,15 @@ def persist_session(request, rec, application, session, editing=False):
     if not session.ended_at:
         session.ended_at = max(now, session.started_at)
     if not session.saved_at:
+        session.first_saved_by = request.user
         session.saved_at = max(now, session.ended_at)
-    session.saved_by = request.user
+    if not session.saved_by_id and not editing:
+        session.saved_by = request.user
+    session.last_saved_at, session.last_saved_by = now, request.user
+    identity_changed = ('national_id' in form.cleaned_data and
+                        form.cleaned_data['national_id'] != rec.customer.national_id)
+    if editing and (original != snapshot(form) or identity_changed or resume_form is not None):
+        session.last_edited_at, session.last_edited_by = now, request.user
     session.save()
     finish_applicant_wait(rec, session)
     if 'national_id' in form.cleaned_data:

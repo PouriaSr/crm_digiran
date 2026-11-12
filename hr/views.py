@@ -173,6 +173,13 @@ def task_list(request):
         from .task_access import owned_tasks
         base_qs = base_qs.filter(Q(pk__in=owned_tasks(request.user).values('pk')) | Q(events__report_user=request.user)).distinct()
     tasks = base_qs.select_related('assigned_to','assigned_user','created_by','hiring_session__application__reception')
+    unresolved=(Q(assigned_user__isnull=True)&(Q(assigned_to__isnull=True)|Q(assigned_to__user__isnull=True))&(Q(hiring_session__isnull=False)|~Q(source_type='')))&~Q(status__in=['done','cancelled'])
+    unassigned_count=base_qs.filter(unresolved).count() if can_manage and scope!='mine' else 0
+    assignment=request.GET.get('assignment','')
+    if can_manage and scope!='mine':
+        if assignment=='unassigned':tasks=tasks.filter(unresolved)
+        elif assignment=='assigned':tasks=tasks.exclude(unresolved)
+        elif assignment:tasks=tasks.none()
 
     search = request.GET.get('q', '').strip()
     if search:
@@ -241,7 +248,7 @@ def task_list(request):
     unlinked=list(employees.filter(user__isnull=True))
     for emp in unlinked:emp.filter_key='e:'+str(emp.pk)
     context = {
-        'unlinked_employees':unlinked,'page_obj': page_obj,
+        'unassigned_count':unassigned_count,'current_assignment':assignment,'unlinked_employees':unlinked,'page_obj': page_obj,
         'stats': stats,
         'search': search,
         'current_scope': scope, 'queue_filters': queue_filters,

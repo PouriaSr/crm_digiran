@@ -8,7 +8,7 @@ from crm.pagination import PAGE_SIZE
 from crm.numerals import digit_contains
 from .models import Task, TaskEvent, TaskNotice
 from .task_access import owned_tasks, source_url, visible_tasks, overdue_condition
-from .task_filters import TaskQueueFilters, filter_task_dates, order_tasks, filter_task_properties, available_sources
+from .task_filters import TASK_SOURCES,TaskQueueFilters, filter_task_dates, order_tasks, filter_task_properties, available_sources
 
 
 def inbox_records(user):
@@ -110,7 +110,7 @@ def personal_inbox(user, params):
     for item in rows:
         task = item if view == 'work' else item.task
         row = {'task': task.pk, 'title': task.title, 'url': reverse('hr:task_detail',args=[task.pk]),
-               'status': task.get_status_display(), 'status_key': task.status, 'report_count': pending_counts.get(task.pk,0), 'unread_count': unread_counts.get(task.pk,0)}
+               'status': task.get_status_display(), 'stage_status':task.workflow_status_display,'source_label':dict(TASK_SOURCES).get('repeat' if task.hiring_session_id else 'manual' if not task.source_type else 'followup' if task.source_type=='customer_followup' else task.source_type,''), 'status_key': task.status, 'report_count': pending_counts.get(task.pk,0), 'unread_count': unread_counts.get(task.pk,0)}
         if view == 'work':
             permission = 'customers.hiring_interview' if task.hiring_session_id else action_permissions.get(task.source_type,'hr.report_tasks')
             can_act=permission in permissions

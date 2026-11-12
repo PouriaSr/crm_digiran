@@ -16,6 +16,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from accounts.permissions import get_user_permissions, has_permission, require_permission
 from .access import can_edit_card, is_card_manager
+from .stage_tracking import snapshot, record_submission
 from .forms import CustomerCaseForm, CustomerForm
 from .models import Customer, CustomerCase, Reception, RecordUpdate, CaseWorkSession, HiringApplication, InterviewSession, HiringReferral
 from calls.models import Call
@@ -35,9 +36,10 @@ def allowed_tabs(user):
 
 
 def workflow_records():
-    return Reception.objects.filter(workflow_version=2, customer__is_deleted=False).exclude(customer__is_interviewer=True,person_type='customer').select_related(
-        'customer', 'customer__assigned_to', 'customer__ad_source', 'customer__case', 'customer__case__product',
+    return Reception.objects.filter(workflow_version=2, customer__is_deleted=False).exclude(customer__is_interviewer=True,person_type='customer').annotate(case_first_started_at=Subquery(CaseWorkSession.objects.filter(reception_id=OuterRef('pk')).order_by('started_at','pk').values('started_at')[:1])).select_related(
+        'customer', 'customer__assigned_to', 'customer__created_by', 'customer__ad_source', 'customer__case', 'customer__case__product',
         'referred_to', 'referred_by', 'created_by', 'case_completed_by', 'registration_completed_by',
+        'registration_last_saved_by', 'registration_last_edited_by', 'case_last_saved_by', 'case_last_edited_by',
     ).prefetch_related(Prefetch(
         'customer__calls',
         queryset=Call.objects.select_related('called_by').order_by('-call_date', '-pk')[:1],
@@ -69,7 +71,7 @@ def hiring_records(user):
     # Hiring also includes archived records; the same owner boundary applies.
     records = Reception.objects.filter(
         customer__is_deleted=False, person_type='interviewer', pk=Subquery(latest),
-    ).filter(Q(workflow_version=1) | Q(referred_at__isnull=False)).select_related('customer', 'customer__assigned_to', 'customer__ad_source',
+    ).filter(Q(workflow_version=1) | Q(referred_at__isnull=False)).select_related('customer', 'customer__assigned_to', 'customer__created_by', 'customer__ad_source',
                      'customer__case', 'customer__case__product', 'created_by',
                      'referred_to', 'referred_by', 'case_completed_by', 'registration_completed_by',
                      'hiring', 'hiring__job_ad', 'hiring__latest_session', 'hiring__latest_session__invited_by','hiring__latest_session__next_task','hiring__latest_session__next_task__assigned_user','hiring__latest_session__next_task__assigned_to')
@@ -338,7 +340,13 @@ def case_clock(request):
     sessions = CaseWorkSession.objects.filter(pk__in=ids, reception__customer__is_deleted=False)
     if not is_card_manager(request.user):
         sessions = sessions.filter(reception__customer__assigned_to=request.user)
-    return JsonResponse({'server_now':timezone.now().isoformat(), 'sessions':list(sessions.values('pk','started_at','ended_at'))}, headers={'Cache-Control':'no-store'})
+    requested=[int(value) for value in request.GET.getlist('receptions')[:100] if value.isascii() and value.isdigit() and len(value)<16]
+    from dashboard.templatetags.fa_numbers import jdate
+    waiting=[]
+    for rec in editable_records(request.user).filter(pk__in=requested,person_type='customer'):
+        timing=rec.case_wait_timing
+        waiting.append({'pk':rec.pk,'wait_ended_at':timing.get('ended_at'),'wait_ended_display':jdate(timing['ended_at'],'Y/m/d · H:i:s') if timing.get('ended_at') else '', 'wait_started_at':timing.get('started_at')})
+    return JsonResponse({'server_now':timezone.now().isoformat(), 'sessions':list(sessions.values('pk','started_at','ended_at')),'waiting':waiting}, headers={'Cache-Control':'no-store'})
 
 
 def case_snapshot(case):
@@ -371,7 +379,7 @@ def case_open(request, pk):
     if not rec.referred_at or not rec.registration_completed_at:
         return HttpResponse('ابتدا ارجاع پذیرش و ثبت اطلاعات را تکمیل کنید.', status=409)
     session = start_case_work(rec, request.user)
-    return JsonResponse({'id': session.pk, 'started_at': session.started_at.isoformat(), 'server_now': timezone.now().isoformat(), 'seconds': session.seconds})
+    return JsonResponse({'id': session.pk, 'started_at': session.started_at.isoformat(), 'server_now': timezone.now().isoformat(), 'seconds': session.seconds,'case_wait':rec.case_wait_timing})
 
 
 @login_required
@@ -392,6 +400,7 @@ def case_save(request):
     case = CustomerCase.objects.filter(customer=customer).first()
     before = case_snapshot(case)
     form = CustomerCaseForm(request.POST, instance=case)
+    original = snapshot(form)
     if form.is_valid():
         active = CaseWorkSession.objects.filter(reception=rec, ended_at__isnull=True).first()
         posted_session = normalize_digits(request.POST.get('work_session', ''))
@@ -406,9 +415,7 @@ def case_save(request):
         case.save()
         active.ended_at, active.ended_by = max(timezone.now(), active.started_at), request.user
         active.save(update_fields=['ended_at', 'ended_by'])
-        if not rec.case_completed_at:
-            rec.case_completed_at, rec.case_completed_by = timezone.now(), request.user
-            rec.save(update_fields=['case_completed_at', 'case_completed_by', 'updated_at'])
+        record_submission(rec, 'case', request.user, original != snapshot(form))
         from .hub_views import _log_record_update, CASE_LABELS
         after = case_snapshot(case)
         _log_record_update(customer, 'case', before, after, CASE_LABELS, request.user)
@@ -442,13 +449,20 @@ def registration_form(request, pk):
     # Same profile popup, fully prefilled. The tab permission authorizes this stage.
     form = CustomerForm(request.POST if request.method == 'POST' else None, instance=customer, limited=not has_permission(request.user, 'customers.profile_full'))
     form.fields.pop('assigned_to', None)  # Changing ownership is a separate operation.
+    original = snapshot(form)
     if request.method == 'POST' and form.is_valid():
         form.save()
-        if not rec.registration_completed_at:
-            rec.registration_completed_at, rec.registration_completed_by = timezone.now(), request.user
-            rec.info_submitted = True
-            rec.save(update_fields=['registration_completed_at', 'registration_completed_by', 'info_submitted', 'updated_at'])
-        messages.success(request, 'اطلاعات مراجعه‌کننده ثبت شد؛ مرحله پرونده برای این فرد فعال است.')
+        record_submission(rec, 'registration', request.user, original != snapshot(form))
+        from hr.models import Task
+        handoff=Task.objects.filter(source_key='case:'+str(rec.pk)).select_related('assigned_user','assigned_to__user').first()
+        if rec.case_completed_at:
+            messages.success(request,'ثبت اطلاعات و پرونده این مراجعه تکمیل شده‌اند.')
+        elif handoff and handoff.needs_assignment:
+            messages.warning(request,'اطلاعات ثبت شد؛ وظیفه تکمیل پرونده نیازمند تعیین مسئول واجد دسترسی است. سرپرست باید مسئول کارت یا دسترسی مرحله را اصلاح کند.')
+        elif handoff:
+            messages.success(request,'اطلاعات ثبت شد؛ وظیفه تکمیل پرونده برای «'+handoff.responsible_display+'» ثبت شده است.')
+        else:
+            messages.warning(request,'اطلاعات ثبت شد؛ وضعیت وظیفه مرحله پرونده باید توسط سرپرست بررسی شود.')
         if request.headers.get('HX-Request'):
             return HttpResponse(status=204, headers={'HX-Redirect': back_to('registration', rec), 'HX-Trigger': 'closeModal'})
         return redirect(back_to('registration', rec))

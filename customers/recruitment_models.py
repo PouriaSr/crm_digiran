@@ -101,6 +101,12 @@ class InterviewSession(models.Model):
     invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     collaboration = models.CharField('تبدیل به همکار', choices=COLLABORATION, max_length=20, blank=True)
 
+    first_saved_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', editable=False)
+    last_saved_at = models.DateTimeField('آخرین ذخیره', null=True, blank=True, editable=False)
+    last_saved_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', editable=False)
+    last_edited_at = models.DateTimeField('آخرین ویرایش', null=True, blank=True, editable=False)
+    last_edited_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', editable=False)
+
     class Meta:
         ordering = ['-round_number']
         constraints = [models.UniqueConstraint(fields=['application', 'round_number'], name='unique_application_interview_round'), models.UniqueConstraint(fields=['application'], condition=models.Q(saved_at__isnull=True), name='one_unsaved_interview_per_application')]

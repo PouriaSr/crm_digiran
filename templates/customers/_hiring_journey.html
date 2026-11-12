@@ -1,0 +1,32 @@
+{% load fa_numbers %}
+{% if rec %}<details class="wf-info-section wf-detail-accordion wf-hiring-journey" open data-preserve-key="hiring-journey-{{ rec.pk }}">
+ <summary class="wf-section-heading"><h4>روند مراجعه استخدام</h4><span>ورود، ارجاع و جلسه‌های مصاحبه</span></summary>
+ <ol class="wf-journey" role="list">
+  <li class="is-complete"><div class="wf-journey-heading"><h5>ثبت اولیه فرد</h5><time>{{ rec.customer.created_at|jdate:'Y/m/d · H:i:s' }}</time></div><p>ثبت‌کننده اولیه: {{ rec.customer.created_by|user_label }}</p></li>
+  <li class="is-complete"><div class="wf-journey-heading"><h5>ورود به پذیرش</h5><time>{{ rec.arrived_at|default:rec.created_at|jdate:'Y/m/d · H:i:s' }}</time></div><p>ثبت‌کننده ورود: {{ rec.created_by|user_label }}</p>{% if rec.hiring.current_arrived_at and rec.hiring.current_arrived_at != rec.arrived_at %}<p>آخرین ورود: <bdi dir="ltr">{{ rec.hiring.current_arrived_at|jdate:'Y/m/d · H:i:s' }}</bdi></p>{% endif %}</li>
+  <li class="{% if rec.referred_at %}is-complete{% else %}is-current{% endif %}"><div class="wf-journey-heading"><h5>ارجاع پذیرش به استخدام</h5>{% if rec.referred_at %}<time>{{ rec.referred_at|jdate:'Y/m/d · H:i:s' }}</time>{% else %}<span class="wf-unset">در انتظار ارجاع</span>{% endif %}</div><p>مسئول: {{ rec.referred_to|user_label }} · ارجاع‌دهنده: {{ rec.referred_by|user_label }}</p></li>
+ </ol>
+ {% if referrals %}<details class="hr-session-card"><summary>تغییر مسئول استخدام · {{ referrals.paginator.count|fa_num }} ارجاع</summary><ol class="wf-journey" role="list">{% for referral in referrals %}<li class="is-complete"><div class="wf-journey-heading"><h5>{{ referral.from_user|user_label }} ← {{ referral.to_user|user_label }}</h5><time>{{ referral.created_at|jdate:'Y/m/d · H:i:s' }}</time></div><p>توسط {{ referral.actor|user_label }}</p>{% if referral.note %}<p>{{ referral.note }}</p>{% endif %}</li>{% endfor %}</ol>{% include 'includes/_pagination.html' with page=referrals %}</details>{% endif %}
+ {% if sessions %}<p class="wf-subtitle">جلسه‌ها از جدیدترین به قدیمی‌ترین؛ انتظار و نتیجه هر نوبت مستقل است.</p>
+ <ol class="wf-journey" role="list">{% for session in sessions %}
+  <li class="{% if session.saved_at %}is-complete{% else %}is-current{% endif %}">
+   <details {% if forloop.first %}open{% endif %}><summary class="wf-journey-heading"><h5>جلسه {{ session.round_number|fa_num }} · {{ session.get_kind_display }}</h5><span class="wf-badge {% if session.saved_at %}wf-badge-done{% else %}wf-badge-wait{% endif %}">{% if session.saved_at %}{{ session.get_result_display|default:'نتیجه ثبت نشده' }}{% elif session.ended_at %}در انتظار ثبت ارزیابی{% else %}در حال مصاحبه{% endif %}</span></summary>
+   <dl class="wf-fields">
+    <div><dt>ورود این نوبت</dt><dd>{{ session.arrived_at|jdate:'Y/m/d · H:i:s'|default:'در سوابق ثبت نشده' }}</dd></div>
+    <div><dt>پایان انتظار / شروع مصاحبه</dt><dd>{{ session.started_at|jdate:'Y/m/d · H:i:s' }}</dd></div>
+    <div><dt>مجموع انتظار</dt><dd>{% if session.waiting_minutes != None %}{{ session.waiting_minutes|fa_num }} دقیقه{% else %}در سوابق ثبت نشده{% endif %}</dd></div>
+    <div><dt>پایان مصاحبه</dt><dd>{{ session.ended_at|jdate:'Y/m/d · H:i:s'|default:'هنوز پایان نیافته' }}</dd></div>
+    <div><dt>مدت مصاحبه</dt><dd><span data-session-timer data-interview-id="{{ session.pk }}" data-start="{{ session.started_at|date:'c' }}" data-end="{{ session.ended_at|date:'c' }}" data-server-now="{% now 'c' %}">{{ session.minutes|fa_num }} دقیقه</span></dd></div>
+    <div><dt>مصاحبه‌کننده</dt><dd>{{ session.interviewer|user_label }}</dd></div>
+    <div><dt>آگهی و سمت</dt><dd>{{ session.job_ad|default:'تعیین نشده' }}</dd></div>
+    {% if session.saved_at %}<div><dt>نوع برخورد</dt><dd>{{ session.get_behavior_display|default:'ثبت نشده' }}</dd></div><div><dt>انطباق با سمت</dt><dd>{{ session.get_fit_display|default:'ثبت نشده' }}</dd></div><div><dt>جدیت درخواست</dt><dd>{{ session.get_seriousness_display|default:'ثبت نشده' }}</dd></div><div><dt>سؤال‌های کارجو</dt><dd>{{ session.get_questions_display|default:'ثبت نشده' }}</dd></div><div><dt>امتیاز</dt><dd>{{ session.grade|default:'ثبت نشده' }}</dd></div>{% endif %}
+    {% if session.rejection_reason %}<div><dt>دلیل رد</dt><dd>{{ session.get_rejection_reason_display }}</dd></div>{% endif %}
+    {% if session.proposed_role_title %}<div><dt>سمت پیشنهادی</dt><dd>{{ session.proposed_role_title }}</dd></div><div><dt>تجربه مرتبط</dt><dd>{{ session.get_experience_display|default:'ثبت نشده' }}</dd></div>{% endif %}
+    {% if session.next_interview_at %}<div><dt>زمان برنامه‌ریزی‌شده مصاحبه بعد</dt><dd>{{ session.next_interview_at|jdate:'Y/m/d · H:i' }}</dd></div>{% endif %}
+    {% if session.invite %}<div><dt>زمان برنامه‌ریزی‌شده دعوت به همکاری</dt><dd>{{ session.invitation_at|jdate:'Y/m/d · H:i'|default:'تعیین نشده' }}</dd></div><div><dt>مسئول دعوت</dt><dd>{{ session.invited_by|user_label }}</dd></div><div><dt>پاسخ به حضور</dt><dd>{{ session.get_will_attend_display|default:'هنوز ثبت نشده' }}</dd></div><div><dt>وضعیت همکاری</dt><dd>{{ session.get_collaboration_display|default:'هنوز ثبت نشده' }}</dd></div>{% endif %}
+   </dl>
+   {% include 'customers/_stage_submission_events.html' with first_at=session.saved_at first_by=session.first_saved_by saved_at=session.last_saved_at saved_by=session.last_saved_by edited_at=session.last_edited_at edited_by=session.last_edited_by %}
+   {% if session.notes %}<div class="wf-note-box"><h5>توضیحات این جلسه</h5><p>{{ session.notes }}</p></div>{% endif %}
+  </details></li>{% endfor %}</ol>{% include 'includes/_pagination.html' with page=sessions %}
+ {% else %}<dl class="wf-fields"><div><dt>شروع انتظار</dt><dd>{{ rec.wait_started_at|default:rec.arrived_at|jdate:'Y/m/d · H:i:s'|default:'در سوابق ثبت نشده' }}</dd></div><div><dt>پایان انتظار</dt><dd>در انتظار شروع مصاحبه</dd></div><div><dt>مجموع انتظار</dt><dd>{% if rec.wait_started_at %}<span data-session-timer data-hiring-wait="{{ rec.pk }}" data-start="{{ rec.wait_started_at|date:'c' }}" data-end="{{ rec.wait_ended_at|date:'c' }}" data-server-now="{% now 'c' %}">{{ rec.wait_minutes_total|default_if_none:0|fa_num }} دقیقه</span>{% else %}در سوابق ثبت نشده{% endif %}</dd></div></dl><p class="wf-note-box">{% if rec.referred_at %}در انتظار شروع مصاحبه؛ هنوز جلسه‌ای ثبت نشده است.{% else %}پس از ارجاع پذیرش، روند مصاحبه در همین بخش نمایش داده می‌شود.{% endif %}</p>{% endif %}
+</details>{% endif %}

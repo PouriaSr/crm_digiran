@@ -25,6 +25,7 @@
     {% endif %}
 </div>
 
+{% if unassigned_count %}<div class="crm-form-section" role="status"><strong>{{ unassigned_count|fa_num }} وظیفه خودکار نیازمند تعیین مسئول است.</strong><p class="text-sm text-slate-600 mt-2">برای این کارها، مسئول فعال با دسترسی مرحله و کارت پیدا نشده است. دسترسی یا مسئول کارت را اصلاح کنید؛ وظیفه حذف نشده است.</p><a class="text-blue-600 inline-flex min-h-[44px] items-center" href="{% url 'hr:task_list' %}?assignment=unassigned">مشاهده وظایف بدون مسئول</a></div>{% endif %}
 <div class="stats-grid stats-grid-4">
     <div class="bg-white rounded-xl p-5 shadow-sm border-t-4 border-blue-500">
         <div class="text-gray-500 text-sm">کل وظایف</div>
@@ -60,6 +61,7 @@
         </select>
 
         {% if current_scope != 'mine' %}<select name="responsible" aria-label="کاربر مسئول" class="px-4 py-2 border border-gray-300 rounded-lg text-sm"><option value="">همه کاربران مسئول</option>{% for owner in responsible_users %}<option value="{{ owner.pk }}" {% if current_responsible == owner.pk|stringformat:'s' %}selected{% endif %}>{{ owner.get_full_name|default:owner.username }}</option>{% endfor %}{% for emp in unlinked_employees %}<option value="e:{{ emp.pk }}" {% if current_responsible == emp.filter_key %}selected{% endif %}>{{ emp.full_name }} (کارمند)</option>{% endfor %}</select>{% endif %}
+{% if 'hr.manage_tasks' in user_permissions and current_scope != 'mine' %}<select name="assignment" aria-label="تعیین مسئول"><option value="">همه واگذاری‌ها</option><option value="unassigned" {% if current_assignment == 'unassigned' %}selected{% endif %}>نیازمند تعیین مسئول</option><option value="assigned" {% if current_assignment == 'assigned' %}selected{% endif %}>دارای مسئول</option></select>{% endif %}
         <select name="due" aria-label="مهلت انجام" class="px-4 py-2 border border-gray-300 rounded-lg text-sm"><option value="">همه موعدها</option><option value="overdue" {% if current_due == 'overdue' %}selected{% endif %}>عقب‌افتاده</option><option value="today" {% if current_due == 'today' %}selected{% endif %}>موعد امروز</option><option value="upcoming" {% if current_due == 'upcoming' %}selected{% endif %}>روزهای آینده</option><option value="undated" {% if current_due == 'undated' %}selected{% endif %}>بدون موعد</option></select>
         <select name="source" aria-label="بخش / مرحله"><option value="">همه بخش‌ها</option>{% for value,label in source_choices %}<option value="{{ value }}" {% if current_source == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
         <select name="report" aria-label="گزارش کار"><option value="">همه گزارش‌ها</option><option value="pending" {% if current_report == 'pending' %}selected{% endif %}>در انتظار گزارش</option><option value="submitted" {% if current_report == 'submitted' %}selected{% endif %}>گزارش ثبت‌شده</option></select>
@@ -99,7 +101,7 @@
                     {% if task.status == 'done' %}<span class="px-2.5 py-1 rounded-full text-xs bg-green-100 text-green-700">انجام شده</span>
                     {% elif task.status == 'follow_up' %}<span class="px-2.5 py-1 rounded-full text-xs bg-blue-100 text-blue-700">در پیگیری</span>{% elif task.status == 'in_progress' %}<span class="px-2.5 py-1 rounded-full text-xs bg-yellow-100 text-yellow-700">در حال انجام</span>
                     {% elif task.status == 'cancelled' %}<span class="px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-700">لغو شده</span>
-                    {% else %}<span class="px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-700">در انتظار</span>{% endif %}
+                    {% else %}<span class="px-2.5 py-1 rounded-full text-xs {% if task.needs_assignment %}bg-amber-50 text-amber-800{% else %}bg-gray-100 text-gray-700{% endif %}">{{ task.workflow_status_display }}</span>{% endif %}
                 </td>
                 <td class="px-4 py-3 text-right text-xs {% if task.is_overdue %}text-red-600 font-bold{% else %}text-gray-500{% endif %}" data-label="مهلت" dir="ltr">
                     {{ task.due_date|jdate:"Y/m/d"|default:"--" }}{% if task.due_time %} · {{ task.due_time|time:"H:i" }}{% endif %}

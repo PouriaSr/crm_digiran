@@ -133,10 +133,24 @@ class Task(models.Model):
         return self.title
 
     @property
+    def needs_assignment(self):
+        return bool((self.source_type or self.hiring_session_id) and self.status not in ('done','cancelled') and
+                    not self.assigned_user_id and (not self.assigned_to_id or not self.assigned_to.user_id))
+
+    @property
+    def workflow_status_display(self):
+        if self.needs_assignment:return 'نیازمند تعیین مسئول'
+        if self.status=='pending':
+            if self.hiring_session_id:return 'در انتظار مصاحبه مجدد'
+            return {'admission':'در انتظار ثبت ورود','reception':'در انتظار ارجاع','registration':'در انتظار ثبت اطلاعات','case':'در انتظار تکمیل پرونده','interview':'در انتظار مصاحبه'}.get(self.source_type,self.get_status_display())
+        if self.status=='in_progress' and self.source_type=='case':return 'در حال تکمیل پرونده'
+        return self.get_status_display()
+
+    @property
     def responsible_display(self):
         if self.assigned_user_id:
             return self.assigned_user.get_full_name() or self.assigned_user.username
-        return self.assigned_to.full_name if self.assigned_to_id else 'تعیین نشده'
+        return self.assigned_to.full_name if self.assigned_to_id else 'نیازمند تعیین مسئول' if self.needs_assignment else 'تعیین نشده'
 
     @property
     def recruitment_url(self):
