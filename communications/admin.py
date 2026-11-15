@@ -23,6 +23,7 @@ class TestRunAdmin(admin.ModelAdmin):
     list_filter = ('channel', 'kind', 'status', 'created_at')
     search_fields = ('recipient', 'subject', 'rendered_text', 'result', 'requested_by__username')
     readonly_fields = ('channel', 'kind', 'status', 'recipient', 'subject', 'rendered_text', 'custom_text',
+                       'provider_reference', 'request_token',
                        'template', 'result', 'requested_by', 'created_at')
     actions = None
 

@@ -14,12 +14,18 @@ class ConfigurationForm(forms.ModelForm):
         self.channel = channel
         self.fields['provider'] = forms.ChoiceField(label='سرویس پیشنهادی', choices=PROVIDERS[channel])
         self.fields['credential_env'] = forms.RegexField(label='نام متغیر اعتبار اتصال', regex=r'^[A-Z][A-Z0-9_]{2,99}$', required=False,
-            help_text='فقط نام متغیر محیطی، مثلاً SMS_API_KEY؛ کلید یا رمز واقعی را اینجا وارد نکنید.', error_messages={'invalid': 'نامی مانند SMS_API_KEY با حروف بزرگ انگلیسی وارد کنید.'})
+            help_text='فقط نام متغیر محیطی، مثلاً MELLIPAYAMAK_API_KEY؛ کلید یا رمز واقعی را اینجا وارد نکنید.', error_messages={'invalid': 'نامی مانند MELLIPAYAMAK_API_KEY با حروف بزرگ انگلیسی وارد کنید.'})
         self.fields['sender'].label = {'sms': 'شماره یا خط فرستنده', 'email': 'ایمیل فرستنده', 'whatsapp': 'شماره فرستنده'}[channel]
         if channel == 'email':
             self.fields['sender'] = forms.EmailField(label='ایمیل فرستنده', required=False)
         if channel in ('sms', 'whatsapp') or (channel == 'email'):
-            self.fields['endpoint'] = forms.URLField(label='نشانی API پیشنهادی', required=False, help_text='برای مستندسازی اتصال آینده است؛ فعلاً هیچ درخواست شبکه‌ای به این نشانی اجرا نمی‌شود.')
+            self.fields['endpoint'] = forms.URLField(label='نشانی API', required=False, help_text='برای ارسال واقعی فقط نشانی رسمی و امن سرویس پذیرفته می‌شود.')
+        if channel == 'sms':
+            self.fields['username_env'] = forms.RegexField(
+                label='نام متغیر نام کاربری سرویس', regex=r'^[A-Z][A-Z0-9_]{2,99}$', required=False,
+                help_text='نام کاربری واقعی در محیط هاست نگهداری می‌شود؛ برای ملی‌پیامک MELLIPAYAMAK_USERNAME را وارد کنید.',
+                error_messages={'invalid': 'نامی مانند MELLIPAYAMAK_USERNAME با حروف بزرگ انگلیسی وارد کنید.'},
+            )
         if channel == 'email':
             self.fields['host'] = forms.CharField(label='میزبان سرویس', max_length=253, required=False)
             self.fields['port'] = forms.IntegerField(label='پورت', min_value=1, max_value=65535, required=False)
@@ -37,6 +43,13 @@ class ConfigurationForm(forms.ModelForm):
                 field.initial = self.instance.connection.get(name, {'security': 'starttls'}.get(name, ''))
             field.widget.attrs.setdefault('placeholder', field.label)
         self.fields['credential_env'].widget.attrs['dir'] = 'ltr'
+        if channel == 'sms':
+            self.fields['username_env'].widget.attrs['dir'] = 'ltr'
+            provider = self.data.get(f'{self.prefix}-provider') if self.is_bound else self.instance.provider
+            if provider == 'melipayamak' or (not self.is_bound and not self.instance.pk):
+                self.fields['credential_env'].initial = self.instance.credential_env or 'MELLIPAYAMAK_API_KEY'
+                self.fields['username_env'].initial = self.instance.connection.get('username_env') or 'MELLIPAYAMAK_USERNAME'
+                self.fields['endpoint'].initial = self.instance.connection.get('endpoint') or 'https://rest.payamak-panel.com/api/SendSMS/SendSMS'
 
     def save(self, commit=True):
         config = super().save(commit=False)
@@ -101,7 +114,7 @@ class SimulationForm(forms.Form):
         else:
             self.fields['recipient'].label = 'شماره مقصد تست'
             self.fields['recipient'].widget.attrs.update(placeholder='09123456789', dir='ltr', inputmode='tel')
-        self.fields['recipient'].help_text = 'این مقصد فقط برای شبیه‌سازی ثبت می‌شود؛ پیام یا تماس واقعی انجام نمی‌شود.'
+        self.fields['recipient'].help_text = 'با «پیش‌نمایش» چیزی ارسال نمی‌شود؛ دکمه «ارسال واقعی» پیام را به همین مقصد می‌فرستد.'
 
     def clean_recipient(self):
         value = self.cleaned_data['recipient']
@@ -119,8 +132,8 @@ class SimulationForm(forms.Form):
 
 class LogFilterForm(forms.Form):
     q = forms.CharField(label='جستجو در آزمایش‌ها', required=False, max_length=200, widget=forms.TextInput(attrs={'placeholder': 'مقصد، متن یا نام کاربر…'}))
-    status = forms.ChoiceField(label='نتیجه', required=False, choices=[('', 'همه نتیجه‌ها'), ('simulated', 'شبیه‌سازی شد'), ('incomplete', 'نیاز به تکمیل')])
-    kind = forms.ChoiceField(label='نوع آزمایش', required=False, choices=[('', 'همه آزمایش‌ها'), ('message', 'تست پیام'), ('configuration', 'بررسی تنظیمات')])
+    status = forms.ChoiceField(label='نتیجه', required=False, choices=[('', 'همه نتیجه‌ها'), ('sent', 'ارسال شد'), ('verified', 'اتصال تأیید شد'), ('simulated', 'پیش‌نمایش شد'), ('incomplete', 'ناموفق یا ناقص')])
+    kind = forms.ChoiceField(label='نوع عملیات', required=False, choices=[('', 'همه عملیات‌ها'), ('live', 'ارسال واقعی'), ('message', 'پیش‌نمایش پیام'), ('configuration', 'بررسی اتصال')])
     date_from = forms.CharField(label='از تاریخ', required=False, widget=forms.TextInput(attrs={'data-jdp': '', 'placeholder': 'انتخاب تاریخ…'}))
     date_to = forms.CharField(label='تا تاریخ', required=False, widget=forms.TextInput(attrs={'data-jdp': '', 'placeholder': 'انتخاب تاریخ…'}))
 

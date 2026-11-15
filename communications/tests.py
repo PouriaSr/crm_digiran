@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from django.contrib import admin
 from django.contrib.auth.models import Group, User
@@ -11,6 +11,7 @@ from accounts.permissions import ROLE_TO_GROUP
 from .admin import TestRunAdmin
 from .forms import MessageTemplateForm, SimulationForm
 from .models import ChannelConfiguration, MessageTemplate, TestRun
+from .services import MELLIPAYAMAK_SEND_URL, send_melipayamak
 
 
 class MessagingManagementTests(TestCase):
@@ -28,6 +29,14 @@ class MessagingManagementTests(TestCase):
         data.update(changes)
         return data
 
+    def melipayamak_config_data(self, **changes):
+        data = self.config_data(**{
+            'config-provider': 'melipayamak', 'config-credential_env': 'MELLIPAYAMAK_API_KEY',
+            'config-username_env': 'MELLIPAYAMAK_USERNAME', 'config-endpoint': MELLIPAYAMAK_SEND_URL,
+        })
+        data.update(changes)
+        return data
+
     def template_data(self, **changes):
         data = {'action': 'save_template', 'template-name': 'قالب اختصاصی', 'template-category': 'followup',
                 'template-body': 'سلام {customer_name}، {task_title}', 'template-is_active': 'on'}
@@ -38,7 +47,7 @@ class MessagingManagementTests(TestCase):
         data = {'action': 'simulate', 'simulation-template': str((template or self.sms_template).pk),
                 'simulation-recipient': '۰۹۱۲۳۴۵۶۷۸۹', 'simulation-sample_name': '<script>نام</script>',
                 'simulation-company_name': 'دیجیران', 'simulation-task_title': 'پیگیری آزمایشی',
-                'simulation-custom_text': 'متن دلخواه کاربر'}
+                'simulation-custom_text': 'متن دلخواه کاربر', 'live_send_token': 'test-request-token-00000000000001'}
         data.update(changes)
         return data
 
@@ -65,7 +74,7 @@ class MessagingManagementTests(TestCase):
     def test_each_section_renders_independently(self):
         self.client.force_login(self.admin)
         expected = {'configuration': 'id="configuration-form"', 'templates': 'id="template-form"',
-                    'test': 'id="simulation-form"', 'history': 'سابقه آزمایش‌های'}
+                    'test': 'id="simulation-form"', 'history': 'سابقه عملیات'}
         for section, marker in expected.items():
             response = self.client.get(self.url, {'section': section})
             self.assertEqual(response.status_code, 200)
@@ -86,6 +95,7 @@ class MessagingManagementTests(TestCase):
         self.assertEqual(self.client.post(self.url, self.template_data()).status_code, 403)
         self.assertEqual(self.client.post(self.url, self.simulation_data()).status_code, 302)
         self.assertEqual(TestRun.objects.get().requested_by, self.manager)
+        self.assertEqual(self.client.post(self.url, self.simulation_data(**{'action': 'send_live'})).status_code, 403)
 
     def test_custom_template_can_be_created_and_edited(self):
         self.client.force_login(self.admin)
@@ -198,7 +208,42 @@ class MessagingManagementTests(TestCase):
         self.client.post(self.url, {'action': 'check'})
         latest = TestRun.objects.first()
         self.assertEqual(latest.status, 'simulated')
-        self.assertIn('هنوز بررسی نشده‌اند', latest.result)
+        self.assertIn('هنوز بررسی نشده', latest.result)
+
+    def test_admin_can_send_real_sms_only_through_provider_adapter(self):
+        self.client.force_login(self.admin)
+        self.client.post(self.url, self.melipayamak_config_data())
+        with patch('communications.views.send_melipayamak', return_value='987654321') as sender:
+            response = self.client.post(
+                self.url + '?channel=sms&section=test', self.simulation_data(**{'action': 'send_live'}),
+            )
+        self.assertEqual(response.status_code, 302)
+        run = TestRun.objects.get()
+        self.assertEqual((run.kind, run.status, run.provider_reference), ('live', 'sent', '987654321'))
+        duplicate = self.client.post(
+            self.url + '?channel=sms&section=test', self.simulation_data(**{'action': 'send_live'}),
+        )
+        self.assertEqual(duplicate.status_code, 302)
+        self.assertEqual(TestRun.objects.count(), 1)
+        sender.assert_called_once()
+
+    def test_melipayamak_adapter_reads_secrets_from_environment_and_returns_reference(self):
+        config = ChannelConfiguration(
+            channel='sms', provider='melipayamak', sender='1000123',
+            credential_env='MELLIPAYAMAK_API_KEY',
+            connection={'endpoint': MELLIPAYAMAK_SEND_URL, 'username_env': 'MELLIPAYAMAK_USERNAME'},
+        )
+        response = MagicMock()
+        response.read.return_value = b'{"Value":"123456","RetStatus":1,"StrRetStatus":"Ok"}'
+        opener = MagicMock()
+        opener.return_value.__enter__.return_value = response
+        with patch.dict('os.environ', {'MELLIPAYAMAK_USERNAME': 'demo-user', 'MELLIPAYAMAK_API_KEY': 'demo-key'}), \
+             patch('communications.services.urlopen', opener):
+            reference = send_melipayamak(config, '09123456789', 'متن تست')
+        self.assertEqual(reference, '123456')
+        request = opener.call_args.args[0]
+        self.assertIn(b'password=demo-key', request.data)
+        self.assertNotIn('demo-key', str(config.connection))
 
     def test_invalid_destination_stays_on_form_with_local_error(self):
         self.client.force_login(self.admin)
@@ -209,5 +254,5 @@ class MessagingManagementTests(TestCase):
 
     def test_unknown_action_is_rejected(self):
         self.client.force_login(self.admin)
-        self.assertEqual(self.client.post(self.url, {'action': 'send_live'}).status_code, 400)
+        self.assertEqual(self.client.post(self.url, {'action': 'unknown_action'}).status_code, 400)
         self.assertFalse(TestRun.objects.exists())

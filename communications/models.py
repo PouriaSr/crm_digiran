@@ -57,12 +57,19 @@ class MessageTemplate(models.Model):
 
 class TestRun(models.Model):
     channel = models.CharField(max_length=16, choices=ChannelConfiguration.CHANNELS)
-    kind = models.CharField(max_length=16, choices=[('message', 'تست پیام'), ('configuration', 'بررسی تنظیمات')])
-    status = models.CharField(max_length=16, choices=[('simulated', 'شبیه‌سازی شد'), ('incomplete', 'نیاز به تکمیل')])
+    kind = models.CharField(max_length=16, choices=[
+        ('live', 'ارسال واقعی'), ('message', 'پیش‌نمایش پیام'), ('configuration', 'بررسی اتصال'),
+    ])
+    status = models.CharField(max_length=16, choices=[
+        ('sent', 'ارسال شد'), ('verified', 'اتصال تأیید شد'), ('simulated', 'پیش‌نمایش شد'),
+        ('incomplete', 'ناموفق یا ناقص'),
+    ])
     recipient = models.CharField('مقصد آزمایش', max_length=254, blank=True)
     subject = models.CharField(max_length=200, blank=True)
     rendered_text = models.TextField(max_length=5000, blank=True)
     custom_text = models.TextField('متن افزوده‌شده', max_length=1500, blank=True)
+    provider_reference = models.CharField('شناسه سرویس', max_length=255, blank=True)
+    request_token = models.CharField('شناسه درخواست', max_length=64, blank=True, null=True, unique=True)
     template = models.ForeignKey(MessageTemplate, null=True, blank=True, on_delete=models.SET_NULL,
                                  related_name='test_runs', verbose_name='قالب')
     result = models.TextField()

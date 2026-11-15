@@ -2291,28 +2291,35 @@
     "path": "communications/center.html"
   },
   "ui.communications.center.button20": {
-    "label": "ثبت و اجرای آزمایش",
+    "label": "ثبت پیش‌نمایش",
     "section": "پیام‌رسانی",
     "kind": "button",
     "position": 200,
     "path": "communications/center.html"
   },
   "ui.communications.center.button21": {
-    "label": "بررسی پیکربندی",
+    "label": "بررسی اتصال",
     "section": "پیام‌رسانی",
     "kind": "button",
     "position": 210,
     "path": "communications/center.html"
   },
+  "ui.communications.center.button_live_send": {
+    "label": "ارسال واقعی پیامک",
+    "section": "پیام‌رسانی",
+    "kind": "button",
+    "position": 215,
+    "path": "communications/center.html"
+  },
   "ui.communications.center.h222": {
-    "label": "نتیجه آخرین آزمایش",
+    "label": "نتیجه آخرین عملیات",
     "section": "پیام‌رسانی",
     "kind": "heading",
     "position": 220,
     "path": "communications/center.html"
   },
   "ui.communications.center.h223": {
-    "label": "سابقه آزمایش‌های",
+    "label": "سابقه عملیات",
     "section": "پیام‌رسانی",
     "kind": "heading",
     "position": 230,
@@ -9363,6 +9370,20 @@
     "position": 100,
     "path": "includes/_form_field.html"
   },
+  "field.communications.forms.ConfigurationForm.username_env": {
+    "label": "نام متغیر نام کاربری سرویس",
+    "section": "پیام‌رسانی",
+    "kind": "field",
+    "position": 100,
+    "path": "includes/_form_field.html"
+  },
+  "field.communications.forms.ConfigurationForm.endpoint": {
+    "label": "نشانی API",
+    "section": "پیام‌رسانی",
+    "kind": "field",
+    "position": 100,
+    "path": "includes/_form_field.html"
+  },
   "field.communications.forms.LogFilterForm.q": {
     "label": "جستجو در آزمایش‌ها",
     "section": "پیام‌رسانی",
@@ -9378,7 +9399,7 @@
     "path": "includes/_form_field.html"
   },
   "field.communications.forms.LogFilterForm.kind": {
-    "label": "نوع آزمایش",
+    "label": "نوع عملیات",
     "section": "پیام‌رسانی",
     "kind": "field",
     "position": 100,

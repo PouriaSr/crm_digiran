@@ -1,3 +1,4 @@
+import secrets
 from urllib.parse import urlencode
 
 from django.contrib import messages
@@ -13,7 +14,8 @@ from crm.numerals import digit_contains
 from crm.pagination import paginate
 from .forms import ConfigurationForm, LogFilterForm, MessageTemplateForm, SimulationForm, TemplateFilterForm
 from .models import ChannelConfiguration, MessageTemplate, TestRun
-from .services import DEFAULT_TEMPLATE, VARIABLES, configuration_gaps, render_message, sample_values
+from .services import (DEFAULT_TEMPLATE, VARIABLES, ProviderConnectionError, configuration_gaps,
+                       render_message, sample_values, send_melipayamak, verify_melipayamak)
 
 
 SECTION_PERMISSIONS = {
@@ -50,13 +52,15 @@ def center(request):
         'save_configuration': 'communications.manage',
         'save_template': 'communications.manage_templates',
         'simulate': 'communications.test',
+        'send_live': 'communications.send_live',
         'check': 'communications.test',
     }
     if request.method == 'POST' and action not in action_permissions:
         return HttpResponseBadRequest('عملیات معتبر نیست.')
     if action and not has_permission(request.user, action_permissions[action]):
         return _handle_denied(request, action_permissions[action], '403', 'dashboard:home')
-    action_section = {'save_configuration': 'configuration', 'save_template': 'templates', 'simulate': 'test', 'check': 'test'}.get(action)
+    action_section = {'save_configuration': 'configuration', 'save_template': 'templates', 'simulate': 'test',
+                      'send_live': 'test', 'check': 'test'}.get(action)
     if action_section and action_section not in allowed_sections:
         return _handle_denied(request, SECTION_PERMISSIONS[action_section], '403', 'dashboard:home')
 
@@ -71,7 +75,7 @@ def center(request):
                                     instance=config, channel=channel, prefix='config')
     template_form = MessageTemplateForm(request.POST if action == 'save_template' else None,
                                         instance=editing_template, channel=channel, prefix='template')
-    simulation_form = SimulationForm(request.POST if action == 'simulate' else None,
+    simulation_form = SimulationForm(request.POST if action in ('simulate', 'send_live') else None,
                                      channel=channel, prefix='simulation')
 
     if action == 'save_configuration' and config_form.is_valid():
@@ -82,7 +86,7 @@ def center(request):
             'updated_by': request.user,
         })
         request.feedback_context = {'form': '#configuration-form'}
-        messages.success(request, 'پیکربندی کانال ذخیره شد؛ هنوز هیچ اتصال یا ارسال واقعی فعال نیست.')
+        messages.success(request, 'پیکربندی کانال ذخیره شد؛ برای اطمینان «بررسی اتصال» را اجرا کنید.')
         return redirect(_url(channel, 'configuration') + '#configuration-form')
 
     if action == 'save_template' and template_form.is_valid():
@@ -95,7 +99,7 @@ def center(request):
         messages.success(request, 'قالب پیام ذخیره شد و اکنون در بخش آزمایش قابل انتخاب است.')
         return redirect(_url(channel, 'templates', edit=item.pk) + '#template-form')
 
-    if action == 'simulate' and simulation_form.is_valid():
+    if action in ('simulate', 'send_live') and simulation_form.is_valid():
         item = simulation_form.cleaned_data['template']
         values = sample_values(simulation_form.cleaned_data)
         try:
@@ -109,24 +113,69 @@ def center(request):
         except ValidationError as error:
             simulation_form.add_error(None, error)
         else:
-            run = TestRun.objects.create(
-                channel=channel, kind='message', status='simulated',
-                recipient=simulation_form.cleaned_data['recipient'], subject=subject,
-                rendered_text=body, custom_text=custom_text, template=item, requested_by=request.user,
-                result='پیش‌نمایش نهایی آماده و ثبت شد. هیچ پیام، ایمیل یا واتساپ واقعی ارسال نشد.',
-            )
-            request.feedback_context = {'form': '#simulation-form'}
-            messages.success(request, 'آزمایش پیام انجام شد؛ نتیجه نهایی در همین تب نمایش داده می‌شود.')
-            return redirect(_url(channel, 'test', run=run.pk) + '#simulation-result')
+            is_live = action == 'send_live'
+            reference = ''
+            if is_live:
+                if channel != 'sms':
+                    simulation_form.add_error(None, 'ارسال واقعی فعلاً فقط برای پیامک ملی‌پیامک فعال است.')
+                else:
+                    request_token = request.POST.get('live_send_token', '')
+                    if len(request_token) < 24 or len(request_token) > 64 or not request_token.isascii():
+                        return HttpResponseBadRequest('شناسه ارسال معتبر نیست؛ صفحه را تازه‌سازی کنید.')
+                    previous = TestRun.objects.filter(request_token=request_token).first()
+                    if previous:
+                        messages.info(request, 'این درخواست قبلاً پردازش شده است و دوباره ارسال نشد.')
+                        return redirect(_url(channel, 'test', run=previous.pk) + '#simulation-result')
+                    run = TestRun.objects.create(
+                        channel=channel, kind='live', status='incomplete',
+                        recipient=simulation_form.cleaned_data['recipient'], subject=subject,
+                        rendered_text=body, custom_text=custom_text, template=item, requested_by=request.user,
+                        request_token=request_token, result='درخواست ارسال در حال پردازش است.',
+                    )
+                    try:
+                        reference = send_melipayamak(config, simulation_form.cleaned_data['recipient'], body)
+                    except ProviderConnectionError as error:
+                        run.result = f'ارسال انجام نشد: {error}'
+                        run.save(update_fields=['result'])
+                        messages.error(request, 'ارسال پیامک انجام نشد؛ جزئیات امن خطا ثبت شد.')
+                        return redirect(_url(channel, 'test', run=run.pk) + '#simulation-result')
+            if not simulation_form.errors:
+                if is_live:
+                    run.status = 'sent'
+                    run.provider_reference = reference
+                    run.result = 'پیامک واقعی با موفقیت به سرویس ملی‌پیامک تحویل شد.'
+                    run.save(update_fields=['status', 'provider_reference', 'result'])
+                else:
+                    run = TestRun.objects.create(
+                        channel=channel, kind='message', status='simulated',
+                        recipient=simulation_form.cleaned_data['recipient'], subject=subject,
+                        rendered_text=body, custom_text=custom_text, template=item, requested_by=request.user,
+                        result='پیش‌نمایش نهایی آماده و ثبت شد. هیچ پیامی ارسال نشد.',
+                    )
+                request.feedback_context = {'form': '#simulation-form'}
+                messages.success(request, 'پیامک واقعی ارسال شد.' if is_live else 'پیش‌نمایش پیام ثبت شد؛ چیزی ارسال نشد.')
+                return redirect(_url(channel, 'test', run=run.pk) + '#simulation-result')
 
     if action == 'check':
         gaps = configuration_gaps(config)
+        status = 'incomplete' if gaps else 'simulated'
+        if gaps:
+            result = 'موارد تکمیل‌نشده: ' + '، '.join(gaps) + '.'
+        elif channel == 'sms' and config.provider == 'melipayamak':
+            try:
+                verify_melipayamak(config)
+            except ProviderConnectionError as error:
+                result = f'اتصال ملی‌پیامک تأیید نشد: {error}'
+                status = 'incomplete'
+            else:
+                result = 'اتصال و اعتبار API ملی‌پیامک تأیید شد. هیچ پیامکی ارسال نشد.'
+                status = 'verified'
+        else:
+            result = 'پیکربندی پیشنهادی کامل است؛ اتصال واقعی این سرویس هنوز بررسی نشده است.'
         run = TestRun.objects.create(
-            channel=channel, kind='configuration', status='incomplete' if gaps else 'simulated', requested_by=request.user,
-            result=('موارد تکمیل‌نشده: ' + '، '.join(gaps) + '. ' if gaps else 'پیکربندی پیشنهادی کامل است. ')
-                   + 'اتصال، اعتبار کلید و دسترسی سرویس واقعی هنوز بررسی نشده‌اند.',
+            channel=channel, kind='configuration', status=status, requested_by=request.user, result=result,
         )
-        messages.info(request, 'نتیجه بررسی محلی پیکربندی ثبت شد.')
+        messages.info(request, 'نتیجه بررسی پیکربندی ثبت شد؛ هیچ پیامی ارسال نشد.')
         return redirect(_url(channel, 'test', run=run.pk) + '#simulation-result')
 
     can_manage = has_permission(request.user, 'communications.manage')
@@ -189,8 +238,9 @@ def center(request):
         'config_form': config_form, 'template_form': template_form, 'editing_template': editing_template,
         'simulation_form': simulation_form, 'can_manage': can_manage,
         'can_manage_templates': can_manage_templates, 'can_test': has_permission(request.user, 'communications.test'),
+        'can_send_live': has_permission(request.user, 'communications.send_live'),
         'variables': list(VARIABLES.items()), 'template_filters': template_filters,
         'template_page': paginate(request, templates, key='template_page'),
         'filters': filters, 'page_obj': paginate(request, logs), 'selected_run': selected,
-        'templates_json': templates_for_test,
+        'templates_json': templates_for_test, 'live_send_token': secrets.token_urlsafe(32),
     })
