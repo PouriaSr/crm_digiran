@@ -7,11 +7,12 @@ Barگذاری .env قبل از settings.py + monkey-patch برای PyMySQL.
 django.conf.settings استفاده کرد. مستقیم از os.environ می‌خونیم.
 """
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 # ─── بارگذاری متغیرهای .env (اگه فایل موجود باشه) ───
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
 # ─── Monkey-patch: PyMySQL جایگزین mysqlclient ───
 # فقط اگه DB_ENGINE=mysql باشه فعال می‌شه.

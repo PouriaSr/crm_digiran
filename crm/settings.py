@@ -8,12 +8,15 @@ import urllib.parse
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# Passenger/cPanel may start the process with a working directory other than
+# the project root.  Resolve .env explicitly instead of relying on cwd.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(PROJECT_ROOT / '.env')
 
 # ═══════════════════════════════════════════════════════════
 # مسیرها
 # ═══════════════════════════════════════════════════════════
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = PROJECT_ROOT
 
 
 # ═══════════════════════════════════════════════════════════
