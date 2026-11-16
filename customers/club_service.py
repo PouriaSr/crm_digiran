@@ -46,6 +46,22 @@ def purchase_budget(program, proposed_down_payment):
     return program.purchase_limit
 
 
+def maximum_purchase_price(program, proposed_down_payment):
+    """Maximum phone price that can be offered before the customer-paid difference."""
+    return program.credit_limit + proposed_down_payment
+
+
+def covered_purchase_amount(program, proposed_down_payment):
+    """Amount covered by the usable loan share plus the entered down payment."""
+    usable = purchase_budget(program, proposed_down_payment)
+    return usable if program.no_down_purchase_limit else usable + proposed_down_payment
+
+
+def purchase_difference(program, proposed_down_payment, product_price):
+    """Customer-paid part left after the usable lender contribution."""
+    return max(0, int(product_price) - covered_purchase_amount(program, proposed_down_payment))
+
+
 def evaluate_case(case, requested_credit, proposed_down_payment):
     programs, rejected = [], []
     candidates = LoanProgram.objects.filter(
@@ -57,7 +73,7 @@ def evaluate_case(case, requested_credit, proposed_down_payment):
             programs.append(program)
         else:
             rejected.append({'program': str(program), 'reason': reason})
-    max_budget = max((purchase_budget(item, proposed_down_payment) for item in programs), default=0)
+    max_budget = max((maximum_purchase_price(item, proposed_down_payment) for item in programs), default=0)
     products = list(Product.objects.filter(is_active=True, stock__gt=0, price__lte=max_budget)
                     .filter(MOBILE_PRODUCTS).select_related('category').order_by('-price', 'name')[:20]) if max_budget else []
     return programs, products, rejected
@@ -80,6 +96,13 @@ def create_payment_schedule(account):
     if account.club_fee:
         rows.append(ClubPayment(account=account, payment_type='club_fee', amount=account.club_fee,
                                 due_date=today, status='scheduled', created_by=account.selected_by))
+    difference = purchase_difference(program, actual_down_payment, account.product.price)
+    if difference:
+        rows.append(ClubPayment(
+            account=account, payment_type='purchase_difference', amount=difference,
+            due_date=today, status='scheduled', created_by=account.selected_by,
+            notes='مابه‌التفاوت قیمت گوشی و سهم قابل‌استفاده طرح وام؛ رسید پرداخت را ثبت کنید.',
+        ))
     rows.extend(ClubPayment(account=account, payment_type='installment', amount=program.monthly_installment,
                             due_date=add_months(today, number), status='scheduled', created_by=account.selected_by)
                 for number in range(1, program.term_months + 1))

@@ -7,7 +7,7 @@ from hr.models import Task
 from products.models import Category, Product
 
 from .club_models import ClubAccount, ClubPayment, LoanEvaluation, LoanProgram
-from .club_service import evaluate_case, purchase_budget
+from .club_service import covered_purchase_amount, evaluate_case, purchase_budget, purchase_difference
 from .models import Customer, CustomerCase, Reception
 
 
@@ -122,6 +122,31 @@ class ClubWorkflowTests(TestCase):
         self.assertTrue(account.payments.filter(
             payment_type='down_payment', amount=15_000_000,
         ).exists())
+
+    def test_phone_difference_is_offered_and_added_to_receiptable_payments(self):
+        phone = Product.objects.create(
+            category=self.category, name='گوشی با مابه‌التفاوت', code='PHONE-DIFF',
+            price=90_000_000, cost_price=70_000_000, stock=1,
+        )
+        response = self.client.post(reverse('customers:club_evaluate', args=[self.rec.pk]), {
+            'requested_credit': 100_000_000, 'proposed_down_payment': 0,
+        })
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn(phone.pk, {item['id'] for item in data['products']})
+        azki_data = next(item for item in data['programs'] if item['provider'] == 'ازکی')
+        azki = LoanProgram.objects.get(pk=azki_data['id'])
+        self.assertEqual(azki_data['contribution'], covered_purchase_amount(azki, 0))
+        self.assertEqual(purchase_difference(azki, 0, phone.price), 28_000_000)
+        response = self.client.post(reverse('customers:club_select', args=[self.rec.pk]), {
+            'evaluation': data['evaluation'], 'program': azki.pk, 'product': phone.pk,
+            'delivery_type': 'instant', 'club_fee': 0,
+        })
+        self.assertEqual(response.status_code, 200)
+        account = ClubAccount.objects.get(customer=self.customer)
+        difference = account.payments.get(payment_type='purchase_difference')
+        self.assertEqual(difference.amount, 28_000_000)
+        self.assertEqual(difference.status, 'scheduled')
 
     def test_private_receipt_and_card_ownership_are_enforced(self):
         evaluation = LoanEvaluation.objects.create(

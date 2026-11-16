@@ -43,6 +43,20 @@ class CaseWaitTimingTests(TestCase):
         self.assertEqual(CaseWorkSession.objects.count(),before)
         self.rec.refresh_from_db();self.assertIsNone(self.rec.case_completed_at)
 
+    def test_case_clock_returns_active_session_for_live_refresh(self):
+        session = CaseWorkSession.objects.create(
+            reception=self.rec, started_at=self.ready + timedelta(minutes=20), started_by=self.user,
+        )
+        stamp = self.ready + timedelta(minutes=27)
+        with patch('django.utils.timezone.now', return_value=stamp):
+            response = self.client.get(reverse('customers:case_clock'), {'ids': [session.pk]})
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['server_now'], stamp.isoformat())
+        self.assertEqual(data['sessions'][0]['pk'], session.pk)
+        self.assertIsNone(data['sessions'][0]['ended_at'])
+        self.assertEqual(response.headers['Cache-Control'], 'no-store')
+
     def test_old_order_uses_referral_and_missing_work_logs_remain_unknown(self):
         first=self.ready-timedelta(minutes=2)
         CaseWorkSession.objects.create(reception=self.rec,started_at=first,ended_at=first+timedelta(minutes=1))

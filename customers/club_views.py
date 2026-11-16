@@ -15,7 +15,10 @@ from products.models import Product
 from .access import can_edit_card
 from .club_forms import ClubPaymentForm, ClubSelectionForm, LoanEvaluationForm, LoanProgramSettingsForm
 from .club_models import ClubAccount, ClubPayment, LoanEvaluation, LoanProgram
-from .club_service import create_payment_schedule, evaluate_case, program_eligibility, purchase_budget
+from .club_service import (
+    covered_purchase_amount, create_payment_schedule, evaluate_case, maximum_purchase_price,
+    program_eligibility, purchase_budget, purchase_difference,
+)
 from .models import Reception
 
 
@@ -55,7 +58,7 @@ def evaluate(request, pk):
             )
         return JsonResponse({'ok': False, 'message': message, 'rejected': rejected}, status=422)
     if not products:
-        max_budget = max(purchase_budget(item, form.cleaned_data['proposed_down_payment']) for item in programs)
+        max_budget = max(maximum_purchase_price(item, form.cleaned_data['proposed_down_payment']) for item in programs)
         return JsonResponse({
             'ok': False,
             'message': (
@@ -78,7 +81,9 @@ def evaluate(request, pk):
         'programs': [{
             'id': item.pk, 'title': str(item), 'provider': item.get_provider_display(),
             'months': item.term_months, 'credit': item.credit_limit,
-            'monthly': item.monthly_installment, 'budget': purchase_budget(item, evaluation.proposed_down_payment),
+            'monthly': item.monthly_installment,
+            'budget': maximum_purchase_price(item, evaluation.proposed_down_payment),
+            'contribution': covered_purchase_amount(item, evaluation.proposed_down_payment),
             'down': item.down_payment, 'entered_down': evaluation.proposed_down_payment,
             'guarantee': item.guarantee,
             'employment': item.employment_note,
@@ -107,7 +112,8 @@ def select_offer(request, pk):
     if program.pk not in evaluation.result_program_ids or product.pk not in evaluation.result_product_ids:
         return JsonResponse({'ok': False, 'message': 'پیشنهاد انتخابی متعلق به این ارزیابی نیست.'}, status=409)
     accepted, reason = program_eligibility(program, rec.customer.case)
-    if not accepted or product.stock < 1 or product.price > purchase_budget(program, evaluation.proposed_down_payment):
+    if (not accepted or product.stock < 1 or
+            product.price > maximum_purchase_price(program, evaluation.proposed_down_payment)):
         return JsonResponse({'ok': False, 'message': reason or 'قیمت یا موجودی گوشی از زمان ارزیابی تغییر کرده است.'}, status=409)
     delivery = form.cleaned_data['delivery_type']
     panel_url = 'https://example.com/b2b' if delivery == 'instant' else 'https://example.com/b2c'
@@ -127,7 +133,9 @@ def select_offer(request, pk):
     create_payment_schedule(account)
     from hr.task_automation import sync_club_account
     sync_club_account(account)
-    return JsonResponse({'ok': True, 'message': f'قرارداد {account.contract_number} ثبت شد؛ مشتری به باشگاه اضافه شد.',
+    difference = purchase_difference(program, evaluation.proposed_down_payment, product.price)
+    difference_text = f' مابه‌التفاوت {difference:,} تومان نیز برای ثبت رسید در برنامه پرداخت ایجاد شد.' if difference else ''
+    return JsonResponse({'ok': True, 'message': f'قرارداد {account.contract_number} ثبت شد؛ مشتری به باشگاه اضافه شد.{difference_text}',
                          'redirect': f"{reverse('customers:hub')}?tab=club&r={rec.pk}"})
 
 

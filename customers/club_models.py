@@ -103,7 +103,9 @@ class ClubAccount(models.Model):
 class ClubPayment(models.Model):
     TYPES = [
         ('down_payment', 'پیش‌پرداخت'), ('installment', 'قسط'),
-        ('club_fee', 'هزینه باشگاه مشتریان'), ('purchase', 'پرداخت خرید'), ('other', 'سایر'),
+        ('club_fee', 'هزینه باشگاه مشتریان'),
+        ('purchase_difference', 'مابه‌التفاوت خرید'),
+        ('purchase', 'پرداخت خرید'), ('other', 'سایر'),
     ]
     STATUS = [('scheduled', 'برنامه‌ریزی شده'), ('paid', 'پرداخت شده'), ('overdue', 'معوق'), ('cancelled', 'لغو شده')]
     account = models.ForeignKey(ClubAccount, on_delete=models.CASCADE, related_name='payments')
