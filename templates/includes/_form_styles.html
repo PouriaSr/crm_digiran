@@ -10,4 +10,11 @@
 [data-input-icon-left="action"]{--crm-input-left:64px}
 [data-input-icon-right] input:not(.items-placeholder):not(.dropdown-input):not([id$="-ts-control"]){padding-right:var(--crm-input-right)!important;background-image:none}
 [data-input-icon-left] input:not(.items-placeholder):not(.dropdown-input):not([id$="-ts-control"]){padding-left:var(--crm-input-left)!important}
+/* Shared dimensions: forms, workflow panels and feature pages should feel like one system. */
+:root{--crm-control-height:46px;--crm-control-radius:10px;--crm-panel-radius:16px;--crm-button-height:44px;--crm-layout-gap:18px}
+.crm-form input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not(.dropdown-input):not(.items-placeholder):not([id$="-ts-control"]),.crm-form select:not(.tomselected),.crm-form textarea{min-height:var(--crm-control-height)!important;border-radius:var(--crm-control-radius)!important}
+.crm-form .ts-wrapper .ts-control{min-height:var(--crm-control-height)!important;border-radius:var(--crm-control-radius)!important}
+.crm-form-actions :is(button,a){min-height:var(--crm-button-height);border-radius:var(--crm-control-radius)}
+.crm-form-section{border-radius:var(--crm-panel-radius)}
+@media(max-width:767px){:root{--crm-control-height:48px;--crm-button-height:46px;--crm-layout-gap:14px}}
 </style>

@@ -1,5 +1,7 @@
 <style>
-.crm-print-action{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:8px 13px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#334155;font-size:11px;font-weight:800}
+.crm-print-action{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:8px 14px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#334155;font-size:12px;font-weight:750;white-space:nowrap;box-shadow:0 1px 2px #0f172a08}
+.crm-print-action:hover{background:#f8fafc;border-color:#94a3b8}.crm-print-action:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+.crm-print-action svg{width:16px;height:16px}.crm-auto-print-toolbar{display:flex;justify-content:flex-end;padding:12px 16px;border-bottom:1px solid #eef2f7}
 .crm-print-heading{display:none}
 @media print{
   @page{size:A4 landscape;margin:12mm}
@@ -7,16 +9,49 @@
   body.crm-print-mode *{visibility:hidden!important}
   body.crm-print-mode .crm-print-target,body.crm-print-mode .crm-print-target *{visibility:visible!important}
   body.crm-print-mode .crm-print-target{position:absolute!important;inset:0!important;width:100%!important;max-width:none!important;margin:0!important;padding:0!important;background:#fff!important;color:#111827!important;box-shadow:none!important}
-  body.crm-print-mode .crm-print-target [data-print-trigger],body.crm-print-mode .crm-print-target form,body.crm-print-mode .crm-print-target dialog,body.crm-print-mode .crm-print-target .pagination,body.crm-print-mode .crm-print-target nav{display:none!important}
+  body.crm-print-mode .crm-print-target :is([data-print-trigger],.crm-print-exclude,dialog,.pagination,nav,button,input,select,textarea,.ts-wrapper){display:none!important}
+  body.crm-print-mode .crm-print-target form{display:block!important}
   body.crm-print-mode .crm-print-target .crm-print-heading{display:flex!important;align-items:flex-end;justify-content:space-between;gap:20px;padding:0 0 12px;margin:0 0 16px;border-bottom:2px solid #1e3a5f}
   .crm-print-heading strong{display:block;font-size:18px}.crm-print-heading span,.crm-print-heading small{display:block;color:#475569;font-size:10px;margin-top:4px}
-  body.crm-print-mode .crm-print-target .club-table-wrap{overflow:visible!important}
+  body.crm-print-mode .crm-print-target :is(.club-table-wrap,.table-responsive,.overflow-x-auto,.overflow-auto){overflow:visible!important;max-height:none!important}
   body.crm-print-mode .crm-print-target table{width:100%!important;min-width:0!important;border-collapse:collapse!important}
-  body.crm-print-mode .crm-print-target th,body.crm-print-mode .crm-print-target td{border:1px solid #dbe3ef!important;padding:6px!important;font-size:9px!important}
+  body.crm-print-mode .crm-print-target thead{display:table-header-group!important}
+  body.crm-print-mode .crm-print-target tfoot{display:table-footer-group!important}
+  body.crm-print-mode .crm-print-target tr{break-inside:avoid!important}
+  body.crm-print-mode .crm-print-target th{background:#eaf0f7!important;color:#172b4d!important;font-weight:800!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.crm-print-mode .crm-print-target th,body.crm-print-mode .crm-print-target td{border:1px solid #cfd8e5!important;padding:6px 7px!important;font-size:9px!important;line-height:1.65!important;text-align:center!important;vertical-align:middle!important}
+  body.crm-print-mode .crm-print-target tbody tr:nth-child(even){background:#f8fafc!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.crm-print-mode .crm-print-target .crm-primary-column{text-align:right!important}
+  body.crm-print-mode .crm-print-target .wf-list-head{display:grid!important;background:#eaf0f7!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.crm-print-mode .crm-print-target .wf-summary{break-inside:avoid!important;border-bottom:1px solid #dbe3ef!important}
   body.crm-print-mode .crm-print-target section,body.crm-print-mode .crm-print-target article{break-inside:avoid;box-shadow:none!important;margin-bottom:12px!important}
 }
 </style>
 <script>
+(()=>{
+const icon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7 8V4h10v4M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2m-10-4h10v7H7v-7Z"/></svg>';
+function clean(value){return String(value||'').replace(/\s+/g,' ').trim()}
+function titleFor(area){return clean(area.dataset.printTitle||area.querySelector('h1,h2,h3,.wf-title')?.textContent||document.querySelector('main h1')?.textContent||document.title)}
+function markActionColumns(table){
+ const head=table.tHead?.rows?.[0];if(!head)return;
+ [...head.cells].forEach((cell,index)=>{if(/^(عملیات|انتخاب|گزینه‌ها|مدیریت)$/.test(clean(cell.textContent))){cell.classList.add('crm-print-exclude');[...table.rows].forEach(row=>row.cells[index]?.classList.add('crm-print-exclude'));}});
+}
+function buttonFor(area){
+ if(area.querySelector(':scope [data-print-trigger]'))return;
+ area.dataset.printArea='';area.dataset.printTitle=titleFor(area);
+ const button=document.createElement('button');button.type='button';button.className='crm-print-action crm-print-exclude';button.dataset.printTrigger='';button.innerHTML=icon+'<span>چاپ فهرست</span>';
+ const head=area.querySelector(':scope > .wf-panel-head,:scope > .page-header,:scope > header');
+ if(head){head.append(button);return;}
+ const bar=document.createElement('div');bar.className='crm-auto-print-toolbar crm-print-exclude';bar.append(button);area.prepend(bar);
+}
+function prepare(root=document){
+ root.querySelectorAll('main table').forEach(table=>{if(!table.tHead||table.closest('dialog,[data-no-auto-print]'))return;markActionColumns(table);const area=table.closest('[data-print-area],.wf-panel,section,article')||table.parentElement;if(area)buttonFor(area);});
+ root.querySelectorAll('main .wf-list').forEach(list=>{if(list.closest('dialog,[data-no-auto-print]'))return;const area=list.closest('[data-print-area],.wf-panel,section,article');if(area)buttonFor(area);});
+}
+document.addEventListener('DOMContentLoaded',()=>prepare());
+document.addEventListener('htmx:afterSwap',event=>prepare(event.target));
+window.crmPreparePrint=prepare;
+})();
 document.addEventListener('click',event=>{
   const trigger=event.target.closest('[data-print-trigger]');
   if(!trigger)return;
@@ -28,7 +63,8 @@ document.addEventListener('click',event=>{
     heading=document.createElement('header');heading.className='crm-print-heading';
     const title=target.dataset.printTitle||document.title;
     const stamp=new Intl.DateTimeFormat('fa-IR',{dateStyle:'medium',timeStyle:'short'}).format(new Date());
-    heading.innerHTML=`<div><strong>شرکت دیجیران</strong><span>${String(title).replace(/[&<>"']/g,'')}</span></div><small>تاریخ چاپ: ${stamp}</small>`;
+    const rows=target.querySelectorAll('tbody tr:not([hidden]),.wf-summary:not([hidden])').length;
+    heading.innerHTML=`<div><strong>شرکت دیجیران</strong><span>${String(title).replace(/[&<>"']/g,'')}</span></div><small>تاریخ چاپ: ${stamp}${rows?' · '+new Intl.NumberFormat('fa-IR').format(rows)+' ردیف':''}</small>`;
     target.prepend(heading);
   }
   target.classList.add('crm-print-target');document.body.classList.add('crm-print-mode');

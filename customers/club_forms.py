@@ -5,6 +5,7 @@ from crm.numerals import ascii_digits
 
 from .club_models import ClubAccount, ClubPayment, LoanProgram
 from .models import CustomerCase
+from products.models import Product
 
 
 FIELD_CLASS = 'w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm'
@@ -40,6 +41,32 @@ class ClubSelectionForm(forms.Form):
         super().__init__(*args, **kwargs)
         for name in ('delivery_type', 'club_fee'):
             self.fields[name].widget.attrs['class'] = FIELD_CLASS
+
+
+class ClubAccountEditForm(forms.ModelForm):
+    class Meta:
+        model = ClubAccount
+        fields = [
+            'loan_program', 'product', 'delivery_type', 'down_payment_amount',
+            'club_fee', 'customer_credit_rank', 'guarantor_name',
+            'guarantor_credit_rank', 'guarantee_snapshot', 'status',
+        ]
+        widgets = {
+            'down_payment_amount': forms.NumberInput(attrs={'min': 0, 'step': 100000}),
+            'club_fee': forms.NumberInput(attrs={'min': 0, 'step': 100000}),
+            'guarantee_snapshot': forms.Textarea(attrs={'rows': 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['loan_program'].queryset = LoanProgram.objects.filter(is_active=True) | LoanProgram.objects.filter(pk=self.instance.loan_program_id)
+        self.fields['product'].queryset = Product.objects.filter(is_active=True) | Product.objects.filter(pk=self.instance.product_id)
+        self.fields['loan_program'].queryset = self.fields['loan_program'].queryset.distinct()
+        self.fields['product'].queryset = self.fields['product'].queryset.distinct().order_by('name')
+        self.fields['customer_credit_rank'].widget = forms.Select(choices=[('', 'ثبت نشده')] + list(CustomerCase.CREDIT_RANK_CHOICES))
+        self.fields['guarantor_credit_rank'].widget = forms.Select(choices=[('', 'بدون رتبه ضامن')] + list(CustomerCase.CREDIT_RANK_CHOICES))
+        for field in self.fields.values():
+            field.widget.attrs['class'] = FIELD_CLASS
 
 
 class ClubPaymentForm(forms.ModelForm):

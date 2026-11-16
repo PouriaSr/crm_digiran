@@ -185,7 +185,7 @@ def build_workflow_context(request):
             'customer__case', 'club_account', 'club_account__loan_program', 'club_account__product',
         ).prefetch_related('club_account__payments').order_by('-case_completed_at', '-pk')
         rec = selected_record(request, records)
-        from .club_forms import ClubPaymentForm, LoanEvaluationForm
+        from .club_forms import ClubAccountEditForm, ClubPaymentForm, LoanEvaluationForm
         account = None
         if rec:
             try:
@@ -197,6 +197,7 @@ def build_workflow_context(request):
             club_records=paginated(records, 'club', 'club_page'), club_record=rec,
             club_account=account,
             club_evaluation_form=LoanEvaluationForm() if rec and not account else None,
+            club_account_edit_form=ClubAccountEditForm(instance=account) if account else None,
             club_payment_form=ClubPaymentForm(account=account) if account else None,
             club_receipt_payments=(
                 account.payments.filter(payment_type__in=('purchase_difference', 'club_fee', 'installment'))

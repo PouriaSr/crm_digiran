@@ -111,3 +111,62 @@ def create_payment_schedule(account):
                             due_date=add_months(today, number), status='scheduled', created_by=account.selected_by)
                 for number in range(1, program.term_months + 1))
     ClubPayment.objects.bulk_create(rows)
+
+
+def reconcile_payment_schedule(account, actor=None):
+    """Refresh future, unreceipted obligations without rewriting financial history."""
+    today = date.today()
+    editable = account.payments.filter(status__in=('scheduled', 'overdue'), receipt='')
+
+    def sync_single(payment_type, amount, note=''):
+        rows = list(editable.filter(payment_type=payment_type).order_by('due_date', 'pk'))
+        if not amount:
+            for row in rows:
+                row.delete()
+            return
+        row = rows.pop(0) if rows else ClubPayment(account=account, payment_type=payment_type)
+        row.amount = amount
+        row.due_date = row.due_date or today
+        row.status = 'scheduled'
+        row.notes = note or row.notes
+        row.created_by = row.created_by or actor
+        row.save()
+        for duplicate in rows:
+            duplicate.delete()
+
+    sync_single('down_payment', account.down_payment_amount)
+    sync_single('club_fee', account.club_fee)
+    sync_single(
+        'purchase_difference', account.purchase_difference_amount,
+        'مابه‌التفاوت خرید اصلی و قیمت گوشی؛ فاکتور یا رسید پرداخت را ثبت کنید.',
+    )
+
+    locked_count = account.payments.filter(payment_type='installment').exclude(
+        status__in=('scheduled', 'overdue'), receipt='',
+    ).exclude(status='cancelled').count()
+    desired = max(account.loan_program.term_months - locked_count, 0)
+    future = list(editable.filter(payment_type='installment').order_by('due_date', 'pk'))
+    keep, remove = future[:desired], future[desired:]
+    for row in remove:
+        row.delete()
+    for row in keep:
+        changed = []
+        if row.amount != account.loan_program.monthly_installment:
+            row.amount = account.loan_program.monthly_installment
+            changed.append('amount')
+        if row.status != 'scheduled':
+            row.status = 'scheduled'
+            changed.append('status')
+        if changed:
+            row.save(update_fields=changed + ['updated_at'])
+    missing = desired - len(keep)
+    if missing:
+        last_due = account.payments.filter(payment_type='installment', due_date__isnull=False).order_by('-due_date').values_list('due_date', flat=True).first() or today
+        ClubPayment.objects.bulk_create([
+            ClubPayment(
+                account=account, payment_type='installment',
+                amount=account.loan_program.monthly_installment,
+                due_date=add_months(last_due, number), status='scheduled', created_by=actor,
+            )
+            for number in range(1, missing + 1)
+        ])

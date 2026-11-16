@@ -35,6 +35,7 @@ urlpatterns = [
     path('hub/case/clock/', reception_workflow.case_clock, name='case_clock'),
     path('hub/club/<int:pk>/evaluate/', club_views.evaluate, name='club_evaluate'),
     path('hub/club/<int:pk>/select/', club_views.select_offer, name='club_select'),
+    path('hub/club/account/<int:pk>/edit/', club_views.edit_account, name='club_account_edit'),
     path('hub/club/account/<int:pk>/payment/', club_views.add_payment, name='club_payment'),
     path('hub/club/payment/<int:pk>/receipt/', club_views.receipt, name='club_receipt'),
     path('hub/club/payment/<int:pk>/receipt/save/', club_views.update_payment_receipt, name='club_receipt_save'),

@@ -244,6 +244,42 @@ class ClubWorkflowTests(TestCase):
         self.assertEqual(scheduled.status, 'paid')
         self.assertEqual(scheduled.notes, 'قسط اول پرداخت شد')
 
+    def test_club_contract_can_be_edited_without_rewriting_paid_history(self):
+        response = self.client.post(reverse('customers:club_evaluate', args=[self.rec.pk]), {
+            'requested_credit': 100_000_000, 'proposed_down_payment': 0,
+        })
+        data = response.json()
+        program = LoanProgram.objects.get(pk=data['programs'][0]['id'])
+        self.client.post(reverse('customers:club_select', args=[self.rec.pk]), {
+            'evaluation': data['evaluation'], 'program': program.pk, 'product': self.phone.pk,
+            'delivery_type': 'instant', 'club_fee': 1_000_000,
+        })
+        account = ClubAccount.objects.get(customer=self.customer)
+        page = self.client.get(reverse('customers:hub'), {'tab': 'club', 'r': self.rec.pk, 'club_edit': '1'})
+        self.assertContains(page, 'ویرایش قرارداد باشگاه')
+        paid = account.payments.filter(payment_type='installment').order_by('due_date').first()
+        paid.status = 'paid'
+        paid.notes = 'سابقه قطعی'
+        paid.save()
+        response = self.client.post(reverse('customers:club_account_edit', args=[account.pk]), {
+            'loan_program': program.pk, 'product': self.phone.pk, 'delivery_type': 'delayed',
+            'down_payment_amount': 0, 'club_fee': 2_000_000,
+            'customer_credit_rank': 'A1', 'guarantor_name': '',
+            'guarantor_credit_rank': '', 'guarantee_snapshot': 'چک جدید', 'status': 'active',
+        })
+        self.assertEqual(response.status_code, 302)
+        account.refresh_from_db()
+        paid.refresh_from_db()
+        self.assertEqual(account.club_fee, 2_000_000)
+        self.assertEqual(account.delivery_type, 'delayed')
+        self.assertEqual(account.guarantee_snapshot, 'چک جدید')
+        self.assertEqual(paid.status, 'paid')
+        self.assertEqual(paid.notes, 'سابقه قطعی')
+        self.assertEqual(account.payments.filter(payment_type='installment').exclude(status='cancelled').count(), program.term_months)
+        self.assertEqual(account.payments.filter(
+            payment_type='club_fee', status__in=('scheduled', 'overdue'), amount=2_000_000,
+        ).count(), 1)
+
     def test_loan_program_settings_is_a_dedicated_customer_center_page(self):
         response = self.client.get(reverse('customers:club_programs'))
         self.assertEqual(response.status_code, 200)
@@ -267,6 +303,7 @@ class ClubWorkflowTests(TestCase):
         other = User.objects.create_user('club_other')
         self.client.force_login(other)
         self.assertEqual(self.client.post(reverse('customers:club_payment', args=[account.pk]), {}).status_code, 403)
+        self.assertEqual(self.client.post(reverse('customers:club_account_edit', args=[account.pk]), {}).status_code, 403)
 
     def test_club_tab_is_conditional_and_contains_program_settings_for_admin(self):
         response = self.client.get(reverse('customers:hub'), {'tab': 'club', 'r': self.rec.pk})

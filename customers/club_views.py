@@ -14,13 +14,14 @@ from products.models import Product
 
 from .access import can_edit_card
 from .club_forms import (
-    ClubPaymentForm, ClubPaymentReceiptForm, ClubSelectionForm,
+    ClubAccountEditForm, ClubPaymentForm, ClubPaymentReceiptForm, ClubSelectionForm,
     LoanEvaluationForm, LoanProgramSettingsForm,
 )
 from .club_models import ClubAccount, ClubPayment, LoanEvaluation, LoanProgram
 from .club_service import (
     covered_purchase_amount, create_payment_schedule, evaluate_case, loan_purchase_amount,
     maximum_purchase_price, program_eligibility, purchase_budget, purchase_difference,
+    reconcile_payment_schedule,
 )
 from .models import Reception
 
@@ -151,6 +152,48 @@ def select_offer(request, pk):
     difference_text = f' مابه‌التفاوت {difference:,} تومان نیز برای ثبت رسید در برنامه پرداخت ایجاد شد.' if difference else ''
     return JsonResponse({'ok': True, 'message': f'قرارداد {account.contract_number} ثبت شد؛ مشتری به باشگاه اضافه شد.{difference_text}',
                          'redirect': f"{reverse('customers:hub')}?tab=club&r={rec.pk}"})
+
+
+@login_required
+@require_permission('customers.club')
+@require_POST
+@transaction.atomic
+def edit_account(request, pk):
+    account = get_object_or_404(
+        ClubAccount.objects.select_for_update().select_related(
+            'customer', 'customer__case', 'reception', 'loan_program', 'product',
+        ), pk=pk,
+    )
+    if not has_permission(request.user, 'customers.club_edit') or not can_edit_card(request.user, account.customer):
+        raise PermissionDenied('مجوز ویرایش قرارداد باشگاه این مشتری را ندارید.')
+    old_product_id = account.product_id
+    form = ClubAccountEditForm(request.POST, instance=account)
+    if not form.is_valid():
+        messages.error(request, 'قرارداد ویرایش نشد: ' + '، '.join(e for values in form.errors.values() for e in values))
+        return redirect(f"{reverse('customers:hub')}?tab=club&r={account.reception_id}&club_edit=1#club-account-edit")
+    updated = form.save(commit=False)
+    accepted, reason = program_eligibility(updated.loan_program, account.customer.case)
+    if not accepted:
+        messages.error(request, 'طرح انتخابی با پرونده سازگار نیست: ' + reason)
+        return redirect(f"{reverse('customers:hub')}?tab=club&r={account.reception_id}&club_edit=1#club-account-edit")
+    main_purchase = updated.loan_program.purchase_limit + updated.down_payment_amount
+    if updated.product.price > main_purchase:
+        messages.error(request, 'قیمت گوشی از مجموع سقف خرید و پیش‌پرداخت قرارداد بیشتر است.')
+        return redirect(f"{reverse('customers:hub')}?tab=club&r={account.reception_id}&club_edit=1#club-account-edit")
+    if updated.product_id != old_product_id and updated.product.stock < 1:
+        messages.error(request, 'گوشی انتخابی موجودی قابل فروش ندارد.')
+        return redirect(f"{reverse('customers:hub')}?tab=club&r={account.reception_id}&club_edit=1#club-account-edit")
+    updated.panel_url = 'https://example.com/b2b' if updated.delivery_type == 'instant' else 'https://example.com/b2c'
+    updated.loan_purchase_amount = updated.loan_program.purchase_limit
+    updated.main_purchase_amount = main_purchase
+    updated.purchase_difference_amount = max(0, main_purchase - int(updated.product.price))
+    updated.total_customer_payable = main_purchase - updated.purchase_difference_amount + updated.club_fee
+    updated.save()
+    reconcile_payment_schedule(updated, request.user)
+    from hr.task_automation import sync_club_account
+    sync_club_account(updated)
+    messages.success(request, 'قرارداد باشگاه و پرداخت‌های آینده با موفقیت به‌روزرسانی شدند؛ سوابق پرداخت‌شده تغییر نکردند.')
+    return redirect(f"{reverse('customers:hub')}?tab=club&r={updated.reception_id}")
 
 
 @login_required
