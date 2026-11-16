@@ -31,7 +31,8 @@ def workflow_changed(sender, instance, raw=False, **kwargs):
     name = sender._meta.label
     functions = {'customers.FollowUp': service.sync_followup, 'customers.Reception': service.sync_reception,
                  'customers.HiringApplication': service.sync_hiring, 'calls.Call': service.sync_call,
-                 'sales.Invoice': service.sync_invoice, 'hr.LeaveRequest': service.sync_leave}
+                 'sales.Invoice': service.sync_invoice, 'hr.LeaveRequest': service.sync_leave,
+                 'customers.ClubAccount': service.sync_club_account, 'customers.ClubPayment': service.sync_club_payment}
     if name in functions:
         functions[name](instance)
         if name == 'calls.Call' and getattr(instance, '_case_followup_performed', False) and instance.customer_id:
@@ -68,16 +69,16 @@ def workflow_changed(sender, instance, raw=False, **kwargs):
 
 
 def workflow_deleted(sender, instance, **kwargs):
-    labels = {'customers.FollowUp': 'followup', 'customers.Reception': 'case', 'customers.HiringApplication': 'interview', 'customers.InterviewSession':'invitation', 'calls.Call': 'call', 'sales.Invoice': 'invoice', 'hr.LeaveRequest': 'leave'}
+    labels = {'customers.FollowUp': 'followup', 'customers.Reception': 'case', 'customers.HiringApplication': 'interview', 'customers.InterviewSession':'invitation', 'customers.ClubAccount':'club', 'customers.ClubPayment':'club_payment', 'calls.Call': 'call', 'sales.Invoice': 'invoice', 'hr.LeaveRequest': 'leave'}
     kinds = [labels[sender._meta.label]]
     if sender._meta.label == 'customers.Reception':
-        kinds.extend(['registration', 'reception','case_followup'])
+        kinds.extend(['registration', 'reception','case_followup','club'])
     for task in Task.objects.filter(source_type__in=kinds, source_id=instance.pk).exclude(status__in=['done', 'cancelled']):
         task.status = 'cancelled'
         task.save()
 
 
-for label in ['customers.FollowUp', 'customers.Reception', 'customers.HiringApplication', 'customers.InterviewSession', 'customers.CaseWorkSession', 'customers.Customer', 'calls.Call', 'sales.Invoice', 'hr.LeaveRequest']:
+for label in ['customers.FollowUp', 'customers.Reception', 'customers.HiringApplication', 'customers.InterviewSession', 'customers.CaseWorkSession', 'customers.Customer', 'customers.ClubAccount', 'customers.ClubPayment', 'calls.Call', 'sales.Invoice', 'hr.LeaveRequest']:
     post_save.connect(workflow_changed, sender=label, dispatch_uid='hr.workflow.'+label)
     if label not in ['customers.Customer', 'customers.CaseWorkSession']:
         post_delete.connect(workflow_deleted, sender=label, dispatch_uid='hr.workflow_deleted.'+label)

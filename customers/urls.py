@@ -3,7 +3,7 @@ from django.shortcuts import redirect
 from django.urls import path
 
 from accounts.permissions import require_permission
-from . import views, hub_views, reception_workflow, hiring_views, candidate_views
+from . import views, hub_views, reception_workflow, hiring_views, candidate_views, club_views
 
 app_name = 'customers'
 
@@ -33,6 +33,11 @@ urlpatterns = [
     path('hub/case/save/', hub_views.hub_case_save, name='case_save'),
     path('hub/case/<int:pk>/open/', reception_workflow.case_open, name='case_open'),
     path('hub/case/clock/', reception_workflow.case_clock, name='case_clock'),
+    path('hub/club/<int:pk>/evaluate/', club_views.evaluate, name='club_evaluate'),
+    path('hub/club/<int:pk>/select/', club_views.select_offer, name='club_select'),
+    path('hub/club/account/<int:pk>/payment/', club_views.add_payment, name='club_payment'),
+    path('hub/club/payment/<int:pk>/receipt/', club_views.receipt, name='club_receipt'),
+    path('hub/club/programs/', club_views.manage_programs, name='club_programs'),
     path('hub/hiring/<int:pk>/task/', hiring_views.hiring_task, name='hiring_task'),
     path('hub/hiring/sessions/clock/', hiring_views.interview_clock, name='interview_clock'),
     path('hub/hiring/<int:pk>/interview/open/', hiring_views.interview_open, name='interview_open'),

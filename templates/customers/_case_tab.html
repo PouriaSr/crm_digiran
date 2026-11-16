@@ -66,6 +66,14 @@
                         {{ case_form.credit_rank }}
                         {% if case_form.credit_rank.errors %}<p class="text-xs text-red-500 mt-1">{{ case_form.credit_rank.errors.0 }}</p>{% endif %}
                     </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">نام ضامن <span class="text-gray-400 font-normal">اختیاری</span></label>
+                        {{ case_form.guarantor_name }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">رتبه اعتباری ضامن <span class="text-gray-400 font-normal">اختیاری</span></label>
+                        {{ case_form.guarantor_credit_rank }}
+                    </div>
                 </div>
 
                 <div>
@@ -125,10 +133,12 @@
                 {% endif %}
                 <div class="flex justify-between"><span class="text-gray-500">شغل</span><span class="font-bold">{{ customer_case.get_job_display|default:"—" }}</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">رتبه اعتباری</span><span class="font-bold">{{ customer_case.credit_rank|default:"—" }}</span></div>
+                {% if customer_case.guarantor_name %}<div class="flex justify-between"><span class="text-gray-500">ضامن</span><span class="font-bold">{{ customer_case.guarantor_name }} · {{ customer_case.guarantor_credit_rank|default:"بدون رتبه" }}</span></div>{% endif %}
                 <div class="flex justify-between"><span class="text-gray-500">وام‌ها</span><span class="font-bold text-left">{{ customer_case.loans_display|default:"—" }}</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">کالا</span><span class="font-bold">{{ customer_case.product.name|default:"—" }}</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">تعداد</span><span class="font-bold">{{ customer_case.quantity|fa_num }}</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">نتیجه</span><span class="font-bold">{{ customer_case.get_visit_result_display|default:"—" }}</span></div>{% if customer_case.cancel_reason %}<div class="flex justify-between gap-3"><span>دلیل کنسلی</span><span>{{ customer_case.get_cancel_reason_display }}</span></div>{% endif %}{% if customer_case.result_notes %}<p class="wf-note-box">{{ customer_case.result_notes }}</p>{% endif %}
+                {% if customer_case.contract_number %}<div class="flex justify-between"><span class="text-gray-500">شماره قرارداد</span><bdi class="font-bold text-indigo-700" dir="ltr">{{ customer_case.contract_number }}</bdi></div>{% endif %}
             </div>
             <p class="text-[11px] text-gray-400 pt-2 border-t border-gray-100">
                 ثبت‌کننده:

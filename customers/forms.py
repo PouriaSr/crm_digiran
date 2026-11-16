@@ -398,7 +398,8 @@ class CustomerCaseForm(forms.ModelForm):
         model = CustomerCase
         fields = [
             'condition', 'cheque_owner', 'cheque_other_name', 'cheque_other_phone',
-            'job', 'credit_rank', 'active_loans', 'product', 'quantity', 'visit_result', 'cancel_reason', 'result_notes',
+            'job', 'credit_rank', 'guarantor_name', 'guarantor_credit_rank', 'active_loans',
+            'product', 'quantity', 'visit_result', 'cancel_reason', 'result_notes',
         ]
         widgets = {
             'condition': forms.Select(attrs={
@@ -421,6 +422,13 @@ class CustomerCaseForm(forms.ModelForm):
                 'class': 'w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none',
             }),
             'credit_rank': forms.Select(attrs={
+                'class': 'w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none',
+            }),
+            'guarantor_name': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none',
+                'placeholder': 'اختیاری؛ نام و نام خانوادگی ضامن',
+            }),
+            'guarantor_credit_rank': forms.Select(attrs={
                 'class': 'w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none',
             }),
             'product': forms.Select(attrs={
@@ -478,6 +486,9 @@ class CustomerCaseForm(forms.ModelForm):
             cleaned['result_notes'] = ''
         else:
             cleaned['cancel_reason'] = ''
+        account = getattr(getattr(self.instance, 'customer', None), 'club_account', None)
+        if account and cleaned.get('visit_result') != 'bought':
+            self.add_error('visit_result', 'پس از ثبت قرارداد باشگاه، نتیجه مراجعه را نمی‌توان از «خرید کرد» تغییر داد.')
         return cleaned
 
 

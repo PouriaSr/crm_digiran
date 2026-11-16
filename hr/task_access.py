@@ -33,12 +33,12 @@ def visible_tasks(user):
     from customers.access import is_card_manager
     if not is_card_manager(user):
         records = records.filter(Q(source_type='') | Q(assigned_user=user) | Q(events__report_user=user)).distinct()
-    permissions = {'admission':'customers.reception', 'reception':'customers.reception', 'invitation':'customers.hiring', 'case_followup':'customers.followup', 'customer_followup':'customers.followup', 'followup':'customers.followup', 'case':'customers.case', 'registration':'customers.registration', 'interview':'customers.hiring', 'call':'calls.view', 'invoice':'invoices.view', 'leave':'hr.review_leaves'}
+    permissions = {'admission':'customers.reception', 'reception':'customers.reception', 'invitation':'customers.hiring', 'case_followup':'customers.followup', 'customer_followup':'customers.followup', 'followup':'customers.followup', 'case':'customers.case', 'registration':'customers.registration', 'club':'customers.club', 'club_payment':'customers.club', 'interview':'customers.hiring', 'call':'calls.view', 'invoice':'invoices.view', 'leave':'hr.review_leaves'}
     for kind, permission in permissions.items():
         if not has_permission(user, permission):
             records = records.exclude(source_type=kind)
     if not is_card_manager(user):
-        records = records.exclude(Q(source_type__in=['case','registration','interview','invitation','followup','customer_followup','case_followup','call']) & ~Q(source_customer__assigned_to=user) & Q(source_customer__isnull=False))
+        records = records.exclude(Q(source_type__in=['case','registration','club','club_payment','interview','invitation','followup','customer_followup','case_followup','call']) & ~Q(source_customer__assigned_to=user) & Q(source_customer__isnull=False))
     records = records.exclude(source_customer__is_deleted=True)
     if not has_permission(user,'customers.candidate_view'):
         from accounts.models import SectionRecord
@@ -84,6 +84,10 @@ def source_url(task):
             'workflow_q':task.source_customer.mobile if task.source_customer else ''})
     if task.source_type in ('case', 'registration'):
         return reverse('customers:hub') + '?' + urlencode({'tab': task.source_type, 'r': task.source_id})
+    if task.source_type == 'club':
+        return reverse('customers:hub') + '?' + urlencode({'tab': 'club', 'r': task.source_id})
+    if task.source_type == 'club_payment':
+        return reverse('customers:hub') + '?' + urlencode({'tab': 'club', 'c': task.source_customer_id})
     if task.source_type == 'interview':
         from customers.models import HiringApplication
         rec = HiringApplication.objects.filter(pk=task.source_id).values_list('reception_id', flat=True).first()

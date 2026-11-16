@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Customer, CustomerNote
+from .models import Customer, CustomerNote, ClubAccount, ClubPayment, LoanEvaluation, LoanProgram
 
 
 class CustomerNoteInline(admin.TabularInline):
@@ -114,3 +114,41 @@ class CustomerNoteAdmin(admin.ModelAdmin):
         if not change:
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(LoanProgram)
+class LoanProgramAdmin(admin.ModelAdmin):
+    list_display = ('provider', 'term_months', 'credit_limit', 'monthly_installment', 'purchase_limit', 'down_payment', 'is_active')
+    list_filter = ('provider', 'is_active', 'term_months')
+    ordering = ('order', 'provider', 'term_months')
+
+    def has_module_permission(self, request):
+        from accounts.permissions import has_permission
+        return has_permission(request.user, 'customers.club_manage')
+
+    has_view_permission = lambda self, request, obj=None: self.has_module_permission(request)
+    has_add_permission = lambda self, request: self.has_module_permission(request)
+    has_change_permission = lambda self, request, obj=None: self.has_module_permission(request)
+    has_delete_permission = lambda self, request, obj=None: self.has_module_permission(request)
+
+
+@admin.register(ClubAccount)
+class ClubAccountAdmin(admin.ModelAdmin):
+    list_display = ('contract_number', 'customer', 'loan_program', 'product', 'delivery_type', 'status', 'joined_at')
+    search_fields = ('contract_number', 'customer__name', 'customer__mobile')
+    list_filter = ('status', 'delivery_type', 'loan_program__provider')
+    readonly_fields = ('contract_number', 'joined_at', 'updated_at')
+
+
+@admin.register(ClubPayment)
+class ClubPaymentAdmin(admin.ModelAdmin):
+    list_display = ('account', 'payment_type', 'amount', 'due_date', 'status', 'paid_at')
+    list_filter = ('payment_type', 'status', 'due_date')
+    search_fields = ('account__contract_number', 'account__customer__name')
+
+
+@admin.register(LoanEvaluation)
+class LoanEvaluationAdmin(admin.ModelAdmin):
+    list_display = ('contract_number', 'case', 'requested_credit', 'proposed_down_payment', 'status', 'created_at')
+    list_filter = ('status', 'created_at')
+    readonly_fields = ('result_program_ids', 'result_product_ids', 'snapshot', 'created_at')

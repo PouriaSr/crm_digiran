@@ -109,7 +109,7 @@ def personal_inbox(user, params):
     first_by_task = {event.task_id: event for event in events.filter(pk__in=first_events,task_id__in=task_ids).select_related('task')}
     payload = []
     action_permissions = {'admission':'customers.reception_add','reception':'customers.reception_refer','invitation':'customers.hiring_interview','case':'customers.case_edit','registration':'customers.registration_edit','interview':'customers.hiring_interview',
-                          'followup':'customers.followup','case_followup':'customers.followup','customer_followup':'customers.followup','call':'calls.edit','invoice':'invoices.edit','leave':'hr.review_leaves'}
+                          'club':'customers.club_select','club_payment':'customers.club_payment','followup':'customers.followup','case_followup':'customers.followup','customer_followup':'customers.followup','call':'calls.edit','invoice':'invoices.edit','leave':'hr.review_leaves'}
     for item in rows:
         task = item if view == 'work' else item.task
         row = {'task': task.pk, 'title': task.title, 'url': reverse('hr:task_detail',args=[task.pk]),

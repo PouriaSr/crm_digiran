@@ -70,7 +70,7 @@ def order_tasks(items, sort, prefix=''):
 
 
 TASK_SOURCES=[('manual','وظیفه دستی'),('admission','ثبت ورود در پذیرش'),('reception','ارجاع پذیرش'),
-              ('registration','ثبت اطلاعات'),('case','تکمیل پرونده'),('case_followup','پیگیری انصراف پرونده'),('followup','پیگیری مشتری'),
+              ('registration','ثبت اطلاعات'),('case','تکمیل پرونده'),('club','باشگاه مشتریان'),('club_payment','پرداخت باشگاه'),('case_followup','پیگیری انصراف پرونده'),('followup','پیگیری مشتری'),
               ('interview','مصاحبه اول'),('repeat','مصاحبه مجدد'),('invitation','دعوت به همکاری'),
               ('call','تماس'),('invoice','فاکتور'),('leave','مرخصی'),('structure','فرآیند سفارشی')]
 

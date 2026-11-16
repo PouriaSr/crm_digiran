@@ -108,6 +108,7 @@ CASE_LABELS = {
     'cheque_other_phone': 'شماره صاحب چک',
     'job': 'شغل',
     'credit_rank': 'رتبه اعتباری',
+    'guarantor_name': 'نام ضامن', 'guarantor_credit_rank': 'رتبه اعتباری ضامن',
     'active_loans': 'وام‌های فعال',
     'product': 'کالا',
     'quantity': 'تعداد',

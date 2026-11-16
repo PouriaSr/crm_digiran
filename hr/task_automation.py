@@ -28,7 +28,8 @@ def task_owner(task):
 def choose_owner(preferred, permission, customer=None):
     views = {'customers.case_edit':'customers.case', 'customers.registration_edit':'customers.registration',
              'customers.reception_refer':'customers.reception', 'customers.hiring_interview':'customers.hiring',
-             'customers.followup':'customers.info', 'calls.edit':'calls.view', 'invoices.edit':'invoices.view'}
+             'customers.followup':'customers.info', 'customers.club_select':'customers.club',
+             'customers.club_payment':'customers.club', 'calls.edit':'calls.view', 'invoices.edit':'invoices.view'}
     from customers.access import can_edit_card
     def eligible(user):
         return (not customer or can_edit_card(user,customer)) and user and user.is_active and has_permission(user, 'hr.view_tasks') and has_permission(user, permission) and (permission not in views or has_permission(user, views[permission]))
@@ -53,7 +54,7 @@ def sync(key, kind, obj, title, owner, state, customer=None, date=None, time=Non
             return task
         if not task and (state in ('done', 'cancelled') or not owner and not allow_unassigned):
             return None
-        default_help = {'followup':'پیگیری مشتری را انجام دهید و نتیجه تماس را در مرکز مشتریان ثبت کنید.', 'case':'پس از ثبت اطلاعات، پرونده مشتری را تکمیل و ذخیره کنید.', 'registration':'پس از ارجاع پذیرش، مشخصات مشتری را در تب ثبت اطلاعات تکمیل کنید؛ سپس پرونده فعال می‌شود.', 'interview':'جلسه مصاحبه و ارزیابی کارجو را در تب استخدام ثبت کنید.', 'call':'تماس را پیگیری و نتیجه را در بخش تماس‌ها ثبت کنید.', 'invoice':'فاکتور را بررسی و صادر کنید؛ دریافت وجه را با وضعیت پرداخت‌شده در همان فاکتور ثبت کنید.', 'leave':'درخواست مرخصی را بررسی و نتیجه تأیید یا رد را ثبت کنید.'}
+        default_help = {'followup':'پیگیری مشتری را انجام دهید و نتیجه تماس را در مرکز مشتریان ثبت کنید.', 'case':'پس از ثبت اطلاعات، پرونده مشتری را تکمیل و ذخیره کنید.', 'registration':'پس از ارجاع پذیرش، مشخصات مشتری را در تب ثبت اطلاعات تکمیل کنید؛ سپس پرونده فعال می‌شود.', 'club':'ارزیابی وام و گوشی را انجام دهید و پیشنهاد انتخاب‌شده را به قرارداد باشگاه تبدیل کنید.', 'club_payment':'سررسید یا پرداخت باشگاه مشتریان را بررسی و نتیجه و رسید را ثبت کنید.', 'interview':'جلسه مصاحبه و ارزیابی کارجو را در تب استخدام ثبت کنید.', 'call':'تماس را پیگیری و نتیجه را در بخش تماس‌ها ثبت کنید.', 'invoice':'فاکتور را بررسی و صادر کنید؛ دریافت وجه را با وضعیت پرداخت‌شده در همان فاکتور ثبت کنید.', 'leave':'درخواست مرخصی را بررسی و نتیجه تأیید یا رد را ثبت کنید.'}
         description = description or default_help.get(kind,'وظیفه را در بخش مربوط انجام دهید.')
         values = dict(description=description, title=title[:200], assigned_user=owner, assigned_to=None, source_type=kind, source_id=obj.pk,
                       source_customer=customer, status=state if owner or allow_unassigned else 'cancelled', due_date=date, due_time=time)
@@ -156,6 +157,32 @@ def sync_reception(rec):
         # Old premature work is withdrawn, not marked as performed or reported.
         for task in Task.objects.filter(source_key='case:'+str(rec.pk)).exclude(status__in=['done','cancelled']):
             sync(task.source_key,'case',rec,task.title,task.assigned_user,'cancelled',customer,date=task.due_date,time=task.due_time)
+    account = getattr(rec, 'club_account', None)
+    if rec.case_result == 'bought':
+        owner = choose_owner([customer.assigned_to, rec.case_completed_by], 'customers.club_select', customer=customer)
+        sync('club:'+str(rec.pk), 'club', rec, 'ارزیابی و انتخاب وام و گوشی — '+customer.name, owner,
+             'cancelled' if cancel else 'done' if account else 'pending', customer,
+             completed_at=account.joined_at if account else None)
+    else:
+        prior = Task.objects.filter(source_key='club:'+str(rec.pk)).first()
+        if prior and prior.status not in ('done', 'cancelled'):
+            sync(prior.source_key, 'club', rec, prior.title, prior.assigned_user, 'cancelled', customer)
+
+
+def sync_club_account(account):
+    sync_reception(account.reception)
+    for payment in account.payments.all():
+        sync_club_payment(payment)
+
+
+def sync_club_payment(payment):
+    account = payment.account
+    owner = choose_owner([account.customer.assigned_to, account.selected_by], 'customers.club_payment', customer=account.customer)
+    state = 'cancelled' if account.status == 'cancelled' or payment.status == 'cancelled' else 'done' if payment.status == 'paid' else 'follow_up' if payment.status == 'overdue' else 'pending'
+    sync('club-payment:'+str(payment.pk), 'club_payment', payment,
+         payment.get_payment_type_display()+' باشگاه — '+account.customer.name, owner, state,
+         account.customer, payment.due_date, description=(payment.notes or '') or None,
+         completed_at=payment.paid_at)
 
 
 def sync_hiring(app):
@@ -239,7 +266,7 @@ def record_change(task, before=None):
 
 
 def backfill():
-    from customers.models import Customer, FollowUp, Reception, HiringApplication
+    from customers.models import Customer, FollowUp, Reception, HiringApplication, ClubAccount, ClubPayment
     from calls.models import Call
     from sales.models import Invoice
     from .models import LeaveRequest
@@ -250,6 +277,8 @@ def backfill():
         for item in FollowUp.objects.filter(is_done=False, customer__is_deleted=False).select_related('customer__assigned_to', 'created_by').iterator():
             sync_followup(item)
         for item in Reception.objects.filter(workflow_version=2, customer__is_deleted=False).filter(Q(registration_completed_at__isnull=True)|Q(case_completed_at__isnull=True)).select_related('customer__assigned_to').iterator():
+            sync_reception(item)
+        for item in Reception.objects.filter(workflow_version=2, person_type='customer', case_result='bought', customer__is_deleted=False).select_related('customer__assigned_to').iterator():
             sync_reception(item)
         for item in Reception.objects.filter(case_result='abandoned',case_followup_owner__isnull=False,case_followup_done_at__isnull=True).select_related('customer','case_followup_owner').iterator():
             from customers.case_outcomes import sync_case_followup
@@ -262,12 +291,15 @@ def backfill():
             sync_call(item)
         for item in Invoice.objects.filter(status__in=['draft', 'issued'], customer__is_deleted=False).iterator():
             sync_invoice(item)
+        for item in ClubAccount.objects.select_related('customer__assigned_to', 'reception').iterator():
+            sync_club_account(item)
         for item in LeaveRequest.objects.filter(status='pending').iterator():
             sync_leave(item)
         # Reconcile tasks whose sources were completed, deleted or changed with bulk updates.
         sources = {'admission':(Customer.all_objects,reconcile), 'followup':(FollowUp,sync_followup), 'customer_followup':(Customer.all_objects,sync_customer_flag),
                    'reception':(Reception,sync_reception), 'case':(Reception,sync_reception),
-                   'case_followup':(Reception,sync_reception), 'registration':(Reception,sync_reception), 'interview':(HiringApplication,sync_hiring),
+                   'case_followup':(Reception,sync_reception), 'registration':(Reception,sync_reception), 'club':(Reception,sync_reception),
+                   'club_payment':(ClubPayment,sync_club_payment), 'interview':(HiringApplication,sync_hiring),
                    'call':(Call,sync_call), 'invoice':(Invoice,sync_invoice), 'leave':(LeaveRequest,sync_leave)}
         from customers.models import InterviewSession
         sources['invitation'] = (InterviewSession,sync_invitation)

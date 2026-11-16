@@ -25,6 +25,7 @@ from crm.duplicate_check import normalize_digits
 TAB_PERMISSIONS = {
     'info': 'customers.info', 'reception': 'customers.reception',
     'registration': 'customers.registration', 'case': 'customers.case',
+    'club': 'customers.club',
     'hiring': 'customers.hiring',
     'invoice': 'customers.invoices',
 }
@@ -122,7 +123,7 @@ def case_initial(customer, case):
 
 def build_workflow_context(request):
     tabs = allowed_tabs(request.user)
-    labels = {'info': ('👥', 'اطلاعات'), 'reception': ('🤝', 'پذیرش'), 'case': ('📁', 'پرونده'),
+    labels = {'info': ('👥', 'اطلاعات'), 'reception': ('🤝', 'پذیرش'), 'case': ('📁', 'پرونده'), 'club': ('⭐', 'باشگاه مشتریان'),
               'registration': ('📝', 'ثبت اطلاعات'), 'hiring': ('🧑‍💼', 'استخدام'), 'invoice': ('📄', 'فاکتورها')}
     query = request.GET.get('workflow_q', '').strip()[:200]
     active = getattr(request, '_hub_tab', request.GET.get('tab', 'info'))
@@ -175,6 +176,34 @@ def build_workflow_context(request):
                        case_customer=rec.customer if rec else None, customer_case=case,
                        case_form=form,
                        legacy_cases=paginate(request, legacy_cases.distinct().select_related('customer', 'product').order_by('-updated_at','-pk'), 'legacy_case_page'))
+    if 'club' in tabs:
+        latest_bought = Reception.objects.filter(
+            customer_id=OuterRef('customer_id'), workflow_version=2,
+            person_type='customer', case_result='bought',
+        ).order_by('-case_completed_at', '-pk').values('pk')[:1]
+        records = visible.filter(pk=Subquery(latest_bought), case_result='bought').select_related(
+            'customer__case', 'club_account', 'club_account__loan_program', 'club_account__product',
+        ).prefetch_related('club_account__payments').order_by('-case_completed_at', '-pk')
+        rec = selected_record(request, records)
+        from .club_forms import ClubPaymentForm, LoanEvaluationForm, LoanProgramSettingsForm
+        from .club_models import LoanProgram
+        from django.forms import modelformset_factory
+        account = None
+        if rec:
+            try:
+                account = rec.club_account
+            except Reception.club_account.RelatedObjectDoesNotExist:
+                pass
+        context.update(
+            club_unlocked=records.exists(), club_choices=records,
+            club_records=paginated(records, 'club', 'club_page'), club_record=rec,
+            club_account=account,
+            club_evaluation_form=LoanEvaluationForm() if rec and not account else None,
+            club_payment_form=ClubPaymentForm() if account else None,
+        )
+        if has_permission(request.user, 'customers.club_manage'):
+            ProgramSet = modelformset_factory(LoanProgram, form=LoanProgramSettingsForm, extra=1, can_delete=True)
+            context['club_program_formset'] = ProgramSet(queryset=LoanProgram.objects.all())
     if 'hiring' in tabs:
         if active == 'hiring':
             from .hiring_views import hiring_context
@@ -185,6 +214,8 @@ def build_workflow_context(request):
         records = context.get(item['key'] + '_records')
         if records is not None:
             item['count'] = records.paginator.count
+    if not context.get('club_unlocked') and active != 'club':
+        context['hub_tab_items'] = [item for item in context['hub_tab_items'] if item['key'] != 'club']
     for name, scope in (('reception_records', 'reception'), ('case_records', 'case')):
         if name in context and active == name.removesuffix('_records'):
             attach_updates(request, context[name], scope)
@@ -415,6 +446,9 @@ def case_save(request):
             active = start_case_work(rec, request.user)
         case = form.save(commit=False)
         case.customer = customer
+        if case.visit_result == 'bought' and not case.contract_number:
+            from .club_models import contract_number
+            case.contract_number = contract_number()
         if not case.created_by_id:
             case.created_by = request.user
         case.save()
@@ -432,6 +466,9 @@ def case_save(request):
                 messages.success(request, 'پرونده ذخیره شد؛ پیگیری انصراف برای کارشناس فروش انتخاب‌شده ثبت شد.')
             else:
                 messages.warning(request, 'انصراف ذخیره شد؛ برای ساخت تسک پیگیری، کارشناس فروش را تعیین کنید.')
+        elif case.visit_result == 'bought' and has_permission(request.user, 'customers.club'):
+            messages.success(request, f'پرونده ذخیره شد؛ قرارداد {case.contract_number} ایجاد و ارزیابی وام آماده شد.')
+            return redirect(f"{reverse('customers:hub')}?tab=club&r={rec.pk}&evaluate=1")
         else:
             messages.success(request, 'پرونده ذخیره شد؛ مراحل ثبت اطلاعات و پرونده این مراجعه تکمیل شدند.')
         return redirect(back_to('case', rec))

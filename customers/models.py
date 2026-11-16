@@ -446,6 +446,8 @@ class CustomerCase(models.Model):
         ('manisa', 'مانیسا'),
         ('digipay', 'دیجی‌پی'),
         ('gsm', 'جی‌اس‌ام'),
+        ('setare_yek', 'ستاره یک'),
+        ('wiki_pay', 'ویکی‌پی'),
     ]
     CANCEL_REASONS = [
         ('interest', 'درصد سود'), ('price', 'مبلغ کالا'),
@@ -474,6 +476,9 @@ class CustomerCase(models.Model):
     job = models.CharField('شغل', max_length=20, choices=JOB_CHOICES, blank=True)
     credit_rank = models.CharField('رتبه اعتباری', max_length=5,
                                    choices=CREDIT_RANK_CHOICES, blank=True)
+    guarantor_name = models.CharField('نام ضامن', max_length=200, blank=True)
+    guarantor_credit_rank = models.CharField('رتبه اعتباری ضامن', max_length=5,
+                                             choices=CREDIT_RANK_CHOICES, blank=True)
     active_loans = models.JSONField('وام‌های فعال', default=list, blank=True)
 
     product = models.ForeignKey(
@@ -484,6 +489,8 @@ class CustomerCase(models.Model):
 
     visit_result = models.CharField('نتیجه مراجعه', max_length=20,
                                     choices=RESULT_CHOICES, blank=True)
+    contract_number = models.CharField('شماره قرارداد', max_length=40, unique=True,
+                                       null=True, blank=True, editable=False)
 
     cancel_reason = models.CharField('دلیل کنسلی', max_length=40, choices=CANCEL_REASONS, blank=True)
     result_notes = models.TextField('توضیحات نتیجه مراجعه', blank=True)
@@ -512,3 +519,4 @@ class CustomerCase(models.Model):
 # Imported here so Django discovers these models and existing imports stay stable.
 from .recruitment_models import (CaseWorkSession, HiringAd, HiringAdSequence,
                                 HiringApplication, HiringReferral, InterviewSession)
+from .club_models import (ClubAccount, ClubPayment, LoanEvaluation, LoanProgram)

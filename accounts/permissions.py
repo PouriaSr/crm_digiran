@@ -75,6 +75,7 @@ PERMISSIONS = {
     'customers.reception': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SECRETARY],
     'customers.registration': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'customers.case': [ROLE_ADMIN, ROLE_SALES_MANAGER],
+    'customers.club': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'customers.hiring': [ROLE_ADMIN, ROLE_SALES_MANAGER],
     'customers.info': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_OPERATOR, ROLE_ADS_MANAGER, ROLE_SECRETARY],
     'customers.invoices': [ROLE_ADMIN, ROLE_SALES_MANAGER, ROLE_SALES, ROLE_SUPPORT, ROLE_ACCOUNTANT, ROLE_ADS_MANAGER],
@@ -195,6 +196,7 @@ PERMISSION_META = {
     'customers.followup': ('مشتریان', 'پیگیری', 'پیگیری تماس و یادداشت مشتری'),
     'customers.reception': ('تب‌های مرکز مشتریان', 'تب پذیرش', 'مشاهده صف پذیرش؛ ثبت ورود و ارجاع مجوز جدا دارند'),
     'customers.case': ('تب‌های مرکز مشتریان', 'تب پرونده', 'مشاهده پرونده پس از تکمیل ثبت اطلاعات؛ ویرایش مجوز جدا دارد'),
+    'customers.club': ('تب‌های مرکز مشتریان', 'تب باشگاه مشتریان', 'فقط برای مشتری دارای نتیجه «خرید کرد»؛ مشاهده قرارداد، وام، گوشی و پرداخت‌ها'),
 }
 
 
@@ -212,6 +214,10 @@ PERMISSION_PARENT = {
     'customers.reception_refer': 'customers.reception',
     'customers.case_edit': 'customers.case',
     'customers.case_refer': 'calls.reassign',
+    'customers.club_evaluate': 'customers.club',
+    'customers.club_select': 'customers.club',
+    'customers.club_payment': 'customers.club',
+    'customers.club_manage': 'customers.case_edit',
     'customers.registration_edit': 'customers.registration',
     'customers.reassign': 'calls.reassign',
     'customers.notes_add': 'customers.edit',
@@ -230,6 +236,10 @@ _OPERATION_META = {
     'customers.registration_edit': ('ثبت و ویرایش اطلاعات تکمیلی', 'مرحله پس از پذیرش و پیش از پرونده؛ با شرط مالکیت کارت'),
     'customers.case_edit': ('ثبت و ویرایش پرونده', 'پس از ثبت اطلاعات؛ با شرط مسئول کارت، سرپرست یا ادمین'),
     'customers.case_refer': ('ارجاع انصراف به فروش', 'انتخاب کارشناس فروش و ایجاد پیگیری پس از انصراف مشتری'),
+    'customers.club_evaluate': ('ارزیابی وام و گوشی', 'اجرای قواعد رتبه، ضامن، شغل، وام فعال و سقف خرید برای کارت تحت مسئولیت'),
+    'customers.club_select': ('ثبت قرارداد باشگاه', 'انتخاب پیشنهاد، گوشی و نوع تحویل و ساخت برنامه اقساط'),
+    'customers.club_payment': ('پرداخت‌های باشگاه', 'ثبت پرداخت، سررسید، توضیحات و رسید خصوصی برای کارت تحت مسئولیت'),
+    'customers.club_manage': ('مدیریت طرح‌های وام', 'تغییر مبالغ، اقساط، رتبه‌ها، مدارک و فعال یا غیرفعال‌کردن طرح‌ها'),
     'customers.reassign': ('انتقال کارت مشتری', 'انتقال معمول کارت؛ فقط نقش سرپرست یا ادمین'),
     'customers.notes_add': ('افزودن یادداشت', 'ثبت یادداشت روی مشتری'),
     'customers.notes_edit': ('ویرایش یادداشت', 'ویرایش یادداشت توسط نویسنده یا ادمین'),

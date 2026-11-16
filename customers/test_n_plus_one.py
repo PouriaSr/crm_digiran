@@ -34,7 +34,7 @@ class HubNPlusOneTest(TestCase):
         self.assertEqual(response.status_code, 200)
         queries = len(connection.queries)
         self.assertLess(
-            queries, 34,  # Settings and source choices add fixed queries, independent of row count.
+            queries, 36,  # Club availability adds one fixed query, independent of row count.
             f'N+1 detected: {queries} queries for 5 customers.'
         )
 

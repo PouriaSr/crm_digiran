@@ -57,9 +57,9 @@ class ReceptionWorkflowTest(TestCase):
 
     def test_default_tab_access_and_direct_urls(self):
         for user, tabs in [(self.secretary, {'info', 'reception'}), (self.operator, {'info'}),
-                           (self.manager, {'info', 'reception', 'case', 'registration', 'hiring', 'invoice'})]:
+                           (self.manager, {'info', 'reception', 'case', 'club', 'registration', 'hiring', 'invoice'})]:
             self.client.force_login(user)
-            for tab in ('info', 'reception', 'case', 'registration', 'hiring', 'invoice'):
+            for tab in ('info', 'reception', 'case', 'club', 'registration', 'hiring', 'invoice'):
                 response = self.client.get(self.hub, {'tab': tab})
                 self.assertEqual(response.status_code, 200 if tab in tabs else 403, (user.username, tab))
                 if response.status_code == 200:

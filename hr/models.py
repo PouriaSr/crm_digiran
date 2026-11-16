@@ -143,7 +143,7 @@ class Task(models.Model):
         if self.needs_assignment:return 'نیازمند تعیین مسئول'
         if self.status=='pending':
             if self.hiring_session_id:return 'در انتظار مصاحبه مجدد'
-            return {'admission':'در انتظار ثبت ورود','reception':'در انتظار ارجاع','registration':'در انتظار ثبت اطلاعات','case':'در انتظار تکمیل پرونده','interview':'در انتظار مصاحبه'}.get(self.source_type,self.get_status_display())
+            return {'admission':'در انتظار ثبت ورود','reception':'در انتظار ارجاع','registration':'در انتظار ثبت اطلاعات','case':'در انتظار تکمیل پرونده','club':'در انتظار ارزیابی و انتخاب پیشنهاد','club_payment':'در انتظار پرداخت','interview':'در انتظار مصاحبه'}.get(self.source_type,self.get_status_display())
         if self.status=='in_progress' and self.source_type=='case':return 'در حال تکمیل پرونده'
         return self.get_status_display()
 

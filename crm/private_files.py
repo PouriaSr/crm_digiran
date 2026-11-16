@@ -15,5 +15,24 @@ class HiringDocumentStorage(FileSystemStorage):
         raise ValueError('Hiring documents are served through their authorized download view.')
 
 
+@deconstructible
+class ClubReceiptStorage(FileSystemStorage):
+    """Private payment receipts; access is always checked by a Django view."""
+
+    def __init__(self):
+        super().__init__(
+            location=getattr(settings, 'CLUB_PRIVATE_ROOT', Path(settings.BASE_DIR) / 'private_uploads' / 'club'),
+            file_permissions_mode=0o600,
+            directory_permissions_mode=0o700,
+        )
+
+    def url(self, name):
+        raise ValueError('Club receipts are served through their authorized download view.')
+
+
 def resume_path(instance, filename):
     return f'resumes/{uuid.uuid4().hex}{Path(filename).suffix.lower()}'
+
+
+def club_receipt_path(instance, filename):
+    return f'receipts/{instance.account_id}/{uuid.uuid4().hex}{Path(filename).suffix.lower()}'

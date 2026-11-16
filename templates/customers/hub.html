@@ -183,6 +183,7 @@
     {% endif %}
     {% if active_tab == "reception" and "reception" in allowed_hub_tabs %}{% include "customers/_reception_tab.html" %}{% endif %}
     {% if active_tab == "case" and "case" in allowed_hub_tabs %}{% include "customers/_case_tab.html" %}{% endif %}
+    {% if active_tab == "club" and "club" in allowed_hub_tabs %}{% include "customers/_club_tab.html" %}{% endif %}
     {% if active_tab == "registration" and "registration" in allowed_hub_tabs %}{% include "customers/_registration_tab.html" %}{% endif %}
     {% if active_tab == "hiring" and "hiring" in allowed_hub_tabs %}{% include "customers/_hiring_tab.html" %}{% endif %}
     {% include 'customers/_workflow_clocks.html' %}
