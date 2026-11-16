@@ -7,7 +7,10 @@ from hr.models import Task
 from products.models import Category, Product
 
 from .club_models import ClubAccount, ClubPayment, LoanEvaluation, LoanProgram
-from .club_service import covered_purchase_amount, evaluate_case, purchase_budget, purchase_difference
+from .club_service import (
+    covered_purchase_amount, evaluate_case, loan_purchase_amount,
+    purchase_budget, purchase_difference,
+)
 from .models import Customer, CustomerCase, Reception
 
 
@@ -74,6 +77,10 @@ class ClubWorkflowTests(TestCase):
         account = ClubAccount.objects.get(customer=self.customer)
         self.assertEqual(account.contract_number, self.case.contract_number)
         self.assertEqual(account.panel_label, 'پنل B2B')
+        self.assertEqual(account.total_customer_payable, (
+            account.loan_purchase_amount + account.down_payment_amount +
+            account.purchase_difference_amount + account.club_fee
+        ))
         self.assertEqual(account.payments.filter(payment_type='installment').count(), program.term_months)
         self.assertTrue(account.payments.filter(payment_type='club_fee', amount=500_000).exists())
         task = Task.objects.get(source_key=f'club:{self.rec.pk}')
@@ -137,6 +144,7 @@ class ClubWorkflowTests(TestCase):
         azki_data = next(item for item in data['programs'] if item['provider'] == 'ازکی')
         azki = LoanProgram.objects.get(pk=azki_data['id'])
         self.assertEqual(azki_data['contribution'], covered_purchase_amount(azki, 0))
+        self.assertEqual(azki_data['loan_purchase'], loan_purchase_amount(azki, 0))
         self.assertEqual(purchase_difference(azki, 0, phone.price), 28_000_000)
         response = self.client.post(reverse('customers:club_select', args=[self.rec.pk]), {
             'evaluation': data['evaluation'], 'program': azki.pk, 'product': phone.pk,
@@ -147,6 +155,10 @@ class ClubWorkflowTests(TestCase):
         difference = account.payments.get(payment_type='purchase_difference')
         self.assertEqual(difference.amount, 28_000_000)
         self.assertEqual(difference.status, 'scheduled')
+        self.assertEqual(account.loan_purchase_amount, 62_000_000)
+        self.assertEqual(account.down_payment_amount, 0)
+        self.assertEqual(account.purchase_difference_amount, 28_000_000)
+        self.assertEqual(account.total_customer_payable, 90_000_000)
 
     def test_private_receipt_and_card_ownership_are_enforced(self):
         evaluation = LoanEvaluation.objects.create(

@@ -26,10 +26,11 @@
           <div data-evaluation-error class="club-error" hidden></div>
           <div data-evaluation-results hidden>
             <div class="club-result-heading"><div><span class="club-step">مرحله ۲</span><h4>یک وام و یک گوشی را انتخاب کنید</h4></div><span data-result-count></span></div>
-            <div class="club-table-wrap"><table class="club-table"><thead><tr><th>انتخاب</th><th>وام</th><th>مدت</th><th>قسط ماهانه</th><th>حداکثر قیمت پیشنهادی</th><th>حداقل پیش‌پرداخت</th><th>مدارک و ضمانت</th></tr></thead><tbody data-program-rows></tbody></table></div>
+            <div class="club-table-wrap"><table class="club-table"><thead><tr><th>انتخاب</th><th>وام</th><th>مدت</th><th>قسط ماهانه</th><th>سقف خرید وام</th><th>حداکثر قیمت پیشنهادی</th><th>حداقل پیش‌پرداخت</th><th>مدارک و ضمانت</th></tr></thead><tbody data-program-rows></tbody></table></div>
             <h4 class="club-subheading">گوشی‌های پیشنهادی بر اساس قیمت نهایی</h4>
             <div class="club-table-wrap"><table class="club-table"><thead><tr><th>انتخاب</th><th>گوشی</th><th>کد کالا</th><th>قیمت نهایی</th><th>مابه‌التفاوت پرداختی</th><th>موجودی</th></tr></thead><tbody data-product-rows></tbody></table></div>
             <p class="club-empty-result" data-empty-result hidden>با این ترکیب شرایط، پیشنهاد قابل انتخابی پیدا نشد. مبلغ وام یا پیش‌پرداخت را تغییر دهید.</p>
+            <div class="club-live-total" data-customer-total hidden><strong>جمع کل تعهد مشتری</strong><div><span>سقف خرید وام <b data-total-loan>۰ تومان</b></span><i>+</i><span>پیش‌پرداخت <b data-total-down>۰ تومان</b></span><i>+</i><span>مابه‌التفاوت <b data-total-difference>۰ تومان</b></span><i>+</i><span>باشگاه <b data-total-club>۰ تومان</b></span><i>=</i><span class="club-total-final"><b data-total-final>۰ تومان</b></span></div></div>
             {% if "customers.club_select" in user_permissions %}<form data-selection-form action="{% url 'customers:club_select' club_record.pk %}" method="post" class="club-selection">{% csrf_token %}<input type="hidden" name="evaluation"><input type="hidden" name="program"><input type="hidden" name="product"><div><label>نوع تحویل <b>*</b></label><select name="delivery_type" required><option value="">انتخاب کنید…</option><option value="instant">فوری — پنل B2B</option><option value="delayed">چند روزه — پنل B2C</option></select></div><div><label>هزینه باشگاه مشتریان</label><input type="number" name="club_fee" min="0" value="0"></div><button class="club-primary" type="submit">ثبت انتخاب و عضویت در باشگاه</button></form>{% endif %}
           </div>
         </div>
@@ -39,6 +40,7 @@
         <article class="wf-panel club-contract-card"><span class="club-step">قرارداد فعال</span><h3>{{ club_account.customer.name }}</h3><dl><div><dt>شماره قرارداد</dt><dd><bdi dir="ltr">{{ club_account.contract_number }}</bdi></dd></div><div><dt>وام</dt><dd>{{ club_account.loan_program }}</dd></div><div><dt>گوشی</dt><dd>{{ club_account.product.name }}</dd></div><div><dt>سقف اعتبار</dt><dd>{{ club_account.loan_program.credit_limit|fa_num }} تومان</dd></div><div><dt>مدت و قسط</dt><dd>{{ club_account.loan_program.term_months|fa_num }} ماه · {{ club_account.loan_program.monthly_installment|fa_num }} تومان</dd></div><div><dt>رتبه اعتباری</dt><dd>{{ club_account.customer_credit_rank }}{% if club_account.guarantor_credit_rank %} · ضامن {{ club_account.guarantor_credit_rank }}{% endif %}</dd></div><div><dt>ضمانت</dt><dd>{{ club_account.guarantee_snapshot|default:'ثبت نشده' }}</dd></div><div><dt>نوع تحویل</dt><dd>{{ club_account.get_delivery_type_display }}</dd></div></dl><a class="club-panel-link" href="{{ club_account.panel_url }}" target="_blank" rel="noopener">ورود به {{ club_account.panel_label }} ↗</a><p class="wf-subtitle">لینک فعلاً آزمایشی است و بعداً با نشانی اصلی جایگزین می‌شود.</p></article>
         {% if "customers.club_payment" in user_permissions %}<article class="wf-panel"><h3 class="wf-title">ثبت پرداخت یا سررسید</h3><form method="post" enctype="multipart/form-data" action="{% url 'customers:club_payment' club_account.pk %}" class="club-payment-form">{% csrf_token %}{% for field in club_payment_form %}<div><label>{{ field.label }}{% if field.field.required %} <b>*</b>{% endif %}</label>{{ field }}{% for error in field.errors %}<p class="club-error">{{ error }}</p>{% endfor %}</div>{% endfor %}<button class="club-primary" type="submit">ثبت پرداخت</button></form></article>{% endif %}
       </section>
+      <section class="wf-panel club-financial-summary"><header class="wf-panel-head"><div><h3 class="wf-title">خلاصه مالی قرارداد</h3><p class="wf-subtitle">مبالغ در زمان انتخاب پیشنهاد ثبت شده‌اند و با تغییرات بعدی طرح وام عوض نمی‌شوند.</p></div></header><div class="club-financial-grid"><div><span>سقف خرید وام تعلق‌گرفته</span><strong>{{ club_account.loan_purchase_amount|fa_num }} تومان</strong></div><i>+</i><div><span>پیش‌پرداخت</span><strong>{{ club_account.down_payment_amount|fa_num }} تومان</strong></div><i>+</i><div><span>مابه‌التفاوت</span><strong>{{ club_account.purchase_difference_amount|fa_num }} تومان</strong></div><i>+</i><div><span>هزینه باشگاه</span><strong>{{ club_account.club_fee|fa_num }} تومان</strong></div><i>=</i><div class="club-financial-final"><span>جمع کل تعهد مشتری</span><strong>{{ club_account.total_customer_payable|fa_num }} تومان</strong></div></div></section>
       <section class="wf-panel"><header class="wf-panel-head"><div><h3 class="wf-title">سوابق و برنامه پرداخت</h3><p class="wf-subtitle">هزینه باشگاه، پیش‌پرداخت، اقساط گذشته و آینده با رسید و توضیحات.</p></div></header><div class="club-table-wrap"><table class="club-table"><thead><tr><th>نوع</th><th>مبلغ</th><th>سررسید</th><th>وضعیت</th><th>زمان پرداخت</th><th>توضیحات</th><th>رسید</th></tr></thead><tbody>{% for payment in club_account.payments.all %}<tr><td>{{ payment.get_payment_type_display }}</td><td>{{ payment.amount|fa_num }} تومان</td><td>{{ payment.due_date|jdate:'Y/m/d'|default:'—' }}</td><td><span class="club-status club-status-{{ payment.status }}">{{ payment.get_status_display }}</span></td><td>{{ payment.paid_at|jdate:'Y/m/d · H:i'|default:'—' }}</td><td>{{ payment.notes|default:'—' }}</td><td>{% if payment.receipt %}<a href="{% url 'customers:club_receipt' payment.pk %}">دریافت رسید</a>{% else %}—{% endif %}</td></tr>{% empty %}<tr><td colspan="7">هنوز پرداختی ثبت نشده است.</td></tr>{% endfor %}</tbody></table></div></section>
     {% endif %}
   {% endif %}
@@ -51,7 +53,8 @@
 .club-hero{overflow:hidden;background:linear-gradient(135deg,#fff 55%,#eef2ff)}.club-contract{display:grid;gap:3px;padding:10px 15px;border:1px solid #c7d2fe;border-radius:14px;background:#fff;color:#3730a3}.club-contract small{font-size:10px;color:#64748b}.club-contract bdi{font-weight:900}.club-evaluate-card{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:24px}.club-evaluate-card h3,.club-contract-card h3{font-weight:900;font-size:18px;color:#0f172a;margin:7px 0}.club-evaluate-card p{font-size:12px;color:#64748b}.club-step{display:inline-flex;padding:4px 9px;border-radius:999px;background:#eef2ff;color:#4338ca;font-size:10px;font-weight:800}.club-primary{display:inline-flex;justify-content:center;align-items:center;min-height:42px;padding:9px 18px;border-radius:12px;background:#4f46e5;color:#fff;font-size:12px;font-weight:900;white-space:nowrap}.club-primary:hover{background:#4338ca}.club-dialog{z-index:250;width:min(1180px,calc(100% - 24px));max-height:calc(100vh - 28px);padding:0;border:0;border-radius:22px;box-shadow:0 30px 100px #0f172a55}.club-dialog::backdrop{background:#0f172a99;backdrop-filter:blur(5px)}.club-dialog-shell{padding:22px;overflow:auto;max-height:calc(100vh - 28px)}.club-dialog header{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-bottom:1px solid #e5e7eb;padding-bottom:16px}.club-dialog header h3{font-weight:900;font-size:18px;margin-top:7px}.club-dialog header button{width:36px;height:36px;border-radius:10px;background:#f1f5f9;font-size:25px}.club-evaluation-inputs,.club-selection{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) auto;gap:14px;align-items:end;padding:20px 0}.club-evaluation-inputs label,.club-selection label,.club-payment-form label{display:block;font-size:11px;font-weight:800;color:#475569;margin-bottom:6px}.club-selection select,.club-selection input{width:100%;border:1px solid #dbe3ef;border-radius:12px;padding:10px}.club-loader{text-align:center;padding:46px 15px}.club-orbit{position:relative;width:110px;height:110px;margin:0 auto 20px;border:8px solid #eef2ff;border-radius:50%;display:grid;place-items:center}.club-orbit i{position:absolute;inset:-8px;border:8px solid transparent;border-top-color:#4f46e5;border-right-color:#818cf8;border-radius:50%;animation:club-spin 1.1s linear infinite}.club-orbit strong{font-size:18px;color:#3730a3}.club-loader h4{font-size:17px;font-weight:900}.club-loader p{font-size:12px;color:#64748b;margin:8px}.club-progress{height:7px;max-width:440px;margin:18px auto;background:#eef2ff;border-radius:20px;overflow:hidden}.club-progress i{display:block;width:0;height:100%;background:linear-gradient(90deg,#4f46e5,#22c55e);transition:width .2s}.club-result-heading{display:flex;justify-content:space-between;align-items:center;margin:20px 0 12px}.club-result-heading h4,.club-subheading{font-weight:900;margin-top:6px}.club-subheading{margin:22px 0 10px}.club-table-wrap{overflow:auto;border:1px solid #e2e8f0;border-radius:14px}.club-table{width:100%;min-width:760px;border-collapse:collapse;font-size:11px}.club-table th{padding:11px;background:#f8fafc;color:#475569;text-align:center}.club-table td{padding:11px;border-top:1px solid #eef2f7;text-align:center}.club-table tr:has(input:checked){background:#eef2ff}.club-error{margin:12px 0;padding:12px;border-radius:10px;background:#fff1f2;color:#be123c;font-size:12px}.club-empty-result{padding:18px;text-align:center;color:#64748b}.club-summary-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:18px}.club-contract-card dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:15px 0}.club-contract-card dl>div{padding:10px;border:1px solid #edf0f5;border-radius:10px}.club-contract-card dt{font-size:10px;color:#64748b}.club-contract-card dd{font-size:12px;font-weight:800;margin-top:5px}.club-panel-link{display:inline-flex;padding:9px 13px;border-radius:10px;background:#ecfdf5;color:#047857;font-size:12px;font-weight:900}.club-payment-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}.club-payment-form>div:last-of-type{grid-column:1/-1}.club-status{display:inline-flex;padding:4px 8px;border-radius:8px;background:#f1f5f9}.club-status-paid{background:#dcfce7;color:#166534}.club-status-overdue{background:#fee2e2;color:#991b1b}@keyframes club-spin{to{transform:rotate(360deg)}}@media(max-width:760px){.club-evaluate-card,.club-result-heading{align-items:stretch;flex-direction:column}.club-evaluation-inputs,.club-selection,.club-summary-grid,.club-payment-form,.club-contract-card dl{grid-template-columns:1fr}.club-dialog-shell{padding:15px}.club-primary{width:100%}}
 .club-program-grid fieldset>div:has(input[type=checkbox]){grid-column:1/-1}.club-program-grid fieldset>div:has(input[type=checkbox])>div{display:flex;flex-wrap:wrap;gap:6px}.club-program-grid fieldset>div:has(input[type=checkbox]) li{display:inline-flex}.club-program-grid fieldset>div:has(input[type=checkbox]) li label{display:inline-flex;align-items:center;gap:4px;padding:4px 7px;border:1px solid #e2e8f0;border-radius:7px;background:#f8fafc}
 .club-evaluation-inputs,.club-selection{align-items:start}.club-evaluation-inputs>button,.club-selection>button{margin-top:24px}.club-payment-form .club-error{margin-top:8px;margin-bottom:0}
-@media(max-width:760px){.club-program-grid,.club-program-grid fieldset{grid-template-columns:1fr}.club-evaluation-inputs>button,.club-selection>button{margin-top:0}}
+.club-live-total{margin:16px 0 0;padding:14px 16px;border:1px solid #c7d2fe;border-radius:14px;background:#f5f7ff}.club-live-total>strong{display:block;margin-bottom:10px;color:#3730a3}.club-live-total>div,.club-financial-grid{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap}.club-live-total span,.club-financial-grid>div{display:grid;gap:4px;min-width:135px;padding:9px 11px;border-radius:10px;background:#fff;border:1px solid #e2e8f0;color:#64748b;font-size:10px}.club-live-total b,.club-financial-grid strong{color:#0f172a;font-size:12px}.club-live-total i,.club-financial-grid>i{align-self:center;color:#94a3b8;font-style:normal;font-weight:900}.club-live-total .club-total-final,.club-financial-grid .club-financial-final{background:#eef2ff;border-color:#a5b4fc}.club-financial-grid{padding:16px}.club-financial-grid>div{flex:1}.club-financial-grid .club-financial-final{flex:1.2}.club-financial-final strong,.club-total-final b{color:#3730a3;font-size:14px}
+@media(max-width:760px){.club-program-grid,.club-program-grid fieldset{grid-template-columns:1fr}.club-evaluation-inputs>button,.club-selection>button{margin-top:0}.club-live-total>div,.club-financial-grid{display:grid;grid-template-columns:1fr}.club-live-total i,.club-financial-grid>i{display:none}}
 </style>
 
 <script>
@@ -64,7 +67,29 @@
   const programs=dialog.querySelector('[data-program-rows]');
   const products=dialog.querySelector('[data-product-rows]');
   const format=value=>new Intl.NumberFormat('fa-IR').format(value)+' تومان';
-  let selectedContribution=0;
+  const selection=dialog.querySelector('[data-selection-form]');
+  const totalBox=dialog.querySelector('[data-customer-total]');
+  let selectedContribution=0,selectedProgram=null,selectedProductPrice=null;
+  function updateTotal(){
+    if(!totalBox||!selectedProgram||selectedProductPrice===null){if(totalBox)totalBox.hidden=true;return;}
+    const down=Number(selectedProgram.entered_down||0),loan=Number(selectedProgram.loan_purchase||0);
+    const difference=Math.max(0,selectedProductPrice-(loan+down));
+    const club=Math.max(0,Number(selection?.elements.club_fee?.value||0));
+    totalBox.querySelector('[data-total-loan]').textContent=format(loan);
+    totalBox.querySelector('[data-total-down]').textContent=format(down);
+    totalBox.querySelector('[data-total-difference]').textContent=format(difference);
+    totalBox.querySelector('[data-total-club]').textContent=format(club);
+    totalBox.querySelector('[data-total-final]').textContent=format(loan+down+difference+club);
+    totalBox.hidden=false;
+  }
+  function decoratePrograms(){
+    programs?.querySelectorAll('input[name=program_choice]').forEach(input=>{
+      const matching=dialog._clubPrograms?.find?.(item=>String(item.id)===input.value);
+      if(matching){input.dataset.contribution=matching.contribution;input.dataset.loanPurchase=matching.loan_purchase;}
+      const row=input.closest('tr');
+      if(row&&!row.querySelector('[data-loan-purchase]')){const cell=document.createElement('td');cell.dataset.loanPurchase='';cell.textContent=matching?format(matching.loan_purchase):'—';row.children[4]?.before(cell);}
+    });
+  }
   function decorateProducts(){
     products?.querySelectorAll('tr').forEach(row=>{
       let cell=row.querySelector('[data-purchase-difference]');
@@ -77,21 +102,20 @@
   programs?.addEventListener('change',event=>{
     const input=event.target.closest('input[name=program_choice]');
     if(!input)return;
-    const row=input.closest('tr');
+    selectedProgram=dialog._clubPrograms?.find?.(item=>String(item.id)===input.value)||null;
+    selectedProductPrice=null;
     selectedContribution=Number(input.dataset.contribution||input.dataset.budget||0);
-    decorateProducts();
+    decorateProducts();updateTotal();
   });
+  products?.addEventListener('change',event=>{const input=event.target.closest('input[name=product_choice]');if(!input)return;selectedProductPrice=Number(input.closest('tr')?.dataset.productPrice||0);updateTotal();});
+  selection?.elements.club_fee?.addEventListener('input',updateTotal);
   new MutationObserver(()=>{
-    programs?.querySelectorAll('input[name=program_choice]').forEach(input=>{
-      if(input.dataset.contribution)return;
-      const matching=dialog._clubPrograms?.find?.(item=>String(item.id)===input.value);
-      input.dataset.contribution=matching?.contribution??input.dataset.budget;
-    });
+    decoratePrograms();
     decorateProducts();
   }).observe(products,{childList:true});
   const evaluationForm=dialog.querySelector('[data-evaluation-form]');
   evaluationForm?.addEventListener('submit',async()=>{
-    selectedContribution=0;
+    selectedContribution=0;selectedProgram=null;selectedProductPrice=null;if(totalBox)totalBox.hidden=true;
     try{
       const originalFetch=window.fetch;
       if(!dialog.dataset.clubFetchObserved){

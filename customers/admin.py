@@ -134,7 +134,10 @@ class LoanProgramAdmin(admin.ModelAdmin):
 
 @admin.register(ClubAccount)
 class ClubAccountAdmin(admin.ModelAdmin):
-    list_display = ('contract_number', 'customer', 'loan_program', 'product', 'delivery_type', 'status', 'joined_at')
+    list_display = (
+        'contract_number', 'customer', 'loan_program', 'product',
+        'loan_purchase_amount', 'total_customer_payable', 'delivery_type', 'status', 'joined_at',
+    )
     search_fields = ('contract_number', 'customer__name', 'customer__mobile')
     list_filter = ('status', 'delivery_type', 'loan_program__provider')
     readonly_fields = ('contract_number', 'joined_at', 'updated_at')

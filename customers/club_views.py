@@ -16,8 +16,8 @@ from .access import can_edit_card
 from .club_forms import ClubPaymentForm, ClubSelectionForm, LoanEvaluationForm, LoanProgramSettingsForm
 from .club_models import ClubAccount, ClubPayment, LoanEvaluation, LoanProgram
 from .club_service import (
-    covered_purchase_amount, create_payment_schedule, evaluate_case, maximum_purchase_price,
-    program_eligibility, purchase_budget, purchase_difference,
+    covered_purchase_amount, create_payment_schedule, evaluate_case, loan_purchase_amount,
+    maximum_purchase_price, program_eligibility, purchase_budget, purchase_difference,
 )
 from .models import Reception
 
@@ -84,6 +84,7 @@ def evaluate(request, pk):
             'monthly': item.monthly_installment,
             'budget': maximum_purchase_price(item, evaluation.proposed_down_payment),
             'contribution': covered_purchase_amount(item, evaluation.proposed_down_payment),
+            'loan_purchase': loan_purchase_amount(item, evaluation.proposed_down_payment),
             'down': item.down_payment, 'entered_down': evaluation.proposed_down_payment,
             'guarantee': item.guarantee,
             'employment': item.employment_note,
@@ -118,13 +119,20 @@ def select_offer(request, pk):
     delivery = form.cleaned_data['delivery_type']
     panel_url = 'https://example.com/b2b' if delivery == 'instant' else 'https://example.com/b2c'
     guarantee = ' · '.join(x for x in (program.employment_note, program.guarantee) if x)
+    down_payment = evaluation.proposed_down_payment
+    loan_purchase = loan_purchase_amount(program, down_payment)
+    difference = purchase_difference(program, down_payment, product.price)
+    club_fee = form.cleaned_data.get('club_fee') or 0
     account = ClubAccount.objects.create(
         customer=rec.customer, reception=rec, evaluation=evaluation, contract_number=evaluation.contract_number,
         loan_program=program, product=product, delivery_type=delivery, panel_url=panel_url,
         customer_credit_rank=rec.customer.case.credit_rank,
         guarantor_name=rec.customer.case.guarantor_name,
         guarantor_credit_rank=rec.customer.case.guarantor_credit_rank,
-        guarantee_snapshot=guarantee, club_fee=form.cleaned_data.get('club_fee') or 0,
+        guarantee_snapshot=guarantee, club_fee=club_fee,
+        loan_purchase_amount=loan_purchase, down_payment_amount=down_payment,
+        purchase_difference_amount=difference,
+        total_customer_payable=loan_purchase + down_payment + difference + club_fee,
         selected_by=request.user,
     )
     evaluation.status = 'selected'
@@ -133,7 +141,6 @@ def select_offer(request, pk):
     create_payment_schedule(account)
     from hr.task_automation import sync_club_account
     sync_club_account(account)
-    difference = purchase_difference(program, evaluation.proposed_down_payment, product.price)
     difference_text = f' مابه‌التفاوت {difference:,} تومان نیز برای ثبت رسید در برنامه پرداخت ایجاد شد.' if difference else ''
     return JsonResponse({'ok': True, 'message': f'قرارداد {account.contract_number} ثبت شد؛ مشتری به باشگاه اضافه شد.{difference_text}',
                          'redirect': f"{reverse('customers:hub')}?tab=club&r={rec.pk}"})
