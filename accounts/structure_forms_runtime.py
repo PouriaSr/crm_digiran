@@ -98,6 +98,10 @@ def configure_form(cls, scopes):
                 if self.cleaned_data[name] is not None:continue
                 try:native=model._meta.get_field(name)
                 except Exception:continue
+                # Optional model fields (notably FileField/ImageField) legitimately
+                # clean an empty value to ``None``.  The structure runtime must not
+                # turn ``blank=True`` into a hidden required constraint.
+                if getattr(native,'blank',False):continue
                 if not native.null:
                     default=native.get_default() if native.has_default() else None
                     if default is not None:self.cleaned_data[name]=self.fields[name].clean(default)

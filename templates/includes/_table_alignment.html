@@ -6,11 +6,13 @@ html body table tr>:is(th,td):not([colspan])>.flex{justify-content:center!import
 html body table tr>.crm-primary-column:not([colspan])>.flex{justify-content:flex-start!important}
 html body table tr>:is(th,td):not([colspan])>.flex-col{align-items:center!important}
 html body table tr>.crm-primary-column:not([colspan])>.flex-col{align-items:flex-start!important}
+html body :is(.wf-list-head,.wf-summary)>:first-child{text-align:right!important;justify-content:flex-start!important}
+html body :is(.wf-list-head,.wf-summary)>:not(:first-child){text-align:center!important;justify-content:center!important}
 </style>
 <script>
 (function(){
  if(window.CRMTableAlignment)return;
- function prepare(){for(const table of document.querySelectorAll('table')){const head=table.tHead?.rows[0];if(!head)continue;const cells=Array.from(head.cells);let primary=cells.findIndex(cell=>/^(نام مشتری|نام کارجو|نام کالا|نام محصول|نام پرسنل|نام کاربر|کاربر|مشتری|کارجو|کالا|محصول|پرسنل|عنوان)$/.test(cell.textContent.trim()));if(primary<0)primary=cells.findIndex(cell=>!cell.querySelector('input[type=checkbox]')&&!/^(#|ردیف|شماره)$/.test(cell.textContent.trim()));if(primary<0)primary=0;for(const row of Array.from(table.rows)){if(row.closest('table')!==table)continue;for(const cell of Array.from(row.cells))cell.classList.toggle('crm-primary-column',cell.cellIndex===primary&&cell.colSpan===1);}}}
+ function prepare(){for(const table of document.querySelectorAll('table')){const head=table.tHead?.rows[0];if(!head)continue;const cells=Array.from(head.cells);let primary=cells.findIndex(cell=>/^(نام مشتری|نام مراجعه‌کننده|نام مصاحبه‌کننده|نام کارجو|نام کالا|نام محصول|نام آگهی|نام دسته|نام پرسنل|نام کاربر|کاربر|مشتری|مراجعه‌کننده|مصاحبه‌کننده|کارجو|کالا|محصول|پرسنل|عنوان)$/.test(cell.textContent.trim()));if(primary<0)primary=cells.findIndex(cell=>!cell.querySelector('input[type=checkbox]')&&!/^(#|ردیف|شماره|انتخاب|عملیات)$/.test(cell.textContent.trim()));if(primary<0)primary=0;for(const row of Array.from(table.rows)){if(row.closest('table')!==table)continue;for(const cell of Array.from(row.cells))cell.classList.toggle('crm-primary-column',cell.cellIndex===primary&&cell.colSpan===1);}}}
  let pending=false;new MutationObserver(()=>{if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;prepare();});}).observe(document.documentElement,{subtree:true,childList:true});
  document.addEventListener('DOMContentLoaded',prepare);window.CRMTableAlignment={prepare};prepare();
 })();

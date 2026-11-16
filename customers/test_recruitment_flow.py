@@ -17,7 +17,9 @@ from customers.models import (CaseWorkSession, Customer, HiringAd, HiringApplica
 
 
 def jday(value):
-    return jdatetime.date.fromgregorian(date=value.date()).strftime('%Y/%m/%d')
+    # Date filters are evaluated in the application's Tehran timezone.  Keeping
+    # the helper local avoids a flaky failure around UTC midnight.
+    return jdatetime.date.fromgregorian(date=timezone.localtime(value).date()).strftime('%Y/%m/%d')
 
 
 class NewRecruitmentFlowTests(TestCase):

@@ -185,9 +185,7 @@ def build_workflow_context(request):
             'customer__case', 'club_account', 'club_account__loan_program', 'club_account__product',
         ).prefetch_related('club_account__payments').order_by('-case_completed_at', '-pk')
         rec = selected_record(request, records)
-        from .club_forms import ClubPaymentForm, LoanEvaluationForm, LoanProgramSettingsForm
-        from .club_models import LoanProgram
-        from django.forms import modelformset_factory
+        from .club_forms import ClubPaymentForm, LoanEvaluationForm
         account = None
         if rec:
             try:
@@ -199,11 +197,12 @@ def build_workflow_context(request):
             club_records=paginated(records, 'club', 'club_page'), club_record=rec,
             club_account=account,
             club_evaluation_form=LoanEvaluationForm() if rec and not account else None,
-            club_payment_form=ClubPaymentForm() if account else None,
+            club_payment_form=ClubPaymentForm(account=account) if account else None,
+            club_receipt_payments=(
+                account.payments.filter(payment_type__in=('purchase_difference', 'club_fee', 'installment'))
+                if account else None
+            ),
         )
-        if has_permission(request.user, 'customers.club_manage'):
-            ProgramSet = modelformset_factory(LoanProgram, form=LoanProgramSettingsForm, extra=1, can_delete=True)
-            context['club_program_formset'] = ProgramSet(queryset=LoanProgram.objects.all())
     if 'hiring' in tabs:
         if active == 'hiring':
             from .hiring_views import hiring_context

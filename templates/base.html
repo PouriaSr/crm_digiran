@@ -878,6 +878,7 @@ window.apexMobileMerge = function (options) {
     {% include 'includes/_overlay_ui.html' %}
     {% include 'includes/_modal_preview.html' %}
     {% include 'includes/_table_alignment.html' %}
+    {% include 'includes/_print_ui.html' %}
     {% include 'includes/_pagination_ui.html' %}
     {% include 'includes/_filter_ui.html' %}
 {% include 'includes/_mobile_ui.html' %}
@@ -935,6 +936,13 @@ window.apexMobileMerge = function (options) {
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'customers' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition" data-crm-ui="ui.base.a3" data-crm-order="30">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                 <span>مرکز مشتریان</span>
+            </a>
+            {% endif %}
+
+            {% if 'customers.club_manage' in user_permissions %}
+            <a href="{% url 'customers:club_programs' %}"
+               class="mr-5 flex items-center gap-2 px-3 py-2 rounded-lg text-sm {% if request.resolver_match.url_name == 'club_programs' %}bg-blue-600{% else %}text-blue-100 hover:bg-white/10{% endif %} transition">
+                <span aria-hidden="true">↳</span><span>تنظیمات طرح‌های وام</span>
             </a>
             {% endif %}
 

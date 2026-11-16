@@ -1,12 +1,13 @@
 from crm.pagination import PAGE_SIZE, paginate
 from crm.numerals import digit_contains
 import json
+from pathlib import Path
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, Q, Sum
-from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.http import FileResponse, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -317,11 +318,15 @@ def ad_export_report(request):
 @require_http_methods(['GET', 'POST'])
 def ad_create(request):
     if request.method == 'POST':
-        form = AdForm(request.POST)
+        form = AdForm(request.POST, request.FILES)
         if form.is_valid():
             with transaction.atomic():
                 ad = form.save(commit=False)
                 ad.created_by = request.user
+                if ad.payment_receipt:
+                    ad.payment_registered_by = request.user
+                    ad.payment_registered_at = timezone.now()
+                    ad.payment_receipt_name = request.FILES['payment_receipt'].name[:200]
                 ad.save()
 
                 AdLog.objects.create(
@@ -382,10 +387,18 @@ def ad_edit(request, pk):
             'ad_number': ad.ad_number,
         }
 
-        form = AdForm(request.POST, instance=ad)
+        old_receipt = ad.payment_receipt.name if ad.payment_receipt else ''
+        form = AdForm(request.POST, request.FILES, instance=ad)
         if form.is_valid():
             with transaction.atomic():
-                updated = form.save()
+                updated = form.save(commit=False)
+                if request.FILES.get('payment_receipt'):
+                    updated.payment_registered_by = request.user
+                    updated.payment_registered_at = timezone.now()
+                    updated.payment_receipt_name = request.FILES['payment_receipt'].name[:200]
+                updated.save()
+                if old_receipt and request.FILES.get('payment_receipt') and old_receipt != updated.payment_receipt.name:
+                    updated.payment_receipt.storage.delete(old_receipt)
 
                 new_vals = {
                     'platform': updated.platform_name_snapshot,
@@ -422,6 +435,21 @@ def ad_edit(request, pk):
         'ad': ad,
         'logs': paginate(request, ad.logs.select_related('changed_by').order_by('-changed_at','-pk'), 'logs_page'),
     })
+
+
+@login_required
+def ad_payment_receipt(request, pk):
+    ad = get_object_or_404(Ad, pk=pk)
+    if not check_permission(request.user, 'ads.view'):
+        return HttpResponseForbidden('شما دسترسی مشاهده ندارید.')
+    if not request.user.is_superuser and ad.created_by_id != request.user.id:
+        return HttpResponseForbidden('فقط رسید رکوردهای خودتان قابل مشاهده است.')
+    if not ad.payment_receipt:
+        return HttpResponse('رسید پرداختی ثبت نشده است.', status=404)
+    return FileResponse(
+        ad.payment_receipt.open('rb'), as_attachment=True,
+        filename=Path(ad.payment_receipt_name or ad.payment_receipt.name).name,
+    )
 
 
 # ─────────────────────────────────────────────

@@ -1,4 +1,5 @@
 <nav class="crm-mobile-navigation-links" aria-label="دسترسی مستقیم به بخش‌ها">
+{% if 'customers.club_manage' in user_permissions %}<a href="{% url 'customers:club_programs' %}" data-crm-ui="ui.includes.mobilenavigationlinks.clubprograms" data-crm-order="5">تنظیمات طرح‌های وام</a>{% endif %}
 {% if 'customers.candidate_view' in user_permissions and 'customers.info' not in user_permissions %}<a href="{% url 'customers:candidate_list' %}" data-crm-ui="ui.includes.mobilenavigationlinks.a1" data-crm-order="10">مصاحبه‌کنندگان</a>{% endif %}
 {% if 'calls.view' in user_permissions %}<a href="{% url 'calls:list' %}" data-crm-ui="ui.includes.mobilenavigationlinks.a2" data-crm-order="20">تماس‌ها</a>{% endif %}
 {% if 'invoices.view' in user_permissions %}<a href="{% url 'sales:list' %}" data-crm-ui="ui.includes.mobilenavigationlinks.a3" data-crm-order="30">فاکتورها</a>{% endif %}

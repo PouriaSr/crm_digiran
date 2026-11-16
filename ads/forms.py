@@ -34,7 +34,7 @@ class AdForm(DuplicateCheckMixin, StyledFormMixin, forms.ModelForm):
         model = Ad
         fields = [
             'platform', 'process', 'cost', 'source',
-            'product', 'ad_number', 'note',
+            'product', 'ad_number', 'note', 'payment_receipt', 'payment_note',
         ]
         widgets = {
             'source': SourceSelect(),
@@ -45,6 +45,8 @@ class AdForm(DuplicateCheckMixin, StyledFormMixin, forms.ModelForm):
                 'autocomplete': 'off',
                 'readonly': 'readonly',
             }),
+            'payment_receipt': forms.FileInput(attrs={'accept': '.jpg,.jpeg,.png,.pdf'}),
+            'payment_note': forms.Textarea(attrs={'rows': 2, 'placeholder': 'شماره پیگیری، روش پرداخت یا توضیحات رسید'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -77,6 +79,17 @@ class AdForm(DuplicateCheckMixin, StyledFormMixin, forms.ModelForm):
             stock__gt=0,
         ).order_by('name')
         self.fields['product'].required = False
+
+    def clean_payment_receipt(self):
+        receipt = self.cleaned_data.get('payment_receipt')
+        if not receipt:
+            return receipt
+        if receipt.size > 5 * 1024 * 1024:
+            raise ValidationError('حجم فاکتور یا رسید نباید بیشتر از ۵ مگابایت باشد.')
+        content_type = getattr(receipt, 'content_type', '')
+        if content_type and content_type not in {'image/jpeg', 'image/png', 'application/pdf'}:
+            raise ValidationError('فاکتور یا رسید باید تصویر JPG/PNG یا فایل PDF باشد.')
+        return receipt
 
     def clean_ad_number(self):
         ad_number = (self.cleaned_data.get('ad_number') or '').strip()

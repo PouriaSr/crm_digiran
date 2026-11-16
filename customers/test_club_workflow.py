@@ -1,12 +1,15 @@
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
+import jdatetime
 
 from hr.models import Task
 from products.models import Category, Product
 
 from .club_models import ClubAccount, ClubPayment, LoanEvaluation, LoanProgram
+from .club_forms import ClubPaymentForm
 from .club_service import (
     covered_purchase_amount, evaluate_case, loan_purchase_amount,
     purchase_budget, purchase_difference,
@@ -78,8 +81,7 @@ class ClubWorkflowTests(TestCase):
         self.assertEqual(account.contract_number, self.case.contract_number)
         self.assertEqual(account.panel_label, 'پنل B2B')
         self.assertEqual(account.total_customer_payable, (
-            account.loan_purchase_amount + account.down_payment_amount +
-            account.purchase_difference_amount + account.club_fee
+            account.main_purchase_amount - account.purchase_difference_amount + account.club_fee
         ))
         self.assertEqual(account.payments.filter(payment_type='installment').count(), program.term_months)
         self.assertTrue(account.payments.filter(payment_type='club_fee', amount=500_000).exists())
@@ -130,10 +132,10 @@ class ClubWorkflowTests(TestCase):
             payment_type='down_payment', amount=15_000_000,
         ).exists())
 
-    def test_phone_difference_is_offered_and_added_to_receiptable_payments(self):
+    def test_unused_purchase_difference_is_stored_and_receiptable(self):
         phone = Product.objects.create(
             category=self.category, name='گوشی با مابه‌التفاوت', code='PHONE-DIFF',
-            price=90_000_000, cost_price=70_000_000, stock=1,
+            price=79_000_000, cost_price=70_000_000, stock=1,
         )
         response = self.client.post(reverse('customers:club_evaluate', args=[self.rec.pk]), {
             'requested_credit': 100_000_000, 'proposed_down_payment': 0,
@@ -145,7 +147,7 @@ class ClubWorkflowTests(TestCase):
         azki = LoanProgram.objects.get(pk=azki_data['id'])
         self.assertEqual(azki_data['contribution'], covered_purchase_amount(azki, 0))
         self.assertEqual(azki_data['loan_purchase'], loan_purchase_amount(azki, 0))
-        self.assertEqual(purchase_difference(azki, 0, phone.price), 28_000_000)
+        self.assertEqual(purchase_difference(azki, 0, phone.price), 6_000_000)
         response = self.client.post(reverse('customers:club_select', args=[self.rec.pk]), {
             'evaluation': data['evaluation'], 'program': azki.pk, 'product': phone.pk,
             'delivery_type': 'instant', 'club_fee': 0,
@@ -153,12 +155,100 @@ class ClubWorkflowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         account = ClubAccount.objects.get(customer=self.customer)
         difference = account.payments.get(payment_type='purchase_difference')
-        self.assertEqual(difference.amount, 28_000_000)
+        self.assertEqual(difference.amount, 6_000_000)
         self.assertEqual(difference.status, 'scheduled')
-        self.assertEqual(account.loan_purchase_amount, 62_000_000)
+        self.assertEqual(account.loan_purchase_amount, 85_000_000)
         self.assertEqual(account.down_payment_amount, 0)
-        self.assertEqual(account.purchase_difference_amount, 28_000_000)
-        self.assertEqual(account.total_customer_payable, 90_000_000)
+        self.assertEqual(account.main_purchase_amount, 85_000_000)
+        self.assertEqual(account.purchase_difference_amount, 6_000_000)
+        self.assertEqual(account.total_customer_payable, 79_000_000)
+        receipt = SimpleUploadedFile('receipt.pdf', b'%PDF-1.4 test', content_type='application/pdf')
+        response = self.client.post(reverse('customers:club_receipt_save', args=[difference.pk]), {
+            'receipt': receipt, 'notes': 'رسید مابه‌التفاوت',
+        })
+        self.assertEqual(response.status_code, 302)
+        difference.refresh_from_db()
+        self.assertEqual(difference.status, 'paid')
+        self.assertTrue(difference.receipt)
+
+    def test_club_fee_defaults_to_one_million_when_omitted(self):
+        response = self.client.post(reverse('customers:club_evaluate', args=[self.rec.pk]), {
+            'requested_credit': 100_000_000, 'proposed_down_payment': 0,
+        })
+        data = response.json()
+        response = self.client.post(reverse('customers:club_select', args=[self.rec.pk]), {
+            'evaluation': data['evaluation'], 'program': data['programs'][0]['id'],
+            'product': self.phone.pk, 'delivery_type': 'instant',
+        })
+        self.assertEqual(response.status_code, 200)
+        account = ClubAccount.objects.get(customer=self.customer)
+        self.assertEqual(account.club_fee, 1_000_000)
+        self.assertTrue(account.payments.filter(payment_type='club_fee', amount=1_000_000).exists())
+
+    def test_payment_form_prefills_first_unreceipted_installment_with_jalali_due_date(self):
+        evaluation = LoanEvaluation.objects.create(
+            reception=self.rec, case=self.case, requested_credit=100_000_000,
+            proposed_down_payment=0, contract_number=self.case.contract_number,
+            created_by=self.admin,
+        )
+        program = LoanProgram.objects.filter(provider='azki').first()
+        account = ClubAccount.objects.create(
+            customer=self.customer, reception=self.rec, evaluation=evaluation,
+            contract_number=self.case.contract_number, loan_program=program, product=self.phone,
+            delivery_type='instant', panel_url='https://example.com/b2b', customer_credit_rank='A1',
+            selected_by=self.admin,
+        )
+        due = timezone.localdate().replace(day=1)
+        payment = ClubPayment.objects.create(
+            account=account, payment_type='installment', amount=program.monthly_installment,
+            due_date=due, status='scheduled',
+        )
+        form = ClubPaymentForm(account=account)
+        expected = jdatetime.date.fromgregorian(date=due).strftime('%Y/%m/%d')
+        self.assertEqual(form.initial['payment_type'], 'installment')
+        self.assertEqual(form.initial['due_date'], expected)
+        self.assertEqual(form.fields['due_date'].widget.attrs['data-next-installment-date'], expected)
+        bound = ClubPaymentForm({
+            'payment_type': 'installment', 'amount': payment.amount,
+            'due_date': expected, 'status': 'scheduled', 'notes': '',
+        }, account=account)
+        self.assertTrue(bound.is_valid(), bound.errors)
+        self.assertEqual(bound.cleaned_data['due_date'], due)
+
+    def test_registering_installment_updates_first_scheduled_row_without_duplicate(self):
+        evaluation = LoanEvaluation.objects.create(
+            reception=self.rec, case=self.case, requested_credit=100_000_000,
+            proposed_down_payment=0, contract_number=self.case.contract_number,
+            created_by=self.admin,
+        )
+        program = LoanProgram.objects.filter(provider='azki').first()
+        account = ClubAccount.objects.create(
+            customer=self.customer, reception=self.rec, evaluation=evaluation,
+            contract_number=self.case.contract_number, loan_program=program, product=self.phone,
+            delivery_type='instant', panel_url='https://example.com/b2b', customer_credit_rank='A1',
+            selected_by=self.admin,
+        )
+        due = timezone.localdate()
+        scheduled = ClubPayment.objects.create(
+            account=account, payment_type='installment', amount=program.monthly_installment,
+            due_date=due, status='scheduled',
+        )
+        jalali_due = jdatetime.date.fromgregorian(date=due).strftime('%Y/%m/%d')
+        response = self.client.post(reverse('customers:club_payment', args=[account.pk]), {
+            'payment_type': 'installment', 'amount': program.monthly_installment,
+            'due_date': jalali_due, 'status': 'paid', 'notes': 'قسط اول پرداخت شد',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(account.payments.filter(payment_type='installment').count(), 1)
+        scheduled.refresh_from_db()
+        self.assertEqual(scheduled.status, 'paid')
+        self.assertEqual(scheduled.notes, 'قسط اول پرداخت شد')
+
+    def test_loan_program_settings_is_a_dedicated_customer_center_page(self):
+        response = self.client.get(reverse('customers:club_programs'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'تنظیمات طرح‌های وام')
+        self.assertContains(response, 'بازگشت به باشگاه مشتریان')
 
     def test_private_receipt_and_card_ownership_are_enforced(self):
         evaluation = LoanEvaluation.objects.create(

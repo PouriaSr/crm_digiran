@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils import timezone
 from unfold.admin import ModelAdmin
 
 from .forms import AdForm
@@ -59,12 +60,16 @@ class AdAdmin(ModelAdmin):
     ]
     list_filter = ['platform', 'process', 'created_by', 'created_at']
     search_fields = ['ad_number', 'source__phone_number', 'product__name']
-    readonly_fields = ['created_at', 'created_by']
+    readonly_fields = ['created_at', 'created_by', 'payment_registered_at', 'payment_registered_by']
     date_hierarchy = 'created_at'
 
     def save_model(self, request, obj, form, change):
         if not change:
             obj.created_by = request.user
+        if form.cleaned_data.get('payment_receipt') and 'payment_receipt' in form.changed_data:
+            obj.payment_registered_by = request.user
+            obj.payment_registered_at = timezone.now()
+            obj.payment_receipt_name = form.cleaned_data['payment_receipt'].name[:200]
         super().save_model(request, obj, form, change)
 
 

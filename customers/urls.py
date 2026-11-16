@@ -37,6 +37,7 @@ urlpatterns = [
     path('hub/club/<int:pk>/select/', club_views.select_offer, name='club_select'),
     path('hub/club/account/<int:pk>/payment/', club_views.add_payment, name='club_payment'),
     path('hub/club/payment/<int:pk>/receipt/', club_views.receipt, name='club_receipt'),
+    path('hub/club/payment/<int:pk>/receipt/save/', club_views.update_payment_receipt, name='club_receipt_save'),
     path('hub/club/programs/', club_views.manage_programs, name='club_programs'),
     path('hub/hiring/<int:pk>/task/', hiring_views.hiring_task, name='hiring_task'),
     path('hub/hiring/sessions/clock/', hiring_views.interview_clock, name='interview_clock'),

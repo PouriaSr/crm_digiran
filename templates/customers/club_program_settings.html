@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% load fa_numbers %}
+{% block mobile_title %}تنظیمات طرح‌های وام{% endblock %}
+{% block content %}
+<main class="loan-settings-page" dir="rtl">
+  <header class="loan-settings-head">
+    <div><span>مرکز مشتریان</span><h1>تنظیمات طرح‌های وام</h1><p>مبلغ وام، سقف خرید، اقساط، پیش‌پرداخت، رتبه‌های مجاز و مدارک هر طرح را در یک صفحه مستقل مدیریت کنید.</p></div>
+    <a href="{% url 'customers:hub' %}?tab=club">بازگشت به باشگاه مشتریان</a>
+  </header>
+  <form method="post" class="loan-settings-form">{% csrf_token %}{{ formset.management_form }}
+    {% if formset.non_form_errors %}<div class="loan-alert">{{ formset.non_form_errors }}</div>{% endif %}
+    <section class="loan-settings-list">
+      {% for program_form in formset %}
+      <details class="loan-program-card" {% if not program_form.instance.pk or program_form.errors %}open{% endif %}>
+        <summary>
+          <div><strong>{% if program_form.instance.pk %}{{ program_form.instance }}</strong><small>سقف خرید {{ program_form.instance.purchase_limit|fa_num }} تومان · قسط {{ program_form.instance.monthly_installment|fa_num }} تومان</small>{% else %}طرح وام جدید</strong><small>برای افزودن طرح تازه، مشخصات را تکمیل کنید.</small>{% endif %}</div>
+          <span>{% if program_form.errors %}نیازمند اصلاح{% elif program_form.instance.is_active %}فعال{% else %}غیرفعال{% endif %}</span>
+        </summary>
+        <div class="loan-program-fields">{{ program_form.id }}
+          {% for field in program_form.visible_fields %}
+          <div class="loan-field {% if field.name == 'allowed_customer_ranks' or field.name == 'allowed_guarantor_ranks' or field.name == 'allowed_guarantor_ranks_for_b' %}loan-field-wide loan-ranks{% endif %} {% if field.name == 'DELETE' %}loan-delete{% endif %}">
+            <label>{{ field.label }}{% if field.field.required %}<b>*</b>{% endif %}</label>{{ field }}
+            {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+            {% for error in field.errors %}<p>{{ error }}</p>{% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+      </details>
+      {% endfor %}
+    </section>
+    <footer class="loan-settings-actions"><button type="submit">ذخیره همه تغییرات</button><a href="{% url 'customers:hub' %}?tab=club">انصراف</a></footer>
+  </form>
+</main>
+<style>
+.loan-settings-page{display:grid;gap:18px}.loan-settings-head{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:22px;border:1px solid #dbe3ef;border-radius:18px;background:linear-gradient(135deg,#fff,#eef4ff)}.loan-settings-head span{font-size:10px;font-weight:800;color:#2563eb}.loan-settings-head h1{margin:5px 0;font-size:22px;font-weight:900;color:#0f172a}.loan-settings-head p{font-size:12px;color:#64748b}.loan-settings-head>a,.loan-settings-actions a{padding:10px 14px;border:1px solid #cbd5e1;border-radius:11px;background:#fff;color:#334155;font-size:11px;font-weight:800;white-space:nowrap}.loan-settings-form{display:grid;gap:16px}.loan-settings-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.loan-program-card{align-self:start;border:1px solid #dbe3ef;border-radius:16px;background:#fff;overflow:hidden}.loan-program-card[open]{grid-column:1/-1;border-color:#a5b4fc;box-shadow:0 8px 26px #1e3a5f12}.loan-program-card summary{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 18px;cursor:pointer;list-style:none}.loan-program-card summary::-webkit-details-marker{display:none}.loan-program-card summary div{display:grid;gap:4px}.loan-program-card summary strong{font-size:13px;color:#0f172a}.loan-program-card summary small{font-size:10px;color:#64748b}.loan-program-card summary>span{padding:5px 9px;border-radius:999px;background:#eef2ff;color:#4338ca;font-size:9px;font-weight:800}.loan-program-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:18px;border-top:1px solid #eef2f7;background:#fbfdff}.loan-field label{display:block;margin-bottom:6px;color:#475569;font-size:10px;font-weight:800}.loan-field label b{color:#dc2626}.loan-field input:not([type=checkbox]),.loan-field select,.loan-field textarea{width:100%;min-height:42px;padding:9px 11px;border:1px solid #dbe3ef;border-radius:10px;background:#fff;font-size:11px}.loan-field>small{display:block;margin-top:5px;color:#94a3b8;font-size:9px}.loan-field>p,.loan-alert{margin-top:6px;padding:8px;border-radius:8px;background:#fff1f2;color:#be123c;font-size:10px}.loan-field-wide{grid-column:1/-1}.loan-ranks>div,.loan-ranks ul{display:flex;flex-wrap:wrap;gap:7px}.loan-ranks li{list-style:none}.loan-ranks li label{display:inline-flex;align-items:center;gap:5px;padding:7px 9px;border:1px solid #dbe3ef;border-radius:9px;background:#fff}.loan-delete{padding:10px;border:1px solid #fecaca;border-radius:10px;background:#fff7f7}.loan-settings-actions{position:sticky;bottom:12px;display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #dbe3ef;border-radius:14px;background:#ffffffee;box-shadow:0 8px 30px #0f172a1a;backdrop-filter:blur(8px)}.loan-settings-actions button{min-height:42px;padding:9px 20px;border-radius:11px;background:#2563eb;color:#fff;font-size:12px;font-weight:900}@media(max-width:900px){.loan-settings-list{grid-template-columns:1fr}.loan-program-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:640px){.loan-settings-head{align-items:stretch;flex-direction:column}.loan-settings-head>a{text-align:center}.loan-program-fields{grid-template-columns:1fr}.loan-field-wide{grid-column:auto}.loan-settings-actions>*{flex:1;text-align:center}}
+</style>
+{% endblock %}

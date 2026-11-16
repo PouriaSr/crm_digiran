@@ -9,6 +9,7 @@ urlpatterns = [
     path('', views.ad_list, name='list'),
     path('new/', views.ad_create, name='create'),
     path('<int:pk>/edit/', views.ad_edit, name='edit'),
+    path('<int:pk>/payment-receipt/', views.ad_payment_receipt, name='payment_receipt'),
     path('<int:pk>/delete/', views.ad_delete, name='delete'),
 
     # گزارش

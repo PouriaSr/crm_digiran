@@ -47,16 +47,13 @@ def purchase_budget(program, proposed_down_payment):
 
 
 def maximum_purchase_price(program, proposed_down_payment):
-    """Maximum phone price that can be offered before the customer-paid difference."""
-    return program.credit_limit + proposed_down_payment
+    """Main purchase amount available for choosing a phone."""
+    return loan_purchase_amount(program, proposed_down_payment) + proposed_down_payment
 
 
 def loan_purchase_amount(program, proposed_down_payment):
-    """Snapshot-worthy part of the purchase ceiling financed by the loan itself."""
-    usable = purchase_budget(program, proposed_down_payment)
-    if program.no_down_purchase_limit:
-        return max(0, usable - proposed_down_payment)
-    return usable
+    """Purchase ceiling granted by the selected loan program."""
+    return program.purchase_limit
 
 
 def covered_purchase_amount(program, proposed_down_payment):
@@ -65,8 +62,8 @@ def covered_purchase_amount(program, proposed_down_payment):
 
 
 def purchase_difference(program, proposed_down_payment, product_price):
-    """Customer-paid part left after the usable lender contribution."""
-    return max(0, int(product_price) - covered_purchase_amount(program, proposed_down_payment))
+    """Unused part of the main purchase amount after choosing the phone."""
+    return max(0, covered_purchase_amount(program, proposed_down_payment) - int(product_price))
 
 
 def evaluate_case(case, requested_credit, proposed_down_payment):
@@ -108,7 +105,7 @@ def create_payment_schedule(account):
         rows.append(ClubPayment(
             account=account, payment_type='purchase_difference', amount=difference,
             due_date=today, status='scheduled', created_by=account.selected_by,
-            notes='مابه‌التفاوت قیمت گوشی و سهم قابل‌استفاده طرح وام؛ رسید پرداخت را ثبت کنید.',
+            notes='مابه‌التفاوت خرید اصلی و قیمت گوشی؛ فاکتور یا رسید پرداخت را ثبت کنید.',
         ))
     rows.extend(ClubPayment(account=account, payment_type='installment', amount=program.monthly_installment,
                             due_date=add_months(today, number), status='scheduled', created_by=account.selected_by)

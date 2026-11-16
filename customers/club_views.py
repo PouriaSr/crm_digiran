@@ -5,15 +5,18 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import FileResponse, HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from accounts.permissions import has_permission, require_permission
 from products.models import Product
 
 from .access import can_edit_card
-from .club_forms import ClubPaymentForm, ClubSelectionForm, LoanEvaluationForm, LoanProgramSettingsForm
+from .club_forms import (
+    ClubPaymentForm, ClubPaymentReceiptForm, ClubSelectionForm,
+    LoanEvaluationForm, LoanProgramSettingsForm,
+)
 from .club_models import ClubAccount, ClubPayment, LoanEvaluation, LoanProgram
 from .club_service import (
     covered_purchase_amount, create_payment_schedule, evaluate_case, loan_purchase_amount,
@@ -122,7 +125,10 @@ def select_offer(request, pk):
     down_payment = evaluation.proposed_down_payment
     loan_purchase = loan_purchase_amount(program, down_payment)
     difference = purchase_difference(program, down_payment, product.price)
-    club_fee = form.cleaned_data.get('club_fee') or 0
+    club_fee = form.cleaned_data.get('club_fee')
+    if club_fee is None:
+        club_fee = 1_000_000
+    main_purchase = loan_purchase + down_payment
     account = ClubAccount.objects.create(
         customer=rec.customer, reception=rec, evaluation=evaluation, contract_number=evaluation.contract_number,
         loan_program=program, product=product, delivery_type=delivery, panel_url=panel_url,
@@ -131,8 +137,9 @@ def select_offer(request, pk):
         guarantor_credit_rank=rec.customer.case.guarantor_credit_rank,
         guarantee_snapshot=guarantee, club_fee=club_fee,
         loan_purchase_amount=loan_purchase, down_payment_amount=down_payment,
+        main_purchase_amount=main_purchase,
         purchase_difference_amount=difference,
-        total_customer_payable=loan_purchase + down_payment + difference + club_fee,
+        total_customer_payable=main_purchase - difference + club_fee,
         selected_by=request.user,
     )
     evaluation.status = 'selected'
@@ -154,14 +161,25 @@ def add_payment(request, pk):
     account = get_object_or_404(ClubAccount.objects.select_related('customer'), pk=pk)
     if not has_permission(request.user, 'customers.club_payment') or not can_edit_card(request.user, account.customer):
         raise PermissionDenied('مجوز ثبت پرداخت این مشتری را ندارید.')
-    form = ClubPaymentForm(request.POST, request.FILES)
+    scheduled_installment = None
+    if request.POST.get('payment_type') == 'installment':
+        scheduled_installment = account.payments.filter(
+            payment_type='installment', status__in=('scheduled', 'overdue'), receipt='',
+        ).order_by('due_date', 'pk').first()
+    old_receipt = scheduled_installment.receipt.name if scheduled_installment and scheduled_installment.receipt else ''
+    form = ClubPaymentForm(
+        request.POST, request.FILES, account=account, instance=scheduled_installment,
+    )
     if form.is_valid():
         payment = form.save(commit=False)
         payment.account, payment.created_by = account, request.user
         payment.save()
+        if old_receipt and request.FILES.get('receipt') and old_receipt != payment.receipt.name:
+            payment.receipt.storage.delete(old_receipt)
         from hr.task_automation import sync_club_payment
         sync_club_payment(payment)
-        messages.success(request, 'پرداخت و رسید آن در باشگاه مشتریان ثبت شد.')
+        message = 'قسط برنامه‌ریزی‌شده به‌روزرسانی شد.' if scheduled_installment else 'پرداخت و مدرک آن در باشگاه مشتریان ثبت شد.'
+        messages.success(request, message)
     else:
         messages.error(request, 'اطلاعات پرداخت کامل نیست: ' + '، '.join(e for values in form.errors.values() for e in values))
     return redirect(f"{reverse('customers:hub')}?tab=club&r={account.reception_id}")
@@ -181,16 +199,46 @@ def receipt(request, pk):
 
 
 @login_required
-@require_permission('customers.club_manage')
+@require_permission('customers.club')
 @require_POST
+@transaction.atomic
+def update_payment_receipt(request, pk):
+    payment = get_object_or_404(
+        ClubPayment.objects.select_for_update().select_related('account__customer', 'account__reception'), pk=pk,
+    )
+    if (payment.payment_type not in {'purchase_difference', 'club_fee', 'installment'} or
+            not has_permission(request.user, 'customers.club_payment') or
+            not can_edit_card(request.user, payment.account.customer)):
+        raise PermissionDenied('مجوز ثبت رسید این پرداخت را ندارید.')
+    old_receipt = payment.receipt.name if payment.receipt else ''
+    form = ClubPaymentReceiptForm(request.POST, request.FILES, instance=payment)
+    if form.is_valid():
+        updated = form.save(commit=False)
+        updated.status = 'paid'
+        updated.created_by = updated.created_by or request.user
+        updated.save()
+        if old_receipt and old_receipt != updated.receipt.name:
+            updated.receipt.storage.delete(old_receipt)
+        from hr.task_automation import sync_club_payment
+        sync_club_payment(updated)
+        messages.success(request, f'رسید {updated.get_payment_type_display()} ثبت شد.')
+    else:
+        messages.error(request, 'رسید ثبت نشد: ' + '، '.join(e for values in form.errors.values() for e in values))
+    return redirect(f"{reverse('customers:hub')}?tab=club&r={payment.account.reception_id}")
+
+
+@login_required
+@require_permission('customers.club_manage')
+@require_http_methods(['GET', 'POST'])
 @transaction.atomic
 def manage_programs(request):
     from django.forms import modelformset_factory
     ProgramSet = modelformset_factory(LoanProgram, form=LoanProgramSettingsForm, extra=1, can_delete=True)
-    formset = ProgramSet(request.POST, queryset=LoanProgram.objects.all())
-    if formset.is_valid():
+    formset = ProgramSet(request.POST or None, queryset=LoanProgram.objects.all())
+    if request.method == 'POST' and formset.is_valid():
         formset.save()
         messages.success(request, 'تنظیمات طرح‌های وام ذخیره شد و ارزیابی‌های بعدی از مقادیر جدید استفاده می‌کنند.')
-    else:
-        messages.error(request, 'تنظیمات طرح‌های وام ذخیره نشد؛ مقادیر الزامی و تکراری را بررسی کنید.')
-    return redirect(f"{reverse('customers:hub')}?tab=club&loan_settings=1")
+        return redirect('customers:club_programs')
+    if request.method == 'POST':
+        messages.error(request, 'تنظیمات طرح‌های وام ذخیره نشد؛ خطاهای مشخص‌شده را اصلاح کنید.')
+    return render(request, 'customers/club_program_settings.html', {'formset': formset})

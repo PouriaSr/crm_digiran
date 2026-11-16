@@ -87,8 +87,9 @@ class ClubAccount(models.Model):
     club_fee = models.PositiveBigIntegerField('هزینه باشگاه مشتریان', default=0)
     loan_purchase_amount = models.PositiveBigIntegerField('سقف خرید وام تعلق‌گرفته', default=0)
     down_payment_amount = models.PositiveBigIntegerField('پیش‌پرداخت قرارداد', default=0)
+    main_purchase_amount = models.PositiveBigIntegerField('خرید اصلی', default=0)
     purchase_difference_amount = models.PositiveBigIntegerField('مابه‌التفاوت خرید', default=0)
-    total_customer_payable = models.PositiveBigIntegerField('جمع کل تعهد مشتری', default=0)
+    total_customer_payable = models.PositiveBigIntegerField('مبلغ نهایی مشتری', default=0)
     status = models.CharField(max_length=12, choices=STATUS, default='active', db_index=True)
     selected_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+')
     joined_at = models.DateTimeField(auto_now_add=True)
@@ -117,7 +118,7 @@ class ClubPayment(models.Model):
     amount = models.PositiveBigIntegerField('مبلغ (تومان)', validators=[MinValueValidator(1)])
     due_date = models.DateField('سررسید', null=True, blank=True, db_index=True)
     paid_at = models.DateTimeField('زمان پرداخت', null=True, blank=True)
-    status = models.CharField(max_length=12, choices=STATUS, default='scheduled', db_index=True)
+    status = models.CharField('وضعیت', max_length=12, choices=STATUS, default='scheduled', db_index=True)
     receipt = models.FileField(
         'رسید', storage=ClubReceiptStorage(), upload_to=club_receipt_path, max_length=255, blank=True,
         validators=[FileExtensionValidator(['jpg', 'jpeg', 'png', 'pdf'])],

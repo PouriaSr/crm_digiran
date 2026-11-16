@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.contrib.auth.models import Group, User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -177,6 +178,28 @@ class AdTestCase(TestCase):
         log = AdLog.objects.filter(ad=ad, action='update').first()
         self.assertIsNotNone(log)
         self.assertIn('process', log.changes)
+
+    def test_ad_payment_receipt_is_saved_and_privately_downloaded(self):
+        ad = Ad.objects.create(
+            platform=self.platform_divar, process=self.process_nardeban,
+            cost=Decimal('50000'), source=self.source1, ad_number='PAY-001', created_by=self.manager,
+        )
+        self.client.force_login(self.manager)
+        receipt = SimpleUploadedFile('ad-payment.pdf', b'%PDF-1.4 payment', content_type='application/pdf')
+        response = self.client.post(reverse('ads:edit', args=[ad.pk]), {
+            'platform': self.platform_divar.id, 'process': self.process_nardeban.id,
+            'cost': '50000', 'source': self.source1.id, 'ad_number': ad.ad_number,
+            'payment_receipt': receipt, 'payment_note': 'پرداخت کامل آگهی',
+        })
+        self.assertEqual(response.status_code, 302)
+        ad.refresh_from_db()
+        self.assertTrue(ad.payment_receipt)
+        self.assertEqual(ad.payment_note, 'پرداخت کامل آگهی')
+        self.assertEqual(ad.payment_registered_by, self.manager)
+        self.assertIsNotNone(ad.payment_registered_at)
+        self.assertEqual(self.client.get(reverse('ads:payment_receipt', args=[ad.pk])).status_code, 200)
+        self.client.force_login(self.outsider)
+        self.assertEqual(self.client.get(reverse('ads:payment_receipt', args=[ad.pk])).status_code, 403)
 
     def test_manager_cannot_edit_others_ad(self):
         ad = Ad.objects.create(

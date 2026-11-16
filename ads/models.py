@@ -3,6 +3,7 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 from crm.source_snapshots import SourceSnapshotMixin
+from crm.private_files import AdReceiptStorage, ad_receipt_path
 
 
 class AdPlatform(models.Model):
@@ -140,6 +141,17 @@ class Ad(SourceSnapshotMixin):
         help_text='شماره یونیک آگهی در پلتفرم',
     )
     note = models.TextField('توضیحات', blank=True)
+    payment_receipt = models.FileField(
+        'فاکتور یا رسید پرداخت', storage=AdReceiptStorage(), upload_to=ad_receipt_path,
+        max_length=255, blank=True,
+    )
+    payment_receipt_name = models.CharField(max_length=200, blank=True, editable=False)
+    payment_note = models.TextField('توضیحات پرداخت', blank=True)
+    payment_registered_at = models.DateTimeField('زمان ثبت پرداخت', null=True, blank=True, editable=False)
+    payment_registered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='ad_payments_registered', verbose_name='ثبت‌کننده پرداخت', editable=False,
+    )
     platform_name_snapshot = models.CharField('عنوان هنگام ثبت', max_length=100, blank=True, default='', editable=False)
     process_name_snapshot = models.CharField('فرآیند هنگام ثبت', max_length=150, blank=True, default='', editable=False)
 
@@ -178,6 +190,10 @@ class Ad(SourceSnapshotMixin):
                     if update_fields is not None:
                         update_fields = set(update_fields) | {snapshot}
                         kwargs['update_fields'] = update_fields
+        if self.payment_receipt and not self.payment_receipt_name:
+            self.payment_receipt_name = self.payment_receipt.name.rsplit('/', 1)[-1][:200]
+            if update_fields is not None:
+                kwargs['update_fields'] = set(kwargs.get('update_fields') or ()) | {'payment_receipt_name'}
         return super().save(*args, **kwargs)
 
 
