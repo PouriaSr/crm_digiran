@@ -113,3 +113,8 @@ class SearchInputSelectorTest(TestCase):
     def test_header_search_still_exists(self):
         # جستجوی سراسری هدر باید سر جایش بماند
         self.assertIn('action="/search/"', self.body)
+
+    def test_hub_search_action_keeps_its_absolute_position(self):
+        self.assertIn('absolute left-2 top-1/2 -translate-y-1/2', self.body)
+        self.assertNotIn('.crm-filter-form>button[type=submit]{margin-top:', self.body)
+        self.assertNotIn('.crm-filter-form>:has(>button[type=submit]){padding-top:', self.body)
