@@ -7,7 +7,7 @@ from hr.models import Task
 from products.models import Category, Product
 
 from .club_models import ClubAccount, ClubPayment, LoanEvaluation, LoanProgram
-from .club_service import evaluate_case
+from .club_service import evaluate_case, purchase_budget
 from .models import Customer, CustomerCase, Reception
 
 
@@ -78,6 +78,50 @@ class ClubWorkflowTests(TestCase):
         self.assertTrue(account.payments.filter(payment_type='club_fee', amount=500_000).exists())
         task = Task.objects.get(source_key=f'club:{self.rec.pk}')
         self.assertEqual(task.status, 'done')
+
+    def test_evaluation_explains_why_no_offer_is_available(self):
+        self.case.credit_rank = ''
+        self.case.save(update_fields=['credit_rank'])
+        response = self.client.post(reverse('customers:club_evaluate', args=[self.rec.pk]), {
+            'requested_credit': 100_000_000, 'proposed_down_payment': 0,
+        })
+        self.assertEqual(response.status_code, 422)
+        self.assertIn('رتبه اعتباری مشتری در پرونده ثبت نشده', response.json()['message'])
+        self.assertFalse(LoanEvaluation.objects.filter(reception=self.rec).exists())
+
+    def test_evaluation_explains_when_no_phone_matches_budget(self):
+        self.phone.stock = 0
+        self.phone.save(update_fields=['stock'])
+        response = self.client.post(reverse('customers:club_evaluate', args=[self.rec.pk]), {
+            'requested_credit': 100_000_000, 'proposed_down_payment': 0,
+        })
+        self.assertEqual(response.status_code, 422)
+        self.assertIn('گوشی فعال و موجود', response.json()['message'])
+
+    def test_down_payment_is_free_amount_and_unlocks_affordable_programs(self):
+        azki = LoanProgram.objects.get(provider='azki', term_months=12)
+        self.assertEqual(purchase_budget(azki, 0), 62_000_000)
+        self.assertEqual(purchase_budget(azki, 10_000_000), 72_000_000)
+        self.assertEqual(purchase_budget(azki, 50_000_000), 85_000_000)
+
+        response = self.client.post(reverse('customers:club_evaluate', args=[self.rec.pk]), {
+            'requested_credit': 100_000_000, 'proposed_down_payment': 15_000_000,
+        })
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        providers = {item['provider'] for item in data['programs']}
+        self.assertIn('جی‌اس‌ام', providers)
+        self.assertIn('ستاره یک', providers)
+        gsm = LoanProgram.objects.get(provider='gsm', term_months=12)
+        response = self.client.post(reverse('customers:club_select', args=[self.rec.pk]), {
+            'evaluation': data['evaluation'], 'program': gsm.pk, 'product': self.phone.pk,
+            'delivery_type': 'delayed', 'club_fee': 0,
+        })
+        self.assertEqual(response.status_code, 200)
+        account = ClubAccount.objects.get(customer=self.customer)
+        self.assertTrue(account.payments.filter(
+            payment_type='down_payment', amount=15_000_000,
+        ).exists())
 
     def test_private_receipt_and_card_ownership_are_enforced(self):
         evaluation = LoanEvaluation.objects.create(

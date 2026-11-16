@@ -9,14 +9,19 @@ FIELD_CLASS = 'w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 tex
 
 class LoanEvaluationForm(forms.Form):
     requested_credit = forms.TypedChoiceField(label='رقم پیشنهادی وام', coerce=int, choices=())
-    proposed_down_payment = forms.TypedChoiceField(label='مقدار پیش‌پرداخت', coerce=int, choices=())
+    proposed_down_payment = forms.IntegerField(
+        label='مقدار پیش‌پرداخت', min_value=0,
+        widget=forms.NumberInput(attrs={
+            'min': 0, 'step': 100000, 'inputmode': 'numeric',
+            'placeholder': 'مثلاً ۱۴٬۳۰۰٬۰۰۰ تومان',
+        }),
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         credits = LoanProgram.objects.filter(is_active=True).values_list('credit_limit', flat=True).distinct().order_by('credit_limit')
-        downs = LoanProgram.objects.filter(is_active=True).values_list('down_payment', flat=True).distinct().order_by('down_payment')
         self.fields['requested_credit'].choices = [(x, f'{x:,} تومان') for x in credits]
-        self.fields['proposed_down_payment'].choices = [(x, f'{x:,} تومان') for x in downs]
+        self.fields['proposed_down_payment'].initial = 0
         for field in self.fields.values():
             field.widget.attrs['class'] = FIELD_CLASS
 

@@ -42,6 +42,28 @@ def evaluate(request, pk):
     if not case.contract_number:
         return JsonResponse({'ok': False, 'message': 'شماره قرارداد پرونده ثبت نشده است؛ پرونده را دوباره ذخیره کنید.'}, status=409)
     programs, products, rejected = evaluate_case(case, **form.cleaned_data)
+    if not programs:
+        if rejected:
+            details = '؛ '.join(dict.fromkeys(
+                f"{item['program']}: {item['reason']}" for item in rejected
+            ))
+            message = 'هیچ وامی شرایط این پرونده را ندارد. ' + details
+        else:
+            message = (
+                'برای ترکیب مبلغ وام و پیش‌پرداخت انتخاب‌شده، طرح فعالی تعریف نشده است. '
+                'مقادیر دیگری انتخاب کنید یا تنظیمات طرح‌های وام را بررسی کنید.'
+            )
+        return JsonResponse({'ok': False, 'message': message, 'rejected': rejected}, status=422)
+    if not products:
+        max_budget = max(purchase_budget(item, form.cleaned_data['proposed_down_payment']) for item in programs)
+        return JsonResponse({
+            'ok': False,
+            'message': (
+                f'وام واجد شرایط پیدا شد، اما گوشی فعال و موجود تا سقف {max_budget:,} تومان ثبت نشده است. '
+                'موجودی، قیمت و دسته‌بندی «گوشی/موبایل» کالاها را بررسی کنید.'
+            ),
+            'rejected': rejected,
+        }, status=422)
     evaluation = LoanEvaluation.objects.create(
         reception=rec, case=case, contract_number=case.contract_number,
         result_program_ids=[x.pk for x in programs], result_product_ids=[x.pk for x in products],
@@ -57,7 +79,8 @@ def evaluate(request, pk):
             'id': item.pk, 'title': str(item), 'provider': item.get_provider_display(),
             'months': item.term_months, 'credit': item.credit_limit,
             'monthly': item.monthly_installment, 'budget': purchase_budget(item, evaluation.proposed_down_payment),
-            'down': item.down_payment, 'guarantee': item.guarantee,
+            'down': item.down_payment, 'entered_down': evaluation.proposed_down_payment,
+            'guarantee': item.guarantee,
             'employment': item.employment_note,
         } for item in programs],
         'products': [{'id': item.pk, 'name': item.name, 'code': item.code, 'price': int(item.price),

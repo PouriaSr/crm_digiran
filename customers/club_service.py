@@ -21,29 +21,35 @@ def program_eligibility(program, case):
     """Return (eligible, explanation). Rules are intentionally deterministic."""
     if program.provider in (case.active_loans or []):
         return False, 'این وام در پرونده به‌عنوان وام فعال ثبت شده است.'
+    if not case.credit_rank:
+        return False, 'رتبه اعتباری مشتری در پرونده ثبت نشده است.'
     if case.credit_rank not in (program.allowed_customer_ranks or []):
-        return False, 'رتبه اعتباری متقاضی با این طرح سازگار نیست.'
+        return False, f'رتبه اعتباری {case.credit_rank} برای این طرح مجاز نیست.'
     if program.provider == 'wiki_pay':
         guarantor_ranks = program.allowed_guarantor_ranks or []
         if case.credit_rank.startswith('B') and program.allowed_guarantor_ranks_for_b:
             guarantor_ranks = program.allowed_guarantor_ranks_for_b
-        if not case.guarantor_name or case.guarantor_credit_rank not in guarantor_ranks:
-            return False, 'ویکی‌پی به ضامن با رتبه اعتباری مجاز نیاز دارد.'
+        if not case.guarantor_name:
+            return False, 'نام ضامن برای ویکی‌پی در پرونده ثبت نشده است.'
+        if not case.guarantor_credit_rank:
+            return False, 'رتبه اعتباری ضامن برای ویکی‌پی ثبت نشده است.'
+        if case.guarantor_credit_rank not in guarantor_ranks:
+            return False, f'رتبه ضامن {case.guarantor_credit_rank} با رتبه مشتری {case.credit_rank} برای ویکی‌پی مجاز نیست.'
     if program.provider == 'setare_yek' and case.job not in ('government', 'private', 'freelance'):
         return False, 'نوع شغل برای مدارک مورد قبول ستاره یک مناسب نیست.'
     return True, ''
 
 
 def purchase_budget(program, proposed_down_payment):
-    if proposed_down_payment == 0 and program.no_down_purchase_limit:
-        return program.no_down_purchase_limit
+    if program.no_down_purchase_limit:
+        return min(program.purchase_limit, program.no_down_purchase_limit + proposed_down_payment)
     return program.purchase_limit
 
 
 def evaluate_case(case, requested_credit, proposed_down_payment):
     programs, rejected = [], []
     candidates = LoanProgram.objects.filter(
-        is_active=True, credit_limit=requested_credit, down_payment=proposed_down_payment,
+        is_active=True, credit_limit=requested_credit, down_payment__lte=proposed_down_payment,
     ).order_by('order', 'term_months', '-purchase_limit')
     for program in candidates:
         accepted, reason = program_eligibility(program, case)
@@ -67,8 +73,9 @@ def create_payment_schedule(account):
     program = account.loan_program
     today = date.today()
     rows = []
-    if program.down_payment:
-        rows.append(ClubPayment(account=account, payment_type='down_payment', amount=program.down_payment,
+    actual_down_payment = account.evaluation.proposed_down_payment
+    if actual_down_payment:
+        rows.append(ClubPayment(account=account, payment_type='down_payment', amount=actual_down_payment,
                                 due_date=today, status='scheduled', created_by=account.selected_by))
     if account.club_fee:
         rows.append(ClubPayment(account=account, payment_type='club_fee', amount=account.club_fee,
