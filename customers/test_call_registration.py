@@ -10,9 +10,11 @@ from django.test import TestCase
 from django.urls import reverse
 
 from calls.models import Call
+from communications.models import ChannelConfiguration, MessageTemplate, TestRun
+from communications.services import ProviderConnectionError
 from customers.forms import HubCallForm, CustomerForm
 from customers.models import Customer, CustomerCase, FollowUp, Reception
-from customers.sms import send_address_sms
+from customers.sms import SmsDeliveryResult, send_address_sms
 
 
 class CallRegistrationTest(TestCase):
@@ -131,26 +133,78 @@ class CallRegistrationTest(TestCase):
         sms.assert_not_called()
 
     def test_address_can_be_requested_without_followup(self):
-        with patch('customers.hub_views.send_address_sms', return_value=False) as sms:
+        failure = SmsDeliveryResult(False, 'ارسال آدرس انجام نشد.')
+        with patch('customers.hub_views.send_address_sms', return_value=failure) as sms:
             response = self.submit(send_address='on')
-        sms.assert_called_once_with(Customer.objects.get())
+        customer = Customer.objects.get()
+        sms.assert_called_once_with(
+            customer, requested_by=self.admin, request_token=f'address-call-{Call.objects.get().pk}',
+        )
         self.assertTrue(Call.objects.get().send_address)
         self.assertFalse(FollowUp.objects.exists())
         messages = [str(m) for m in response.wsgi_request._messages]
-        self.assertTrue(any('پیامک واقعی ارسال نشده' in message for message in messages))
+        self.assertTrue(any('ارسال آدرس انجام نشد' in message for message in messages))
 
     def test_address_with_followup_only_calls_sms_hook_once(self):
-        with patch('customers.hub_views.send_address_sms', return_value=False) as sms:
+        with patch('customers.hub_views.send_address_sms', return_value=SmsDeliveryResult(False, 'ناموفق')) as sms:
             self.submit(send_address='on', needs_followup='on', follow_up_date='1405/09/15')
         sms.assert_called_once()
         self.assertEqual(FollowUp.objects.count(), 1)
 
-    def test_test_sms_is_explicitly_not_sent_and_does_not_log_phone(self):
+    def test_address_button_sends_real_template_to_registered_customer(self):
+        config = ChannelConfiguration.objects.get(channel='sms')
+        config.provider = 'melipayamak'
+        config.sender = '50001234'
+        config.save(update_fields=['provider', 'sender'])
+        template = MessageTemplate.objects.get(channel='sms', name='ارسال آدرس')
+        template.body = 'سلام {customer_name}، آدرس دیجیران: {address}'
+        template.is_active = True
+        template.save(update_fields=['body', 'is_active'])
+        with patch('customers.sms.send_melipayamak', return_value='998877') as provider:
+            response = self.submit(send_address='on')
+        customer = Customer.objects.get()
+        run = TestRun.objects.get(request_token=f'address-call-{Call.objects.get().pk}')
+        self.assertEqual((run.status, run.recipient, run.template), ('sent', customer.mobile, template))
+        provider.assert_called_once_with(config, customer.mobile, run.rendered_text)
+        self.assertTrue(any('پیامک آدرس با موفقیت' in str(item) for item in response.wsgi_request._messages))
+
+    def test_address_button_is_disabled_without_live_send_permission(self):
+        ordinary = User.objects.create_user('ordinary_call_user', password='test')
+        form = HubCallForm(user=ordinary)
+        self.assertTrue(form.fields['send_address'].disabled)
+
+    def test_address_sms_uses_active_template_and_records_real_delivery(self):
+        config = ChannelConfiguration.objects.get(channel='sms')
+        config.provider = 'melipayamak'
+        config.sender = '50001234'
+        config.save(update_fields=['provider', 'sender'])
         customer = Customer.objects.create(name='مشتری', mobile=self.data['mobile'])
-        with self.assertLogs('crm.sms', level='INFO') as logs:
-            self.assertFalse(send_address_sms(customer))
-        self.assertIn('TEST ONLY; NOT SENT', logs.output[0])
+        template = MessageTemplate.objects.get(channel='sms', name='ارسال آدرس')
+        template.body = 'سلام {customer_name}، آدرس {company_name}: {address}'
+        template.is_active = True
+        template.save(update_fields=['body', 'is_active'])
+        with patch('customers.sms.send_melipayamak', return_value='123456') as provider:
+            result = send_address_sms(
+                customer, requested_by=self.admin, request_token='address-call-test-success',
+            )
+        self.assertTrue(result)
+        run = TestRun.objects.get(request_token='address-call-test-success')
+        self.assertEqual((run.status, run.provider_reference, run.template), ('sent', '123456', template))
+        self.assertIn(customer.name, run.rendered_text)
+        provider.assert_called_once_with(config, customer.mobile, run.rendered_text)
+
+    def test_address_sms_failure_is_safe_and_does_not_log_phone(self):
+        config = ChannelConfiguration.objects.get(channel='sms')
+        config.provider = 'melipayamak'
+        config.save(update_fields=['provider'])
+        customer = Customer.objects.create(name='مشتری', mobile=self.data['mobile'])
+        with patch('customers.sms.send_melipayamak', side_effect=ProviderConnectionError('خط فرستنده نامعتبر است.')), \
+             self.assertLogs('crm.sms', level='WARNING') as logs:
+            result = send_address_sms(customer, requested_by=self.admin, request_token='address-call-test-fail')
+        self.assertFalse(result)
+        self.assertIn('خط فرستنده نامعتبر است', result.message)
         self.assertNotIn(customer.mobile, logs.output[0])
+        self.assertEqual(TestRun.objects.get(request_token='address-call-test-fail').status, 'incomplete')
 
     def test_invalid_or_missing_followup_date_causes_no_partial_writes(self):
         for date in ('', '1405/99/01', 'not-a-date'):

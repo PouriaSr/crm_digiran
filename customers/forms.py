@@ -305,6 +305,9 @@ class HubCallForm(forms.Form):
                 self.fields['purpose'].choices = [
                     choice for choice in self.fields['purpose'].choices if choice[0] != 'info'
                 ]
+            if not has_permission(user, 'communications.send_live'):
+                self.fields['send_address'].disabled = True
+                self.fields['send_address'].help_text = 'برای ارسال واقعی پیامک، دسترسی «ارسال واقعی پیام» لازم است.'
         for field in ('purpose', 'call_status', 'customer_analysis', 'requested_condition', 'source'):
             self.fields[field].required = True
             self.fields[field].widget.attrs['class'] = (
@@ -325,7 +328,7 @@ class HubCallForm(forms.Form):
             'class': 'w-5 h-5 rounded text-orange-600 border-gray-300 focus:ring-orange-500',
             'x-model': 'needsFollowup',
             ':disabled': "!replaceBehavior && customerAnalysisBase === 'potential'",
-            '@change': 'if (!replaceBehavior) sendAddress = $el.checked',
+            '@change': "if (!replaceBehavior) sendAddress = $el.checked && !$el.form.querySelector('#hub_send_address')?.disabled",
             'id': 'hub_needs_followup',
         }))
     

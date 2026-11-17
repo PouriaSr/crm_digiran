@@ -375,7 +375,6 @@ def customer_hub(request):
 @login_required
 @require_permission('calls.add')
 @require_POST
-@transaction.atomic
 def hub_submit_call(request):
     back = f"{reverse('customers:hub')}?tab=call"
     form = HubCallForm(request.POST, user=request.user)
@@ -386,6 +385,9 @@ def hub_submit_call(request):
                 target = {'field': form[field].id_for_label} if field in form.fields else {'form': '#call-modal-root form'}
                 messages.error(request, f'{label}: {error}', extra_tags=json.dumps(target))
         return redirect(back)
+
+    if request.POST.get('send_address') and not has_permission(request.user, 'communications.send_live'):
+        raise PermissionDenied('مجوز ارسال واقعی پیامک را ندارید.')
 
     data = form.cleaned_data
     if data.get('is_interviewer'):
@@ -399,8 +401,8 @@ def hub_submit_call(request):
                 return redirect(f"{reverse('customers:hub')}?tab=info&q={data['mobile']}")
             customer = Customer.objects.create(name=data['name'], mobile=data['mobile'], is_interviewer=True,
                                                source='', assigned_to=request.user, created_by=request.user)
-        from accounts.structure_forms_runtime import save_form_extras
-        save_form_extras(form,customer)
+            from accounts.structure_forms_runtime import save_form_extras
+            save_form_extras(form, customer)
         request.feedback_context = {'record': 'customer:'+str(customer.pk)}
         messages.success(request, 'فرد با برچسب مصاحبه‌کننده ثبت شد؛ مرحله بعد ثبت ورود در تب پذیرش است.')
         if has_permission(request.user, 'customers.candidate_view'):
@@ -454,14 +456,17 @@ def hub_submit_call(request):
                 customer=customer, due_date=due, due_time=data.get('follow_up_time'),
                 note=data['notes'], created_by=request.user,
             )
-
-    from accounts.structure_forms_runtime import save_form_extras
-    save_form_extras(form,customer)
+        from accounts.structure_forms_runtime import save_form_extras
+        save_form_extras(form, customer)
     messages.info(request, 'برچسب «بالقوه» ثبت شد.' if stage == 'potential' else 'مشتری با برچسب «سرنخ» ثبت شد.')
     if call.send_address:
-        # Test mode only until the SMS provider is configured.
-        send_address_sms(customer)
-        messages.info(request, 'درخواست ارسال آدرس آزمایشی ثبت شد؛ پیامک واقعی ارسال نشده است.')
+        sms_result = send_address_sms(
+            customer, requested_by=request.user, request_token=f'address-call-{call.pk}',
+        )
+        if sms_result:
+            messages.success(request, 'پیامک آدرس با موفقیت به ملی‌پیامک تحویل شد.')
+        else:
+            messages.error(request, sms_result.message)
     request.feedback_context = {'record': 'customer:'+str(customer.pk)}
     messages.success(request, 'تماس با موفقیت ثبت شد.')
 

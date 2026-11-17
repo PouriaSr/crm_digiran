@@ -136,9 +136,9 @@
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 21s7-6 7-12a7 7 0 10-14 0c0 6 7 12 7 12z"/><circle cx="12" cy="9" r="2.5" stroke-width="1.8"/></svg>
                                 ارسال آدرس
                             </span>
-                            <span class="text-xs text-slate-500" aria-live="polite" x-text="sendAddress ? 'فعال؛ همراه ثبت تماس' : 'برای ارسال، انتخاب کنید'"></span>
+                            <span class="text-xs text-slate-500" aria-live="polite" x-text="sendAddress ? 'فعال؛ پیامک همراه ثبت تماس ارسال می‌شود' : 'برای ارسال واقعی، انتخاب کنید'"></span>
                         </label>
-                        <p class="text-xs text-slate-400 mt-2">ارسال آدرس فعلاً آزمایشی است؛ پیامک واقعی ارسال نمی‌شود.</p>
+                        <p class="text-xs {% if call_form.send_address.field.disabled %}text-amber-700{% else %}text-slate-500{% endif %} mt-2">{% if call_form.send_address.field.disabled %}برای استفاده از این دکمه، دسترسی «ارسال واقعی پیام» لازم است.{% else %}متن از قالب فعال «ارسال آدرس» خوانده و به شماره همین مخاطب ارسال می‌شود.{% endif %}</p>
                     </section>
                     <section class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm">
                         <label for="id_notes" class="block text-sm font-bold text-slate-800 mb-3" data-crm-ui="ui.customers.callmodal.label20" data-crm-order="200">شرح مکالمه <span class="text-red-500">*</span></label>
@@ -209,7 +209,7 @@ function callModalWidget() {
             if (this.replaceBehavior) return;
             value = this.choiceBase('customer_analysis', value);
             this.needsFollowup = value === 'potential';
-            this.sendAddress = this.needsFollowup;
+            this.sendAddress = this.needsFollowup && !this.$el.querySelector('#hub_send_address')?.disabled;
         },
 
         validateMobile(input, blur = false) {
