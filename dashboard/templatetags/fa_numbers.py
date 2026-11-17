@@ -78,6 +78,20 @@ def fa_price(value):
     return fa_num(value) + ' تومان'
 
 
+@register.filter(name='signed_fa_num')
+def signed_fa_num(value):
+    """Persian number with an explicit mathematical sign."""
+    try:
+        number = int(value or 0)
+    except (TypeError, ValueError):
+        return fa_num(value)
+    if number > 0:
+        return '+' + fa_num(number)
+    if number < 0:
+        return '−' + fa_num(abs(number))
+    return fa_num(0)
+
+
 @register.filter(name='fa_digits')
 def fa_digits(value):
     """فقط تبدیل اعداد به فارسی (بدون کاما)"""

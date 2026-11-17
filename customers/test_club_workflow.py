@@ -14,7 +14,7 @@ from .club_models import ClubAccount, ClubPayment, LoanEvaluation, LoanProgram
 from .club_forms import ClubPaymentForm
 from .club_service import (
     covered_purchase_amount, evaluate_case, loan_purchase_amount,
-    purchase_budget, purchase_difference,
+    program_eligibility, purchase_budget, purchase_difference,
 )
 from .models import Customer, CustomerCase, Reception
 
@@ -176,6 +176,59 @@ class ClubWorkflowTests(TestCase):
         difference.refresh_from_db()
         self.assertEqual(difference.status, 'paid')
         self.assertTrue(difference.receipt)
+
+    def test_negative_purchase_difference_is_signed_and_not_receiptable(self):
+        phone = Product.objects.create(
+            category=self.category, name='گوشی گران‌تر از سقف طرح', code='PHONE-NEG-DIFF',
+            price=82_000_000, cost_price=75_000_000, stock=1,
+        )
+        response = self.client.post(reverse('customers:club_evaluate', args=[self.rec.pk]), {
+            'requested_credit': 100_000_000, 'proposed_down_payment': 0,
+        })
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn(phone.pk, {item['id'] for item in data['products']})
+        program = LoanProgram.objects.get(provider='azki', term_months=18, credit_limit=100_000_000)
+        self.assertEqual(purchase_difference(program, 0, phone.price), -1_500_000)
+
+        response = self.client.post(reverse('customers:club_select', args=[self.rec.pk]), {
+            'evaluation': data['evaluation'], 'program': program.pk, 'product': phone.pk,
+            'delivery_type': 'instant', 'club_fee': 1_000_000,
+        })
+        self.assertEqual(response.status_code, 200)
+        account = ClubAccount.objects.get(customer=self.customer)
+        self.assertEqual(account.purchase_difference_amount, -1_500_000)
+        self.assertEqual(account.total_customer_payable, 83_000_000)
+        self.assertFalse(account.payments.filter(payment_type='purchase_difference').exists())
+
+        historical = ClubPayment.objects.create(
+            account=account, payment_type='purchase_difference', amount=500_000,
+            status='paid', created_by=self.admin,
+        )
+        receipt = SimpleUploadedFile('negative.pdf', b'%PDF-1.4 test', content_type='application/pdf')
+        blocked = self.client.post(reverse('customers:club_receipt_save', args=[historical.pk]), {
+            'receipt': receipt,
+        })
+        self.assertEqual(blocked.status_code, 403)
+
+        response = self.client.get(reverse('customers:hub'), {'tab': 'club', 'r': self.rec.pk})
+        self.assertContains(response, '−۱,۵۰۰,۰۰۰ تومان')
+        self.assertContains(response, 'غیرفعال برای دریافت و ثبت رسید')
+        self.assertNotContains(response, reverse('customers:club_receipt_save', args=[historical.pk]))
+
+    def test_program_job_choices_are_sourced_from_case_and_enforced(self):
+        program = LoanProgram.objects.filter(provider='azki').first()
+        program.allowed_jobs = ['government', 'private']
+        program.save(update_fields=['allowed_jobs'])
+        self.case.job = 'freelance'
+        self.case.save(update_fields=['job'])
+        accepted, reason = program_eligibility(program, self.case)
+        self.assertFalse(accepted)
+        self.assertIn('شغل ثبت‌شده در پرونده', reason)
+
+        response = self.client.get(reverse('customers:club_programs'))
+        self.assertContains(response, 'name="form-0-allowed_jobs"')
+        self.assertContains(response, 'دولتی')
 
     def test_club_fee_defaults_to_one_million_when_omitted(self):
         response = self.client.post(reverse('customers:club_evaluate', args=[self.rec.pk]), {

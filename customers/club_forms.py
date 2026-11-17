@@ -171,13 +171,18 @@ class LoanProgramSettingsForm(forms.ModelForm):
         label='رتبه‌های ضامن وقتی متقاضی B است', choices=CustomerCase.CREDIT_RANK_CHOICES,
         required=False, widget=forms.CheckboxSelectMultiple,
     )
+    allowed_jobs = forms.MultipleChoiceField(
+        label='شغل‌های مجاز متقاضی', choices=CustomerCase.JOB_CHOICES,
+        required=False, widget=forms.CheckboxSelectMultiple,
+        help_text='چند گزینه از همان فهرست شغل تب پرونده انتخاب کنید؛ انتخاب نکردن یعنی همه شغل‌ها.',
+    )
 
     class Meta:
         model = LoanProgram
         fields = ['provider', 'term_months', 'credit_limit', 'monthly_installment', 'purchase_limit',
                   'no_down_purchase_limit', 'down_payment', 'allowed_customer_ranks',
                   'allowed_guarantor_ranks', 'allowed_guarantor_ranks_for_b',
-                  'guarantee', 'employment_note', 'is_active', 'order']
+                  'allowed_jobs', 'guarantee', 'employment_note', 'is_active', 'order']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -185,7 +190,8 @@ class LoanProgramSettingsForm(forms.ModelForm):
             self.initial['allowed_customer_ranks'] = self.instance.allowed_customer_ranks
             self.initial['allowed_guarantor_ranks'] = self.instance.allowed_guarantor_ranks
             self.initial['allowed_guarantor_ranks_for_b'] = self.instance.allowed_guarantor_ranks_for_b
+            self.initial['allowed_jobs'] = self.instance.allowed_jobs
         for name, field in self.fields.items():
             if name not in ('allowed_customer_ranks', 'allowed_guarantor_ranks',
-                            'allowed_guarantor_ranks_for_b', 'is_active'):
+                            'allowed_guarantor_ranks_for_b', 'allowed_jobs', 'is_active'):
                 field.widget.attrs['class'] = FIELD_CLASS

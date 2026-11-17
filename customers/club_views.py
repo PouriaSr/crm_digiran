@@ -118,9 +118,8 @@ def select_offer(request, pk):
     if program.pk not in evaluation.result_program_ids or product.pk not in evaluation.result_product_ids:
         return JsonResponse({'ok': False, 'message': 'پیشنهاد انتخابی متعلق به این ارزیابی نیست.'}, status=409)
     accepted, reason = program_eligibility(program, rec.customer.case)
-    if (not accepted or product.stock < 1 or
-            product.price > maximum_purchase_price(program, evaluation.proposed_down_payment)):
-        return JsonResponse({'ok': False, 'message': reason or 'قیمت یا موجودی گوشی از زمان ارزیابی تغییر کرده است.'}, status=409)
+    if not accepted or product.stock < 1:
+        return JsonResponse({'ok': False, 'message': reason or 'موجودی گوشی از زمان ارزیابی تغییر کرده است.'}, status=409)
     delivery = form.cleaned_data['delivery_type']
     panel_url = 'https://example.com/b2b' if delivery == 'instant' else 'https://example.com/b2c'
     guarantee = ' · '.join(x for x in (program.employment_note, program.guarantee) if x)
@@ -165,7 +164,12 @@ def select_offer(request, pk):
         create_payment_schedule(account)
     from hr.task_automation import sync_club_account
     sync_club_account(account)
-    difference_text = f' مابه‌التفاوت {difference:,} تومان نیز برای ثبت رسید در برنامه پرداخت ایجاد شد.' if difference else ''
+    if difference > 0:
+        difference_text = f' مابه‌التفاوت +{difference:,} تومان برای ثبت رسید در برنامه پرداخت ایجاد شد.'
+    elif difference < 0:
+        difference_text = f' مابه‌التفاوت {difference:,} تومان منفی است و دریافت وجه و رسید آن غیرفعال شد.'
+    else:
+        difference_text = ''
     if is_reevaluation:
         message = f'ارزیابی مجدد روی قرارداد {account.contract_number} اعمال شد؛ پرداخت‌ها و رسیدهای قطعی حفظ شدند.{difference_text}'
     else:
@@ -197,16 +201,13 @@ def edit_account(request, pk):
         messages.error(request, 'طرح انتخابی با پرونده سازگار نیست: ' + reason)
         return redirect(f"{reverse('customers:hub')}?tab=club&r={account.reception_id}&club_edit=1#club-account-edit")
     main_purchase = updated.loan_program.purchase_limit + updated.down_payment_amount
-    if updated.product.price > main_purchase:
-        messages.error(request, 'قیمت گوشی از مجموع سقف خرید و پیش‌پرداخت قرارداد بیشتر است.')
-        return redirect(f"{reverse('customers:hub')}?tab=club&r={account.reception_id}&club_edit=1#club-account-edit")
     if updated.product_id != old_product_id and updated.product.stock < 1:
         messages.error(request, 'گوشی انتخابی موجودی قابل فروش ندارد.')
         return redirect(f"{reverse('customers:hub')}?tab=club&r={account.reception_id}&club_edit=1#club-account-edit")
     updated.panel_url = 'https://example.com/b2b' if updated.delivery_type == 'instant' else 'https://example.com/b2c'
     updated.loan_purchase_amount = updated.loan_program.purchase_limit
     updated.main_purchase_amount = main_purchase
-    updated.purchase_difference_amount = max(0, main_purchase - int(updated.product.price))
+    updated.purchase_difference_amount = main_purchase - int(updated.product.price)
     updated.total_customer_payable = main_purchase - updated.purchase_difference_amount + updated.club_fee
     updated.save()
     reconcile_payment_schedule(updated, request.user)
@@ -270,6 +271,8 @@ def update_payment_receipt(request, pk):
         ClubPayment.objects.select_for_update().select_related('account__customer', 'account__reception'), pk=pk,
     )
     if (payment.payment_type not in {'purchase_difference', 'club_fee', 'installment'} or
+            (payment.payment_type == 'purchase_difference' and
+             payment.account.purchase_difference_amount <= 0) or
             not has_permission(request.user, 'customers.club_payment') or
             not can_edit_card(request.user, payment.account.customer)):
         raise PermissionDenied('مجوز ثبت رسید این پرداخت را ندارید.')

@@ -37,6 +37,8 @@ def program_eligibility(program, case):
             return False, f'رتبه ضامن {case.guarantor_credit_rank} با رتبه مشتری {case.credit_rank} برای ویکی‌پی مجاز نیست.'
     if program.provider == 'setare_yek' and case.job not in ('government', 'private', 'freelance'):
         return False, 'نوع شغل برای مدارک مورد قبول ستاره یک مناسب نیست.'
+    if program.allowed_jobs and case.job not in program.allowed_jobs:
+        return False, 'شغل ثبت‌شده در پرونده برای این طرح مجاز نیست.'
     return True, ''
 
 
@@ -62,8 +64,8 @@ def covered_purchase_amount(program, proposed_down_payment):
 
 
 def purchase_difference(program, proposed_down_payment, product_price):
-    """Unused part of the main purchase amount after choosing the phone."""
-    return max(0, covered_purchase_amount(program, proposed_down_payment) - int(product_price))
+    """Signed difference between the main purchase amount and phone price."""
+    return covered_purchase_amount(program, proposed_down_payment) - int(product_price)
 
 
 def evaluate_case(case, requested_credit, proposed_down_payment):
@@ -101,7 +103,7 @@ def create_payment_schedule(account):
         rows.append(ClubPayment(account=account, payment_type='club_fee', amount=account.club_fee,
                                 due_date=today, status='scheduled', created_by=account.selected_by))
     difference = account.purchase_difference_amount
-    if difference:
+    if difference > 0:
         rows.append(ClubPayment(
             account=account, payment_type='purchase_difference', amount=difference,
             due_date=today, status='scheduled', created_by=account.selected_by,
@@ -137,7 +139,7 @@ def reconcile_payment_schedule(account, actor=None):
     sync_single('down_payment', account.down_payment_amount)
     sync_single('club_fee', account.club_fee)
     sync_single(
-        'purchase_difference', account.purchase_difference_amount,
+        'purchase_difference', max(account.purchase_difference_amount, 0),
         'رسید یا فاکتور پرداخت مابه‌التفاوت میان مبلغ خرید اصلی و قیمت گوشی را ثبت کنید.',
     )
 

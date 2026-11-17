@@ -207,8 +207,10 @@ def build_workflow_context(request):
             club_account_edit_form=ClubAccountEditForm(instance=account) if account else None,
             club_payment_form=ClubPaymentForm(account=account) if account else None,
             club_receipt_payments=(
-                account.payments.filter(payment_type__in=('purchase_difference', 'club_fee', 'installment'))
-                if account else None
+                account.payments.filter(payment_type__in=(
+                    ('purchase_difference', 'club_fee', 'installment')
+                    if account.purchase_difference_amount > 0 else ('club_fee', 'installment')
+                )) if account else None
             ),
         )
     if 'hiring' in tabs:

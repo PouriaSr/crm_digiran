@@ -26,6 +26,10 @@ class LoanProgram(models.Model):
         'رتبه‌های مجاز ضامن برای متقاضی B', default=list, blank=True,
         help_text='اگر خالی باشد همان فهرست عمومی ضامن استفاده می‌شود.',
     )
+    allowed_jobs = models.JSONField(
+        'شغل‌های مجاز متقاضی', default=list, blank=True,
+        help_text='گزینه‌ها مستقیماً از فهرست شغل در تب پرونده خوانده می‌شوند؛ خالی یعنی بدون محدودیت.',
+    )
     guarantee = models.CharField('ضمانت', max_length=250, blank=True)
     employment_note = models.CharField('مدرک شغلی', max_length=250, blank=True)
     is_active = models.BooleanField('فعال', default=True, db_index=True)
@@ -88,7 +92,7 @@ class ClubAccount(models.Model):
     loan_purchase_amount = models.PositiveBigIntegerField('سقف خرید وام تعلق‌گرفته', default=0)
     down_payment_amount = models.PositiveBigIntegerField('پیش‌پرداخت قرارداد', default=0)
     main_purchase_amount = models.PositiveBigIntegerField('خرید اصلی', default=0)
-    purchase_difference_amount = models.PositiveBigIntegerField('مابه‌التفاوت خرید', default=0)
+    purchase_difference_amount = models.BigIntegerField('مابه‌التفاوت خرید', default=0)
     total_customer_payable = models.PositiveBigIntegerField('مبلغ نهایی مشتری', default=0)
     status = models.CharField(max_length=12, choices=STATUS, default='active', db_index=True)
     selected_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+')
