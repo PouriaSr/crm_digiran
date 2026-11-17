@@ -105,8 +105,9 @@ def evaluate(request, pk):
 @transaction.atomic
 def select_offer(request, pk):
     rec = _reception(request, pk, 'customers.club_select')
-    if ClubAccount.objects.filter(customer=rec.customer).exists():
-        return JsonResponse({'ok': False, 'message': 'برای این مشتری قبلاً قرارداد باشگاه ثبت شده است.'}, status=409)
+    account = ClubAccount.objects.select_for_update().filter(customer=rec.customer).first()
+    if account and not has_permission(request.user, 'customers.club_edit'):
+        raise PermissionDenied('مجوز اعمال ارزیابی مجدد روی قرارداد باشگاه را ندارید.')
     form = ClubSelectionForm(request.POST)
     if not form.is_valid():
         return JsonResponse({'ok': False, 'message': 'طرح، گوشی و نوع تحویل را کامل انتخاب کنید.'}, status=400)
@@ -130,27 +131,46 @@ def select_offer(request, pk):
     if club_fee is None:
         club_fee = 1_000_000
     main_purchase = loan_purchase + down_payment
-    account = ClubAccount.objects.create(
-        customer=rec.customer, reception=rec, evaluation=evaluation, contract_number=evaluation.contract_number,
-        loan_program=program, product=product, delivery_type=delivery, panel_url=panel_url,
-        customer_credit_rank=rec.customer.case.credit_rank,
-        guarantor_name=rec.customer.case.guarantor_name,
-        guarantor_credit_rank=rec.customer.case.guarantor_credit_rank,
-        guarantee_snapshot=guarantee, club_fee=club_fee,
-        loan_purchase_amount=loan_purchase, down_payment_amount=down_payment,
-        main_purchase_amount=main_purchase,
-        purchase_difference_amount=difference,
-        total_customer_payable=main_purchase - difference + club_fee,
-        selected_by=request.user,
-    )
+    account_values = {
+        'evaluation': evaluation, 'loan_program': program, 'product': product,
+        'delivery_type': delivery, 'panel_url': panel_url,
+        'customer_credit_rank': rec.customer.case.credit_rank,
+        'guarantor_name': rec.customer.case.guarantor_name,
+        'guarantor_credit_rank': rec.customer.case.guarantor_credit_rank,
+        'guarantee_snapshot': guarantee, 'club_fee': club_fee,
+        'loan_purchase_amount': loan_purchase, 'down_payment_amount': down_payment,
+        'main_purchase_amount': main_purchase,
+        'purchase_difference_amount': difference,
+        'total_customer_payable': main_purchase - difference + club_fee,
+        'selected_by': request.user,
+    }
+    is_reevaluation = account is not None
+    if is_reevaluation:
+        for field, value in account_values.items():
+            setattr(account, field, value)
+        account.save()
+    else:
+        account = ClubAccount.objects.create(
+            customer=rec.customer, reception=rec, contract_number=evaluation.contract_number,
+            **account_values,
+        )
     evaluation.status = 'selected'
     evaluation.save(update_fields=['status'])
-    LoanEvaluation.objects.filter(reception=rec, status='ready').exclude(pk=evaluation.pk).update(status='expired')
-    create_payment_schedule(account)
+    LoanEvaluation.objects.filter(reception=rec).exclude(pk=evaluation.pk).filter(
+        status__in=('ready', 'selected'),
+    ).update(status='expired')
+    if is_reevaluation:
+        reconcile_payment_schedule(account, request.user)
+    else:
+        create_payment_schedule(account)
     from hr.task_automation import sync_club_account
     sync_club_account(account)
     difference_text = f' مابه‌التفاوت {difference:,} تومان نیز برای ثبت رسید در برنامه پرداخت ایجاد شد.' if difference else ''
-    return JsonResponse({'ok': True, 'message': f'قرارداد {account.contract_number} ثبت شد؛ مشتری به باشگاه اضافه شد.{difference_text}',
+    if is_reevaluation:
+        message = f'ارزیابی مجدد روی قرارداد {account.contract_number} اعمال شد؛ پرداخت‌ها و رسیدهای قطعی حفظ شدند.{difference_text}'
+    else:
+        message = f'قرارداد {account.contract_number} ثبت شد؛ مشتری به باشگاه اضافه شد.{difference_text}'
+    return JsonResponse({'ok': True, 'message': message,
                          'redirect': f"{reverse('customers:hub')}?tab=club&r={rec.pk}"})
 
 

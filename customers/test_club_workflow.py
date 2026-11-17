@@ -1,4 +1,4 @@
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
@@ -7,6 +7,8 @@ import jdatetime
 
 from hr.models import Task
 from products.models import Category, Product
+from accounts.models import UserPermissionOverride
+from accounts.permissions import ROLE_SALES_MANAGER, ROLE_TO_GROUP
 
 from .club_models import ClubAccount, ClubPayment, LoanEvaluation, LoanProgram
 from .club_forms import ClubPaymentForm
@@ -279,6 +281,108 @@ class ClubWorkflowTests(TestCase):
         self.assertEqual(account.payments.filter(
             payment_type='club_fee', status__in=('scheduled', 'overdue'), amount=2_000_000,
         ).count(), 1)
+
+    def test_smart_evaluation_can_be_edited_and_reapplied_to_same_contract(self):
+        first = self.client.post(reverse('customers:club_evaluate', args=[self.rec.pk]), {
+            'requested_credit': 100_000_000, 'proposed_down_payment': 0,
+        }).json()
+        first_evaluation = LoanEvaluation.objects.get(pk=first['evaluation'])
+        program = LoanProgram.objects.get(pk=first['programs'][0]['id'])
+        response = self.client.post(reverse('customers:club_select', args=[self.rec.pk]), {
+            'evaluation': first_evaluation.pk, 'program': program.pk, 'product': self.phone.pk,
+            'delivery_type': 'instant', 'club_fee': 1_000_000,
+        })
+        self.assertEqual(response.status_code, 200)
+        account = ClubAccount.objects.get(customer=self.customer)
+        original_account_id = account.pk
+        paid = account.payments.filter(payment_type='installment').order_by('due_date').first()
+        paid.status = 'paid'
+        paid.notes = 'قسط قطعی پیش از ارزیابی مجدد'
+        paid.save(update_fields=['status', 'notes', 'updated_at'])
+
+        page = self.client.get(reverse('customers:hub'), {'tab': 'club', 'r': self.rec.pk})
+        self.assertContains(page, 'ارزیابی مجدد')
+        self.assertEqual(page.context['club_evaluation_form'].initial['requested_credit'], 100_000_000)
+        self.assertEqual(page.context['club_evaluation_form'].initial['proposed_down_payment'], 0)
+
+        second_response = self.client.post(reverse('customers:club_evaluate', args=[self.rec.pk]), {
+            'requested_credit': 100_000_000, 'proposed_down_payment': 15_000_000,
+        })
+        self.assertEqual(second_response.status_code, 200)
+        second = second_response.json()
+        second_program = LoanProgram.objects.get(pk=second['programs'][0]['id'])
+        response = self.client.post(reverse('customers:club_select', args=[self.rec.pk]), {
+            'evaluation': second['evaluation'], 'program': second_program.pk, 'product': self.phone.pk,
+            'delivery_type': 'delayed', 'club_fee': 2_000_000,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('ارزیابی مجدد', response.json()['message'])
+
+        account.refresh_from_db()
+        paid.refresh_from_db()
+        first_evaluation.refresh_from_db()
+        self.assertEqual(account.pk, original_account_id)
+        self.assertEqual(account.evaluation_id, second['evaluation'])
+        self.assertEqual(account.down_payment_amount, 15_000_000)
+        self.assertEqual(account.club_fee, 2_000_000)
+        self.assertEqual(account.delivery_type, 'delayed')
+        self.assertEqual(first_evaluation.status, 'expired')
+        self.assertEqual(paid.status, 'paid')
+        self.assertEqual(paid.notes, 'قسط قطعی پیش از ارزیابی مجدد')
+        self.assertEqual(
+            account.payments.filter(payment_type='installment').exclude(status='cancelled').count(),
+            second_program.term_months,
+        )
+
+    def test_club_advanced_permission_switches_hide_controls_and_block_routes(self):
+        first = self.client.post(reverse('customers:club_evaluate', args=[self.rec.pk]), {
+            'requested_credit': 100_000_000, 'proposed_down_payment': 0,
+        }).json()
+        self.client.post(reverse('customers:club_select', args=[self.rec.pk]), {
+            'evaluation': first['evaluation'], 'program': first['programs'][0]['id'],
+            'product': self.phone.pk, 'delivery_type': 'instant', 'club_fee': 1_000_000,
+        })
+        manager = User.objects.create_user('club_manager')
+        manager.groups.add(Group.objects.get_or_create(name=ROLE_TO_GROUP[ROLE_SALES_MANAGER])[0])
+        self.client.force_login(manager)
+
+        def override(key, granted):
+            UserPermissionOverride.objects.update_or_create(
+                user=manager, permission_key=key, defaults={'granted': granted},
+            )
+
+        override('customers.club', False)
+        self.assertEqual(self.client.get(reverse('customers:hub'), {'tab': 'club'}).status_code, 403)
+
+        override('customers.club', True)
+        override('customers.club_evaluate', False)
+        page = self.client.get(reverse('customers:hub'), {'tab': 'club', 'r': self.rec.pk})
+        self.assertEqual(page.status_code, 200)
+        self.assertNotContains(page, 'class="club-print-button club-reevaluate-button" data-open-evaluation')
+        self.assertEqual(self.client.post(reverse('customers:club_evaluate', args=[self.rec.pk]), {
+            'requested_credit': 100_000_000, 'proposed_down_payment': 0,
+        }).status_code, 403)
+
+        override('customers.club_evaluate', True)
+        override('customers.club_edit', False)
+        page = self.client.get(reverse('customers:hub'), {'tab': 'club', 'r': self.rec.pk})
+        self.assertNotContains(page, 'class="club-print-button club-reevaluate-button" data-open-evaluation')
+        evaluation = self.client.post(reverse('customers:club_evaluate', args=[self.rec.pk]), {
+            'requested_credit': 100_000_000, 'proposed_down_payment': 0,
+        }).json()
+        self.assertEqual(self.client.post(reverse('customers:club_select', args=[self.rec.pk]), {
+            'evaluation': evaluation['evaluation'], 'program': evaluation['programs'][0]['id'],
+            'product': self.phone.pk, 'delivery_type': 'instant', 'club_fee': 1_000_000,
+        }).status_code, 403)
+
+        override('customers.club_payment', False)
+        account = ClubAccount.objects.get(customer=self.customer)
+        page = self.client.get(reverse('customers:hub'), {'tab': 'club', 'r': self.rec.pk})
+        self.assertNotContains(page, reverse('customers:club_payment', args=[account.pk]))
+        self.assertEqual(self.client.post(reverse('customers:club_payment', args=[account.pk]), {}).status_code, 403)
+
+        override('customers.club_manage', False)
+        self.assertEqual(self.client.get(reverse('customers:club_programs')).status_code, 403)
 
     def test_loan_program_settings_is_a_dedicated_customer_center_page(self):
         response = self.client.get(reverse('customers:club_programs'))

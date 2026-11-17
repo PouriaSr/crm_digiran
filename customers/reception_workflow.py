@@ -183,6 +183,7 @@ def build_workflow_context(request):
         ).order_by('-case_completed_at', '-pk').values('pk')[:1]
         records = visible.filter(pk=Subquery(latest_bought), case_result='bought').select_related(
             'customer__case', 'club_account', 'club_account__loan_program', 'club_account__product',
+            'club_account__evaluation',
         ).prefetch_related('club_account__payments').order_by('-case_completed_at', '-pk')
         rec = selected_record(request, records)
         from .club_forms import ClubAccountEditForm, ClubPaymentForm, LoanEvaluationForm
@@ -192,11 +193,17 @@ def build_workflow_context(request):
                 account = rec.club_account
             except Reception.club_account.RelatedObjectDoesNotExist:
                 pass
+        evaluation_initial = None
+        if account:
+            evaluation_initial = {
+                'requested_credit': account.evaluation.requested_credit,
+                'proposed_down_payment': account.evaluation.proposed_down_payment,
+            }
         context.update(
             club_unlocked=records.exists(), club_choices=records,
             club_records=paginated(records, 'club', 'club_page'), club_record=rec,
             club_account=account,
-            club_evaluation_form=LoanEvaluationForm() if rec and not account else None,
+            club_evaluation_form=LoanEvaluationForm(initial=evaluation_initial) if rec else None,
             club_account_edit_form=ClubAccountEditForm(instance=account) if account else None,
             club_payment_form=ClubPaymentForm(account=account) if account else None,
             club_receipt_payments=(
