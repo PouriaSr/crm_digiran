@@ -11,7 +11,7 @@ from accounts.permissions import ROLE_TO_GROUP
 from .admin import TestRunAdmin
 from .forms import MessageTemplateForm, SimulationForm
 from .models import ChannelConfiguration, MessageTemplate, TestRun
-from .services import MELLIPAYAMAK_SEND_URL, send_melipayamak
+from .services import MELLIPAYAMAK_SIMPLE_ENV, ProviderConnectionError, send_melipayamak
 
 
 class MessagingManagementTests(TestCase):
@@ -31,9 +31,9 @@ class MessagingManagementTests(TestCase):
 
     def melipayamak_config_data(self, **changes):
         data = self.config_data(**{
-            'config-provider': 'melipayamak', 'config-credential_env': 'MELLIPAYAMAK_API_KEY',
-            'config-username_env': 'MELLIPAYAMAK_USERNAME', 'config-endpoint': MELLIPAYAMAK_SEND_URL,
+            'config-provider': 'melipayamak', 'config-credential_env': MELLIPAYAMAK_SIMPLE_ENV,
         })
+        data.pop('config-endpoint', None)
         data.update(changes)
         return data
 
@@ -47,6 +47,7 @@ class MessagingManagementTests(TestCase):
         data = {'action': 'simulate', 'simulation-template': str((template or self.sms_template).pk),
                 'simulation-recipient': '۰۹۱۲۳۴۵۶۷۸۹', 'simulation-sample_name': '<script>نام</script>',
                 'simulation-company_name': 'دیجیران', 'simulation-task_title': 'پیگیری آزمایشی',
+                'simulation-sample_address': 'تهران، خیابان نمونه، پلاک ۱۲',
                 'simulation-custom_text': 'متن دلخواه کاربر', 'live_send_token': 'test-request-token-00000000000001'}
         data.update(changes)
         return data
@@ -210,6 +211,18 @@ class MessagingManagementTests(TestCase):
         self.assertEqual(latest.status, 'simulated')
         self.assertIn('هنوز بررسی نشده', latest.result)
 
+    def test_simple_send_check_validates_environment_without_network(self):
+        self.client.force_login(self.admin)
+        self.client.post(self.url, self.melipayamak_config_data())
+        secret_url = 'https://console.melipayamak.com/api/send/simple/ABCDEFGHIJKLMNOP1234'
+        with patch.dict('os.environ', {MELLIPAYAMAK_SIMPLE_ENV: secret_url}), \
+             patch('communications.services.urlopen', side_effect=AssertionError('network must not be used')):
+            response = self.client.post(self.url, {'action': 'check'})
+        self.assertEqual(response.status_code, 302)
+        latest = TestRun.objects.first()
+        self.assertEqual(latest.status, 'verified')
+        self.assertIn('هیچ پیامکی ارسال نشد', latest.result)
+
     def test_admin_can_send_real_sms_only_through_provider_adapter(self):
         self.client.force_login(self.admin)
         self.client.post(self.url, self.melipayamak_config_data())
@@ -230,20 +243,52 @@ class MessagingManagementTests(TestCase):
     def test_melipayamak_adapter_reads_secrets_from_environment_and_returns_reference(self):
         config = ChannelConfiguration(
             channel='sms', provider='melipayamak', sender='1000123',
-            credential_env='MELLIPAYAMAK_API_KEY',
-            connection={'endpoint': MELLIPAYAMAK_SEND_URL, 'username_env': 'MELLIPAYAMAK_USERNAME'},
+            credential_env=MELLIPAYAMAK_SIMPLE_ENV,
+            connection={'api_mode': 'console_simple'},
         )
         response = MagicMock()
-        response.read.return_value = b'{"Value":"123456","RetStatus":1,"StrRetStatus":"Ok"}'
+        response.read.return_value = b'{"recId":3741437414,"status":""}'
         opener = MagicMock()
         opener.return_value.__enter__.return_value = response
-        with patch.dict('os.environ', {'MELLIPAYAMAK_USERNAME': 'demo-user', 'MELLIPAYAMAK_API_KEY': 'demo-key'}), \
+        secret_url = 'https://console.melipayamak.com/api/send/simple/ABCDEFGHIJKLMNOP1234'
+        with patch.dict('os.environ', {MELLIPAYAMAK_SIMPLE_ENV: secret_url}), \
              patch('communications.services.urlopen', opener):
             reference = send_melipayamak(config, '09123456789', 'متن تست')
-        self.assertEqual(reference, '123456')
+        self.assertEqual(reference, '3741437414')
         request = opener.call_args.args[0]
-        self.assertIn(b'password=demo-key', request.data)
-        self.assertNotIn('demo-key', str(config.connection))
+        self.assertEqual(request.full_url, secret_url)
+        self.assertJSONEqual(request.data.decode('utf-8'), {
+            'from': '1000123', 'to': '09123456789', 'text': 'متن تست',
+        })
+        self.assertEqual(request.headers['Content-type'], 'application/json; charset=utf-8')
+        self.assertNotIn(secret_url, str(config.connection))
+
+    def test_melipayamak_rejects_untrusted_private_url(self):
+        config = ChannelConfiguration(
+            channel='sms', provider='melipayamak', sender='1000123',
+            credential_env=MELLIPAYAMAK_SIMPLE_ENV, connection={'api_mode': 'console_simple'},
+        )
+        invalid_urls = [
+            'http://console.melipayamak.com/api/send/simple/ABCDEFGHIJKLMNOP1234',
+            'https://example.com/api/send/simple/ABCDEFGHIJKLMNOP1234',
+            'https://console.melipayamak.com/api/send/simple/short',
+            'https://console.melipayamak.com/api/send/simple/ABCDEFGHIJKLMNOP1234?leak=1',
+        ]
+        for value in invalid_urls:
+            with self.subTest(value=value), patch.dict('os.environ', {MELLIPAYAMAK_SIMPLE_ENV: value}):
+                with self.assertRaises(ProviderConnectionError):
+                    send_melipayamak(config, '09123456789', 'متن تست')
+
+    def test_sms_configuration_and_template_guide_use_simple_send(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(self.url, {'channel': 'sms', 'section': 'configuration'})
+        self.assertContains(response, MELLIPAYAMAK_SIMPLE_ENV)
+        self.assertContains(response, 'نشانی محرمانه ارسال ساده')
+        self.assertNotContains(response, 'نام متغیر نام کاربری سرویس')
+        templates = self.client.get(self.url, {'channel': 'sms', 'section': 'templates'})
+        self.assertContains(templates, 'راهنمای ساخت قالب و استفاده از تگ‌ها')
+        self.assertContains(templates, '{address}')
+        self.assertTrue(MessageTemplate.objects.filter(channel='sms', name='ارسال آدرس').exists())
 
     def test_invalid_destination_stays_on_form_with_local_error(self):
         self.client.force_login(self.admin)

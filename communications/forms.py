@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from .models import ChannelConfiguration, MessageTemplate
-from .services import PROVIDERS, validate_template
+from .services import MELLIPAYAMAK_SIMPLE_ENV, PROVIDERS, validate_template
 
 
 class ConfigurationForm(forms.ModelForm):
@@ -13,19 +13,17 @@ class ConfigurationForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.channel = channel
         self.fields['provider'] = forms.ChoiceField(label='سرویس پیشنهادی', choices=PROVIDERS[channel])
+        selected_provider = self.data.get(f'{self.prefix}-provider') if self.is_bound else self.instance.provider
         self.fields['credential_env'] = forms.RegexField(label='نام متغیر اعتبار اتصال', regex=r'^[A-Z][A-Z0-9_]{2,99}$', required=False,
-            help_text='فقط نام متغیر محیطی، مثلاً MELLIPAYAMAK_API_KEY؛ کلید یا رمز واقعی را اینجا وارد نکنید.', error_messages={'invalid': 'نامی مانند MELLIPAYAMAK_API_KEY با حروف بزرگ انگلیسی وارد کنید.'})
+            help_text='فقط نام متغیر محیطی را وارد کنید؛ مقدار محرمانه هرگز در دیتابیس ذخیره نمی‌شود.', error_messages={'invalid': 'نام متغیر را با حروف بزرگ انگلیسی وارد کنید.'})
         self.fields['sender'].label = {'sms': 'شماره یا خط فرستنده', 'email': 'ایمیل فرستنده', 'whatsapp': 'شماره فرستنده'}[channel]
         if channel == 'email':
             self.fields['sender'] = forms.EmailField(label='ایمیل فرستنده', required=False)
-        if channel in ('sms', 'whatsapp') or (channel == 'email'):
+        if channel in ('whatsapp', 'email') or (channel == 'sms' and selected_provider != 'melipayamak'):
             self.fields['endpoint'] = forms.URLField(label='نشانی API', required=False, help_text='برای ارسال واقعی فقط نشانی رسمی و امن سرویس پذیرفته می‌شود.')
         if channel == 'sms':
-            self.fields['username_env'] = forms.RegexField(
-                label='نام متغیر نام کاربری سرویس', regex=r'^[A-Z][A-Z0-9_]{2,99}$', required=False,
-                help_text='نام کاربری واقعی در محیط هاست نگهداری می‌شود؛ برای ملی‌پیامک MELLIPAYAMAK_USERNAME را وارد کنید.',
-                error_messages={'invalid': 'نامی مانند MELLIPAYAMAK_USERNAME با حروف بزرگ انگلیسی وارد کنید.'},
-            )
+            self.fields['credential_env'].label = 'نام متغیر نشانی محرمانه API'
+            self.fields['credential_env'].help_text = f'پیشنهاد: {MELLIPAYAMAK_SIMPLE_ENV}. مقدار آن در تنظیمات محیطی هاست، برابر نشانی کامل ارسال ساده باشد.'
         if channel == 'email':
             self.fields['host'] = forms.CharField(label='میزبان سرویس', max_length=253, required=False)
             self.fields['port'] = forms.IntegerField(label='پورت', min_value=1, max_value=65535, required=False)
@@ -44,17 +42,15 @@ class ConfigurationForm(forms.ModelForm):
             field.widget.attrs.setdefault('placeholder', field.label)
         self.fields['credential_env'].widget.attrs['dir'] = 'ltr'
         if channel == 'sms':
-            self.fields['username_env'].widget.attrs['dir'] = 'ltr'
-            provider = self.data.get(f'{self.prefix}-provider') if self.is_bound else self.instance.provider
-            if provider == 'melipayamak' or (not self.is_bound and not self.instance.pk):
-                self.fields['credential_env'].initial = self.instance.credential_env or 'MELLIPAYAMAK_API_KEY'
-                self.fields['username_env'].initial = self.instance.connection.get('username_env') or 'MELLIPAYAMAK_USERNAME'
-                self.fields['endpoint'].initial = self.instance.connection.get('endpoint') or 'https://rest.payamak-panel.com/api/SendSMS/SendSMS'
+            if selected_provider == 'melipayamak' or (not self.is_bound and not self.instance.pk):
+                self.fields['credential_env'].initial = self.instance.credential_env or MELLIPAYAMAK_SIMPLE_ENV
 
     def save(self, commit=True):
         config = super().save(commit=False)
         config.channel = self.channel
         config.connection = {name: self.cleaned_data[name] for name in self.fields if name not in self._meta.fields}
+        if self.channel == 'sms' and config.provider == 'melipayamak':
+            config.connection = {'api_mode': 'console_simple'}
         if commit:
             config.save()
         return config
@@ -101,6 +97,11 @@ class SimulationForm(forms.Form):
     sample_name = forms.CharField(label='نام مخاطب نمونه', max_length=100, initial='مخاطب آزمایشی')
     company_name = forms.CharField(label='نام مجموعه', max_length=100, initial='دیجیران')
     task_title = forms.CharField(label='عنوان پیگیری نمونه', max_length=150, initial='پیگیری درخواست شما')
+    sample_address = forms.CharField(
+        label='آدرس نمونه', max_length=500, required=False,
+        initial='تهران، خیابان نمونه، پلاک ۱۲',
+        widget=forms.Textarea(attrs={'rows': 2, 'placeholder': 'آدرسی که در تگ {address} نمایش داده می‌شود'}),
+    )
     custom_text = forms.CharField(label='متن دلخواه افزوده', required=False, max_length=1500,
                                   widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'متن تکمیلی اختیاری؛ بعد از متن قالب نمایش داده می‌شود.'}),
                                   help_text='این متن فقط به همین پیام اضافه می‌شود و خود قالب را تغییر نمی‌دهد.')
