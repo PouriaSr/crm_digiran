@@ -75,10 +75,16 @@ def send_melipayamak(config, recipient, text, timeout=15):
         raise ProviderConnectionError('پاسخ معتبر از ملی‌پیامک دریافت نشد؛ شبکه و وضعیت سرویس را بررسی کنید.')
     try:
         reference = str(payload.get('recId') or '').strip()
+        provider_status = re.sub(r'\s+', ' ', str(payload.get('status') or '')).strip()
     except (AttributeError, TypeError, ValueError):
         raise ProviderConnectionError('ساختار پاسخ ملی‌پیامک معتبر نبود.')
     if not reference or not reference.isascii() or not reference.isdigit() or int(reference) <= 0:
-        raise ProviderConnectionError('ملی‌پیامک شناسه معتبر ارسال برنگرداند؛ خط فرستنده، گیرنده و متن را بررسی کنید.')
+        # Provider status is useful for support, but never show URLs or an unbounded response.
+        provider_status = re.sub(r'https?://\S+', '[نشانی حذف شد]', provider_status)[:240]
+        detail = f' پیام سرویس: {provider_status}' if provider_status else ''
+        raise ProviderConnectionError(
+            'ملی‌پیامک شناسه معتبر ارسال برنگرداند؛ خط فرستنده، گیرنده و متن را بررسی کنید.' + detail
+        )
     return reference
 
 

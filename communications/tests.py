@@ -1,3 +1,4 @@
+import json
 from unittest.mock import MagicMock, patch
 
 from django.contrib import admin
@@ -278,6 +279,25 @@ class MessagingManagementTests(TestCase):
             with self.subTest(value=value), patch.dict('os.environ', {MELLIPAYAMAK_SIMPLE_ENV: value}):
                 with self.assertRaises(ProviderConnectionError):
                     send_melipayamak(config, '09123456789', 'متن تست')
+
+    def test_melipayamak_failure_includes_sanitized_provider_status(self):
+        config = ChannelConfiguration(
+            channel='sms', provider='melipayamak', sender='1000123',
+            credential_env=MELLIPAYAMAK_SIMPLE_ENV, connection={'api_mode': 'console_simple'},
+        )
+        response = MagicMock()
+        response.read.return_value = json.dumps({
+            'recId': 0,
+            'status': 'خط فرستنده مجاز نیست https://example.com/private-token',
+        }, ensure_ascii=False).encode('utf-8')
+        opener = MagicMock()
+        opener.return_value.__enter__.return_value = response
+        secret_url = 'https://console.melipayamak.com/api/send/simple/ABCDEFGHIJKLMNOP1234'
+        with patch.dict('os.environ', {MELLIPAYAMAK_SIMPLE_ENV: secret_url}), \
+             patch('communications.services.urlopen', opener), \
+             self.assertRaisesRegex(ProviderConnectionError, 'خط فرستنده مجاز نیست') as raised:
+            send_melipayamak(config, '09123456789', 'متن تست')
+        self.assertNotIn('private-token', str(raised.exception))
 
     def test_sms_configuration_and_template_guide_use_simple_send(self):
         self.client.force_login(self.admin)
