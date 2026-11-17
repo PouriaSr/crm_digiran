@@ -159,6 +159,10 @@ class ClubWorkflowTests(TestCase):
         difference = account.payments.get(payment_type='purchase_difference')
         self.assertEqual(difference.amount, 6_000_000)
         self.assertEqual(difference.status, 'scheduled')
+        self.assertEqual(
+            difference.notes,
+            'رسید یا فاکتور پرداخت مابه‌التفاوت میان مبلغ خرید اصلی و قیمت گوشی را ثبت کنید.',
+        )
         self.assertEqual(account.loan_purchase_amount, 85_000_000)
         self.assertEqual(account.down_payment_amount, 0)
         self.assertEqual(account.main_purchase_amount, 85_000_000)
@@ -259,6 +263,9 @@ class ClubWorkflowTests(TestCase):
         account = ClubAccount.objects.get(customer=self.customer)
         page = self.client.get(reverse('customers:hub'), {'tab': 'club', 'r': self.rec.pk, 'club_edit': '1'})
         self.assertContains(page, 'ویرایش قرارداد باشگاه')
+        self.assertContains(page, 'ثبت رسید یا فاکتور پرداخت')
+        self.assertContains(page, 'فایل رسید یا فاکتور')
+        self.assertNotContains(page, 'ثبت مستقیم فاکتور یا رسید')
         paid = account.payments.filter(payment_type='installment').order_by('due_date').first()
         paid.status = 'paid'
         paid.notes = 'سابقه قطعی'
@@ -389,6 +396,52 @@ class ClubWorkflowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'تنظیمات طرح‌های وام')
         self.assertContains(response, 'بازگشت به باشگاه مشتریان')
+        self.assertContains(response, 'name="selected_program"', count=LoanProgram.objects.count())
+        self.assertContains(response, 'data-select-all')
+        self.assertContains(response, 'ویرایش انتخاب‌ها')
+        self.assertContains(response, 'غیرفعال‌سازی')
+
+    def test_loan_program_bulk_actions_only_change_selected_rows(self):
+        programs = list(LoanProgram.objects.order_by('pk')[:3])
+        selected_ids = [programs[0].pk, programs[1].pk]
+        response = self.client.post(reverse('customers:club_programs'), {
+            'bulk_action': 'deactivate', 'selected_program': selected_ids,
+        })
+        self.assertEqual(response.status_code, 302)
+        for program in programs:
+            program.refresh_from_db()
+        self.assertFalse(programs[0].is_active)
+        self.assertFalse(programs[1].is_active)
+        self.assertTrue(programs[2].is_active)
+
+        response = self.client.post(reverse('customers:club_programs'), {
+            'bulk_action': 'activate', 'selected_program': selected_ids,
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            LoanProgram.objects.filter(pk__in=selected_ids, is_active=True).count(), 2,
+        )
+
+    def test_loan_program_bulk_delete_preserves_program_used_by_contract(self):
+        used = LoanProgram.objects.order_by('pk').first()
+        removable = LoanProgram.objects.order_by('pk')[1]
+        evaluation = LoanEvaluation.objects.create(
+            reception=self.rec, case=self.case, requested_credit=used.credit_limit,
+            proposed_down_payment=0, contract_number=self.case.contract_number,
+            created_by=self.admin,
+        )
+        ClubAccount.objects.create(
+            customer=self.customer, reception=self.rec, evaluation=evaluation,
+            contract_number=self.case.contract_number, loan_program=used, product=self.phone,
+            delivery_type='instant', panel_url='https://example.com/b2b',
+            customer_credit_rank='A1', selected_by=self.admin,
+        )
+        response = self.client.post(reverse('customers:club_programs'), {
+            'bulk_action': 'delete', 'selected_program': [used.pk, removable.pk],
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(LoanProgram.objects.filter(pk=used.pk).exists())
+        self.assertFalse(LoanProgram.objects.filter(pk=removable.pk).exists())
 
     def test_private_receipt_and_card_ownership_are_enforced(self):
         evaluation = LoanEvaluation.objects.create(

@@ -297,6 +297,33 @@ def update_payment_receipt(request, pk):
 def manage_programs(request):
     from django.forms import modelformset_factory
     ProgramSet = modelformset_factory(LoanProgram, form=LoanProgramSettingsForm, extra=1, can_delete=True)
+    bulk_action = request.POST.get('bulk_action', '')
+    if request.method == 'POST' and bulk_action:
+        selected_ids = {
+            int(value) for value in request.POST.getlist('selected_program')
+            if value.isascii() and value.isdigit() and len(value) < 16
+        }
+        selected = LoanProgram.objects.select_for_update().filter(pk__in=selected_ids)
+        selected_count = selected.count()
+        if not selected_count:
+            messages.error(request, 'حداقل یک طرح وام را انتخاب کنید.')
+            return redirect('customers:club_programs')
+        if bulk_action in ('activate', 'deactivate'):
+            active = bulk_action == 'activate'
+            selected.update(is_active=active)
+            state = 'فعال' if active else 'غیرفعال'
+            messages.success(request, f'{selected_count} طرح انتخاب‌شده {state} شد.')
+        elif bulk_action == 'delete':
+            protected_ids = set(selected.filter(accounts__isnull=False).values_list('pk', flat=True))
+            deleted_count = selected.exclude(pk__in=protected_ids).count()
+            selected.exclude(pk__in=protected_ids).delete()
+            if deleted_count:
+                messages.success(request, f'{deleted_count} طرح بدون قرارداد حذف شد.')
+            if protected_ids:
+                messages.warning(request, f'{len(protected_ids)} طرح به‌دلیل داشتن قرارداد حفظ شد؛ آن‌ها را غیرفعال کنید.')
+        else:
+            messages.error(request, 'عملیات گروهی انتخاب‌شده معتبر نیست.')
+        return redirect('customers:club_programs')
     formset = ProgramSet(request.POST or None, queryset=LoanProgram.objects.all())
     if request.method == 'POST' and formset.is_valid():
         formset.save()

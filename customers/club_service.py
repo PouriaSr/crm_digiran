@@ -105,7 +105,7 @@ def create_payment_schedule(account):
         rows.append(ClubPayment(
             account=account, payment_type='purchase_difference', amount=difference,
             due_date=today, status='scheduled', created_by=account.selected_by,
-            notes='مابه‌التفاوت خرید اصلی و قیمت گوشی؛ فاکتور یا رسید پرداخت را ثبت کنید.',
+            notes='رسید یا فاکتور پرداخت مابه‌التفاوت میان مبلغ خرید اصلی و قیمت گوشی را ثبت کنید.',
         ))
     rows.extend(ClubPayment(account=account, payment_type='installment', amount=program.monthly_installment,
                             due_date=add_months(today, number), status='scheduled', created_by=account.selected_by)
@@ -138,7 +138,7 @@ def reconcile_payment_schedule(account, actor=None):
     sync_single('club_fee', account.club_fee)
     sync_single(
         'purchase_difference', account.purchase_difference_amount,
-        'مابه‌التفاوت خرید اصلی و قیمت گوشی؛ فاکتور یا رسید پرداخت را ثبت کنید.',
+        'رسید یا فاکتور پرداخت مابه‌التفاوت میان مبلغ خرید اصلی و قیمت گوشی را ثبت کنید.',
     )
 
     locked_count = account.payments.filter(payment_type='installment').exclude(
