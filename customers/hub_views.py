@@ -437,7 +437,7 @@ def hub_submit_call(request):
         customer.notes = data['notes']
         customer.save()
 
-        Call.objects.create(
+        call = Call.objects.create(
             source=source,
             customer=customer, caller_name=customer.name, call_number=mobile,
             call_date=timezone.now(),

@@ -517,11 +517,11 @@ class ClubWorkflowTests(TestCase):
         self.assertEqual(self.client.post(reverse('customers:club_payment', args=[account.pk]), {}).status_code, 403)
         self.assertEqual(self.client.post(reverse('customers:club_account_edit', args=[account.pk]), {}).status_code, 403)
 
-    def test_club_tab_is_conditional_and_contains_program_settings_for_admin(self):
+    def test_club_tab_no_longer_exposes_program_settings_navigation(self):
         response = self.client.get(reverse('customers:hub'), {'tab': 'club', 'r': self.rec.pk})
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'باشگاه مشتریان')
-        self.assertContains(response, 'تنظیمات طرح‌های وام')
+        self.assertNotContains(response, 'تنظیمات طرح‌های وام')
         self.assertEqual(response.context['club_record'], self.rec)
 
     def test_bought_case_creates_contract_pending_task_and_opens_club(self):

@@ -259,6 +259,7 @@ class CallRegistrationTest(TestCase):
         form = HubCallForm()
         self.assertTrue(form.fields['name'].required)
         self.assertTrue(form.fields['mobile'].required)
+        self.assertContains(response, '[for=hub_send_address]>span:first-of-type{min-height:44px;flex:1 1 100%;width:100%;justify-content:center}', html=False)
 
     def test_profile_stage_change_no_longer_automatically_sends_sms(self):
         customer = Customer.objects.create(name='مشتری', mobile=self.data['mobile'])

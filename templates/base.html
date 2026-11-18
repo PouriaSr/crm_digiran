@@ -993,15 +993,10 @@ window.apexMobileMerge = function (options) {
             </div>
             {% endif %}
 
-            {% if 'accounts.manage_users' in user_permissions or 'audit.view' in user_permissions or 'system.configure' in user_permissions or 'customers.club_manage' in user_permissions %}
+            {% if 'accounts.manage_users' in user_permissions or 'audit.view' in user_permissions or 'system.configure' in user_permissions %}
             <div class="pt-3 mt-3 border-t border-white/10">
                 <div class="px-3 py-1 text-xs text-gray-400 mb-1">تنظیمات سیستم</div>
 {% if 'system.configure' in user_permissions %}<a href="{% url 'accounts:interface_settings' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.url_name == 'interface_settings' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition">{% include 'includes/_system_settings_icon.html' %}<span>تنظیمات سیستم</span></a>{% endif %}
-                {% if 'customers.club_manage' in user_permissions %}
-                <a href="{% url 'customers:club_programs' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.url_name == 'club_programs' %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition">
-                    <span class="w-5 text-center" aria-hidden="true">↳</span><span>تنظیمات طرح‌های وام</span>
-                </a>
-                {% endif %}
                 {% if 'accounts.manage_users' in user_permissions %}
                 <a href="{% url 'accounts:user_list' %}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if request.resolver_match.app_name == 'accounts' and 'user' in request.resolver_match.url_name %}bg-blue-600{% else %}hover:bg-white/10{% endif %} transition" data-crm-ui="ui.base.a15" data-crm-order="150">

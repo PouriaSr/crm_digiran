@@ -75,6 +75,17 @@ class InterfaceSettingsTests(TestCase):
         for key in ('system.configure','customers.admission_assign','customers.admission_choose'):
             self.assertIn('perm__'+key.replace('.','_'),UserEditForm(instance=self.manager).fields)
 
+    def test_loan_programs_live_in_all_sections_and_header_actions_are_grouped(self):
+        response = self.client.get(reverse('accounts:interface_settings'))
+        body = response.content.decode('utf-8')
+        loan_url = reverse('customers:club_programs')
+        self.assertEqual(body.count(f'href="{loan_url}"'), 1)
+        self.assertIn('data-category="all" href="' + loan_url + '"', body)
+        self.assertIn('class="sb-actions"', body)
+        self.assertIn('data-print-target="#settings-components-print"', body)
+        header = body[body.index('<header class="sb-hero"'):body.index('</header>', body.index('<header class="sb-hero"'))]
+        self.assertLess(header.index('بخش جدید'), header.index('چاپ فهرست'))
+
     def test_internal_destinations_respect_cpanel_mount_prefix(self):
         from django.urls import get_script_prefix, set_script_prefix
         from accounts.interface import internal_url
