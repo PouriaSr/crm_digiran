@@ -24,6 +24,7 @@ class InformationFiltersTests(TestCase):
 
     def test_status_source_owner_dates_combine_and_obsolete_filters_are_ignored(self):
         self.assertEqual(self.results(),{self.lead.pk,self.potential.pk,self.candidate.pk})
+        self.assertEqual(self.results(person_status='customers'),{self.lead.pk,self.potential.pk})
         self.assertEqual(self.results(person_status='interviewer'),{self.candidate.pk})
         self.assertEqual(self.results(person_status='lead',source='direct'),{self.lead.pk})
         date=jdatetime.date.fromgregorian(date=timezone.localdate()).strftime('%Y/%m/%d')
@@ -39,3 +40,9 @@ class InformationFiltersTests(TestCase):
         for key in ('priority','display_mode','visit'):
             self.assertNotIn('name="'+key+'"',form)
         self.assertIn(f'value="ad:{self.ad.pk}" selected',form)
+
+    def test_customers_status_option_is_rendered_and_selected(self):
+        response=self.client.get(reverse('customers:hub'),{'tab':'info','person_status':'customers'})
+        form=response.content.decode().split('id="hub-filter-form"',1)[1].split('</form>',1)[0]
+        self.assertIn('value="customers" selected',form)
+        self.assertIn('مشتریان (سرنخ و بالقوه)',form)

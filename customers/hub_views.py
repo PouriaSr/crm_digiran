@@ -254,6 +254,13 @@ def customer_hub(request):
     ))
     if person_status == 'interviewer':
         customers = customers.filter(is_interviewer=True)
+    elif person_status == 'customers':
+        # A single filter option for all actual customer records.  Keep
+        # interviewers out while showing both lead and potential stages.
+        customers = customers.filter(
+            is_interviewer=False,
+            stage__in=('lead', 'potential'),
+        )
     elif person_status in ('lead', 'potential'):
         customers = customers.filter(is_interviewer=False, stage=person_status)
     elif person_status:
