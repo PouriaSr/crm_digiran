@@ -437,7 +437,7 @@ def hub_submit_call(request):
         customer.notes = data['notes']
         customer.save()
 
-        call = Call.objects.create(
+        Call.objects.create(
             source=source,
             customer=customer, caller_name=customer.name, call_number=mobile,
             call_date=timezone.now(),
@@ -715,6 +715,10 @@ def hub_quick_call(request, pk):
         messages.error(request, 'دسترسی لازم برای این عملیات را ندارید.')
         return redirect(back)
 
+    send_address = kind == 'new' and bool(request.POST.get('send_address'))
+    if send_address and not has_permission(request.user, 'communications.send_live'):
+        raise PermissionDenied('دسترسی ارسال واقعی پیامک را ندارید.')
+
     if not notes:
         messages.error(request, 'شرح مکالمه اجباری است؛ ثبت انجام نشد.', extra_tags=json.dumps({'field':'qc-notes'}))
         return redirect(back)
@@ -747,7 +751,7 @@ def hub_quick_call(request, pk):
         customer.stage = 'potential'
         customer.save(update_fields=['notes', 'stage', 'ad_source', 'updated_at'])
 
-        Call.objects.create(
+        call = Call.objects.create(
             source=source,
             customer=customer,
             caller_name=customer.name,
@@ -816,7 +820,7 @@ def hub_quick_call(request, pk):
         contact_type = request.POST.get('contact_type') or 'incoming'
         if contact_type not in dict(Call.CONTACT_TYPE_CHOICES) or contact_type == 'followup':
             contact_type = 'incoming'
-        Call.objects.create(
+        call = Call.objects.create(
             source=source,
             customer=customer,
             caller_name=customer.name,
@@ -828,8 +832,19 @@ def hub_quick_call(request, pk):
             notes=notes,
             called_by=request.user,
             created_by=request.user,
+            send_address=send_address,
         )
         messages.success(request, f'تماس جدید برای «{customer.name}» ثبت شد.')
+        if send_address:
+            sms_result = send_address_sms(
+                customer,
+                requested_by=request.user,
+                request_token=f'address-call-{call.pk}',
+            )
+            if sms_result.ok:
+                messages.success(request, 'پیامک آدرس با موفقیت ارسال شد.')
+            else:
+                messages.error(request, sms_result.message)
 
     return _quick_call_redirect(request, back)
 

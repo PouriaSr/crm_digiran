@@ -444,11 +444,13 @@ class ClubWorkflowTests(TestCase):
         override('customers.club_manage', False)
         self.assertEqual(self.client.get(reverse('customers:club_programs')).status_code, 403)
 
-    def test_loan_program_settings_is_a_dedicated_customer_center_page(self):
+    def test_loan_program_settings_is_a_dedicated_system_settings_page(self):
         response = self.client.get(reverse('customers:club_programs'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'تنظیمات طرح‌های وام')
-        self.assertContains(response, 'بازگشت به باشگاه مشتریان')
+        self.assertContains(response, 'بازگشت به تنظیمات سیستم')
+        self.assertContains(response, 'data-open-new-program')
+        self.assertContains(response, 'data-new-program-modal')
         self.assertContains(response, 'name="selected_program"', count=LoanProgram.objects.count())
         self.assertContains(response, 'data-select-all')
         self.assertContains(response, 'ویرایش انتخاب‌ها')

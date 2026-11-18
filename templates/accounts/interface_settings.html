@@ -4,6 +4,7 @@
 {% block content %}
 <section class="sb" data-builder dir="rtl">
  <header class="sb-hero"><div><div class="sb-kicker">مدیریت و طراحی</div><h1>تنظیمات سیستم</h1><p>بخش موردنظر را پیدا کنید؛ فرم، فهرست و مسیر انجام کارش را بسازید.</p></div><a class="sb-btn sb-btn-primary" href="{% url 'accounts:structure_create' %}">{% include 'accounts/_builder_icon.html' with icon='plus' %}بخش جدید</a></header>
+ {% if 'customers.club_manage' in user_permissions %}<a class="sb-welcome" href="{% url 'customers:club_programs' %}" style="text-decoration:none"><span class="sb-icon">↳</span><div><h2>تنظیمات طرح‌های وام</h2><p>مبالغ، اقساط، رتبه‌های اعتباری، مدارک و وضعیت طرح‌های قابل پیشنهاد را مدیریت کنید.</p></div><span class="sb-open" aria-hidden="true">‹</span></a>{% endif %}
  {% if section_cards %}
  <div class="sb-welcome"><span class="sb-icon">{% include 'accounts/_builder_icon.html' with icon='eye' %}</span><div><h2>تغییر بدهید، نتیجه را همان‌جا ببینید</h2><p>انتخاب بخش ← ویرایش یک قسمت ← بررسی پیش‌نمایش ← ذخیره</p></div></div>
  <div data-builder-search-group>

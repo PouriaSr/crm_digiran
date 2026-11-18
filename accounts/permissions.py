@@ -255,6 +255,13 @@ for key, parent in PERMISSION_PARENT.items():
         PERMISSIONS[key] = list(PERMISSIONS[parent])
         PERMISSION_META[key] = ('عملیات مرکز مشتریان', *_OPERATION_META[key])
 
+# این مجوز از نظر فنی همچنان روی مدل‌های باشگاه مشتریان عمل می‌کند، اما محل
+# مدیریت آن در رابط کاربری «تنظیمات سیستم» است.
+PERMISSION_META['customers.club_manage'] = (
+    'تنظیمات سیستم',
+    *_OPERATION_META['customers.club_manage'],
+)
+
 
 # ═══════════════════════════════════════════════════════════
 # توابع کمکی

@@ -34,6 +34,10 @@ class DetailUsesQuickCallModalTest(TestCase):
     def test_quick_modal_has_next(self):
         self.assertIn('id="qc-next"', self.body)
 
+    def test_address_action_is_above_new_call_notes(self):
+        self.assertIn('id="qc-send-address-row"', self.body)
+        self.assertLess(self.body.index('id="qc-send-address-row"'), self.body.index('id="qc-notes"'))
+
     # ── ثبت و بازگشت ──
     def test_submit_new_call_returns_to_customer(self):
         before = Call.objects.filter(customer=self.customer).count()
@@ -52,6 +56,22 @@ class DetailUsesQuickCallModalTest(TestCase):
             'kind': 'new', 'notes': 'تست امنیت', 'next': '//evil.com',
         })
         self.assertEqual(r.headers['Location'], '/customers/hub/?tab=info')
+
+    def test_new_call_can_request_real_address_sms(self):
+        from unittest.mock import patch
+        source = AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0]
+        with patch('customers.hub_views.send_address_sms') as sender:
+            sender.return_value.ok = True
+            sender.return_value.message = 'ارسال شد'
+            response = self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {
+                'source': source.pk, 'kind': 'new', 'notes': 'همراه آدرس', 'send_address': '1',
+            })
+        self.assertEqual(response.status_code, 302)
+        call = Call.objects.filter(customer=self.customer).latest('pk')
+        self.assertTrue(call.send_address)
+        sender.assert_called_once_with(
+            self.customer, requested_by=self.user, request_token=f'address-call-{call.pk}',
+        )
 
     def test_submit_without_next_goes_to_hub(self):
         r = self.client.post(reverse('customers:quick_call', args=[self.customer.pk]), {'source': AdSource.objects.get_or_create(phone_number='09129999888', defaults={'label':'تست'})[0].pk,
